@@ -7,6 +7,7 @@
 
 ## You Must always:
 - After generating code, review it carefully for security and correctness.
+- All functions must have comprehensive GODoc comments, including parameters and return values.
 - Write unit tests for any new functionality.
 - When tasks are complete, run:
   - `go fmt ./...` to format the code.
