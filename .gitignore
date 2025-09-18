@@ -34,3 +34,6 @@ go.work.sum
 
 #Ignore vscode AI rules
 .github/instructions/codacy.instructions.md
+
+# the binary
+gone
