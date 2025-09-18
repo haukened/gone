@@ -5,19 +5,19 @@
 ---
 # GitHub Copilot Instructions for Gone
 
+## Project Purpose
+
+Gone is a minimal Go service for one-time secret sharing. Its goal is to provide a secure, simple, and efficient way to share secrets that can only be accessed once.
+
 ## You Must always:
 - After generating code, review it carefully for security and correctness.
 - All functions must have comprehensive GODoc comments, including parameters and return values.
-- Write unit tests for any new functionality.
+- Write unit tests for any new functionality. (See Testing section below.)
 - When tasks are complete, run:
   - `go fmt ./...` to format the code.
   - `go vet ./...` to check for issues.
   - `go test ./...` to run all tests and ensure everything passes.
   - `gosec ./...` to check for security vulnerabilities.
-
-## Project Purpose
-
-Gone is a minimal Go service for one-time secret sharing. Its goal is to provide a secure, simple, and efficient way to share secrets that can only be accessed once.
 
 ## Project Structure
 The project follows a minimal Go layout to keep code organized and maintainable:
@@ -27,9 +27,18 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - `internal/httpx/`: Contains HTTP handlers and related logic.
 - `web/`: Static assets (HTML, CSS, JS) for the web interface.
 - `scripts/`: Janitor jobs and maintenance scripts.
-- `test/`: Integration and unit tests.
 
 **Copilot must always place new code in the correct directory according to its purpose, and keep the structure minimal. Do not introduce unnecessary subdirectories or complexity.**
+
+## Testing Requirements
+- Use Go's standard `testing` package.
+- Write unit tests for all new functions and methods.
+- Unit tests should be placed in a separate `_test.go` file.
+  - Example: `store.go` -> `store_test.go` in the same folder.
+- Place tests in the same package as the code being tested.
+- Use table-driven tests where appropriate.
+- Integration tests should be placed in the `test/` directory.
+- Run tests with `go test ./...` and ensure all tests pass before finalizing changes.
 
 ## Coding Style
 - Write idiomatic Go code following standard Go conventions.
