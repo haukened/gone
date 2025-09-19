@@ -1,4 +1,14 @@
+[![Build](https://github.com/haukened/gone/actions/workflows/build.yaml/badge.svg)](https://github.com/haukened/gone/actions/workflows/build.yaml)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/f632a2010c7748199f7c2cb8317feffa)](https://app.codacy.com/gh/haukened/gone/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Codacy Badge](https://app.codacy.com/project/badge/Coverage/f632a2010c7748199f7c2cb8317feffa)](https://app.codacy.com/gh/haukened/gone/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
+![GitHub License](https://img.shields.io/github/license/haukened/gone)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/haukened/gone)
+![GitHub last commit](https://img.shields.io/github/last-commit/haukened/gone)
+
+
 # gone
+
+Go + One = Gone.  Written in Go, there until its __*gone*__.
 
 ## Purpose
 Gone is a minimal Go service designed for one-time secret sharing. It enables users to securely share sensitive information by ensuring that secrets are encrypted client-side, transmitted safely, and can only be accessed once before being permanently deleted.
