@@ -1,302 +1,150 @@
-// Package config provides layered configuration loading for the Gone service.
-// It merges Defaults -> Environment Variables -> CLI Flags, with validation.
+// Package config handles configuration settings for the application.
 package config
 
 import (
-	"flag"
 	"fmt"
+	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/knadh/koanf/providers/env/v2"
+	"github.com/knadh/koanf/providers/structs"
+	"github.com/knadh/koanf/v2"
 )
 
-/*
-Usage example (in main package):
-
-	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	fv := config.BindFlags(fs)
-	_ = fs.Parse(os.Args[1:])
-
-	cfg := config.Defaults()
-	_ = config.FromEnv(&cfg, config.GetenvPresent)
-	_ = config.ApplyFlags(&cfg, fv)
-	if errs := config.Validate(cfg); len(errs) > 0 {
-		for _, e := range errs { fmt.Fprintf(os.Stderr, "config error: %v\n", e) }
-		os.Exit(1)
-	}
-*/
-
-// Config holds the merged runtime configuration for the Gone service.
-// Order of precedence (lowest → highest): Defaults → Environment → CLI Flags.
+// Config holds the configuration settings for the application.
 type Config struct {
-	Addr     string        // listen address, e.g. ":8080"
-	DataDir  string        // directory for blobs, e.g. "./data"
-	DSN      string        // SQLite DSN, e.g. "file:gone.db?_journal_mode=WAL&_fk=1"
-	MaxBytes int64         // max POST body size (bytes), e.g. 128 KiB
-	MinTTL   time.Duration // minimum TTL allowed
-	MaxTTL   time.Duration // maximum TTL allowed
+	Addr     string        `koanf:"addr" validate:"required,ip_port"`
+	DataDir  string        `koanf:"data_dir" validate:"required,custom_path"`
+	MaxBytes int64         `koanf:"max_bytes" validate:"required,gt=0"`
+	MinTTL   time.Duration `koanf:"min_ttl" validate:"required,gt=0"`
+	MaxTTL   time.Duration `koanf:"max_ttl" validate:"required,gt=0"`
 }
 
-// Defaults returns a Config populated with secure, minimal sane defaults.
-func Defaults() Config {
-	return Config{
-		Addr:     ":8080",
-		DataDir:  "./data",
-		DSN:      "file:gone.db?_journal_mode=WAL&_fk=1",
-		MaxBytes: 128 << 10, // 128 KiB
-		MinTTL:   1 * time.Minute,
-		MaxTTL:   7 * 24 * time.Hour, // 7 days
-	}
+// DefaultAppConfig provides the default app configuration values.
+var DefaultAppConfig = Config{
+	Addr:     ":8080",
+	DataDir:  "/data",
+	MaxBytes: 1024 * 10, // 10 KiB
+	MinTTL:   5 * time.Minute,
+	MaxTTL:   24 * time.Hour,
 }
 
-// GetenvPresent wraps os.LookupEnv to satisfy the required getenv func signature.
-func GetenvPresent(name string) (string, bool) { return os.LookupEnv(name) }
+// defaultLoader loads default configuration values into the provided Koanf instance
+// using the structs provider and the DefaultAppConfig struct. It returns an error
+// if loading fails.
+var defaultLoader = func(k *koanf.Koanf) error {
+	return k.Load(structs.Provider(DefaultAppConfig, "koanf"), nil)
+}
 
-// FromEnv overlays environment variables onto the provided Config. Missing vars are ignored.
-// Parsing errors are wrapped with the environment variable name for clarity.
-func FromEnv(cfg *Config, getenv func(string) (string, bool)) error {
-	if cfg == nil {
-		return fmt.Errorf("nil config passed to FromEnv")
-	}
+// envLoader is a function that loads environment variables with the prefix "GONE_".
+// It transforms the keys to lowercase and removes the prefix.
+// and can be mocked in tests.
+var envLoader = func(k *koanf.Koanf) error {
+	// Load environment variables with prefix "GONE_" using lowercase keys; all values scalar.
+	return k.Load(env.Provider(".", env.Opt{Prefix: "GONE_", TransformFunc: func(key, value string) (string, any) {
+		key = strings.ToLower(strings.TrimPrefix(key, "GONE_"))
+		return key, strings.TrimSpace(value)
+	}}), nil)
+}
 
-	// Simple string mappings (no parsing logic required)
-	strVars := []struct {
-		env string
-		dst *string
-	}{
-		{"GONE_ADDR", &cfg.Addr},
-		{"GONE_DATA_DIR", &cfg.DataDir},
-		{"GONE_DSN", &cfg.DSN},
+// validIPPort validates whether the provided field value is a valid IP address and port combination.
+// It expects the value to be parseable by net.Listen()
+// Examples: ":8080", "127.0.0.1:8080"
+func validIPPort(fl validator.FieldLevel) bool {
+	addr := fl.Field().String()
+	ip, port, err := net.SplitHostPort(addr)
+	if err != nil || port == "" {
+		return false
 	}
-	for _, sv := range strVars {
-		if v, ok := getenv(sv.env); ok {
-			*sv.dst = v
+	if ip != "" && net.ParseIP(ip) == nil {
+		return false
+	}
+	portNum, err := strconv.ParseUint(port, 10, 16)
+	return err == nil && portNum > 0 && portNum < 65536
+}
+
+// validDirNotExists checks that the provided value is a directory path, but does not ensure it exists.
+// It disallows empty paths, ".", the root directory, and paths that traverse upwards (contain "..").
+func validDirNotExists(fl validator.FieldLevel) bool {
+	raw := fl.Field().String()
+	if raw == "" {
+		return false
+	}
+	cleaned := filepath.Clean(raw)
+	if cleaned == "." || cleaned == string(os.PathSeparator) {
+		return false
+	}
+	// Split into components and reject explicit parent traversals.
+	for _, part := range strings.Split(cleaned, string(os.PathSeparator)) {
+		if part == ".." {
+			return false
 		}
 	}
-
-	// Parsers for numeric/duration values with empty-string clearing semantics.
-	type parseFn func(raw string) error
-	parsers := []struct {
-		env string
-		fn  parseFn
-	}{
-		{"GONE_MAX_BYTES", func(raw string) error {
-			if raw == "" {
-				cfg.MaxBytes = 0
-				return nil
-			}
-			n, err := ParseSize(raw)
-			if err != nil {
-				return err
-			}
-			cfg.MaxBytes = n
-			return nil
-		}},
-		{"GONE_MIN_TTL", func(raw string) error {
-			if raw == "" {
-				cfg.MinTTL = 0
-				return nil
-			}
-			d, err := time.ParseDuration(raw)
-			if err != nil {
-				return err
-			}
-			cfg.MinTTL = d
-			return nil
-		}},
-		{"GONE_MAX_TTL", func(raw string) error {
-			if raw == "" {
-				cfg.MaxTTL = 0
-				return nil
-			}
-			d, err := time.ParseDuration(raw)
-			if err != nil {
-				return err
-			}
-			cfg.MaxTTL = d
-			return nil
-		}},
-	}
-	for _, p := range parsers {
-		if v, ok := getenv(p.env); ok {
-			if err := p.fn(v); err != nil {
-				return fmt.Errorf("%s: %w", p.env, err)
-			}
-		}
-	}
-	return nil
+	return true
 }
 
-// FlagVals holds raw string representations of flag values so emptiness can signal "unset".
-type FlagVals struct {
-	Addr     string
-	DataDir  string
-	DSN      string
-	MaxBytes string
-	MinTTL   string
-	MaxTTL   string
-}
-
-// BindFlags defines the configuration flags on the provided FlagSet and returns a FlagVals
-// capturing their string pointers. All defaults are empty to distinguish from "not provided".
-func BindFlags(fs *flag.FlagSet) *FlagVals {
-	fv := &FlagVals{}
-	fs.StringVar(&fv.Addr, "addr", "", "Listen address (e.g. :8080)")
-	fs.StringVar(&fv.DataDir, "data-dir", "", "Directory for encrypted blobs")
-	fs.StringVar(&fv.DSN, "dsn", "", "SQLite DSN (e.g. file:gone.db?_journal_mode=WAL&_fk=1)")
-	fs.StringVar(&fv.MaxBytes, "max-bytes", "", "Maximum secret size (bytes or IEC, e.g. 128KiB)")
-	fs.StringVar(&fv.MinTTL, "min-ttl", "", "Minimum TTL (e.g. 1m, 30s)")
-	fs.StringVar(&fv.MaxTTL, "max-ttl", "", "Maximum TTL (e.g. 168h, 24h)")
-	return fv
-}
-
-// ApplyFlags overlays non-empty flag values onto the provided Config, parsing as needed.
-// Parsing errors are wrapped with the flag name.
-func ApplyFlags(cfg *Config, fv *FlagVals) error {
-	if cfg == nil {
-		return fmt.Errorf("nil config passed to ApplyFlags")
-	}
-	if fv == nil {
-		return nil
-	}
-
-	// Direct string assignments (unset => empty string ignored)
-	strFlags := []struct {
-		val string
-		dst *string
-	}{
-		{fv.Addr, &cfg.Addr},
-		{fv.DataDir, &cfg.DataDir},
-		{fv.DSN, &cfg.DSN},
-	}
-	for _, f := range strFlags {
-		if f.val != "" {
-			*f.dst = f.val
-		}
-	}
-
-	// Parsers with flag-specific error wrapping labels
-	type parseFn func(raw string) error
-	parsers := []struct {
-		raw   string
-		label string
-		fn    parseFn
-	}{
-		{fv.MaxBytes, "-max-bytes", func(raw string) error {
-			n, err := ParseSize(raw)
-			if err != nil {
-				return err
-			}
-			cfg.MaxBytes = n
-			return nil
-		}},
-		{fv.MinTTL, "-min-ttl", func(raw string) error {
-			d, err := time.ParseDuration(raw)
-			if err != nil {
-				return err
-			}
-			cfg.MinTTL = d
-			return nil
-		}},
-		{fv.MaxTTL, "-max-ttl", func(raw string) error {
-			d, err := time.ParseDuration(raw)
-			if err != nil {
-				return err
-			}
-			cfg.MaxTTL = d
-			return nil
-		}},
-	}
-	for _, p := range parsers {
-		if p.raw == "" {
-			continue
-		}
-		if err := p.fn(p.raw); err != nil {
-			return fmt.Errorf("%s: %w", p.label, err)
-		}
-	}
-	return nil
-}
-
-// Validate performs logical checks and returns all encountered problems.
-func Validate(cfg Config) []error {
-	var errs []error
-	if cfg.Addr == "" {
-		errs = append(errs, fmt.Errorf("addr must not be empty"))
-	}
-	if cfg.DataDir == "" {
-		errs = append(errs, fmt.Errorf("data dir must not be empty"))
-	}
-	if cfg.MaxBytes <= 0 {
-		errs = append(errs, fmt.Errorf("max bytes must be > 0"))
-	}
-	if cfg.MinTTL <= 0 {
-		errs = append(errs, fmt.Errorf("min ttl must be > 0"))
-	}
-	if cfg.MaxTTL < cfg.MinTTL {
-		errs = append(errs, fmt.Errorf("max ttl must be >= min ttl"))
-	}
-	return errs
-}
-
-// ParseSize converts a human-friendly size string into a byte count.
-// Accepts plain integers (bytes) or IEC/human suffixes: KiB/MiB/GiB (case-insensitive) or K/M/G.
-// Examples: "131072" => 131072, "128KiB" => 131072, "1MiB" => 1048576, "2G" => 2147483648.
-func ParseSize(s string) (int64, error) {
-	orig := s
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return 0, fmt.Errorf("empty size string")
-	}
-	upper := strings.ToUpper(s)
-	// Attempt suffix parsing first.
-	if n, ok, err := parseSizeWithSuffix(upper, orig); ok {
-		return n, err
-	}
-	// Fallback: plain integer bytes.
-	n, err := parsePositiveInt(upper)
+// registerValidators registers custom validation functions with the provided validator instance.
+var registerValidators = func(v *validator.Validate) error {
+	err := v.RegisterValidation("ip_port", validIPPort)
 	if err != nil {
-		return 0, fmt.Errorf("parse size %q: %w", orig, err)
+		return err
 	}
-	return n, nil
+	return v.RegisterValidation("custom_path", validDirNotExists)
 }
 
-// parsePositiveInt parses a base-10 int64 and rejects negatives.
-func parsePositiveInt(raw string) (int64, error) {
-	n, err := strconv.ParseInt(raw, 10, 64)
+// Load loads the configuration by applying default values and overriding them
+// with environment variables. It validates the final configuration and returns
+// a Config instance or an error if validation fails.
+func Load() (*Config, error) {
+	k := koanf.New(".")
+
+	// Load default values using structs provider.
+	err := defaultLoader(k)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	if n < 0 {
-		return 0, fmt.Errorf("negative not allowed")
+
+	// Override with environment variables.
+	if err = envLoader(k); err != nil {
+		return nil, err
 	}
-	return n, nil
+
+	var cfg Config
+
+	// Unmarshal the config
+	if err = k.Unmarshal("", &cfg); err != nil {
+		return nil, err
+	}
+
+	// Create a new validator instance
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	// Register custom validators
+	if err = registerValidators(validate); err != nil {
+		return nil, err
+	}
+
+	// Validate the config
+	if err = validate.Struct(&cfg); err != nil {
+		return nil, err
+	}
+
+	// ensure that MinTTL is less than MaxTTL
+	if cfg.MinTTL >= cfg.MaxTTL {
+		return nil, fmt.Errorf("min_ttl must be less than max_ttl")
+	}
+
+	return &cfg, nil
 }
 
-// parseSizeWithSuffix attempts to parse well-known size suffixes. It returns (value, true, nil)
-// on success; (0, false, nil) if no suffix matched; or (0, true, error) if a suffix matched but parsing failed.
-func parseSizeWithSuffix(upper, orig string) (int64, bool, error) {
-	type unit struct {
-		suffix string
-		mult   int64
-	}
-	units := []unit{
-		{"KIB", 1024}, {"MIB", 1024 * 1024}, {"GIB", 1024 * 1024 * 1024},
-		{"K", 1024}, {"M", 1024 * 1024}, {"G", 1024 * 1024 * 1024},
-	}
-	for _, u := range units {
-		if strings.HasSuffix(upper, u.suffix) {
-			numPart := strings.TrimSpace(upper[:len(upper)-len(u.suffix)])
-			if numPart == "" {
-				return 0, true, fmt.Errorf("parse size %q: missing number", orig)
-			}
-			n, err := parsePositiveInt(numPart)
-			if err != nil {
-				return 0, true, fmt.Errorf("parse size %q: %w", orig, err)
-			}
-			return n * u.mult, true, nil
-		}
-	}
-	return 0, false, nil
+// SQLiteDSN returns a fixed hardened SQLite DSN derived from DataDir.
+// WAL mode, foreign keys, busy timeout, and FULL synchronous are enforced.
+func (c *Config) SQLiteDSN() string {
+	dbPath := filepath.Join(c.DataDir, "gone.db")
+	return fmt.Sprintf("file:%s?_journal_mode=WAL&_foreign_keys=on&_busy_timeout=5000&_synchronous=FULL", dbPath)
 }

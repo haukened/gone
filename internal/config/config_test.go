@@ -1,221 +1,247 @@
 package config
 
 import (
-	"flag"
-	"os"
-	"reflect"
-	"strings"
+	"errors"
 	"testing"
-	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/knadh/koanf/v2"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestDefaults(t *testing.T) {
-	d := Defaults()
-	if d.Addr != ":8080" || d.DataDir != "./data" || d.DSN == "" || d.MaxBytes != 128<<10 || d.MinTTL != time.Minute || d.MaxTTL != 7*24*time.Hour {
-		t.Fatalf("defaults not as expected: %+v", d)
+func TestDefaultConfig(t *testing.T) {
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
 	}
+	assert.EqualValues(t, DefaultAppConfig, *cfg)
 }
 
-func TestParseSize(t *testing.T) {
-	cases := map[string]int64{
-		"131072":  131072,
-		"128KiB":  128 * 1024,
-		"128kib":  128 * 1024,
-		"1MiB":    1024 * 1024,
-		"2G":      2 * 1024 * 1024 * 1024,
-		" 64KiB ": 64 * 1024,
-		"10M":     10 * 1024 * 1024,
-		"3GiB":    3 * 1024 * 1024 * 1024,
+func TestValidPaths(t *testing.T) {
+	valid := []string{
+		"data",
+		"/var/lib/gone",
+		"./data",
+		"relative/path/to/data",
+		"nested/dir/structure",
 	}
-	for in, want := range cases {
-		got, err := ParseSize(in)
-		if err != nil || got != want {
-			t.Errorf("ParseSize(%q) = %d, %v; want %d, nil", in, got, err, want)
+	for _, p := range valid {
+		t.Setenv("GONE_DATA_DIR", p)
+		cfg, err := Load()
+		if err != nil {
+			t.Errorf("expected valid path %q, got error: %v", p, err)
+			continue
+		}
+		if cfg.DataDir != p {
+			t.Errorf("expected DataDir %q, got %q", p, cfg.DataDir)
 		}
 	}
 }
 
-func TestParseSizeErrors(t *testing.T) {
-	bad := []string{"", "-1", "12XB", "KIB", "123KB"}
-	for _, in := range bad {
-		if _, err := ParseSize(in); err == nil {
-			t.Errorf("expected error for %q", in)
+func TestInvalidPaths(t *testing.T) {
+	invalid := []string{
+		"",
+		".",
+		"/",
+		"//",
+		"../data",
+		"data/..",
+		"data/../../../etc",
+	}
+	for _, p := range invalid {
+		t.Setenv("GONE_DATA_DIR", p)
+		_, err := Load()
+		if err == nil {
+			t.Errorf("expected error for invalid path %q, got nil", p)
+			continue
 		}
 	}
 }
 
-func TestParseSizePlainNegative(t *testing.T) {
-	if _, err := ParseSize("-42"); err == nil {
-		t.Fatalf("expected error for negative value")
+func TestValidIPPort(t *testing.T) {
+	type sample struct {
+		Addr string `validate:"ip_port"`
+	}
+
+	v := validator.New()
+	if err := v.RegisterValidation("ip_port", validIPPort); err != nil {
+		t.Fatalf("register validation: %v", err)
+	}
+
+	tests := []struct {
+		name  string
+		addr  string
+		valid bool
+	}{
+		{name: "empty", addr: "", valid: false},
+		{name: "missing_port", addr: "127.0.0.1", valid: false},
+		{name: "missing_port_after_colon", addr: "127.0.0.1:", valid: false},
+		{name: "just_colon_port", addr: ":8080", valid: true},
+		{name: "loopback_ipv4", addr: "127.0.0.1:8080", valid: true},
+		{name: "any_ipv4_low_port", addr: "0.0.0.0:1", valid: true},
+		{name: "ipv6_loopback", addr: "[::1]:8080", valid: true},
+		{name: "ipv6_any", addr: "[::]:443", valid: true},
+		{name: "unbracketed_ipv6", addr: "::1:8080", valid: false},
+		{name: "hostname_not_ip", addr: "localhost:8080", valid: false},
+		{name: "invalid_host_chars", addr: "not_an_ip!:80", valid: false},
+		{name: "non_numeric_port", addr: "127.0.0.1:http", valid: false},
+		{name: "port_zero", addr: "127.0.0.1:0", valid: false},
+		{name: "port_max_valid", addr: "127.0.0.1:65535", valid: true},
+		{name: "port_overflow", addr: "127.0.0.1:65536", valid: false},
+		{name: "negative_port", addr: "127.0.0.1:-1", valid: false},
+		{name: "multi_leading_zero_port", addr: "127.0.0.1:00080", valid: true},
+		{name: "space_prefixed", addr: " :8080", valid: false},
+		{name: "trailing_space", addr: "127.0.0.1:8080 ", valid: false},
+		{name: "embedded_space", addr: "127.0. 0.1:8080", valid: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			s := sample{Addr: tc.addr}
+			err := v.Struct(&s)
+			if tc.valid && err != nil {
+				t.Fatalf("expected valid, got error: %v", err)
+			}
+			if !tc.valid && err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+		})
 	}
 }
 
-func TestFromEnvOverlay(t *testing.T) {
-	base := Defaults()
-	env := map[string]string{
-		"GONE_ADDR":      "127.0.0.1:9000",
-		"GONE_DATA_DIR":  "/tmp/gone",
-		"GONE_DSN":       "file:test.db?_journal_mode=WAL&_fk=1",
-		"GONE_MAX_BYTES": "256KiB",
-		"GONE_MIN_TTL":   "2m",
-		"GONE_MAX_TTL":   "48h",
-	}
-	getter := func(k string) (string, bool) { v, ok := env[k]; return v, ok }
-	if err := FromEnv(&base, getter); err != nil {
-		t.Fatalf("FromEnv error: %v", err)
-	}
-	if base.Addr != "127.0.0.1:9000" || base.DataDir != "/tmp/gone" || base.MaxBytes != 256*1024 || base.MinTTL != 2*time.Minute || base.MaxTTL != 48*time.Hour {
-		t.Fatalf("env overlay failed: %+v", base)
-	}
-}
+func TestSQLiteDSN(t *testing.T) {
+	params := "?_journal_mode=WAL&_foreign_keys=on&_busy_timeout=5000&_synchronous=FULL"
 
-func TestFromEnvError(t *testing.T) {
-	c := Defaults()
-	env := map[string]string{"GONE_MAX_BYTES": "12XB"}
-	getter := func(k string) (string, bool) { v, ok := env[k]; return v, ok }
-	if err := FromEnv(&c, getter); err == nil || !strings.Contains(err.Error(), "GONE_MAX_BYTES") {
-		t.Fatalf("expected wrapped error for GONE_MAX_BYTES, got %v", err)
-	}
-}
-
-func TestFromEnvClearsOnEmpty(t *testing.T) {
-	c := Defaults()
-	env := map[string]string{"GONE_MAX_BYTES": "", "GONE_MIN_TTL": "", "GONE_MAX_TTL": ""}
-	if err := FromEnv(&c, func(k string) (string, bool) { v, ok := env[k]; return v, ok }); err != nil {
-		t.Fatalf("FromEnv: %v", err)
-	}
-	if c.MaxBytes != 0 || c.MinTTL != 0 || c.MaxTTL != 0 {
-		t.Fatalf("expected cleared fields, got %+v", c)
-	}
-}
-
-func TestApplyFlagsOverlay(t *testing.T) {
-	c := Defaults()
-	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	fv := BindFlags(fs)
-	args := []string{"-addr", "0.0.0.0:9999", "-max-bytes", "1MiB", "-min-ttl", "30s", "-max-ttl", "2h"}
-	if err := fs.Parse(args); err != nil {
-		t.Fatalf("parse flags: %v", err)
-	}
-	if err := ApplyFlags(&c, fv); err != nil {
-		t.Fatalf("apply flags: %v", err)
-	}
-	if c.Addr != "0.0.0.0:9999" || c.MaxBytes != 1*1024*1024 || c.MinTTL != 30*time.Second || c.MaxTTL != 2*time.Hour {
-		t.Fatalf("flag overlay failed: %+v", c)
-	}
-}
-
-func TestApplyFlagsError(t *testing.T) {
-	c := Defaults()
-	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	fv := BindFlags(fs)
-	if err := fs.Parse([]string{"-max-bytes", "12XB"}); err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if err := ApplyFlags(&c, fv); err == nil || !strings.Contains(err.Error(), "-max-bytes") {
-		t.Fatalf("expected wrapped flag error, got %v", err)
-	}
-}
-
-func TestApplyFlagsNilConfig(t *testing.T) {
-	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	fv := BindFlags(fs)
-	if err := fs.Parse([]string{"-addr", ":1"}); err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if err := ApplyFlags(nil, fv); err == nil || !strings.Contains(err.Error(), "nil config") {
-		t.Fatalf("expected nil config error, got %v", err)
-	}
-}
-
-func TestApplyFlagsNilFlagVals(t *testing.T) {
-	c := Defaults()
-	if err := ApplyFlags(&c, nil); err != nil {
-		t.Fatalf("expected nil flag vals no-op, got %v", err)
-	}
-}
-
-func TestValidateMultipleErrors(t *testing.T) {
-	c := Config{} // empty => several errors
-	errs := Validate(c)
-	if len(errs) < 4 { // expect at least addr, data dir, max bytes, min ttl
-		t.Fatalf("expected multiple errors, got %d", len(errs))
-	}
-}
-
-func TestValidateMaxLessThanMin(t *testing.T) {
-	c := Defaults()
-	c.MaxTTL = c.MinTTL - time.Second
-	errs := Validate(c)
-	found := false
-	for _, e := range errs {
-		if strings.Contains(e.Error(), ">= min ttl") {
-			found = true
+	join := func(a, b string) string {
+		if len(a) == 0 {
+			return b
 		}
+		if a[len(a)-1] == '/' {
+			return a + b
+		}
+		return a + "/" + b
 	}
-	if !found {
-		t.Fatalf("expected max ttl >= min ttl error, got %v", errs)
+
+	countRune := func(s string, r rune) int {
+		c := 0
+		for _, ch := range s {
+			if ch == r {
+				c++
+			}
+		}
+		return c
+	}
+
+	contains := func(haystack, needle string) bool {
+	outer:
+		for i := 0; i+len(needle) <= len(haystack); i++ {
+			for j := 0; j < len(needle); j++ {
+				if haystack[i+j] != needle[j] {
+					continue outer
+				}
+			}
+			return true
+		}
+		return false
+	}
+
+	type tc struct {
+		name    string
+		dataDir string
+	}
+	tests := []tc{
+		{name: "default_config", dataDir: DefaultAppConfig.DataDir},
+		{name: "relative_no_slash", dataDir: "data"},
+		{name: "relative_trailing_slash", dataDir: "data/"},
+		{name: "absolute_no_slash", dataDir: "/var/lib/gone"},
+		{name: "absolute_trailing_slash", dataDir: "/var/lib/gone/"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Config{
+				Addr:     ":8080",
+				DataDir:  tt.dataDir,
+				MaxBytes: DefaultAppConfig.MaxBytes,
+				MinTTL:   DefaultAppConfig.MinTTL,
+				MaxTTL:   DefaultAppConfig.MaxTTL,
+			}
+
+			got := c.SQLiteDSN()
+			wantPath := join(tt.dataDir, "gone.db")
+			want := "file:" + wantPath + params
+
+			assert.Equal(t, want, got, "expected DSN mismatch")
+
+			// Structural assertions.
+			assert.True(t, contains(got, "_journal_mode=WAL"), "missing WAL mode")
+			assert.True(t, contains(got, "_foreign_keys=on"), "missing foreign keys pragma")
+			assert.True(t, contains(got, "_busy_timeout=5000"), "missing busy timeout")
+			assert.True(t, contains(got, "_synchronous=FULL"), "missing synchronous FULL")
+			assert.Equal(t, 1, countRune(got, '?'), "expected exactly one '?' in DSN")
+		})
 	}
 }
 
-func TestPrecedenceOrder(t *testing.T) {
-	c := Defaults()
-	// Pretend env overrides some, flags override again.
-	env := map[string]string{
-		"GONE_ADDR":      ":9001",
-		"GONE_MAX_BYTES": "256KiB",
+func TestLoadDefaultError(t *testing.T) {
+	// swap out the defaultLoader to return an error
+	orig := defaultLoader
+	t.Cleanup(func() { defaultLoader = orig })
+	defaultLoader = func(k *koanf.Koanf) error {
+		assert.NotNil(t, k)
+		return assert.AnError
 	}
-	if err := FromEnv(&c, func(k string) (string, bool) { v, ok := env[k]; return v, ok }); err != nil {
-		t.Fatalf("env: %v", err)
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
-	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	fv := BindFlags(fs)
-	if err := fs.Parse([]string{"-addr", ":9002"}); err != nil {
-		t.Fatalf("flags: %v", err)
-	}
-	if err := ApplyFlags(&c, fv); err != nil {
-		t.Fatalf("apply: %v", err)
-	}
-	if c.Addr != ":9002" {
-		t.Fatalf("flags should win over env; got %s", c.Addr)
-	}
-	if c.MaxBytes != 256*1024 {
-		t.Fatalf("env override for max bytes lost; got %d", c.MaxBytes)
+	if !errors.Is(err, assert.AnError) {
+		t.Fatalf("expected assert.AnError, got: %v", err)
 	}
 }
 
-func TestGetenvPresent(t *testing.T) {
-	key := "GONE_TEST_UNIQUE_KEY"
-	_ = os.Unsetenv(key)
-	if _, ok := GetenvPresent(key); ok {
-		t.Fatalf("expected not present")
+func TestLoadEnvError(t *testing.T) {
+	// swap out the envLoader to return an error
+	orig := envLoader
+	t.Cleanup(func() { envLoader = orig })
+	envLoader = func(k *koanf.Koanf) error {
+		assert.NotNil(t, k)
+		return assert.AnError
 	}
-	if err := os.Setenv(key, "value"); err != nil {
-		t.Fatalf("setenv: %v", err)
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
-	if v, ok := GetenvPresent(key); !ok || v != "value" {
-		t.Fatalf("unexpected getenv: %v %v", v, ok)
-	}
-	_ = os.Unsetenv(key)
-}
-
-func TestValidateSuccess(t *testing.T) {
-	c := Defaults()
-	errs := Validate(c)
-	if len(errs) != 0 {
-		t.Fatalf("expected no validation errors, got %v", errs)
+	if !errors.Is(err, assert.AnError) {
+		t.Fatalf("expected assert.AnError, got: %v", err)
 	}
 }
 
-// Ensure we didn't accidentally change exported struct fields.
-func TestConfigStructFields(t *testing.T) {
-	want := []string{"Addr", "DataDir", "DSN", "MaxBytes", "MinTTL", "MaxTTL"}
-	var got []string
-	typ := reflect.TypeOf(Config{})
-	for i := 0; i < typ.NumField(); i++ {
-		got = append(got, typ.Field(i).Name)
+func TestRegisterValidationFails(t *testing.T) {
+	orig := registerValidators
+	t.Cleanup(func() { registerValidators = orig })
+	registerValidators = func(v *validator.Validate) error {
+		assert.NotNil(t, v)
+		return assert.AnError
 	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("Config fields changed; got %v want %v", got, want)
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, assert.AnError) {
+		t.Fatalf("expected assert.AnError, got: %v", err)
+	}
+}
+
+func TestBadTTL(t *testing.T) {
+	t.Setenv("GONE_MIN_TTL", "10m")
+	t.Setenv("GONE_MAX_TTL", "5m") // less than min
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err.Error() != "min_ttl must be less than max_ttl" {
+		t.Fatalf("expected min/max ttl error, got: %v", err)
 	}
 }
