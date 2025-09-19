@@ -36,4 +36,5 @@ go.work.sum
 .github/instructions/codacy.instructions.md
 
 # the binary
-gone
+/gone
+/cmd/gone/gone
