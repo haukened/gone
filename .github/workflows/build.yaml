@@ -54,8 +54,7 @@ jobs:
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: coverage.out
-          fail-no-reports: true
-          verbose: true
+          language: "go"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
