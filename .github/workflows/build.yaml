@@ -48,6 +48,13 @@ jobs:
       
       - name: Run test with Coverage
         run: go test -v -coverprofile=coverage.out ./...
+
+      - name: Ensure coverage file exists
+        run: |
+          if [ ! -f coverage.out ]; then
+            echo "Coverage file not found!"
+            exit 1
+          fi
       
       - name: Upload coverage to codacy
         uses: codacy/codacy-coverage-reporter-action@v1.3.0
