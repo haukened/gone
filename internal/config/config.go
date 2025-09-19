@@ -29,7 +29,7 @@ type Config struct {
 var DefaultAppConfig = Config{
 	Addr:     ":8080",
 	DataDir:  "/data",
-	MaxBytes: 1024 * 10, // 10 KiB
+	MaxBytes: 1024 * 1024, // 1 MiB
 	MinTTL:   5 * time.Minute,
 	MaxTTL:   24 * time.Hour,
 }

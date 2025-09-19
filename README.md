@@ -14,3 +14,21 @@ Gone prioritizes security through simplicity and strong encryption practices. Se
 5. The server never has access to the plaintext message or any encryption keys, and therefore cannot decrypt the data.
 
 This straightforward design guarantees secure, ephemeral message sharing without the complexity of managing server-side encryption keys or persistent storage.
+
+## Deployment
+Gone is designed to be deployed in Docker. It does not accept command line arguments or config files. Instead, it is configured entirely through environment variables.
+
+## Configuration
+Gone can be configured using the following environment variables:
+
+| Environment Variable     | Description                             | Default Value        |
+|--------------------------|-----------------------------------------|----------------------|
+| `GONE_ADDR`              | The address the service listens on.     | `:8080`              |
+| `GONE_DATA_DIR`          | The directory where secrets are stored. | `data`               |
+| `GONE_MAX_BYTES`         | The maximum size of a secret in bytes.  | `1048576` (1 MiB)    |
+| `GONE_MIN_TTL`           | The minimum time-to-live for a secret.  | `5m`                 |
+| `GONE_MAX_TTL`           | The maximum time-to-live for a secret.  | `24h`                |
+
+>[!NOTE]
+> `GONE_MAX_BYTES` can be calculated as `1024 * 1024` for 1 MiB, `1024 * 10` for 10 KiB, etc.
+> `1024` bytes is `1KiB`, `1024 * 1024` bytes is `1MiB`, `1024 * 1024 * 1024` bytes is `1GiB`, and so on.
