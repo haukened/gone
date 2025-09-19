@@ -60,46 +60,69 @@ func FromEnv(cfg *Config, getenv func(string) (string, bool)) error {
 		return fmt.Errorf("nil config passed to FromEnv")
 	}
 
-	if v, ok := getenv("GONE_ADDR"); ok {
-		cfg.Addr = v
+	// Simple string mappings (no parsing logic required)
+	strVars := []struct {
+		env string
+		dst *string
+	}{
+		{"GONE_ADDR", &cfg.Addr},
+		{"GONE_DATA_DIR", &cfg.DataDir},
+		{"GONE_DSN", &cfg.DSN},
 	}
-	if v, ok := getenv("GONE_DATA_DIR"); ok {
-		cfg.DataDir = v
+	for _, sv := range strVars {
+		if v, ok := getenv(sv.env); ok {
+			*sv.dst = v
+		}
 	}
-	if v, ok := getenv("GONE_DSN"); ok {
-		cfg.DSN = v
-	}
-	if v, ok := getenv("GONE_MAX_BYTES"); ok {
-		if v != "" { // allow empty to intentionally clear, though Validate will catch
-			n, err := ParseSize(v)
+
+	// Parsers for numeric/duration values with empty-string clearing semantics.
+	type parseFn func(raw string) error
+	parsers := []struct {
+		env string
+		fn  parseFn
+	}{
+		{"GONE_MAX_BYTES", func(raw string) error {
+			if raw == "" {
+				cfg.MaxBytes = 0
+				return nil
+			}
+			n, err := ParseSize(raw)
 			if err != nil {
-				return fmt.Errorf("GONE_MAX_BYTES: %w", err)
+				return err
 			}
 			cfg.MaxBytes = n
-		} else {
-			cfg.MaxBytes = 0
-		}
-	}
-	if v, ok := getenv("GONE_MIN_TTL"); ok {
-		if v != "" {
-			d, err := time.ParseDuration(v)
+			return nil
+		}},
+		{"GONE_MIN_TTL", func(raw string) error {
+			if raw == "" {
+				cfg.MinTTL = 0
+				return nil
+			}
+			d, err := time.ParseDuration(raw)
 			if err != nil {
-				return fmt.Errorf("GONE_MIN_TTL: %w", err)
+				return err
 			}
 			cfg.MinTTL = d
-		} else {
-			cfg.MinTTL = 0
-		}
-	}
-	if v, ok := getenv("GONE_MAX_TTL"); ok {
-		if v != "" {
-			d, err := time.ParseDuration(v)
+			return nil
+		}},
+		{"GONE_MAX_TTL", func(raw string) error {
+			if raw == "" {
+				cfg.MaxTTL = 0
+				return nil
+			}
+			d, err := time.ParseDuration(raw)
 			if err != nil {
-				return fmt.Errorf("GONE_MAX_TTL: %w", err)
+				return err
 			}
 			cfg.MaxTTL = d
-		} else {
-			cfg.MaxTTL = 0
+			return nil
+		}},
+	}
+	for _, p := range parsers {
+		if v, ok := getenv(p.env); ok {
+			if err := p.fn(v); err != nil {
+				return fmt.Errorf("%s: %w", p.env, err)
+			}
 		}
 	}
 	return nil
@@ -137,35 +160,61 @@ func ApplyFlags(cfg *Config, fv *FlagVals) error {
 	if fv == nil {
 		return nil
 	}
-	if fv.Addr != "" {
-		cfg.Addr = fv.Addr
+
+	// Direct string assignments (unset => empty string ignored)
+	strFlags := []struct {
+		val string
+		dst *string
+	}{
+		{fv.Addr, &cfg.Addr},
+		{fv.DataDir, &cfg.DataDir},
+		{fv.DSN, &cfg.DSN},
 	}
-	if fv.DataDir != "" {
-		cfg.DataDir = fv.DataDir
-	}
-	if fv.DSN != "" {
-		cfg.DSN = fv.DSN
-	}
-	if fv.MaxBytes != "" {
-		n, err := ParseSize(fv.MaxBytes)
-		if err != nil {
-			return fmt.Errorf("-max-bytes: %w", err)
+	for _, f := range strFlags {
+		if f.val != "" {
+			*f.dst = f.val
 		}
-		cfg.MaxBytes = n
 	}
-	if fv.MinTTL != "" {
-		d, err := time.ParseDuration(fv.MinTTL)
-		if err != nil {
-			return fmt.Errorf("-min-ttl: %w", err)
-		}
-		cfg.MinTTL = d
+
+	// Parsers with flag-specific error wrapping labels
+	type parseFn func(raw string) error
+	parsers := []struct {
+		raw   string
+		label string
+		fn    parseFn
+	}{
+		{fv.MaxBytes, "-max-bytes", func(raw string) error {
+			n, err := ParseSize(raw)
+			if err != nil {
+				return err
+			}
+			cfg.MaxBytes = n
+			return nil
+		}},
+		{fv.MinTTL, "-min-ttl", func(raw string) error {
+			d, err := time.ParseDuration(raw)
+			if err != nil {
+				return err
+			}
+			cfg.MinTTL = d
+			return nil
+		}},
+		{fv.MaxTTL, "-max-ttl", func(raw string) error {
+			d, err := time.ParseDuration(raw)
+			if err != nil {
+				return err
+			}
+			cfg.MaxTTL = d
+			return nil
+		}},
 	}
-	if fv.MaxTTL != "" {
-		d, err := time.ParseDuration(fv.MaxTTL)
-		if err != nil {
-			return fmt.Errorf("-max-ttl: %w", err)
+	for _, p := range parsers {
+		if p.raw == "" {
+			continue
 		}
-		cfg.MaxTTL = d
+		if err := p.fn(p.raw); err != nil {
+			return fmt.Errorf("%s: %w", p.label, err)
+		}
 	}
 	return nil
 }
@@ -201,42 +250,53 @@ func ParseSize(s string) (int64, error) {
 		return 0, fmt.Errorf("empty size string")
 	}
 	upper := strings.ToUpper(s)
+	// Attempt suffix parsing first.
+	if n, ok, err := parseSizeWithSuffix(upper, orig); ok {
+		return n, err
+	}
+	// Fallback: plain integer bytes.
+	n, err := parsePositiveInt(upper)
+	if err != nil {
+		return 0, fmt.Errorf("parse size %q: %w", orig, err)
+	}
+	return n, nil
+}
 
+// parsePositiveInt parses a base-10 int64 and rejects negatives.
+func parsePositiveInt(raw string) (int64, error) {
+	n, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	if n < 0 {
+		return 0, fmt.Errorf("negative not allowed")
+	}
+	return n, nil
+}
+
+// parseSizeWithSuffix attempts to parse well-known size suffixes. It returns (value, true, nil)
+// on success; (0, false, nil) if no suffix matched; or (0, true, error) if a suffix matched but parsing failed.
+func parseSizeWithSuffix(upper, orig string) (int64, bool, error) {
 	type unit struct {
 		suffix string
 		mult   int64
 	}
 	units := []unit{
-		{"KIB", 1024},
-		{"MIB", 1024 * 1024},
-		{"GIB", 1024 * 1024 * 1024},
-		{"K", 1024},
-		{"M", 1024 * 1024},
-		{"G", 1024 * 1024 * 1024},
+		{"KIB", 1024}, {"MIB", 1024 * 1024}, {"GIB", 1024 * 1024 * 1024},
+		{"K", 1024}, {"M", 1024 * 1024}, {"G", 1024 * 1024 * 1024},
 	}
 	for _, u := range units {
 		if strings.HasSuffix(upper, u.suffix) {
 			numPart := strings.TrimSpace(upper[:len(upper)-len(u.suffix)])
 			if numPart == "" {
-				return 0, fmt.Errorf("parse size %q: missing number", orig)
+				return 0, true, fmt.Errorf("parse size %q: missing number", orig)
 			}
-			n, err := strconv.ParseInt(numPart, 10, 64)
+			n, err := parsePositiveInt(numPart)
 			if err != nil {
-				return 0, fmt.Errorf("parse size %q: %w", orig, err)
+				return 0, true, fmt.Errorf("parse size %q: %w", orig, err)
 			}
-			if n < 0 {
-				return 0, fmt.Errorf("parse size %q: negative not allowed", orig)
-			}
-			return n * u.mult, nil
+			return n * u.mult, true, nil
 		}
 	}
-	// No recognized suffix → treat as plain integer bytes.
-	n, err := strconv.ParseInt(upper, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("parse size %q: %w", orig, err)
-	}
-	if n < 0 {
-		return 0, fmt.Errorf("parse size %q: negative not allowed", orig)
-	}
-	return n, nil
+	return 0, false, nil
 }
