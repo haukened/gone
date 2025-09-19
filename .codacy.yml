@@ -1,4 +1,4 @@
 exclude_paths:
   - ".github/**/*"
-  - ".codacy/**/*"
+  - ".codacy/**"
   - "**/*_test.go"
