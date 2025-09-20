@@ -26,18 +26,27 @@ import (
 )
 
 func main() {
+	// Load and validate configuration.
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("configuration error", "err", err)
 		os.Exit(2)
 	}
 
+	// ensure data directory exists
+	if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
+		slog.Error("failed to create data directory", "dir", cfg.DataDir, "err", err)
+		os.Exit(3)
+	}
+
+	// create the HTTP mux and register the health endpoint
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
 
+	// configure the HTTP server
 	srv := &http.Server{
 		Addr:         cfg.Addr,
 		Handler:      mux,
@@ -46,6 +55,7 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 	}
 
+	// start the HTTP server
 	slog.Info("starting server", "addr", cfg.Addr, "pid", os.Getpid())
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("server error", "err", err)
