@@ -18,20 +18,22 @@ import (
 
 // Config holds the configuration settings for the application.
 type Config struct {
-	Addr     string        `koanf:"addr" validate:"required,ip_port"`
-	DataDir  string        `koanf:"data_dir" validate:"required,custom_path"`
-	MaxBytes int64         `koanf:"max_bytes" validate:"required,gt=0"`
-	MinTTL   time.Duration `koanf:"min_ttl" validate:"required,gt=0"`
-	MaxTTL   time.Duration `koanf:"max_ttl" validate:"required,gt=0"`
+	Addr           string        `koanf:"addr" validate:"required,ip_port"`
+	DataDir        string        `koanf:"data_dir" validate:"required,custom_path"`
+	InlineMaxBytes int64         `koanf:"inline_max_bytes" validate:"required,gt=0"`
+	MaxBytes       int64         `koanf:"max_bytes" validate:"required,gt=0"`
+	MinTTL         time.Duration `koanf:"min_ttl" validate:"required,gt=0"`
+	MaxTTL         time.Duration `koanf:"max_ttl" validate:"required,gt=0"`
 }
 
 // DefaultAppConfig provides the default app configuration values.
 var DefaultAppConfig = Config{
-	Addr:     ":8080",
-	DataDir:  "/data",
-	MaxBytes: 1024 * 1024, // 1 MiB
-	MinTTL:   5 * time.Minute,
-	MaxTTL:   24 * time.Hour,
+	Addr:           ":8080",
+	DataDir:        "/data",
+	InlineMaxBytes: 8192,        // 8 KiB
+	MaxBytes:       1024 * 1024, // 1 MiB
+	MinTTL:         5 * time.Minute,
+	MaxTTL:         24 * time.Hour,
 }
 
 // defaultLoader loads default configuration values into the provided Koanf instance
