@@ -59,10 +59,10 @@ func (s *Store) Save(ctx context.Context, id string, meta app.Meta, r io.Reader,
 
 // Consume retrieves a secret exactly once and triggers permanent deletion.
 // The index layer hard-deletes the metadata row inside the transaction.
-// If the payload was stored in blob storage it is streamed; inline data is
-// returned via a reader. Blob file removal (for external payloads) is best-effort
-// and performed after the row is gone; failure to delete the blob does not
-// affect the one-time guarantee (reconciliation will clean orphans later).
+// If the payload was stored in blob storage it is streamed via the blob
+// storage's Consume (delete-on-close) reader; inline data is returned via a
+// reader. Blob deletion failures during Close are tolerated; reconciliation
+// will clean lingering files.
 func (s *Store) Consume(ctx context.Context, id string) (meta app.Meta, rc io.ReadCloser, size int64, err error) {
 	if s == nil || s.index == nil {
 		err = errors.New("store not properly initialized")
@@ -80,7 +80,7 @@ func (s *Store) Consume(ctx context.Context, id string) (meta app.Meta, rc io.Re
 	meta = res.Meta
 	size = res.Size
 	if res.External {
-		f, oErr := s.blobs.Open(id)
+		f, oErr := s.blobs.Consume(id)
 		if oErr != nil {
 			return meta, nil, 0, oErr
 		}

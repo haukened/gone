@@ -57,9 +57,32 @@ func (b *BlobStore) Write(id string, r io.Reader, size int64) error {
 	return nil
 }
 
-// Open opens a blob file for reading by ID.
-func (b *BlobStore) Open(id string) (io.ReadCloser, error) {
-	return os.Open(b.path(id)) // #nosec G304 path constructed internally
+// Consume opens a blob file for reading by ID and returns a ReadCloser whose
+// Close deletes the underlying file (delete-on-close semantics).
+func (b *BlobStore) Consume(id string) (io.ReadCloser, error) {
+	p := b.path(id)
+	f, err := os.Open(p) // #nosec G304 path constructed internally
+	if err != nil {
+		return nil, err
+	}
+	return &deletingReadCloser{File: f, path: p}, nil
+}
+
+// deletingReadCloser wraps an *os.File and deletes its path on Close.
+type deletingReadCloser struct {
+	*os.File
+	path string
+}
+
+func (d *deletingReadCloser) Close() error {
+	// Close the underlying file first to flush OS buffers, capture error.
+	fErr := d.File.Close()
+	// Attempt deletion regardless of close error (best-effort cleanup).
+	rmErr := os.Remove(d.path)
+	if fErr != nil {
+		return fErr
+	}
+	return rmErr
 }
 
 // Delete removes the blob file for a given secret id.

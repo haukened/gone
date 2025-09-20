@@ -9,6 +9,29 @@ import (
 	"time"
 )
 
+func TestDeletingReadCloser(t *testing.T) {
+	dir := t.TempDir()
+	bs, err := New(dir)
+	if err != nil {
+		t.Fatalf("New error: %v", err)
+	}
+	id := "delete-me"
+	data := []byte("secret-bytes")
+	if err := bs.Write(id, io.NopCloser(bytesReader(data)), int64(len(data))); err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+	rc, err := bs.Consume(id)
+	if err != nil {
+		t.Fatalf("Consume failed: %v", err)
+	}
+	if err := rc.Close(); err != nil {
+		t.Fatalf("Close(delete) failed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, id+".blob")); !os.IsNotExist(err) {
+		t.Fatalf("expected file removed, got stat err=%v", err)
+	}
+}
+
 func TestNewBlobBadRoot(t *testing.T) {
 	_, err := New("/path/does/not/exist")
 	if err == nil {
@@ -68,39 +91,53 @@ func TestBlobStoreWriteReadDelete(t *testing.T) {
 		t.Fatalf("expected error on duplicate write")
 	}
 
-	rc, err := bs.Open(id)
+	rc, err := bs.Consume(id)
 	if err != nil {
 		t.Fatalf("Open failed: %v", err)
 	}
 	got, err := io.ReadAll(rc)
-	rc.Close()
 	if err != nil {
 		t.Fatalf("ReadAll: %v", err)
 	}
 	if string(got) != string(data) {
 		t.Fatalf("data mismatch got=%q want=%q", got, data)
 	}
-
-	// List should include id (might be skipped if <1s freshness, so wait just over the guard)
-	time.Sleep(1100 * time.Millisecond)
-	ids, err := bs.List()
-	if err != nil {
-		t.Fatalf("List failed: %v", err)
+	// Close triggers deletion
+	if err := rc.Close(); err != nil {
+		t.Fatalf("Close(delete) failed: %v", err)
 	}
-	if len(ids) != 1 || ids[0] != id {
-		t.Fatalf("unexpected ids: %#v", ids)
+	// File should now be gone; second open should fail.
+	if _, err := bs.Consume(id); err == nil {
+		t.Fatalf("expected error opening consumed (deleted) blob")
 	}
 
-	if err := bs.Delete(id); err != nil {
-		t.Fatalf("Delete failed: %v", err)
-	}
-	// Delete a second time should throw an error
+	// After consumption the file is already deleted; Delete should error now.
 	if err := bs.Delete(id); err == nil {
-		t.Fatalf("Delete second time: %v", err)
+		t.Fatalf("expected error deleting already-consumed blob")
 	}
-	// Opening after delete should fail
-	if _, err := bs.Open(id); err == nil {
-		t.Fatalf("expected error opening deleted blob")
+}
+
+func TestBlobStoreOpenCloseDeletesWithoutRead(t *testing.T) {
+	dir := t.TempDir()
+	bs, err := New(dir)
+	if err != nil {
+		t.Fatalf("New error: %v", err)
+	}
+	id := "noread"
+	payload := []byte("x")
+	if err := bs.Write(id, bytesReader(payload), int64(len(payload))); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	rc, err := bs.Consume(id)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	// Close without reading should still delete.
+	if err := rc.Close(); err != nil {
+		t.Fatalf("Close(delete): %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, id+".blob")); !os.IsNotExist(err) {
+		t.Fatalf("expected file removed, got stat err=%v", err)
 	}
 }
 

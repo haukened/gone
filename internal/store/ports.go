@@ -34,10 +34,21 @@ type IndexResult struct {
 	ExpiresAt time.Time
 }
 
-// BlobStorage abstracts large payload persistence on the filesystem.
+// BlobStorage abstracts large payload persistence (e.g. filesystem). Implementations
+// MUST provide delete-on-close semantics for Open: calling Open(id) returns an
+// io.ReadCloser whose Close method removes (or permanently invalidates) the
+// underlying blob file. This enforces one-time consumption symmetry with the
+// metadata index hard-delete. Deletion is best-effort; reconciliation routines
+// use Delete/List to clean orphans left by crashes occurring after index
+// removal but before successful blob deletion.
 type BlobStorage interface {
 	Write(id string, r io.Reader, size int64) error
-	Open(id string) (io.ReadCloser, error)
+	// Consume returns a reader for the blob. Close MUST attempt to delete the
+	// blob file. If deletion fails, Close should return that error (unless a
+	// prior read error is more relevant). Callers should treat the blob as
+	// consumed regardless; janitorial cleanup will retry failed deletions.
+	Consume(id string) (io.ReadCloser, error)
+	// Delete force-removes a blob by id (used by expiry and reconciliation).
 	Delete(id string) error
 	// List returns all blob IDs present in storage (filenames sans extension).
 	List() ([]string, error)
