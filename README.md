@@ -36,7 +36,7 @@ Gone can be configured using the following environment variables:
 | Environment Variable     | Description                             | Default Value        |
 |--------------------------|-----------------------------------------|----------------------|
 | `GONE_ADDR`              | The address the service listens on.     | `:8080`              |
-| `GONE_DATA_DIR`          | The directory where secrets are stored. | `/data`             |
+| `GONE_DATA_DIR`          | The directory where secrets are stored. | `/data`              |
 | `GONE_MAX_BYTES`         | The maximum size of a secret in bytes.  | `1048576` (1 MiB)    |
 | `GONE_MIN_TTL`           | The minimum time-to-live for a secret.  | `5m`                 |
 | `GONE_MAX_TTL`           | The maximum time-to-live for a secret.  | `24h`                |
