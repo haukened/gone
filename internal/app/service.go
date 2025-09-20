@@ -28,6 +28,12 @@ type Service struct {
 
 // CreateSecret validates inputs, assigns a new ID, determines expiry, and persists the secret.
 // Returns the generated ID and its expiration timestamp.
+// ctx - the http request context for cancellation and deadlines
+// ct - the ciphertext reader
+// size - the size of the ciphertext
+// version - the version of the secret
+// nonce - the nonce used for encryption
+// ttl - the time-to-live for the secret
 func (s *Service) CreateSecret(ctx context.Context, ct io.Reader, size int64, version uint8, nonce string, ttl time.Duration) (id domain.SecretID, expiresAt time.Time, err error) {
 	if err := domain.ValidateTTL(ttl, s.MinTTL, s.MaxTTL); err != nil {
 		return "", time.Time{}, domain.ErrTTLInvalid
@@ -35,11 +41,10 @@ func (s *Service) CreateSecret(ctx context.Context, ct io.Reader, size int64, ve
 	if size <= 0 || size > s.MaxBytes {
 		return "", time.Time{}, ErrSizeExceeded
 	}
-	newID, genErr := domain.NewID()
+	id, genErr := domain.NewID()
 	if genErr != nil { // extremely unlikely, but propagate
 		return "", time.Time{}, genErr
 	}
-	id = newID
 	now := s.Clock.Now()
 	expiresAt = now.Add(ttl)
 	meta := Meta{Version: version, NonceB64u: nonce}
