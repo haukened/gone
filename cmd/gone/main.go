@@ -33,10 +33,13 @@ func main() {
 		os.Exit(2)
 	}
 
-	// ensure data directory exists
-	if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
-		slog.Error("failed to create data directory", "dir", cfg.DataDir, "err", err)
-		os.Exit(3)
+	// ensure the data directory exists
+	if _, err := os.Stat(cfg.DataDir); os.IsNotExist(err) {
+		slog.Info("data directory does not exist, creating", "dir", cfg.DataDir)
+		if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
+			slog.Error("failed to create data directory", "dir", cfg.DataDir, "err", err)
+			os.Exit(3)
+		}
 	}
 
 	// create the HTTP mux and register the health endpoint
