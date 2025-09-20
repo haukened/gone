@@ -28,7 +28,7 @@ type Config struct {
 // DefaultAppConfig provides the default app configuration values.
 var DefaultAppConfig = Config{
 	Addr:     ":8080",
-	DataDir:  "/data",
+	DataDir:  "./data",
 	MaxBytes: 1024 * 1024, // 1 MiB
 	MinTTL:   5 * time.Minute,
 	MaxTTL:   24 * time.Hour,
