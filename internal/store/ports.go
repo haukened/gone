@@ -18,7 +18,7 @@ import (
 // files for larger payloads.
 type Index interface {
 	Insert(ctx context.Context, id string, meta app.Meta, inline []byte, external bool, size int64, createdAt, expiresAt time.Time) error
-	ConsumeOnce(ctx context.Context, id string, now time.Time) (meta app.Meta, inline []byte, external bool, size int64, err error)
+	Consume(ctx context.Context, id string, now time.Time) (meta app.Meta, inline []byte, external bool, size int64, err error)
 	ExpireBefore(ctx context.Context, t time.Time) (expired []ExpiredRecord, err error)
 	// ListExternalIDs returns IDs of secrets whose payloads are stored externally.
 	ListExternalIDs(ctx context.Context) ([]string, error)

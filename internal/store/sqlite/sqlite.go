@@ -70,8 +70,8 @@ func (i *Index) Insert(ctx context.Context, id string, meta app.Meta, inline []b
 	return err
 }
 
-// ConsumeOnce atomically marks the secret consumed and returns its data.
-func (i *Index) ConsumeOnce(ctx context.Context, id string, now time.Time) (meta app.Meta, inline []byte, external bool, size int64, err error) {
+// Consume atomically marks the secret consumed and returns its data.
+func (i *Index) Consume(ctx context.Context, id string, now time.Time) (meta app.Meta, inline []byte, external bool, size int64, err error) {
 	tx, err := i.db.BeginTx(ctx, nil)
 	if err != nil {
 		return meta, nil, false, 0, err

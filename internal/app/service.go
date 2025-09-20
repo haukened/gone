@@ -54,11 +54,11 @@ func (s *Service) CreateSecret(ctx context.Context, ct io.Reader, size int64, ve
 	return id, expiresAt, nil
 }
 
-// ConsumeOnce validates the provided ID then delegates to the store for one-time retrieval.
-func (s *Service) ConsumeOnce(ctx context.Context, idStr string) (Meta, io.ReadCloser, int64, error) {
+// Consume validates the provided ID then delegates to the store for one-time retrieval.
+func (s *Service) Consume(ctx context.Context, idStr string) (Meta, io.ReadCloser, int64, error) {
 	if _, err := domain.ParseID(idStr); err != nil {
 		return Meta{}, nil, 0, domain.ErrInvalidID
 	}
-	meta, rc, size, err := s.Store.ConsumeOnce(ctx, idStr)
+	meta, rc, size, err := s.Store.Consume(ctx, idStr)
 	return meta, rc, size, err
 }

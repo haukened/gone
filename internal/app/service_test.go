@@ -45,7 +45,7 @@ func (m *mockStore) Save(ctx context.Context, id string, meta Meta, r io.Reader,
 	return m.saveErr
 }
 
-func (m *mockStore) ConsumeOnce(ctx context.Context, id string) (Meta, io.ReadCloser, int64, error) {
+func (m *mockStore) Consume(ctx context.Context, id string) (Meta, io.ReadCloser, int64, error) {
 	_ = ctx
 	_ = id
 	m.consumeCalled = true
@@ -132,10 +132,10 @@ func TestServiceCreateSecretStoreError(t *testing.T) {
 	}
 }
 
-func TestServiceConsumeOnceInvalidID(t *testing.T) {
+func TestServiceConsumeInvalidID(t *testing.T) {
 	ms := &mockStore{}
 	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 100, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
-	if _, _, _, err := svc.ConsumeOnce(context.Background(), "not-an-id"); err != domain.ErrInvalidID {
+	if _, _, _, err := svc.Consume(context.Background(), "not-an-id"); err != domain.ErrInvalidID {
 		t.Fatalf("expected ErrInvalidID, got %v", err)
 	}
 	if ms.consumeCalled {
@@ -143,14 +143,14 @@ func TestServiceConsumeOnceInvalidID(t *testing.T) {
 	}
 }
 
-func TestServiceConsumeOnceSuccess(t *testing.T) {
+func TestServiceConsumeSuccess(t *testing.T) {
 	data := "ciphertext"
 	ms := &mockStore{consumeMeta: Meta{Version: 2, NonceB64u: "nonceX"}, consumeData: data, consumeSize: int64(len(data))}
 	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 100, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
 	id, _ := domain.NewID()
-	meta, rc, size, err := svc.ConsumeOnce(context.Background(), id.String())
+	meta, rc, size, err := svc.Consume(context.Background(), id.String())
 	if err != nil {
-		t.Fatalf("ConsumeOnce error: %v", err)
+		t.Fatalf("Consume error: %v", err)
 	}
 	if meta.Version != 2 || meta.NonceB64u != "nonceX" {
 		t.Fatalf("meta mismatch: %+v", meta)
@@ -167,12 +167,12 @@ func TestServiceConsumeOnceSuccess(t *testing.T) {
 	}
 }
 
-func TestServiceConsumeOnceStoreError(t *testing.T) {
+func TestServiceConsumeStoreError(t *testing.T) {
 	sentinel := errors.New("notfound")
 	ms := &mockStore{consumeErr: sentinel}
 	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 100, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
 	id, _ := domain.NewID()
-	_, _, _, err := svc.ConsumeOnce(context.Background(), id.String())
+	_, _, _, err := svc.Consume(context.Background(), id.String())
 	if err != sentinel {
 		t.Fatalf("expected store consume error, got %v", err)
 	}

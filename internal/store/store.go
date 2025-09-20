@@ -57,16 +57,16 @@ func (s *Store) Save(ctx context.Context, id string, meta app.Meta, r io.Reader,
 	return s.index.Insert(ctx, id, meta, inline, external, size, createdAt, expiresAt)
 }
 
-// ConsumeOnce retrieves and deletes (logically) a secret exactly once. If the
+// Consume retrieves and deletes (logically) a secret exactly once. If the
 // payload was stored in blob storage it streams the data; otherwise it returns
 // the inlined bytes. The returned ReadCloser must be fully consumed by caller.
-func (s *Store) ConsumeOnce(ctx context.Context, id string) (meta app.Meta, rc io.ReadCloser, size int64, err error) {
+func (s *Store) Consume(ctx context.Context, id string) (meta app.Meta, rc io.ReadCloser, size int64, err error) {
 	if s == nil || s.index == nil {
 		err = errors.New("store not properly initialized")
 		return
 	}
 	now := s.clock.Now()
-	meta, inline, external, size, err := s.index.ConsumeOnce(ctx, id, now)
+	meta, inline, external, size, err := s.index.Consume(ctx, id, now)
 	if err != nil {
 		return meta, nil, 0, err
 	}
