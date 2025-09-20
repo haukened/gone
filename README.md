@@ -33,13 +33,14 @@ Gone is designed to be deployed in Docker. It does not accept command line argum
 ## Configuration
 Gone can be configured using the following environment variables:
 
-| Environment Variable     | Description                             | Default Value        |
-|--------------------------|-----------------------------------------|----------------------|
-| `GONE_ADDR`              | The address the service listens on.     | `:8080`              |
-| `GONE_DATA_DIR`          | The directory where secrets are stored. | `/data`              |
-| `GONE_MAX_BYTES`         | The maximum size of a secret in bytes.  | `1048576` (1 MiB)    |
-| `GONE_MIN_TTL`           | The minimum time-to-live for a secret.  | `5m`                 |
-| `GONE_MAX_TTL`           | The maximum time-to-live for a secret.  | `24h`                |
+| Environment Variable    | Description                                                                   | Default Value     |
+|-------------------------|-------------------------------------------------------------------------------|-------------------|
+| `GONE_ADDR`             | The address the service listens on.                                           | `:8080`           |
+| `GONE_DATA_DIR`         | The directory where secrets are stored.                                       | `/data`           |
+| `GONE_INLINE_MAX_BYTES` | Maximum size of a secret to be stored inline in sqlite3 (bytes).              | `8192` (8 KiB)    |
+| `GONE_MAX_BYTES`        | Maximum size of a secret (bytes).                                             | `1048576` (1 MiB) |
+| `GONE_MIN_TTL`          | Minimum time-to-live for a secret.                                            | `5m`              |
+| `GONE_MAX_TTL`          | Maximum time-to-live for a secret.                                            | `24h`             |
 
 >[!NOTE]
 > `GONE_MAX_BYTES` can be calculated as `1024 * 1024` for 1 MiB, `1024 * 10` for 10 KiB, etc.
