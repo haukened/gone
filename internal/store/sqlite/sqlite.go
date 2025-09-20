@@ -1,4 +1,5 @@
-// Package sqlite implements a SQLite-based store, used for indexing secret metadata.
+// Package sqlite provides a SQLite-backed implementation of the store.Index
+// port for persisting secret metadata and inline ciphertext.
 package sqlite
 
 import (
@@ -7,25 +8,20 @@ import (
 	"errors"
 	"time"
 
-	// Import SQLite3 driver for database/sql
-	_ "github.com/mattn/go-sqlite3"
-
 	"github.com/haukened/gone/internal/app"
 	"github.com/haukened/gone/internal/store"
+
+	// database/sql SQLite driver
+	_ "github.com/mattn/go-sqlite3"
 )
 
-// Ensure Index implements store.Index
 var _ store.Index = (*Index)(nil)
 
-// Index implements the store.Index port using SQLite. It manages metadata
-// rows and inline payloads. Large payloads live in external blob storage.
-type Index struct {
-	db *sql.DB
-}
+// Index implements store.Index using SQLite (via database/sql). It is safe for
+// concurrent use; database/sql manages connection pooling and serialization.
+type Index struct{ db *sql.DB }
 
-// New returns a new SQLite index. The caller is responsible for providing a
-// configured *sql.DB (WAL, busy timeout, foreign keys). Schema creation is
-// performed if necessary.
+// New constructs an Index, initializing the required schema if absent.
 func New(db *sql.DB) (*Index, error) {
 	ix := &Index{db: db}
 	if err := ix.init(); err != nil {
@@ -43,68 +39,42 @@ inline BLOB,
 external INTEGER NOT NULL DEFAULT 0,
 size INTEGER NOT NULL,
 created_at INTEGER NOT NULL,
-expires_at INTEGER NOT NULL,
-consumed_at INTEGER
+expires_at INTEGER NOT NULL
 );`
 	_, err := i.db.Exec(schema)
 	return err
 }
 
-// Insert implements store.Index.Insert.
+// Insert stores a new secret row.
 func (i *Index) Insert(ctx context.Context, id string, meta app.Meta, inline []byte, external bool, size int64, createdAt, expiresAt time.Time) error {
 	const q = `INSERT INTO secrets (id, version, nonce_b64u, inline, external, size, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?)`
 	ext := 0
 	if external {
 		ext = 1
 	}
-	_, err := i.db.ExecContext(ctx, q,
-		id,
-		meta.Version,
-		meta.NonceB64u,
-		inline,
-		ext,
-		size,
-		createdAt.Unix(),
-		expiresAt.Unix(),
-	)
+	_, err := i.db.ExecContext(ctx, q, id, meta.Version, meta.NonceB64u, inline, ext, size, createdAt.Unix(), expiresAt.Unix())
 	return err
 }
 
-// Consume atomically marks the secret consumed and returns its data.
-func (i *Index) Consume(ctx context.Context, id string, now time.Time) (meta app.Meta, inline []byte, external bool, size int64, err error) {
-	tx, err := i.db.BeginTx(ctx, nil)
-	if err != nil {
-		return meta, nil, false, 0, err
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
-
-	const sel = `SELECT version, nonce_b64u, inline, external, size, expires_at, consumed_at FROM secrets WHERE id=?`
-	var expiresUnix int64
-	var consumedAt sql.NullInt64
-	var extInt int
-	row := tx.QueryRowContext(ctx, sel, id)
-	if err = row.Scan(&meta.Version, &meta.NonceB64u, &inline, &extInt, &size, &expiresUnix, &consumedAt); err != nil {
+// Consume hard-deletes the row and returns its data (including expiry) if it existed.
+// Expiration is not interpreted here; callers decide if an expired row constitutes not found.
+func (i *Index) Consume(ctx context.Context, id string, _ time.Time) (*store.IndexResult, error) {
+	const del = `DELETE FROM secrets WHERE id=? RETURNING version, nonce_b64u, inline, external, size, expires_at`
+	var (
+		res         store.IndexResult
+		extInt      int
+		expiresUnix int64
+	)
+	row := i.db.QueryRowContext(ctx, del, id)
+	if err := row.Scan(&res.Meta.Version, &res.Meta.NonceB64u, &res.Inline, &extInt, &res.Size, &expiresUnix); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return meta, nil, false, 0, app.ErrNotFound
+			return nil, app.ErrNotFound
 		}
-		return meta, nil, false, 0, err
+		return nil, err
 	}
-	if now.Unix() >= expiresUnix || consumedAt.Valid {
-		return meta, nil, false, 0, app.ErrNotFound
-	}
-	const upd = `UPDATE secrets SET consumed_at=? WHERE id=? AND consumed_at IS NULL`
-	if _, err = tx.ExecContext(ctx, upd, now.Unix(), id); err != nil {
-		return meta, nil, false, 0, err
-	}
-	if err = tx.Commit(); err != nil {
-		return meta, nil, false, 0, err
-	}
-	external = extInt == 1
-	return meta, inline, external, size, nil
+	res.External = extInt == 1
+	res.ExpiresAt = time.Unix(expiresUnix, 0).UTC()
+	return &res, nil
 }
 
 // ExpireBefore selects secrets expiring before t and deletes them, returning records for blob cleanup.

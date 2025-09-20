@@ -35,10 +35,10 @@ type SecretStore interface {
 	// only after the data and metadata are crash-safe (fsync / committed).
 	Save(ctx context.Context, id string, meta Meta, r io.Reader, size int64, expiresAt time.Time) error
 
-	// Consume atomically marks the secret as consumed (exactly once) and
-	// returns its metadata, a reader for the ciphertext, and its size. If the
-	// secret is absent, expired, or already consumed, an error is returned.
-	// Implementations must guarantee that no concurrent caller can retrieve
+	// Consume atomically retrieves the secret and hard-deletes its record so it
+	// can never be retrieved again. It returns metadata, a reader for the
+	// ciphertext, and its size. If the secret is absent or expired an error is
+	// returned. Implementations must guarantee no concurrent caller can obtain
 	// the same secret after a successful consume.
 	Consume(ctx context.Context, id string) (meta Meta, rc io.ReadCloser, size int64, err error)
 

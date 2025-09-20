@@ -44,24 +44,24 @@ func TestIndexInsertAndConsumeInline(t *testing.T) {
 		t.Fatalf("Insert inline: %v", err)
 	}
 	// Consume
-	gotMeta, gotInline, external, size, err := ix.Consume(ctx, id, now.Add(1*time.Second))
+	res, err := ix.Consume(ctx, id, now.Add(1*time.Second))
 	if err != nil {
 		t.Fatalf("Consume: %v", err)
 	}
-	if external {
+	if res.External {
 		t.Fatalf("expected inline secret, got external=true")
 	}
-	if size != int64(len(inline)) {
+	if res.Size != int64(len(inline)) {
 		t.Fatalf("size mismatch")
 	}
-	if string(gotInline) != string(inline) {
+	if string(res.Inline) != string(inline) {
 		t.Fatalf("inline data mismatch")
 	}
-	if gotMeta.Version != meta.Version || gotMeta.NonceB64u != meta.NonceB64u {
-		t.Fatalf("meta mismatch: %+v", gotMeta)
+	if res.Meta.Version != meta.Version || res.Meta.NonceB64u != meta.NonceB64u {
+		t.Fatalf("meta mismatch: %+v", res.Meta)
 	}
 	// Double consume should yield not found
-	if _, _, _, _, err := ix.Consume(ctx, id, now.Add(2*time.Second)); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Consume(ctx, id, now.Add(2*time.Second)); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound on second consume, got %v", err)
 	}
 }
@@ -80,20 +80,20 @@ func TestIndexInsertAndConsumeExternal(t *testing.T) {
 	if err := ix.Insert(ctx, id, meta, nil, true, 1234, now, expires); err != nil {
 		t.Fatalf("Insert external: %v", err)
 	}
-	gotMeta, gotInline, external, size, err := ix.Consume(ctx, id, now.Add(1*time.Second))
+	res2, err := ix.Consume(ctx, id, now.Add(1*time.Second))
 	if err != nil {
 		t.Fatalf("Consume: %v", err)
 	}
-	if !external {
+	if !res2.External {
 		t.Fatalf("expected external=true")
 	}
-	if len(gotInline) != 0 {
+	if len(res2.Inline) != 0 {
 		t.Fatalf("expected empty inline slice")
 	}
-	if size != 1234 {
+	if res2.Size != 1234 {
 		t.Fatalf("size mismatch")
 	}
-	if gotMeta.Version != meta.Version || gotMeta.NonceB64u != meta.NonceB64u {
+	if res2.Meta.Version != meta.Version || res2.Meta.NonceB64u != meta.NonceB64u {
 		t.Fatalf("meta mismatch")
 	}
 }
@@ -112,9 +112,20 @@ func TestIndexConsumeExpired(t *testing.T) {
 	if err := ix.Insert(ctx, id, meta, []byte("x"), false, 1, now, expires); err != nil {
 		t.Fatalf("Insert: %v", err)
 	}
-	// Advance time beyond expiration
-	if _, _, _, _, err := ix.Consume(ctx, id, now.Add(2*time.Second)); !errors.Is(err, app.ErrNotFound) {
-		t.Fatalf("expected ErrNotFound for expired secret, got %v", err)
+	// After expiry, index still returns the row (and deletes it) via DELETE RETURNING.
+	res, err := ix.Consume(ctx, id, now.Add(2*time.Second))
+	if err != nil {
+		t.Fatalf("expected consume to return data, got error: %v", err)
+	}
+	if res.Meta.NonceB64u != meta.NonceB64u {
+		t.Fatalf("meta mismatch")
+	}
+	if res.ExpiresAt.IsZero() {
+		t.Fatalf("expected ExpiresAt in result")
+	}
+	// Second consume is not found.
+	if _, err := ix.Consume(ctx, id, now.Add(3*time.Second)); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound on second consume, got %v", err)
 	}
 }
 
@@ -160,14 +171,14 @@ func TestIndexExpireBefore(t *testing.T) {
 		t.Fatalf("unexpected external flag for gone-inl")
 	}
 	// Ensure rows actually removed
-	if _, _, _, _, err := ix.Consume(ctx, "gone-ext", now.Add(1*time.Second)); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Consume(ctx, "gone-ext", now.Add(1*time.Second)); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("expected not found for removed gone-ext")
 	}
-	if _, _, _, _, err := ix.Consume(ctx, "gone-inl", now.Add(1*time.Second)); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Consume(ctx, "gone-inl", now.Add(1*time.Second)); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("expected not found for removed gone-inl")
 	}
 	// Future one still there
-	if _, _, _, _, err := ix.Consume(ctx, "future", now.Add(1*time.Second)); err != nil {
+	if _, err := ix.Consume(ctx, "future", now.Add(1*time.Second)); err != nil {
 		t.Fatalf("future consume failed: %v", err)
 	}
 }
@@ -224,7 +235,7 @@ func TestIndexConsumeMissing(t *testing.T) {
 	ix, _ := New(db)
 	ctx := context.Background()
 	now := time.Now().UTC()
-	if _, _, _, _, err := ix.Consume(ctx, "nope", now); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Consume(ctx, "nope", now); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -235,7 +246,7 @@ func TestIndexConsumeBeginTxError(t *testing.T) {
 	// Close DB to force BeginTx error
 	db.Close()
 	ctx := context.Background()
-	if _, _, _, _, err := ix.Consume(ctx, "any", time.Now()); err == nil {
+	if _, err := ix.Consume(ctx, "any", time.Now()); err == nil {
 		t.Fatalf("expected error from BeginTx after close")
 	}
 }

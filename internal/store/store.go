@@ -57,29 +57,37 @@ func (s *Store) Save(ctx context.Context, id string, meta app.Meta, r io.Reader,
 	return s.index.Insert(ctx, id, meta, inline, external, size, createdAt, expiresAt)
 }
 
-// Consume retrieves and deletes (logically) a secret exactly once. If the
-// payload was stored in blob storage it streams the data; otherwise it returns
-// the inlined bytes. The returned ReadCloser must be fully consumed by caller.
+// Consume retrieves a secret exactly once and triggers permanent deletion.
+// The index layer hard-deletes the metadata row inside the transaction.
+// If the payload was stored in blob storage it is streamed; inline data is
+// returned via a reader. Blob file removal (for external payloads) is best-effort
+// and performed after the row is gone; failure to delete the blob does not
+// affect the one-time guarantee (reconciliation will clean orphans later).
 func (s *Store) Consume(ctx context.Context, id string) (meta app.Meta, rc io.ReadCloser, size int64, err error) {
 	if s == nil || s.index == nil {
 		err = errors.New("store not properly initialized")
 		return
 	}
 	now := s.clock.Now()
-	meta, inline, external, size, err := s.index.Consume(ctx, id, now)
-	if err != nil {
-		return meta, nil, 0, err
+	res, cerr := s.index.Consume(ctx, id, now)
+	if cerr != nil {
+		return meta, nil, 0, cerr
 	}
-	if external {
+	// Interpret expiry at store layer: if already expired, treat as not found.
+	if !res.ExpiresAt.IsZero() && now.After(res.ExpiresAt) || now.Equal(res.ExpiresAt) {
+		return meta, nil, 0, app.ErrNotFound
+	}
+	meta = res.Meta
+	size = res.Size
+	if res.External {
 		f, oErr := s.blobs.Open(id)
 		if oErr != nil {
 			return meta, nil, 0, oErr
 		}
 		return meta, f, size, nil
 	}
-	// Provide inline bytes via a ReadCloser wrapper.
-	rc = io.NopCloser(newInlineReader(inline))
-	return meta, rc, int64(len(inline)), nil
+	rc = io.NopCloser(newInlineReader(res.Inline))
+	return meta, rc, int64(len(res.Inline)), nil
 }
 
 // ExpireBefore removes expired secrets before the given time and returns the count.
