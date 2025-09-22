@@ -29,6 +29,8 @@ type Handler struct {
 	Readiness func(context.Context) error // optional readiness probe
 	IndexTmpl IndexRenderer               // optional renderer for index page
 	Assets    http.FileSystem             // static assets filesystem (optional)
+	MinTTL    time.Duration               // lower TTL bound (from config)
+	MaxTTL    time.Duration               // upper TTL bound (from config)
 }
 
 // New returns a configured Handler.

@@ -62,8 +62,8 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 	view := IndexView{
 		MaxBytes:       h.MaxBody,
 		MaxBytesHuman:  humanBytes(h.MaxBody),
-		MinTTLSeconds:  60,   // placeholder until wired from service config
-		MaxTTLSeconds:  3600, // placeholder
+		MinTTLSeconds:  int(h.MinTTL.Seconds()),
+		MaxTTLSeconds:  int(h.MaxTTL.Seconds()),
 		GeneratedAtUTC: time.Now().UTC(),
 	}
 	if err := h.IndexTmpl.Execute(w, view); err != nil {
