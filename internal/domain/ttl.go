@@ -1,36 +1,39 @@
 // Package domain ttl.go contains functions to validate TTL against config values.
 package domain
 
-import "time"
+import (
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+)
 
-// ValidateTTL checks that ttl is positive and within [min, max].
-// Returns ErrTTLInvalid on any violation.
-func ValidateTTL(ttl, minTTL, maxTTL time.Duration) error {
-	if ttl <= 0 {
-		return ErrTTLInvalid
-	}
-	if ttl < minTTL {
-		return ErrTTLInvalid
-	}
-	if ttl > maxTTL {
-		return ErrTTLInvalid
-	}
-	return nil
+type TTLOption struct {
+	Duration time.Duration
+	Label    string // human-friendly label for UI
 }
 
-// ClampTTL returns ttl constrained to the inclusive range [min, max].
-// If ttl < min it returns min; if ttl > max it returns max; otherwise ttl.
-func ClampTTL(ttl, minTTL, maxTTL time.Duration) time.Duration {
-	if ttl < minTTL {
-		return minTTL
+// NewTTLOption parses a duration string and returns a TTLOption.
+// It returns an error if parsing fails.
+// supports standard time.Duration strings like "5m", "1h30m", "24h"
+// Supported units:
+//
+//	s - seconds
+//	m - minutes
+//	h - hours
+func NewTTLOption(label string) (TTLOption, error) {
+	// reject empty or whitespace-only labels
+	label = strings.TrimSpace(label)
+	if label == "" {
+		return TTLOption{}, errors.New("empty TTL label")
 	}
-	if ttl > maxTTL {
-		return maxTTL
+	// reject unsupported units (e.g., days, weeks)
+	if strings.ContainsAny(label, "dwMy") {
+		return TTLOption{}, fmt.Errorf("unsupported TTL unit in %q", label)
 	}
-	return ttl
-}
-
-// IsTTLValid is a convenience wrapper returning true if ValidateTTL reports no error.
-func IsTTLValid(ttl, minTTL, maxTTL time.Duration) bool {
-	return ValidateTTL(ttl, minTTL, maxTTL) == nil
+	d, err := time.ParseDuration(label)
+	if err != nil {
+		return TTLOption{}, err
+	}
+	return TTLOption{Duration: d, Label: label}, nil
 }

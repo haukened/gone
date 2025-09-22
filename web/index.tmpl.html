@@ -22,7 +22,13 @@
 		</section>
 		<section>
 			<h2>Create Secret (coming soon)</h2>
-			<p>The UI for encrypting and uploading a secret will go here.</p>
+			<form id="create-secret" onsubmit="return false;">
+				<label for="ttl">Time To Live:</label>
+				<select id="ttl" name="ttl">
+					{{ range .TTLOptions }}<option value="{{ .Label }}" data-seconds="{{ .DurationSeconds }}">{{ .Label }}</option>{{ end }}
+				</select>
+				<!-- Placeholder for future secret input and submit button -->
+			</form>
 		</section>
 	</main>
 	<footer>

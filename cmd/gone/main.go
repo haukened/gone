@@ -140,6 +140,7 @@ func main() {
 	handler.Assets = assets
 	handler.MinTTL = cfg.MinTTL
 	handler.MaxTTL = cfg.MaxTTL
+	handler.TTLOptions = cfg.TTLOptions
 
 	srv := &http.Server{
 		Addr:         cfg.Addr,

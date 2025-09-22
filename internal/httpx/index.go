@@ -29,6 +29,14 @@ type IndexView struct {
 	MinTTLSeconds  int
 	MaxTTLSeconds  int
 	GeneratedAtUTC time.Time
+	TTLOptions     []TTLOptionView
+}
+
+// TTLOptionView is the subset of a domain TTLOption needed by the template.
+// DurationSeconds is provided for potential client-side scripting.
+type TTLOptionView struct {
+	Label           string
+	DurationSeconds int
 }
 
 func humanBytes(n int64) string {
@@ -65,6 +73,12 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 		MinTTLSeconds:  int(h.MinTTL.Seconds()),
 		MaxTTLSeconds:  int(h.MaxTTL.Seconds()),
 		GeneratedAtUTC: time.Now().UTC(),
+	}
+	if len(h.TTLOptions) > 0 {
+		view.TTLOptions = make([]TTLOptionView, 0, len(h.TTLOptions))
+		for _, opt := range h.TTLOptions {
+			view.TTLOptions = append(view.TTLOptions, TTLOptionView{Label: opt.Label, DurationSeconds: int(opt.Duration.Seconds())})
+		}
 	}
 	if err := h.IndexTmpl.Execute(w, view); err != nil {
 		// Fallback minimal error page; avoid recursive template execution

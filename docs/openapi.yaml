@@ -35,8 +35,11 @@ paths:
           required: true
           schema:
             type: string
-            pattern: '^[0-9]+(ns|us|µs|ms|s|m|h)$'
-          description: Go duration string (e.g. 5m, 1h). Must be within configured service min/max bounds.
+            pattern: '^[0-9]+(h|m|s)([0-9]+(h|m|s))*$'
+          description: |
+            Go duration string composed of hours, minutes, and seconds segments only (no days/weeks/months).
+            Examples: 30s, 5m, 1h30m, 1h5m30s. Must fall within the configured inclusive min/max TTL bounds.
+            The service also accepts any duration between the smallest and largest configured TTL options even if not explicitly listed.
         - in: header
           name: Content-Length
           required: true

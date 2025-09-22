@@ -24,13 +24,14 @@ type ServicePort interface {
 // Handler wires HTTP endpoints to the application service.
 // It is safe for concurrent use. Zero-value is not valid; construct via New.
 type Handler struct {
-	Service   ServicePort
-	MaxBody   int64                       // mirror service.MaxBytes (defense-in-depth)
-	Readiness func(context.Context) error // optional readiness probe
-	IndexTmpl IndexRenderer               // optional renderer for index page
-	Assets    http.FileSystem             // static assets filesystem (optional)
-	MinTTL    time.Duration               // lower TTL bound (from config)
-	MaxTTL    time.Duration               // upper TTL bound (from config)
+	Service    ServicePort
+	MaxBody    int64                       // mirror service.MaxBytes (defense-in-depth)
+	Readiness  func(context.Context) error // optional readiness probe
+	IndexTmpl  IndexRenderer               // optional renderer for index page
+	Assets     http.FileSystem             // static assets filesystem (optional)
+	MinTTL     time.Duration               // lower TTL bound (from config)
+	MaxTTL     time.Duration               // upper TTL bound (from config)
+	TTLOptions []domain.TTLOption          // explicit configured TTL options
 }
 
 // New returns a configured Handler.

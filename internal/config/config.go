@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/haukened/gone/internal/domain"
 	"github.com/knadh/koanf/providers/env/v2"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
@@ -18,12 +20,13 @@ import (
 
 // Config holds the configuration settings for the application.
 type Config struct {
-	Addr           string        `koanf:"addr" validate:"required,ip_port"`
-	DataDir        string        `koanf:"data_dir" validate:"required,custom_path"`
-	InlineMaxBytes int64         `koanf:"inline_max_bytes" validate:"required,gt=0"`
-	MaxBytes       int64         `koanf:"max_bytes" validate:"required,gt=0"`
-	MinTTL         time.Duration `koanf:"min_ttl" validate:"required,gt=0"`
-	MaxTTL         time.Duration `koanf:"max_ttl" validate:"required,gt=0"`
+	Addr           string             `koanf:"addr" validate:"required,ip_port"`
+	DataDir        string             `koanf:"data_dir" validate:"required,custom_path"`
+	InlineMaxBytes int64              `koanf:"inline_max_bytes" validate:"required,gt=0"`
+	MaxBytes       int64              `koanf:"max_bytes" validate:"required,gt=0"`
+	MinTTL         time.Duration      `koanf:"-" validate:"required,ltfield=MaxTTL"`
+	MaxTTL         time.Duration      `koanf:"-" validate:"required,gtfield=MinTTL"`
+	TTLOptions     []domain.TTLOption `koanf:"ttl_options" validate:"required"`
 }
 
 // DefaultAppConfig provides the default app configuration values.
@@ -34,6 +37,36 @@ var DefaultAppConfig = Config{
 	MaxBytes:       1024 * 1024, // 1 MiB
 	MinTTL:         5 * time.Minute,
 	MaxTTL:         24 * time.Hour,
+	TTLOptions: []domain.TTLOption{
+		{
+			Duration: 5 * time.Minute,
+			Label:    "5m",
+		},
+		{
+			Duration: 30 * time.Minute,
+			Label:    "30m",
+		},
+		{
+			Duration: 1 * time.Hour,
+			Label:    "1h",
+		},
+		{
+			Duration: 2 * time.Hour,
+			Label:    "2h",
+		},
+		{
+			Duration: 4 * time.Hour,
+			Label:    "4h",
+		},
+		{
+			Duration: 8 * time.Hour,
+			Label:    "8h",
+		},
+		{
+			Duration: 24 * time.Hour,
+			Label:    "24h",
+		},
+	},
 }
 
 // defaultLoader loads default configuration values into the provided Koanf instance
@@ -50,6 +83,13 @@ var envLoader = func(k *koanf.Koanf) error {
 	// Load environment variables with prefix "GONE_" using lowercase keys; all values scalar.
 	return k.Load(env.Provider(".", env.Opt{Prefix: "GONE_", TransformFunc: func(key, value string) (string, any) {
 		key = strings.ToLower(strings.TrimPrefix(key, "GONE_"))
+		if strings.Contains(value, ",") {
+			parts := strings.Split(value, ",")
+			for i := range parts {
+				parts[i] = strings.TrimSpace(parts[i])
+			}
+			return key, parts
+		}
 		return key, strings.TrimSpace(value)
 	}}), nil)
 }
@@ -119,7 +159,17 @@ func Load() (*Config, error) {
 	var cfg Config
 
 	// Unmarshal the config
-	if err = k.Unmarshal("", &cfg); err != nil {
+	err = k.UnmarshalWithConf("", &cfg, koanf.UnmarshalConf{
+		Tag: "koanf",
+		DecoderConfig: &mapstructure.DecoderConfig{
+			Result:  &cfg,
+			TagName: "koanf",
+			DecodeHook: mapstructure.ComposeDecodeHookFunc(
+				StringToTTLOptions(),
+			),
+		},
+	})
+	if err != nil {
 		return nil, err
 	}
 
@@ -131,14 +181,20 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	// Calculate the MinTTL and MaxTTL from TTLOptions
+	// koanf ensures TTLOptions is always non-nil
+	for _, opt := range cfg.TTLOptions {
+		if cfg.MinTTL == 0 || opt.Duration < cfg.MinTTL {
+			cfg.MinTTL = opt.Duration
+		}
+		if opt.Duration > cfg.MaxTTL {
+			cfg.MaxTTL = opt.Duration
+		}
+	}
+
 	// Validate the config
 	if err = validate.Struct(&cfg); err != nil {
 		return nil, err
-	}
-
-	// ensure that MinTTL is less than MaxTTL
-	if cfg.MinTTL >= cfg.MaxTTL {
-		return nil, fmt.Errorf("min_ttl must be less than max_ttl")
 	}
 
 	return &cfg, nil

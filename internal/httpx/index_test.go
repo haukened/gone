@@ -29,9 +29,12 @@ func (noopService) Consume(_ context.Context, _ string) (app.Meta, io.ReadCloser
 
 // TestIndexHandler ensures the index template renders and headers are set.
 func TestIndexHandler(t *testing.T) {
-	tmpl := template.Must(template.New("index").Parse(`<html><body><p>{{ .MaxBytes }}</p></body></html>`))
+	tmpl := template.Must(template.New("index").Parse(`<html><body><p>{{ .MaxBytes }}</p>{{ range .TTLOptions }}<option>{{ .Label }}</option>{{ end }}</body></html>`))
 	h := httpx.New(noopService{}, 1234, nil)
 	h.IndexTmpl = httpx.TemplateRenderer{T: tmpl}
+	h.MinTTL = 5 * time.Minute
+	h.MaxTTL = 60 * time.Minute
+	h.TTLOptions = []domain.TTLOption{{Duration: 5 * time.Minute, Label: "5m"}, {Duration: 30 * time.Minute, Label: "30m"}, {Duration: time.Hour, Label: "1h"}}
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	h.Router().ServeHTTP(w, r)
@@ -41,8 +44,11 @@ func TestIndexHandler(t *testing.T) {
 	if ct := w.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
 		t.Fatalf("content-type %s", ct)
 	}
-	if !strings.Contains(w.Body.String(), "1234") {
-		t.Fatalf("missing max bytes: %s", w.Body.String())
+	body := w.Body.String()
+	for _, expect := range []string{"1234", "5m", "30m", "1h"} {
+		if !strings.Contains(body, expect) {
+			t.Fatalf("expected body to contain %q: %s", expect, body)
+		}
 	}
 }
 

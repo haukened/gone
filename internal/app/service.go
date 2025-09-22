@@ -5,6 +5,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"time"
 
@@ -35,7 +36,7 @@ type Service struct {
 // nonce - the nonce used for encryption
 // ttl - the time-to-live for the secret
 func (s *Service) CreateSecret(ctx context.Context, ct io.Reader, size int64, version uint8, nonce string, ttl time.Duration) (id domain.SecretID, expiresAt time.Time, err error) {
-	if err := domain.ValidateTTL(ttl, s.MinTTL, s.MaxTTL); err != nil {
+	if err := validateTTL(ttl, s.MinTTL, s.MaxTTL); err != nil {
 		return "", time.Time{}, domain.ErrTTLInvalid
 	}
 	if size <= 0 || size > s.MaxBytes {
@@ -61,4 +62,19 @@ func (s *Service) Consume(ctx context.Context, idStr string) (Meta, io.ReadClose
 	}
 	meta, rc, size, err := s.Store.Consume(ctx, idStr)
 	return meta, rc, size, err
+}
+
+// validateTTL ensures the provided ttl falls within the inclusive [min,max] range.
+// Returns an error if out of bounds or zero.
+func validateTTL(ttl, min, max time.Duration) error {
+	if ttl <= 0 {
+		return errors.New("ttl must be positive")
+	}
+	if min > 0 && ttl < min {
+		return fmt.Errorf("ttl below min: %v < %v", ttl, min)
+	}
+	if max > 0 && ttl > max {
+		return fmt.Errorf("ttl above max: %v > %v", ttl, max)
+	}
+	return nil
 }

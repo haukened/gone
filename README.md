@@ -33,15 +33,33 @@ Gone is designed to be deployed in Docker. It does not accept command line argum
 ## Configuration
 Gone can be configured using the following environment variables:
 
-| Environment Variable    | Description                                                                   | Default Value     |
-|-------------------------|-------------------------------------------------------------------------------|-------------------|
-| `GONE_ADDR`             | The address the service listens on.                                           | `:8080`           |
-| `GONE_DATA_DIR`         | The directory where secrets are stored.                                       | `/data`           |
-| `GONE_INLINE_MAX_BYTES` | Maximum size of a secret to be stored inline in sqlite3 (bytes).              | `8192` (8 KiB)    |
-| `GONE_MAX_BYTES`        | Maximum size of a secret (bytes).                                             | `1048576` (1 MiB) |
-| `GONE_MIN_TTL`          | Minimum time-to-live for a secret.                                            | `5m`              |
-| `GONE_MAX_TTL`          | Maximum time-to-live for a secret.                                            | `24h`             |
+| Environment Variable    | Description                                                                   | Default Value            |
+|-------------------------|-------------------------------------------------------------------------------|--------------------------|
+| `GONE_ADDR`             | The address the service listens on.                                           | `:8080`                  |
+| `GONE_DATA_DIR`         | The directory where secrets are stored.                                       | `/data`                  |
+| `GONE_INLINE_MAX_BYTES` | Maximum size of a secret to be stored inline in sqlite3 (bytes).              | `8192` (8 KiB)           |
+| `GONE_MAX_BYTES`        | Maximum size of a secret (bytes).                                             | `1048576` (1 MiB)        |
+| `GONE_TTL_OPTIONS`      | Time-to-live options for a secret.                                            | `5m,30m,1h,2h,4h,8h,24h` |
 
->[!NOTE]
-> `GONE_MAX_BYTES` can be calculated as `1024 * 1024` for 1 MiB, `1024 * 10` for 10 KiB, etc.
-> `1024` bytes is `1KiB`, `1024 * 1024` bytes is `1MiB`, `1024 * 1024 * 1024` bytes is `1GiB`, and so on.
+`GONE_TTL_OPTIONS` must be a comma-separated list of valid Go duration strings using only seconds (s), minutes (m), and hours (h) units (examples: `30s`, `5m`, `1h30m`). The smallest and largest provided durations become the enforced MinTTL and MaxTTL bounds respectively.
+
+`GONE_MAX_BYTES` can be calculated as `1024 * 1024` for 1 MiB, `1024 * 10` for 10 KiB, etc. `1024` bytes is `1KiB`, `1024 * 1024` bytes is `1MiB`, `1024 * 1024 * 1024` bytes is `1GiB`, and so on.
+
+Any requested TTL within the inclusive min/max range is accepted even if it is not explicitly listed in `GONE_TTL_OPTIONS`. The configured list powers the UI dropdown and defines the bounds; it does not constrain valid intermediate durations.
+
+## Storage & Persistence
+Gone stores metadata (IDs, expirations, consumed state) in SQLite (WAL mode enforced) and larger ciphertext blobs on the filesystem under `GONE_DATA_DIR` (subdirectory `blobs/`). Inline ciphertext below `GONE_INLINE_MAX_BYTES` is stored directly in SQLite to reduce filesystem churn.
+
+## Quick Start (Docker)
+Pull and run the latest image, mounting a data directory:
+
+```sh
+docker run --rm \
+	-p 8080:8080 \
+	-e GONE_DATA_DIR=/data \
+	-e GONE_TTL_OPTIONS="5m,30m,1h,2h,4h" \
+	-v $(pwd)/data:/data \
+	ghcr.io/haukened/gone:latest
+```
+
+Then visit: http://localhost:8080/

@@ -3,8 +3,10 @@ package config
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/haukened/gone/internal/domain"
 	"github.com/knadh/koanf/v2"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,6 +17,36 @@ func TestDefaultConfig(t *testing.T) {
 		t.Fatalf("Load() error: %v", err)
 	}
 	assert.EqualValues(t, DefaultAppConfig, *cfg)
+}
+
+func TestLoadEnvList(t *testing.T) {
+	t.Setenv("GONE_TTL_OPTIONS", "5m,30m,1h")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	expected := []domain.TTLOption{
+		{Duration: 5 * time.Minute, Label: "5m"},
+		{Duration: 30 * time.Minute, Label: "30m"},
+		{Duration: 1 * time.Hour, Label: "1h"},
+	}
+	assert.Equal(t, expected, cfg.TTLOptions, "TTL options mismatch")
+}
+
+func TestNoTTLOptions(t *testing.T) {
+	t.Setenv("GONE_TTL_OPTIONS", "")
+	_, err := Load()
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+}
+
+func TestBadTTLOptions(t *testing.T) {
+	t.Setenv("GONE_TTL_OPTIONS", "invalid")
+	_, err := Load()
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
 }
 
 func TestValidPaths(t *testing.T) {
@@ -164,8 +196,6 @@ func TestSQLiteDSN(t *testing.T) {
 				Addr:     ":8080",
 				DataDir:  tt.dataDir,
 				MaxBytes: DefaultAppConfig.MaxBytes,
-				MinTTL:   DefaultAppConfig.MinTTL,
-				MaxTTL:   DefaultAppConfig.MaxTTL,
 			}
 
 			got := c.SQLiteDSN()
@@ -231,17 +261,5 @@ func TestRegisterValidationFails(t *testing.T) {
 	}
 	if !errors.Is(err, assert.AnError) {
 		t.Fatalf("expected assert.AnError, got: %v", err)
-	}
-}
-
-func TestBadTTL(t *testing.T) {
-	t.Setenv("GONE_MIN_TTL", "10m")
-	t.Setenv("GONE_MAX_TTL", "5m") // less than min
-	_, err := Load()
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if err.Error() != "min_ttl must be less than max_ttl" {
-		t.Fatalf("expected min/max ttl error, got: %v", err)
 	}
 }
