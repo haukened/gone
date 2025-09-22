@@ -57,7 +57,7 @@ func TestStoreSaveInlineAndConsume(t *testing.T) {
 	bs, _ := filesystem.New(blobDir)
 	st := store.New(ix, bs, clk, 64) // inlineMax large enough
 
-	id := "inl1"
+	id := "11111111111111111111111111111111"
 	meta := app.Meta{Version: 1, NonceB64u: "nonceA"}
 	data := []byte("hello-inline")
 	expires := now.Add(5 * time.Minute)
@@ -96,7 +96,7 @@ func TestStoreSaveExternalAndConsume(t *testing.T) {
 	bs, _ := filesystem.New(blobDir)
 	st := store.New(ix, bs, clk, 4) // inlineMax small to force external
 
-	id := "ext1"
+	id := "22222222222222222222222222222222"
 	meta := app.Meta{Version: 2, NonceB64u: "nonceB"}
 	data := []byte("this-is-external-data")
 	expires := now.Add(10 * time.Minute)
@@ -145,7 +145,7 @@ func TestStoreConsumeExpired(t *testing.T) {
 	bs, _ := filesystem.New(t.TempDir())
 	st := store.New(ix, bs, clk, 64)
 
-	id := "exp1"
+	id := "33333333333333333333333333333333"
 	meta := app.Meta{Version: 1, NonceB64u: "nC"}
 	data := []byte("x")
 	expires := now.Add(-1 * time.Minute) // already expired
@@ -169,17 +169,17 @@ func TestStoreExpireBefore(t *testing.T) {
 	st := store.New(ix, bs, clk, 4)
 
 	// Insert: one expired external, one expired inline, one future
-	if err := st.Save(ctx, "gone-ext", app.Meta{Version: 1, NonceB64u: "a"}, io.NopCloser(bytesReader([]byte("external-data"))), int64(len("external-data")), now.Add(-5*time.Minute)); err != nil {
+	if err := st.Save(ctx, "44444444444444444444444444444444", app.Meta{Version: 1, NonceB64u: "a"}, io.NopCloser(bytesReader([]byte("external-data"))), int64(len("external-data")), now.Add(-5*time.Minute)); err != nil {
 		t.Fatalf("save ext: %v", err)
 	}
-	if err := st.Save(ctx, "gone-inl", app.Meta{Version: 1, NonceB64u: "b"}, io.NopCloser(bytesReader([]byte("inl"))), 3, now.Add(-5*time.Minute)); err != nil {
+	if err := st.Save(ctx, "55555555555555555555555555555555", app.Meta{Version: 1, NonceB64u: "b"}, io.NopCloser(bytesReader([]byte("inl"))), 3, now.Add(-5*time.Minute)); err != nil {
 		t.Fatalf("save inl: %v", err)
 	}
-	if err := st.Save(ctx, "future", app.Meta{Version: 1, NonceB64u: "c"}, io.NopCloser(bytesReader([]byte("f"))), 1, now.Add(5*time.Minute)); err != nil {
+	if err := st.Save(ctx, "66666666666666666666666666666666", app.Meta{Version: 1, NonceB64u: "c"}, io.NopCloser(bytesReader([]byte("f"))), 1, now.Add(5*time.Minute)); err != nil {
 		t.Fatalf("save future: %v", err)
 	}
 	// Force external for first secret by size > inlineMax (already done) ensure blob exists
-	if _, err := os.Stat(filepath.Join(blobDir, "gone-ext.blob")); err != nil {
+	if _, err := os.Stat(filepath.Join(blobDir, "44444444444444444444444444444444.blob")); err != nil {
 		t.Fatalf("missing ext blob: %v", err)
 	}
 	count, err := st.ExpireBefore(ctx, now)
@@ -190,11 +190,11 @@ func TestStoreExpireBefore(t *testing.T) {
 		t.Fatalf("expected 2 expired removed, got %d", count)
 	}
 	// External blob should be deleted by cleanup
-	if _, err := os.Stat(filepath.Join(blobDir, "gone-ext.blob")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(blobDir, "44444444444444444444444444444444.blob")); !os.IsNotExist(err) {
 		t.Fatalf("expected external blob removed by janitor, err=%v", err)
 	}
 	// Inline consume working for future
-	if _, _, _, err := st.Consume(ctx, "future"); err != nil {
+	if _, _, _, err := st.Consume(ctx, "66666666666666666666666666666666"); err != nil {
 		t.Fatalf("future consume: %v", err)
 	}
 }
@@ -210,14 +210,14 @@ func TestStoreReconcileDeletesOrphan(t *testing.T) {
 	st := store.New(ix, bs, clk, 4)
 
 	// Write an orphan blob directly (no index row)
-	writeTempBlob(t, blobDir, "orphan", []byte("zzz"))
+	writeTempBlob(t, blobDir, "77777777777777777777777777777777", []byte("zzz"))
 	// Ensure List sees it after freshness window
 	time.Sleep(1100 * time.Millisecond)
 	if err := st.Reconcile(ctx); err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
 	// Orphan should be gone
-	if _, err := os.Stat(filepath.Join(blobDir, "orphan.blob")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(blobDir, "77777777777777777777777777777777.blob")); !os.IsNotExist(err) {
 		t.Fatalf("expected orphan removed, err=%v", err)
 	}
 }

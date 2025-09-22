@@ -15,7 +15,7 @@ func TestDeletingReadCloser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New error: %v", err)
 	}
-	id := "delete-me"
+	id := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" // 32 hex
 	data := []byte("secret-bytes")
 	if err := bs.Write(id, io.NopCloser(bytesReader(data)), int64(len(data))); err != nil {
 		t.Fatalf("Write failed: %v", err)
@@ -46,7 +46,7 @@ func TestWriteBadSize(t *testing.T) {
 		t.Fatalf("New error: %v", err)
 	}
 
-	id := "badsize"
+	id := "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	data := []byte("short")
 	err = bs.Write(id, bytesReader(data), int64(len(data)+10)) // request more than available
 	if err == nil {
@@ -80,7 +80,7 @@ func TestBlobStoreWriteReadDelete(t *testing.T) {
 		t.Fatalf("New error: %v", err)
 	}
 
-	id := "abc123"
+	id := "cccccccccccccccccccccccccccccccc"
 	data := []byte("secret-bytes")
 
 	if err := bs.Write(id, io.NopCloser(bytesReader(data)), int64(len(data))); err != nil {
@@ -123,7 +123,7 @@ func TestBlobStoreOpenCloseDeletesWithoutRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New error: %v", err)
 	}
-	id := "noread"
+	id := "dddddddddddddddddddddddddddddddd"
 	payload := []byte("x")
 	if err := bs.Write(id, bytesReader(payload), int64(len(payload))); err != nil {
 		t.Fatalf("Write: %v", err)
@@ -147,7 +147,7 @@ func TestBlobStoreListSkipsRecent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New error: %v", err)
 	}
-	id := "fresh"
+	id := "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 	payload := []byte("p")
 	if err := bs.Write(id, bytesReader(payload), int64(len(payload))); err != nil {
 		t.Fatalf("Write: %v", err)
@@ -187,7 +187,20 @@ func TestBlobStoreInvalidIDs(t *testing.T) {
 		t.Fatalf("New error: %v", err)
 	}
 	payload := []byte("x")
-	cases := []string{"../escape", "a/b", "..", "..hidden", "trick..", "slash/", `back\\slash`}
+	cases := []string{
+		"../escape",                         // traversal
+		"a/b",                               // separator
+		"..",                                // traversal
+		"..hidden",                          // contains '..'
+		"trick..",                           // contains '..'
+		"slash/",                            // trailing slash
+		`back\\slash`,                       // windows sep
+		"short",                             // too short
+		"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",  // invalid hex chars
+		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  // uppercase hex not allowed
+		"1234567890abcdef1234567890abcde",   // length 31
+		"1234567890abcdef1234567890abcdef0", // length 33
+	}
 	for _, id := range cases {
 		if err := bs.Write(id, bytesReader(payload), int64(len(payload))); err == nil {
 			t.Fatalf("expected write error for id=%q", id)

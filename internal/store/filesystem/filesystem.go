@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/haukened/gone/internal/domain"
 	"github.com/haukened/gone/internal/store"
 )
 
@@ -129,18 +130,14 @@ func (b *BlobStore) List() ([]string, error) {
 	return ids, nil
 }
 
-// validateID performs a minimal, defense-in-depth validation to prevent
-// path traversal or directory breakout. BlobStore accepts arbitrary IDs
-// from upper layers (which may not be canonical 32-char hex yet), so we
-// restrict to non-empty strings without path separators or ".." segments.
+// validateID enforces that the blob ID is a canonical 32-character lowercase
+// hexadecimal secret ID (domain.SecretID). This both prevents path traversal
+// (no separators, fixed length) and guarantees uniform filenames.
 func validateID(id string) error {
-	if id == "" {
-		return errors.New("invalid blob id: empty")
+	if _, err := domain.ParseID(id); err != nil { // ParseID enforces length==32 and [0-9a-f]
+		return errors.New("invalid blob id: must be 32 lowercase hex chars")
 	}
-	if strings.ContainsAny(id, "/\\") {
-		return errors.New("invalid blob id: contains path separator")
-	}
-	if strings.Contains(id, "..") { // blocks traversal attempts
+	if strings.Contains(id, "..") { // defense-in-depth (ParseID already forbids '.')
 		return errors.New("invalid blob id: contains '..'")
 	}
 	return nil
