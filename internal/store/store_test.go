@@ -305,3 +305,87 @@ func TestStoreSaveNegativeSize(t *testing.T) {
 		t.Fatalf("expected error for negative size")
 	}
 }
+
+// --- Reconcile error path tests ---
+
+// failingBlobStore lets us inject errors for List/Delete.
+type failingBlobStore struct {
+	mockBlobStore
+	listErr   error
+	deleteErr error
+	listIDs   []string
+}
+
+func (f failingBlobStore) List() ([]string, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	return f.listIDs, nil
+}
+func (f failingBlobStore) Delete(_ string) error {
+	return f.deleteErr
+}
+
+// failingIndex allows injecting ListExternalIDs error.
+type failingIndex struct {
+	mockIndex
+	listErr error
+}
+
+func (f failingIndex) ListExternalIDs(_ context.Context) ([]string, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	return nil, nil
+}
+
+func TestStoreReconcileNilIndex(t *testing.T) {
+	clk := fixedClock{now: time.Now()}
+	bs := mockBlobStore{}
+	s := store.New(nil, bs, clk, 10)
+	if err := s.Reconcile(context.Background()); err == nil {
+		t.Fatalf("expected error with nil index in Reconcile")
+	}
+}
+
+func TestStoreReconcileNilBlobs(t *testing.T) {
+	clk := fixedClock{now: time.Now()}
+	ix := mockIndex{}
+	s := store.New(ix, nil, clk, 10)
+	if err := s.Reconcile(context.Background()); err == nil {
+		t.Fatalf("expected error with nil blob storage in Reconcile")
+	}
+}
+
+func TestStoreReconcileBlobListError(t *testing.T) {
+	clk := fixedClock{now: time.Now()}
+	ix := mockIndex{}
+	bs := failingBlobStore{listErr: errors.New("list boom")}
+	s := store.New(ix, bs, clk, 10)
+	if err := s.Reconcile(context.Background()); err == nil {
+		t.Fatalf("expected list error propagated")
+	}
+}
+
+func TestStoreReconcileIndexListError(t *testing.T) {
+	clk := fixedClock{now: time.Now()}
+	ix := failingIndex{listErr: errors.New("index list boom")}
+	bs := mockBlobStore{}
+	s := store.New(ix, bs, clk, 10)
+	if err := s.Reconcile(context.Background()); err == nil {
+		t.Fatalf("expected index list error propagated")
+	}
+}
+
+func TestStoreReconcileDeleteErrorIgnored(t *testing.T) {
+	// Delete errors should not abort reconciliation after listing succeeds.
+	clk := fixedClock{now: time.Now()}
+	ix := mockIndex{}
+	// Provide an orphan id so Delete is attempted.
+	bs := failingBlobStore{listIDs: []string{"orphan"}, deleteErr: errors.New("del fail")}
+	s := store.New(ix, bs, clk, 10)
+	// Expect no error because delete failures are ignored (best-effort).
+	if err := s.Reconcile(context.Background()); err != nil {
+		t.Fatalf("unexpected error despite delete failure: %v", err)
+	}
+}
