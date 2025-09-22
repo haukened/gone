@@ -27,6 +27,8 @@ type Handler struct {
 	Service   ServicePort
 	MaxBody   int64                       // mirror service.MaxBytes (defense-in-depth)
 	Readiness func(context.Context) error // optional readiness probe
+	IndexTmpl IndexRenderer               // optional renderer for index page
+	Assets    http.FileSystem             // static assets filesystem (optional)
 }
 
 // New returns a configured Handler.
@@ -41,21 +43,30 @@ func New(svc ServicePort, maxBody int64, readiness func(context.Context) error) 
 // security headers middleware applied.
 func (h *Handler) Router() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/", h.handleIndex)
 	mux.HandleFunc("/api/secret", h.handleCreateSecret)
 	mux.HandleFunc("/api/secret/", h.handleConsumeSecret) // expect /api/secret/{id}
 	mux.HandleFunc("/healthz", h.handleHealth)
 	mux.HandleFunc("/readyz", h.handleReady)
+	if h.Assets != nil {
+		mux.Handle("/static/", http.StripPrefix("/static/", h.staticHandler()))
+	}
 	return h.secureHeaders(mux)
 }
 
 // secureHeaders middleware adds standard security & cache control headers.
 func (h *Handler) secureHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("Pragma", "no-cache")
+		// Default: deny everything, then allow only self scripts/styles/images.
+		// Avoid inline scripts/styles to keep a strong CSP.
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("Content-Security-Policy", "default-src 'none'")
+		// Cache defaults per route: index handler will override to no-store; static handler sets long-lived.
+		if ct := w.Header().Get("Content-Type"); ct == "" {
+			w.Header().Set("Cache-Control", "no-store")
+			w.Header().Set("Pragma", "no-cache")
+		}
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 		next.ServeHTTP(w, r)
 	})
 }

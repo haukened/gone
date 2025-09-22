@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>Gone - One-Time Secret</title>
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<link rel="stylesheet" href="/static/css/app.css" />
+</head>
+<body>
+	<header>
+		<h1>Gone</h1>
+		<p>One-time secret sharing service.</p>
+	</header>
+	<main>
+		<section>
+			<h2>Configuration</h2>
+			<ul>
+				<li>Max Bytes: {{ .MaxBytes }} ({{ .MaxBytesHuman }})</li>
+				<li>TTL Range: {{ .MinTTLSeconds }}s – {{ .MaxTTLSeconds }}s</li>
+				<li>Generated: {{ .GeneratedAtUTC }}</li>
+			</ul>
+		</section>
+		<section>
+			<h2>Create Secret (coming soon)</h2>
+			<p>The UI for encrypting and uploading a secret will go here.</p>
+		</section>
+	</main>
+	<footer>
+		<p>© {{ .GeneratedAtUTC.Year }} Gone</p>
+	</footer>
+	<script src="/static/js/app.js" defer></script>
+</body>
+</html>
