@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/haukened/gone/internal/store"
@@ -39,7 +40,11 @@ func (b *BlobStore) path(id string) string { return filepath.Join(b.root, id+".b
 
 // Write stores exactly size bytes from r into a file associated with id.
 func (b *BlobStore) Write(id string, r io.Reader, size int64) error {
+	if err := validateID(id); err != nil {
+		return err
+	}
 	p := b.path(id)
+	// #nosec G304: path is constructed from a fixed root plus a validated ID with a fixed suffix; no traversal possible.
 	f, err := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
@@ -60,6 +65,9 @@ func (b *BlobStore) Write(id string, r io.Reader, size int64) error {
 // Consume opens a blob file for reading by ID and returns a ReadCloser whose
 // Close deletes the underlying file (delete-on-close semantics).
 func (b *BlobStore) Consume(id string) (io.ReadCloser, error) {
+	if err := validateID(id); err != nil {
+		return nil, err
+	}
 	p := b.path(id)
 	f, err := os.Open(p) // #nosec G304 path constructed internally
 	if err != nil {
@@ -90,6 +98,9 @@ func (b *BlobStore) Delete(id string) error {
 	if id == "" {
 		return nil
 	}
+	if err := validateID(id); err != nil {
+		return err
+	}
 	return os.Remove(b.path(id))
 }
 
@@ -116,4 +127,21 @@ func (b *BlobStore) List() ([]string, error) {
 		ids = append(ids, name[:len(name)-5])
 	}
 	return ids, nil
+}
+
+// validateID performs a minimal, defense-in-depth validation to prevent
+// path traversal or directory breakout. BlobStore accepts arbitrary IDs
+// from upper layers (which may not be canonical 32-char hex yet), so we
+// restrict to non-empty strings without path separators or ".." segments.
+func validateID(id string) error {
+	if id == "" {
+		return errors.New("invalid blob id: empty")
+	}
+	if strings.ContainsAny(id, "/\\") {
+		return errors.New("invalid blob id: contains path separator")
+	}
+	if strings.Contains(id, "..") { // blocks traversal attempts
+		return errors.New("invalid blob id: contains '..'")
+	}
+	return nil
 }

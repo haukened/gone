@@ -180,6 +180,27 @@ func TestBlobStoreNewErrors(t *testing.T) {
 	}
 }
 
+func TestBlobStoreInvalidIDs(t *testing.T) {
+	dir := t.TempDir()
+	bs, err := New(dir)
+	if err != nil {
+		t.Fatalf("New error: %v", err)
+	}
+	payload := []byte("x")
+	cases := []string{"../escape", "a/b", "..", "..hidden", "trick..", "slash/", `back\\slash`}
+	for _, id := range cases {
+		if err := bs.Write(id, bytesReader(payload), int64(len(payload))); err == nil {
+			t.Fatalf("expected write error for id=%q", id)
+		}
+		if _, err := bs.Consume(id); err == nil {
+			t.Fatalf("expected consume error for id=%q", id)
+		}
+		if err := bs.Delete(id); err == nil {
+			t.Fatalf("expected delete error for id=%q", id)
+		}
+	}
+}
+
 // bytesReader returns a simple io.Reader over b without copying.
 func bytesReader(b []byte) io.Reader { return &sliceReader{b: b} }
 
