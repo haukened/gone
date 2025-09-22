@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/haukened/gone/internal/app"
@@ -99,13 +100,17 @@ func (i *Index) ExpireBefore(ctx context.Context, t time.Time) ([]store.ExpiredR
 		var r store.ExpiredRecord
 		var extInt int
 		if err = rows.Scan(&r.ID, &extInt); err != nil {
-			rows.Close()
+			if cErr := rows.Close(); cErr != nil {
+				return nil, fmt.Errorf("scan error: %v; close error: %w", err, cErr)
+			}
 			return nil, err
 		}
 		r.External = extInt == 1
 		recs = append(recs, r)
 	}
-	rows.Close()
+	if cErr := rows.Close(); cErr != nil {
+		return nil, cErr
+	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
