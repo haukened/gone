@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"path"
 	"strings"
-	"time"
 )
 
 // IndexRenderer abstracts template execution for easier testing.
@@ -24,12 +23,11 @@ func (tr TemplateRenderer) Execute(w http.ResponseWriter, data any) error {
 
 // IndexView supplies dynamic config values to the index template.
 type IndexView struct {
-	MaxBytes       int64
-	MaxBytesHuman  string
-	MinTTLSeconds  int
-	MaxTTLSeconds  int
-	GeneratedAtUTC time.Time
-	TTLOptions     []TTLOptionView
+	MaxBytes      int64
+	MaxBytesHuman string
+	MinTTLSeconds int
+	MaxTTLSeconds int
+	TTLOptions    []TTLOptionView
 }
 
 // TTLOptionView is the subset of a domain TTLOption needed by the template.
@@ -68,11 +66,10 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	view := IndexView{
-		MaxBytes:       h.MaxBody,
-		MaxBytesHuman:  humanBytes(h.MaxBody),
-		MinTTLSeconds:  int(h.MinTTL.Seconds()),
-		MaxTTLSeconds:  int(h.MaxTTL.Seconds()),
-		GeneratedAtUTC: time.Now().UTC(),
+		MaxBytes:      h.MaxBody,
+		MaxBytesHuman: humanBytes(h.MaxBody),
+		MinTTLSeconds: int(h.MinTTL.Seconds()),
+		MaxTTLSeconds: int(h.MaxTTL.Seconds()),
 	}
 	if len(h.TTLOptions) > 0 {
 		view.TTLOptions = make([]TTLOptionView, 0, len(h.TTLOptions))
