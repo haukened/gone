@@ -1,0 +1,159 @@
+openapi: 3.0.3
+info:
+  title: Gone Secret Sharing API
+  version: 0.1.0
+  description: |
+    Minimal API for one-time secret creation and consumption.
+    Secrets are created with a TTL and may be stored inline or in external blob storage.
+    Retrieval consumes (deletes) the secret exactly once.
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/secret:
+    post:
+      summary: Create a new secret
+      operationId: createSecret
+      parameters:
+        - in: header
+          name: X-Gone-Version
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 255
+          description: Client-defined version (used in decryption logic).
+        - in: header
+          name: X-Gone-Nonce
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          description: Base64url encoded nonce used in encryption.
+        - in: header
+          name: X-Gone-TTL
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]+(ns|us|µs|ms|s|m|h)$'
+          description: Go duration string (e.g. 5m, 1h). Must be within configured service min/max bounds.
+        - in: header
+          name: Content-Length
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Exact ciphertext byte length; enforced against service MaxBytes.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '201':
+          description: Secret created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, expires_at]
+                properties:
+                  id:
+                    type: string
+                    description: 32-char lowercase hex secret ID
+                    pattern: '^[0-9a-f]{32}$'
+                  expires_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: Validation error (TTL, size, headers)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Payload too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/secret/{id}:
+    get:
+      summary: Consume (retrieve once) a secret by ID
+      operationId: consumeSecret
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}$'
+          description: Secret ID.
+      responses:
+        '200':
+          description: Ciphertext payload; consuming this removes it permanently.
+          headers:
+            X-Gone-Version:
+              schema:
+                type: integer
+            X-Gone-Nonce:
+              schema:
+                type: string
+            Content-Length:
+              schema:
+                type: integer
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Not found (missing, expired, or already consumed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Invalid ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /healthz:
+    get:
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Process is alive
+  /readyz:
+    get:
+      summary: Readiness probe
+      responses:
+        '200':
+          description: Service ready
+        '503':
+          description: Not yet ready
+components:
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+  securitySchemes: {}
+security: []
