@@ -19,12 +19,13 @@ Gone is a minimal Go service designed for one-time secret sharing. It enables us
 Gone prioritizes security through simplicity and strong encryption practices. Secrets are encrypted on the client side, meaning the service never sees the unencrypted data. Each secret can only be read once, preventing unauthorized access or reuse. This one-time read mechanism, combined with the absence of server-side encryption keys, ensures that secrets remain confidential and ephemeral.
 
 ## How It Works
-1. The client encrypts the message locally before sending it to the Gone service.
-2. The encrypted message is stored temporarily on the server.
-3. When the recipient accesses the secret link, the encrypted data is retrieved and returned to the client, still encrypted.
-4. After the secret is accessed once, it is immediately deleted from the server, making it inaccessible thereafter.
-5. The client decrypts the message locally in the browser using the passphrase included in the URL fragment (not sent to the server).
-6. The server never has access to the plaintext message or any encryption keys, and therefore cannot decrypt the data.
+1. The client encrypts the message locally before sending it to the Gone service using AES-GCM with the Web Crypto API.
+2. The client sends the encrypted message (but not the decryption key) to the Gone service for temporary storage.
+3. The client gives the decryption key to the user, embedded in the URL fragment.
+4. When the recipient accesses the secret link, the encrypted data is retrieved and returned to the client, still encrypted.
+5. After the secret is accessed once, it is immediately deleted from the server, making it inaccessible thereafter.
+6. The client decrypts the message locally in the browser using the passphrase included in the URL fragment (not sent to the server).
+7. The server never has access to the plaintext message or any encryption keys, and therefore cannot decrypt the data.
 
 This straightforward design guarantees secure, ephemeral message sharing without the complexity of managing server-side encryption keys or persistent storage.
 
