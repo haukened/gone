@@ -21,9 +21,10 @@ Gone prioritizes security through simplicity and strong encryption practices. Se
 ## How It Works
 1. The client encrypts the message locally before sending it to the Gone service.
 2. The encrypted message is stored temporarily on the server.
-3. When the recipient accesses the secret link, the encrypted data is retrieved and decrypted client-side.
+3. When the recipient accesses the secret link, the encrypted data is retrieved and returned to the client, still encrypted.
 4. After the secret is accessed once, it is immediately deleted from the server, making it inaccessible thereafter.
-5. The server never has access to the plaintext message or any encryption keys, and therefore cannot decrypt the data.
+5. The client decrypts the message locally in the browser using the passphrase included in the URL fragment (not sent to the server).
+6. The server never has access to the plaintext message or any encryption keys, and therefore cannot decrypt the data.
 
 This straightforward design guarantees secure, ephemeral message sharing without the complexity of managing server-side encryption keys or persistent storage.
 
