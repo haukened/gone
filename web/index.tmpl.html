@@ -28,6 +28,17 @@
 		</div>
 	</header>
 	<main class="center-wrap">
+		<section class="security-warning" aria-live="assertive" aria-hidden="true" hidden>
+			<div class="security-warning-card" role="alert">
+				<div class="security-warning-icon" aria-hidden="true">
+					<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+				</div>
+				<div class="security-warning-content">
+					<h2>Insecure Connection</h2>
+					<p>You are viewing this page over an unsecured HTTP connection. Secrets submitted here could be intercepted. Switch to the HTTPS version before sharing sensitive data.</p>
+				</div>
+			</div>
+		</section>
 		<section class="card">
 			<form id="create-secret" onsubmit="return false;" class="secret-form">
 				<div class="field">

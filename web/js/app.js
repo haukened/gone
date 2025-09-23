@@ -62,6 +62,21 @@
 
 	loadInitialTheme();
 
+	// Security warning: show if served over insecure HTTP (excluding localhost & 127.0.0.1 & ::1)
+	(function securityWarning(){
+		try {
+			const insecure = window.location.protocol === 'http:';
+			const host = window.location.hostname;
+			if (insecure) {
+				const section = document.querySelector('.security-warning');
+				if (section) {
+					section.hidden = false;
+					section.setAttribute('aria-hidden', 'false');
+				}
+			}
+		} catch(_) { /* ignore */ }
+	})();
+
 	// Placeholder for future client-side encryption workflow bootstrapping.
 	console.log('Gone UI loaded');
 })();
