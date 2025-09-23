@@ -339,3 +339,87 @@
 
 		form.addEventListener('submit', handleSubmit);
 	})();
+
+		// Secret consumption (decrypt) flow for /secret/{id} pages.
+		(function consumeFlow(){
+			if (!window.goneCrypto) return;
+			const container = document.getElementById('secret-consume');
+			if (!container) return; // not on consume page
+			const statusEl = document.getElementById('secret-status');
+			const pre = document.getElementById('secret-plaintext');
+			const actions = document.getElementById('secret-actions');
+			const copyBtn = document.getElementById('copy-secret');
+
+			function setStatus(msg){ if (statusEl) statusEl.textContent = msg; }
+			function log(label,start,end){ console.log(`[gone][timing] ${label}: ${(end-start).toFixed(2)}ms`); }
+
+			// Parse fragment: #v<version>:<key>
+			const hash = location.hash || '';
+			const fragMatch = /^#v(\d+):([A-Za-z0-9_-]{10,})$/.exec(hash);
+			if (!fragMatch) {
+				setStatus('Missing or invalid key fragment. Cannot decrypt.');
+				return;
+			}
+			const fragVersion = parseInt(fragMatch[1], 10);
+			const keyB64 = fragMatch[2];
+			if (fragVersion !== window.goneCrypto.version) {
+				setStatus('Unsupported version');
+				return;
+			}
+
+			// Extract ID from path /secret/{id}
+			const pathParts = location.pathname.split('/');
+			const id = pathParts[pathParts.length-1];
+			if (!id) { setStatus('Invalid secret id'); return; }
+
+			(async () => {
+				try {
+					setStatus('Fetching…');
+					const tFetchStart = performance.now();
+					const resp = await fetch(`/api/secret/${id}`);
+					const tFetchEnd = performance.now();
+					log('consume_fetch', tFetchStart, tFetchEnd);
+					if (!resp.ok) {
+						setStatus(resp.status === 404 ? 'Secret not found or already consumed.' : 'Fetch error');
+						return;
+					}
+					const nonceB64 = resp.headers.get('X-Gone-Nonce');
+					const versionHdr = parseInt(resp.headers.get('X-Gone-Version')||'0', 10);
+					if (versionHdr !== window.goneCrypto.version) {
+						setStatus('Version mismatch');
+						return;
+					}
+					const nonce = window.goneCrypto.b64urlDecode(nonceB64 || '');
+					const ctBuf = new Uint8Array(await resp.arrayBuffer());
+					const tDecStart = performance.now();
+					// Reconstruct envelope bytes to reuse decrypt() expecting envelope format? We switched to raw.
+					// Instead replicate decrypt: import key and call subtle.decrypt directly.
+					const keyBytes = window.goneCrypto.importKeyB64(keyB64);
+					const additionalData = new TextEncoder().encode('gone:v1');
+					const cryptoKey = await crypto.subtle.importKey('raw', keyBytes, {name:'AES-GCM'}, false, ['decrypt']);
+					let ptBuf;
+					try {
+						ptBuf = await crypto.subtle.decrypt({name:'AES-GCM', iv: nonce, additionalData}, cryptoKey, ctBuf);
+					} catch(e) {
+						setStatus('Decryption failed');
+						return;
+					}
+					const tDecEnd = performance.now();
+					log('consume_decrypt', tDecStart, tDecEnd);
+					log('consume_total', tFetchStart, tDecEnd);
+					const plaintext = new TextDecoder().decode(ptBuf);
+					if (pre) {
+						pre.textContent = plaintext;
+						pre.hidden = false;
+					}
+					if (actions) actions.hidden = false;
+					setStatus('Decrypted');
+					copyBtn?.addEventListener('click', async ()=>{
+						try { await navigator.clipboard.writeText(plaintext); copyBtn.textContent='Copied!'; setTimeout(()=>copyBtn.textContent='Copy Secret', 2500);} catch(_){}
+					});
+				} catch(e) {
+					console.error('[gone] consume error', e);
+					setStatus('Unexpected error');
+				}
+			})();
+		})();

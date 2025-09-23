@@ -108,13 +108,21 @@ func main() {
 		MaxTTL:   cfg.MaxTTL,
 	}
 
-	// parse embedded templates (index + about)
+	// parse embedded templates (partials + index + about + secret)
+	partialsBytes, err := fs.ReadFile(wembed.FS, "partials.tmpl.html")
+	if err != nil {
+		slog.Error("load partials template", "err", err)
+		os.Exit(6)
+	}
 	indexBytes, err := fs.ReadFile(wembed.FS, "index.tmpl.html")
 	if err != nil {
 		slog.Error("load index template", "err", err)
 		os.Exit(6)
 	}
-	indexTmpl, err := template.New("index").Parse(string(indexBytes))
+	indexTmpl, err := template.New("partials").Parse(string(partialsBytes))
+	if err == nil {
+		indexTmpl, err = indexTmpl.New("index").Parse(string(indexBytes))
+	}
 	if err != nil {
 		slog.Error("parse index template", "err", err)
 		os.Exit(6)
@@ -124,9 +132,25 @@ func main() {
 		slog.Error("load about template", "err", err)
 		os.Exit(6)
 	}
-	aboutTmpl, err := template.New("about").Parse(string(aboutBytes))
+	aboutTmpl, err := template.New("partials").Parse(string(partialsBytes))
+	if err == nil {
+		aboutTmpl, err = aboutTmpl.New("about").Parse(string(aboutBytes))
+	}
 	if err != nil {
 		slog.Error("parse about template", "err", err)
+		os.Exit(6)
+	}
+	secretBytes, err := fs.ReadFile(wembed.FS, "secret.tmpl.html")
+	if err != nil {
+		slog.Error("load secret template", "err", err)
+		os.Exit(6)
+	}
+	secretTmpl, err := template.New("partials").Parse(string(partialsBytes))
+	if err == nil {
+		secretTmpl, err = secretTmpl.New("secret").Parse(string(secretBytes))
+	}
+	if err != nil {
+		slog.Error("parse secret template", "err", err)
 		os.Exit(6)
 	}
 
@@ -148,6 +172,7 @@ func main() {
 	handler := httpx.New(svc, cfg.MaxBytes, readiness)
 	handler.IndexTmpl = httpx.TemplateRenderer{T: indexTmpl}
 	handler.AboutTmpl = httpx.AboutTemplateRenderer{T: aboutTmpl}
+	handler.SecretTmpl = httpx.TemplateRenderer{T: secretTmpl}
 	handler.Assets = assets
 	handler.MinTTL = cfg.MinTTL
 	handler.MaxTTL = cfg.MaxTTL

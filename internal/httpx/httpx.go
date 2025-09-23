@@ -29,6 +29,7 @@ type Handler struct {
 	Readiness  func(context.Context) error // optional readiness probe
 	IndexTmpl  IndexRenderer               // optional renderer for index page
 	AboutTmpl  AboutRenderer               // optional renderer for about page
+	SecretTmpl SecretRenderer              // optional renderer for secret consumption page
 	Assets     http.FileSystem             // static assets filesystem (optional)
 	MinTTL     time.Duration               // lower TTL bound (from config)
 	MaxTTL     time.Duration               // upper TTL bound (from config)
@@ -49,6 +50,7 @@ func (h *Handler) Router() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", h.handleIndex)
 	mux.HandleFunc("/about", h.handleAbout)
+	mux.HandleFunc("/secret/", h.handleSecret) // expect /secret/{id}
 	mux.HandleFunc("/api/secret", h.handleCreateSecret)
 	mux.HandleFunc("/api/secret/", h.handleConsumeSecret) // expect /api/secret/{id}
 	mux.HandleFunc("/healthz", h.handleHealth)
