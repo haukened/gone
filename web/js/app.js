@@ -80,3 +80,17 @@
 	// Placeholder for future client-side encryption workflow bootstrapping.
 	console.log('Gone UI loaded');
 })();
+
+(function autoResize() {
+  const ta = document.getElementById('secret');
+  if (!ta) return;
+  const max = 40 * 16; // 40rem assuming 16px root, adjust as needed
+  function grow() {
+    ta.style.height = 'auto';
+    const next = Math.min(ta.scrollHeight, max);
+    ta.style.height = next + 'px';
+    ta.style.overflowY = ta.scrollHeight > max ? 'auto' : 'hidden';
+  }
+  ta.addEventListener('input', grow);
+  grow();
+})();
