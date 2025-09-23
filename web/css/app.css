@@ -34,7 +34,7 @@ body:has(#theme-switch:checked) {
 html, body { height: 100%; }
 body { font-family: system-ui, sans-serif; margin: 1.5rem; line-height: 1.4; background: var(--bg); color: var(--fg); }
 header h1 { margin: 0 0 .25rem 0; }
-ul { list-style: disc; margin-left: 1.2rem; }
+ul, ol { list-style: disc; margin-left: 0.5rem; }
 code { background: var(--code-bg); padding: 2px 4px; border-radius: 3px; }
 a { color: var(--link); text-decoration: none; }
 a:hover, a:focus { color: var(--link-hover); text-decoration: underline; }
@@ -45,14 +45,21 @@ button { cursor: pointer; background: var(--accent); color: #fff; border-color: 
 button:hover:not(:disabled), button:focus-visible:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 button:disabled { opacity: .5; cursor: not-allowed; }
 
+/* Back link styled as button */
+.back-link { display: inline-flex; max-width: fit-content; align-items: center; gap: .5rem; padding: .6rem 1.15rem; border: 1px solid var(--border); border-radius: var(--control-radius); font-size: .8rem; text-decoration: none; line-height: 1; background: var(--bg); color: var(--fg); font-weight: 500; }
+.back-link:hover, .back-link:focus-visible { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+/* Primary variant for link styled like main action button */
+.primary-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
+.primary-btn:hover, .primary-btn:focus-visible { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
+
 /* Layout */
 .site-header { max-width: 900px; margin: 0 auto 1.25rem; display: flex; align-items: flex-end; gap: .75rem; padding: 0 1rem; }
 .brand .logo { font-size: 1.65rem; line-height: 1; }
 .brand .tagline { margin: 0; font-size: .9rem; color: var(--muted); }
 
-.center-wrap { max-width: 900px; margin: 0 auto; padding: 0 1rem; }
+.center-wrap { max-width: 900px; margin: 0 auto; padding: 0 1rem; display: flex; flex-direction: column; gap: 1.25rem; }
 
-.card { background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem 1.25rem 1rem; box-shadow: 0 6px 18px -8px rgba(0,0,0,.25), 0 2px 4px rgba(0,0,0,.06); backdrop-filter: blur(2px); }
+.card { background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; box-shadow: 0 6px 18px -8px rgba(0,0,0,.25), 0 2px 4px rgba(0,0,0,.06); backdrop-filter: blur(2px); }
 @media (prefers-color-scheme: dark) { .card { box-shadow: 0 4px 14px -8px rgba(0,0,0,.9), 0 1px 3px rgba(0,0,0,.6); } }
 
 /* Security warning */
@@ -68,10 +75,14 @@ body:has(#theme-switch:checked) .security-warning-card { background: #3a2d00; co
 .hint { font-size: .75rem; color: var(--muted); gap: 1rem; display: flex;}
 .hint-item { display: flex; align-items: center; gap: .25rem; }
 
-.actions { display: flex; gap: .75rem; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
-.actions-item { display: flex; align-items: center; gap: .25rem; }
+.actions { display: flex; gap: .75rem; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.actions-item { display: flex; flex-direction: row; align-items: center; gap: .25rem; }
 .actions select { min-width: 6rem; }
 .actions .primary { padding: .6rem 1.15rem; border-radius: var(--control-radius); }
+.about-link { display: flex; flex-direction: row; align-items: center; gap: .5rem; text-decoration: none; font-size: 0.75rem; color: var(--muted); }
+
+.underline { text-decoration: underline; }
+.indent { margin-left: 2rem; }
 
 /* custom select control */
 select { 

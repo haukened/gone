@@ -28,6 +28,7 @@ type Handler struct {
 	MaxBody    int64                       // mirror service.MaxBytes (defense-in-depth)
 	Readiness  func(context.Context) error // optional readiness probe
 	IndexTmpl  IndexRenderer               // optional renderer for index page
+	AboutTmpl  AboutRenderer               // optional renderer for about page
 	Assets     http.FileSystem             // static assets filesystem (optional)
 	MinTTL     time.Duration               // lower TTL bound (from config)
 	MaxTTL     time.Duration               // upper TTL bound (from config)
@@ -47,6 +48,7 @@ func New(svc ServicePort, maxBody int64, readiness func(context.Context) error) 
 func (h *Handler) Router() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", h.handleIndex)
+	mux.HandleFunc("/about", h.handleAbout)
 	mux.HandleFunc("/api/secret", h.handleCreateSecret)
 	mux.HandleFunc("/api/secret/", h.handleConsumeSecret) // expect /api/secret/{id}
 	mux.HandleFunc("/healthz", h.handleHealth)

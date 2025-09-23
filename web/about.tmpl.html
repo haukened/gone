@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>About - Gone</title>
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<link rel="stylesheet" href="/static/css/app.css" />
+</head>
+<body>
+	<header class="site-header">
+		<div class="brand">
+			<h1 class="logo">Gone</h1>
+			<p class="tagline">One-time secret sharing.</p>
+		</div>
+		<div class="theme-toggle">
+			<input type="checkbox" id="theme-switch" class="theme-switch" aria-pressed="false" aria-describedby="theme-switch-desc" />
+			<label for="theme-switch" class="theme-switch-label" role="button">
+				<span class="theme-icon theme-icon-target-dark" aria-hidden="true">
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+				</span>
+				<span class="theme-icon theme-icon-target-light" aria-hidden="true">
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+				</span>
+				<span id="theme-switch-desc" class="sr-only">Toggle dark mode.</span>
+			</label>
+		</div>
+	</header>
+	<main class="center-wrap">
+		<a href="/" class="back-link primary-btn" aria-label="Back to home">
+			<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+			<span>Back</span>
+		</a>
+		<section class="card">
+      <h2 class="underline">What is Gone?</h2>
+			<p class=""> Go + One = <strong>Gone</strong></p>
+      <p>
+				Gone is a tool for sharing secrets privately, readable only one time.
+      	The server component is written in <a target="_blank" href="https://golang.org">Golang</a>, a language designed for simplicity and efficiency by Google.
+				The client-side application is built with vanilla JavaScript and modern WebCrypto APIs to perform encryption and decryption directly in your browser.
+			</p>
+			<p>
+				Gone is open source software. The source code is available on <a target="_blank" href="https://github.com/haukened/gone">GitHub</a> under the GNU Affero GPL v3.
+			</p>
+		</section>
+		<section class="card">
+			<h2 class="underline">What is the GNU Affero GPL v3, and what does it mean for users?</h2>
+			<ul>
+				<li><strong>For people who simply use Gone, but aren't hosting their own instance, you have no obligations.</strong></li>
+				<li>For people who modify Gone and host their own instance, you must share your changes.</li>
+				<li>The GNU Affero General Public License version 3 (AGPLv3) is a free, copyleft license for software and other kinds of works, specifically designed to ensure cooperation with the community in the case of network server software.</li>
+				<li>It is similar to the GNU General Public License (GPL), but with an additional requirement that if you run a modified program on a server and let other users interact with it there, your server must also allow them to download the source code corresponding to the modified version running there.</li>
+				<li>This ensures that users who interact with the software over a network have access to its source code, promoting transparency and collaboration.</li>
+				<li>It also ensures that for-profit companies that use the software must also share their modifications with the community, improving the software for everyone not just shareholders.</li>
+				<li>For more information, or to view the full text of the license, visit the <a target="_blank" href="https://www.gnu.org/licenses/agpl-3.0.en.html">GNU website</a>.</li>
+			</ul>
+		</section>
+		<section class="card">
+			<h2 class="underline">How Gone Keeps Secrets Secret</h2>
+			<p class="indent">Gone is designed so the server never learns your secret. The critical cryptography happens entirely in your browser before anything is sent over the network.</p>
+			<h3 class="underline">High Level Flow</h3>
+			<ol>
+				<li><strong>You type a secret</strong> into the form. Before it leaves your device, the browser generates a fresh, random encryption key.</li>
+				<li><strong>Client-side encryption</strong> (using modern WebCrypto primitives) transforms the plaintext into an opaque blob.</li>
+				<li><strong>Only the encrypted blob</strong> is sent to the Gone server. The key never leaves the browser.</li>
+				<li><strong>The server stores</strong> just that blob plus minimal metadata (TTL & one-time marker).</li>
+				<li><strong>A shareable URL</strong> is produced. The secret key is embedded in the URL fragment (the part after <code>#</code>) or query component so the server still never sees it during retrieval.</li>
+				<li><strong>The recipient loads the URL</strong>; their browser extracts the key locally and fetches the encrypted blob.</li>
+				<li><strong>Decryption happens client-side</strong>; the server remains blind to the plaintext the entire time.</li>
+				<li><strong>One-time consumption</strong>: after first successful retrieval the stored blob is deleted, preventing reuse.</li>
+			</ol>
+		</section>
+		<section class="card">
+			<h3 class="underline">Why This Matters</h3>
+			<ul>
+				<li><strong>Zero server knowledge:</strong> Compromise of the storage tier yields only ciphertext.</li>
+				<li><strong>Ephemeral access:</strong> One-time retrieval shrinks the attack window.</li>
+				<li><strong>Short TTLs:</strong> Automatic expiry further limits exposure if a link lingers.</li>
+				<li><strong>No password reuse risk:</strong> You never transmit existing credentials in the clear.</li>
+			</ul>
+		</section>
+		<section class="card">
+			<h3 class="underline">Threat Model Notes</h3>
+			<ul>
+				<li>Always verify you are on HTTPS (the app warns if not).</li>
+				<li>The secrecy guarantee assumes the sender's and recipient's browsers are not compromised.</li>
+				<li>Anyone who obtains the full share URL (including its key component) can decrypt the secret until first read or expiry.</li>
+			</ul>
+		</section>
+		<a href="/" class="back-link primary-btn" aria-label="Back to home">
+			<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+			<span>Back</span>
+		</a>
+	</main>
+	<script src="/static/js/app.js" defer></script>
+</body>
+</html>

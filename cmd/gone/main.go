@@ -108,15 +108,25 @@ func main() {
 		MaxTTL:   cfg.MaxTTL,
 	}
 
-	// parse embedded template
-	tmplBytes, err := fs.ReadFile(wembed.FS, "index.tmpl.html")
+	// parse embedded templates (index + about)
+	indexBytes, err := fs.ReadFile(wembed.FS, "index.tmpl.html")
 	if err != nil {
 		slog.Error("load index template", "err", err)
 		os.Exit(6)
 	}
-	parsedTmpl, err := template.New("index").Parse(string(tmplBytes))
+	indexTmpl, err := template.New("index").Parse(string(indexBytes))
 	if err != nil {
 		slog.Error("parse index template", "err", err)
+		os.Exit(6)
+	}
+	aboutBytes, err := fs.ReadFile(wembed.FS, "about.tmpl.html")
+	if err != nil {
+		slog.Error("load about template", "err", err)
+		os.Exit(6)
+	}
+	aboutTmpl, err := template.New("about").Parse(string(aboutBytes))
+	if err != nil {
+		slog.Error("parse about template", "err", err)
 		os.Exit(6)
 	}
 
@@ -136,7 +146,8 @@ func main() {
 	}
 
 	handler := httpx.New(svc, cfg.MaxBytes, readiness)
-	handler.IndexTmpl = httpx.TemplateRenderer{T: parsedTmpl}
+	handler.IndexTmpl = httpx.TemplateRenderer{T: indexTmpl}
+	handler.AboutTmpl = httpx.AboutTemplateRenderer{T: aboutTmpl}
 	handler.Assets = assets
 	handler.MinTTL = cfg.MinTTL
 	handler.MaxTTL = cfg.MaxTTL
