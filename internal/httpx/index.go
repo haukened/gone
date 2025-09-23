@@ -5,7 +5,10 @@ import (
 	"html/template"
 	"net/http"
 	"path"
+	"sort"
 	"strings"
+
+	"github.com/haukened/gone/internal/domain"
 )
 
 // IndexRenderer abstracts template execution for easier testing.
@@ -28,6 +31,8 @@ type IndexView struct {
 	MinTTLSeconds int
 	MaxTTLSeconds int
 	TTLOptions    []TTLOptionView
+	MinTTLHuman   string
+	MaxTTLHuman   string
 }
 
 // TTLOptionView is the subset of a domain TTLOption needed by the template.
@@ -52,6 +57,21 @@ func humanBytes(n int64) string {
 	return fmt.Sprintf("%.1f PB", f/1024)
 }
 
+// humanTTL renders a duration in the largest whole unit among hours, minutes, seconds.
+// Examples: 7200s -> "2h"; 180s -> "3m"; 45s -> "45s".
+func humanTTL(sec int) string {
+	if sec <= 0 {
+		return "0s"
+	}
+	if sec%3600 == 0 { // whole hours
+		return fmt.Sprintf("%dh", sec/3600)
+	}
+	if sec%60 == 0 { // whole minutes
+		return fmt.Sprintf("%dm", sec/60)
+	}
+	return fmt.Sprintf("%ds", sec)
+}
+
 // handleIndex renders the root HTML page.
 func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" { // only exact root handled here
@@ -71,9 +91,15 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 		MinTTLSeconds: int(h.MinTTL.Seconds()),
 		MaxTTLSeconds: int(h.MaxTTL.Seconds()),
 	}
+	view.MinTTLHuman = humanTTL(view.MinTTLSeconds)
+	view.MaxTTLHuman = humanTTL(view.MaxTTLSeconds)
 	if len(h.TTLOptions) > 0 {
-		view.TTLOptions = make([]TTLOptionView, 0, len(h.TTLOptions))
-		for _, opt := range h.TTLOptions {
+		// copy then sort descending by duration so longest appears first (default selected)
+		tmp := make([]domain.TTLOption, len(h.TTLOptions))
+		copy(tmp, h.TTLOptions)
+		sort.Slice(tmp, func(i, j int) bool { return tmp[i].Duration > tmp[j].Duration })
+		view.TTLOptions = make([]TTLOptionView, 0, len(tmp))
+		for _, opt := range tmp {
 			view.TTLOptions = append(view.TTLOptions, TTLOptionView{Label: opt.Label, DurationSeconds: int(opt.Duration.Seconds())})
 		}
 	}

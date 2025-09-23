@@ -45,10 +45,18 @@ func TestIndexHandler(t *testing.T) {
 		t.Fatalf("content-type %s", ct)
 	}
 	body := w.Body.String()
+	// presence checks
 	for _, expect := range []string{"1234", "5m", "30m", "1h"} {
 		if !strings.Contains(body, expect) {
 			t.Fatalf("expected body to contain %q: %s", expect, body)
 		}
+	}
+	// order check: longest first
+	idx1h := strings.Index(body, ">1h<")
+	idx30m := strings.Index(body, ">30m<")
+	idx5m := strings.Index(body, ">5m<")
+	if !(idx1h != -1 && idx30m != -1 && idx5m != -1 && idx1h < idx30m && idx30m < idx5m) {
+		t.Fatalf("expected descending order 1h,30m,5m; got positions %d %d %d in %s", idx1h, idx30m, idx5m, body)
 	}
 }
 
