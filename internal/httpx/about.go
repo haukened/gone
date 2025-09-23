@@ -2,7 +2,6 @@ package httpx
 
 import (
 	"html/template"
-	"io/fs"
 	"net/http"
 )
 
@@ -41,14 +40,4 @@ func (h *Handler) handleAbout(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("template error"))
 	}
-}
-
-// parseAboutTemplate loads about.tmpl.html from an fs.FS and returns a parsed template.
-// This helper is used by tests to avoid duplicating parsing logic.
-func parseAboutTemplate(fsys fs.FS) (*template.Template, error) {
-	b, err := fs.ReadFile(fsys, "about.tmpl.html")
-	if err != nil {
-		return nil, err
-	}
-	return template.New("about").Parse(string(b))
 }
