@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -11,7 +12,42 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// helper function to ensure ENV vars on the host do not interfere with tests
+// returns the original values for restoration if needed
+func cleanEnvVars(t *testing.T) map[string]string {
+	orig := make(map[string]string)
+	t.Helper()
+	vars := []string{
+		"GONE_ADDR",
+		"GONE_DATA_DIR",
+		"GONE_INLINE_MAX_BYTES",
+		"GONE_MAX_BYTES",
+		"GONE_TTL_OPTIONS",
+	}
+	for _, v := range vars {
+		val := os.Getenv(v)
+		if val != "" {
+			orig[v] = val
+		}
+		if err := os.Unsetenv(v); err != nil {
+			t.Fatalf("unsetenv %q: %v", v, err)
+		}
+	}
+	return orig
+}
+
+func restoreEnvVars(t *testing.T, orig map[string]string) {
+	t.Helper()
+	for k, v := range orig {
+		if err := os.Setenv(k, v); err != nil {
+			t.Fatalf("setenv %q: %v", k, err)
+		}
+	}
+}
+
 func TestDefaultConfig(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load() error: %v", err)
@@ -20,6 +56,8 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestLoadEnvList(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
 	t.Setenv("GONE_TTL_OPTIONS", "5m,30m,1h")
 	cfg, err := Load()
 	if err != nil {
@@ -34,6 +72,8 @@ func TestLoadEnvList(t *testing.T) {
 }
 
 func TestNoTTLOptions(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
 	t.Setenv("GONE_TTL_OPTIONS", "")
 	_, err := Load()
 	if err == nil {
@@ -42,6 +82,8 @@ func TestNoTTLOptions(t *testing.T) {
 }
 
 func TestBadTTLOptions(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
 	t.Setenv("GONE_TTL_OPTIONS", "invalid")
 	_, err := Load()
 	if err == nil {
@@ -50,6 +92,8 @@ func TestBadTTLOptions(t *testing.T) {
 }
 
 func TestValidPaths(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
 	valid := []string{
 		"data",
 		"/var/lib/gone",
@@ -71,6 +115,8 @@ func TestValidPaths(t *testing.T) {
 }
 
 func TestInvalidPaths(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
 	invalid := []string{
 		"",
 		".",
@@ -91,6 +137,9 @@ func TestInvalidPaths(t *testing.T) {
 }
 
 func TestValidIPPort(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
+
 	type sample struct {
 		Addr string `validate:"ip_port"`
 	}
@@ -142,6 +191,9 @@ func TestValidIPPort(t *testing.T) {
 }
 
 func TestSQLiteDSN(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
+
 	params := "?_journal_mode=WAL&_foreign_keys=on&_busy_timeout=5000&_synchronous=FULL"
 
 	join := func(a, b string) string {
@@ -190,7 +242,6 @@ func TestSQLiteDSN(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Config{
 				Addr:     ":8080",
@@ -215,6 +266,9 @@ func TestSQLiteDSN(t *testing.T) {
 }
 
 func TestLoadDefaultError(t *testing.T) {
+	origVars := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, origVars) })
+
 	// swap out the defaultLoader to return an error
 	orig := defaultLoader
 	t.Cleanup(func() { defaultLoader = orig })
@@ -232,6 +286,9 @@ func TestLoadDefaultError(t *testing.T) {
 }
 
 func TestLoadEnvError(t *testing.T) {
+	origVars := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, origVars) })
+
 	// swap out the envLoader to return an error
 	orig := envLoader
 	t.Cleanup(func() { envLoader = orig })
@@ -249,6 +306,8 @@ func TestLoadEnvError(t *testing.T) {
 }
 
 func TestRegisterValidationFails(t *testing.T) {
+	origVars := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, origVars) })
 	orig := registerValidators
 	t.Cleanup(func() { registerValidators = orig })
 	registerValidators = func(v *validator.Validate) error {
