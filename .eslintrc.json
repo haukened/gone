@@ -1,0 +1,39 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "script"
+  },
+  "extends": [
+    "eslint:recommended"
+  ],
+  "rules": {
+    "no-unused-vars": ["warn", { "args": "none", "ignoreRestSiblings": true }],
+    "no-undef": "error",
+    "no-console": ["off"],
+    "complexity": ["warn", 8],
+    "max-lines-per-function": ["warn", {"max": 60, "skipComments": true, "skipBlankLines": true}],
+    "max-depth": ["warn", 4],
+    "no-var": "error",
+    "prefer-const": ["warn", {"destructuring": "any", "ignoreReadBeforeAssign": true}],
+    "prefer-arrow-callback": "off",
+    "func-style": ["off"],
+    "no-shadow": ["warn", {"builtinGlobals": false, "hoist": "functions", "allow": []}],
+    "no-redeclare": ["error", {"builtinGlobals": false}],
+    "no-useless-escape": "off",
+    "no-restricted-globals": "off"
+  },
+  "overrides": [
+    {
+      "files": ["web/js/**/*.js"],
+      "env": { "browser": true },
+      "rules": {
+        "no-restricted-properties": "off"
+      }
+    }
+  ]
+}
