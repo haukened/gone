@@ -1,3 +1,4 @@
+"use strict";
 // Theme persistence & future extension hook.
 // Responsibilities:
 // 1. On load, determine desired theme: stored value OR system preference.
@@ -66,7 +67,6 @@
 	(function securityWarning(){
 		try {
 			const insecure = window.location.protocol === 'http:';
-			const host = window.location.hostname;
 			if (insecure) {
 				const section = document.querySelector('.security-warning');
 				if (section) {
@@ -96,10 +96,9 @@
 })();
 
 // AES-GCM v1 client-side crypto scaffold.
-// Envelope layout (base64url when transmitted):
-// version(1 byte=0x01) || nonce(12 bytes) || ciphertext+tag (WebCrypto returns both together)
-// Key (32 random bytes) is never sent to server; represented in URL fragment as: v1:<base64url(key)>
-// Public API attached at window.goneCrypto { generateKey(), encrypt(plaintext|Uint8Array), decrypt(envelopeB64, keyB64) }
+// Transport format currently: raw ciphertext bytes sent as body + nonce provided in X-Gone-Nonce header.
+// Key (32 random bytes) is never sent to server; represented in URL fragment as: v1:<base64url(key)>.
+// Public API attached at window.goneCrypto { generateKey(), encrypt(plaintext|Uint8Array) } (decrypt helper removed – consumption path performs direct subtle.decrypt with nonce + AAD).
 (function cryptoScaffold(){
 	const VERSION = 0x01; // increment for future formats
 	const KEY_BYTES = 32; // 256-bit AES-GCM
@@ -140,27 +139,6 @@
 		return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt','decrypt']);
 	}
 
-	function assembleEnvelope(nonce, ct) {
-		const out = new Uint8Array(1 + nonce.length + ct.length);
-		out[0] = VERSION;
-		out.set(nonce, 1);
-		out.set(ct, 1 + nonce.length);
-		return out;
-	}
-
-	function parseEnvelope(bytes) {
-		if (bytes.length < 1 + NONCE_BYTES + 16) { // tag is 16 bytes
-			throw new Error('envelope too short');
-		}
-		const version = bytes[0];
-		if (version !== VERSION) {
-			throw new Error('unsupported version: ' + version);
-		}
-		const nonce = bytes.slice(1, 1 + NONCE_BYTES);
-		const ct = bytes.slice(1 + NONCE_BYTES);
-		return { nonce, ct };
-	}
-
 	function generateKey() {
 		return randomBytes(KEY_BYTES);
 	}
@@ -185,24 +163,6 @@
 			return { nonce, ciphertext: ct };
 	}
 
-	async function decrypt(envelopeB64, keyB64) {
-		const keyBytes = b64urlDecode(keyB64);
-		if (keyBytes.length !== KEY_BYTES) {
-			throw new Error('invalid key length');
-		}
-		const key = await importKey(keyBytes);
-		const envBytes = b64urlDecode(envelopeB64);
-		const { nonce, ct } = parseEnvelope(envBytes);
-		const additionalData = new TextEncoder().encode('gone:v1');
-		let ptBuf;
-		try {
-			ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce, additionalData }, key, ct);
-		} catch (e) {
-			throw new Error('decryption failed');
-		}
-		return utf8Decode(new Uint8Array(ptBuf));
-	}
-
 	function exportKeyB64(keyBytes) { return b64urlEncode(keyBytes); }
 	function importKeyB64(k) { const b = b64urlDecode(k); if (b.length !== KEY_BYTES) throw new Error('invalid key'); return b; }
 
@@ -212,7 +172,6 @@
 		exportKeyB64,
 		importKeyB64,
 		encrypt,
-		decrypt,
 		b64urlEncode,
 		b64urlDecode
 	};
@@ -228,7 +187,7 @@
 		const cardSection = form.closest('.card');
 		if (!textarea || !ttlSelect || !primaryBtn || !cardSection) return;
 
-		function logPhase(label, start, end){
+		function logTiming(label, start, end){
 			const ms = (end - start).toFixed(2);
 			console.log(`[gone][timing] ${label}: ${ms}ms`);
 		}
@@ -251,7 +210,7 @@
 				const encStart = performance.now();
 				encResult = await window.goneCrypto.encrypt(raw, keyBytes);
 				const encEnd = performance.now();
-				logPhase('encrypt', encStart, encEnd);
+				logTiming('encrypt', encStart, encEnd);
 			} catch(e){
 				console.error('[gone] encryption failed', e);
 				primaryBtn.disabled = false;
@@ -284,7 +243,7 @@
 					body: ciphertext
 				});
 				const uploadEnd = performance.now();
-				logPhase('upload', uploadStart, uploadEnd);
+				logTiming('upload', uploadStart, uploadEnd);
 				if (!resp.ok) {
 					console.error('[gone] server error', resp.status);
 					setStatus('Error');
@@ -294,51 +253,92 @@
 				json = await resp.json();
 			} catch(e){
 				const uploadEnd = performance.now();
-				logPhase('upload_error', uploadStart, uploadEnd);
+				logTiming('upload_error', uploadStart, uploadEnd);
 				console.error('[gone] upload failed', e);
 				setStatus('Network Err');
 				setTimeout(()=>{ primaryBtn.disabled = false; primaryBtn.innerHTML = originalBtnHTML; }, 1500);
 				return;
 			}
 			const t1 = performance.now();
-			logPhase('total_submit_cycle', t0, t1);
+			logTiming('total_submit_cycle', t0, t1);
 
 			// Construct share URL
 			const keyB64 = window.goneCrypto.exportKeyB64(keyBytes);
 			const shareURL = `${location.origin}/secret/${json.ID}#v${version}:${keyB64}`;
 
-			// Build result panel
-			const panel = document.createElement('div');
-			panel.className = 'card';
-			panel.innerHTML = `
-				<div class="result-panel">
-					<h2>Secret Ready</h2>
-					<p class="result-meta">Expires at <time datetime="${json.expires_at}">${new Date(json.expires_at).toLocaleString()}</time></p>
-					<label class="sr-only" for="share-link">Share Link</label>
-					<div class="share-link-wrap">
-						<input id="share-link" type="text" readonly value="${shareURL}" />
-						<button type="button" class="copy-btn">Copy Link</button>
-					</div>
-					<p class="result-warning">Anyone with this link can view the secret exactly once.</p>
-					<div class="result-actions">
-						<button type="button" class="primary new-btn">Create Another</button>
-					</div>
-				</div>`;
-			cardSection.replaceWith(panel);
-			const shareInput = panel.querySelector('#share-link');
-			const copyBtn = panel.querySelector('.copy-btn');
-			const newBtn = panel.querySelector('.new-btn');
-			if (shareInput) shareInput.focus();
-			copyBtn?.addEventListener('click', async ()=>{
-				try { await navigator.clipboard.writeText(shareURL); copyBtn.textContent = 'Copied!'; setTimeout(()=>copyBtn.textContent='Copy Link', 2500); } catch(_) {
-					shareInput.select(); document.execCommand('copy'); copyBtn.textContent='Copied*'; setTimeout(()=>copyBtn.textContent='Copy Link', 2500);
-				}
-			});
-			newBtn?.addEventListener('click', ()=>{ location.href = '/'; });
+				buildAndShowResultPanel({ shareURL, expiresAt: json.expires_at, replaceTarget: cardSection });
 		}
 
 		form.addEventListener('submit', handleSubmit);
+
+			// Developer preview: ?preview=result shows a mock panel without submission
+			(function previewCheck(){
+				const params = new URLSearchParams(location.search);
+				if (params.get('preview') === 'result') {
+					const mockID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+					const mockKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+					const version = window.goneCrypto.version;
+					const mockURL = `${location.origin}/secret/${mockID}#v${version}:${mockKey}`;
+					const future = new Date(Date.now() + 30*60*1000).toISOString();
+					buildAndShowResultPanel({ shareURL: mockURL, expiresAt: future, replaceTarget: form.closest('.card'), focus: false });
+				}
+			})();
 	})();
+
+		// Builds and replaces a target card with result panel.
+		function buildAndShowResultPanel(opts){
+			const { shareURL, expiresAt, replaceTarget, focus = true } = opts;
+      const BACK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>'
+			const COPY_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+			const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+			const panel = document.createElement('div');
+			panel.innerHTML = `
+        <div id="result-outer">
+          <h2 class="underline">Share This Link</h2>
+          <p class="security-warning-card">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+            <span>Anyone with this link can view the secret exactly once.</span>
+          </p>
+          <div class="card">
+            <p class="hint">
+              <span>Expires at <time datetime="${expiresAt}">${new Date(expiresAt).toLocaleString()}</time></span>
+            </p>
+            <input class="share-link" id="share-link" type="text" readonly value="${shareURL}" />
+            <div class="result-actions">
+              <a href="/" class="back-link">${BACK_ICON} Create Another</a>
+              <button type="button" class="copy-primary-btn" aria-label="Copy full share link">Copy Link ${COPY_ICON}</button>
+            </div>
+          </div>
+        </div>
+      `;
+			if (replaceTarget) replaceTarget.replaceWith(panel); else document.body.appendChild(panel);
+			const shareInput = panel.querySelector('#share-link');
+			const copyBtn = panel.querySelector('.copy-primary-btn');
+			if (focus && shareInput) shareInput.focus();
+			if (copyBtn) {
+				copyBtn.addEventListener('click', async () => {
+					let success = true;
+					try {
+						await navigator.clipboard.writeText(shareURL);
+					} catch(_) {
+						try { shareInput.select(); document.execCommand('copy'); } catch(_) { success = false; }
+					}
+					if (success) {
+						copyBtn.dataset.original = copyBtn.innerHTML;
+						copyBtn.innerHTML = 'Copied ' + CHECK_ICON;
+						copyBtn.classList.add('copied');
+						copyBtn.disabled = true;
+						setTimeout(()=>{ 
+							copyBtn.innerHTML = copyBtn.dataset.original || ('Copy Link ' + COPY_ICON);
+							copyBtn.classList.remove('copied');
+							copyBtn.disabled = false;
+						}, 2200);
+					}
+				});
+			}
+			// no standalone newBtn today; the back-link handles create-another
+			console.log('[gone] result panel shown');
+		}
 
 		// Secret consumption (decrypt) flow for /secret/{id} pages.
 		(function consumeFlow(){
@@ -351,7 +351,7 @@
 			const copyBtn = document.getElementById('copy-secret');
 
 			function setStatus(msg){ if (statusEl) statusEl.textContent = msg; }
-			function log(label,start,end){ console.log(`[gone][timing] ${label}: ${(end-start).toFixed(2)}ms`); }
+			function logTiming(label,start,end){ console.log(`[gone][timing] ${label}: ${(end-start).toFixed(2)}ms`); }
 
 			// Parse fragment: #v<version>:<key>
 			const hash = location.hash || '';
@@ -378,7 +378,7 @@
 					const tFetchStart = performance.now();
 					const resp = await fetch(`/api/secret/${id}`);
 					const tFetchEnd = performance.now();
-					log('consume_fetch', tFetchStart, tFetchEnd);
+					logTiming('consume_fetch', tFetchStart, tFetchEnd);
 					if (!resp.ok) {
 						setStatus(resp.status === 404 ? 'Secret not found or already consumed.' : 'Fetch error');
 						return;
@@ -405,8 +405,8 @@
 						return;
 					}
 					const tDecEnd = performance.now();
-					log('consume_decrypt', tDecStart, tDecEnd);
-					log('consume_total', tFetchStart, tDecEnd);
+					logTiming('consume_decrypt', tDecStart, tDecEnd);
+					logTiming('consume_total', tFetchStart, tDecEnd);
 					const plaintext = new TextDecoder().decode(ptBuf);
 					if (pre) {
 						pre.textContent = plaintext;
@@ -415,8 +415,15 @@
 					if (actions) actions.hidden = false;
 					setStatus('Decrypted');
 					copyBtn?.addEventListener('click', async ()=>{
-						try { await navigator.clipboard.writeText(plaintext); copyBtn.textContent='Copied!'; setTimeout(()=>copyBtn.textContent='Copy Secret', 2500);} catch(_){}
-					});
+						try {
+							await navigator.clipboard.writeText(plaintext);
+							copyBtn.textContent='Copied!';
+							setTimeout(()=>copyBtn.textContent='Copy Secret', 2500);
+						} catch(_) {
+							copyBtn.textContent='Copy failed';
+							setTimeout(()=>copyBtn.textContent='Copy Secret', 2500);
+						}}
+					);
 				} catch(e) {
 					console.error('[gone] consume error', e);
 					setStatus('Unexpected error');
