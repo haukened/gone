@@ -1,53 +1,66 @@
-package httpx_test
+package httpx
 
 import (
-	"context"
+	"errors"
 	"html/template"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
-
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/domain"
-	"github.com/haukened/gone/internal/httpx"
 )
 
-type noopServiceAbout struct{}
+// stubAboutErr always errors.
+type stubAboutErr struct{}
 
-func (noopServiceAbout) CreateSecret(context.Context, io.Reader, int64, uint8, string, time.Duration) (domain.SecretID, time.Time, error) {
-	return domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), time.Now().Add(time.Hour), nil
-}
-func (noopServiceAbout) Consume(context.Context, string) (app.Meta, io.ReadCloser, int64, error) {
-	return app.Meta{Version: 1, NonceB64u: "n"}, io.NopCloser(io.Reader(nil)), 0, nil
-}
+func (stubAboutErr) Execute(w http.ResponseWriter, data any) error { return errors.New("boom") }
 
-func TestAboutHandler(t *testing.T) {
+// aboutTemplateRenderer constructs a basic template renderer similar to production for integration-like success case.
+func aboutTemplateRenderer() AboutTemplateRenderer {
 	tmpl := template.Must(template.New("about").Parse(`<html><body><h2>How Gone Keeps Secrets Secret</h2></body></html>`))
-	h := httpx.New(noopServiceAbout{}, 100, nil)
-	h.AboutTmpl = httpx.AboutTemplateRenderer{T: tmpl}
-	r := httptest.NewRequest(http.MethodGet, "/about", nil)
-	w := httptest.NewRecorder()
-	h.Router().ServeHTTP(w, r)
-	if w.Code != http.StatusOK {
-		t.Fatalf("status %d", w.Code)
-	}
-	if ct := w.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
-		t.Fatalf("unexpected content-type %s", ct)
-	}
-	if body := w.Body.String(); !containsAll(body, []string{"How Gone Keeps Secrets Secret"}) {
-		t.Fatalf("missing expected about content: %s", body)
-	}
+	return AboutTemplateRenderer{T: tmpl}
 }
 
-// containsAll helper to avoid repeating strings.Contains checks.
-func containsAll(s string, subs []string) bool {
-	for _, sub := range subs {
-		if !strings.Contains(s, sub) {
-			return false
-		}
+func TestHandleAbout_AllBranches(t *testing.T) {
+	tests := []struct {
+		name          string
+		path          string
+		tmpl          AboutRenderer
+		direct        bool // call handleAbout directly (avoids mux routing differences)
+		wantStatus    int
+		wantContains  []string
+		wantCT        string
+		wantCacheCtrl string
+	}{
+		{name: "wrong path", path: "/aboutx", tmpl: aboutTemplateRenderer(), direct: true, wantStatus: http.StatusNotFound},
+		{name: "nil template", path: "/about", tmpl: nil, direct: true, wantStatus: http.StatusServiceUnavailable, wantContains: []string{"about unavailable"}},
+		{name: "template error", path: "/about", tmpl: stubAboutErr{}, direct: true, wantStatus: http.StatusInternalServerError, wantContains: []string{"template error"}, wantCT: "text/plain; charset=utf-8"},
+		{name: "success", path: "/about", tmpl: aboutTemplateRenderer(), direct: true, wantStatus: http.StatusOK, wantContains: []string{"How Gone Keeps Secrets Secret"}, wantCT: "text/html; charset=utf-8", wantCacheCtrl: "no-store"},
 	}
-	return true
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			h := &Handler{AboutTmpl: tc.tmpl}
+			rr := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			h.handleAbout(rr, req)
+			if rr.Code != tc.wantStatus {
+				t.Fatalf("status %d want %d body=%q", rr.Code, tc.wantStatus, rr.Body.String())
+			}
+			body := rr.Body.String()
+			for _, sub := range tc.wantContains {
+				if !strings.Contains(body, sub) {
+					t.Fatalf("body missing %q: %s", sub, body)
+				}
+			}
+			if tc.wantCT != "" {
+				if got := rr.Header().Get("Content-Type"); got != tc.wantCT {
+					t.Fatalf("content-type %q want %q", got, tc.wantCT)
+				}
+			}
+			if tc.wantCacheCtrl != "" {
+				if got := rr.Header().Get("Cache-Control"); got != tc.wantCacheCtrl {
+					t.Fatalf("cache-control %q want %q", got, tc.wantCacheCtrl)
+				}
+			}
+		})
+	}
 }
