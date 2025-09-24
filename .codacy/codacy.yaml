@@ -4,6 +4,11 @@ tools:
     - name: semgrep
         enabled: true
         version: 1.78.0
+    # Explicitly disable CSS/SCSS style engines to avoid SCSS rules on plain CSS
+    - name: stylelint
+        enabled: false
+    - name: scss-lint
+        enabled: false
 
 configuration:
     eslint:
