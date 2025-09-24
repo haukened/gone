@@ -6,7 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/haukened/gone/internal/app"
@@ -80,45 +79,73 @@ func (i *Index) Consume(ctx context.Context, id string, _ time.Time) (*store.Ind
 
 // ExpireBefore selects secrets expiring before t and deletes them, returning records for blob cleanup.
 func (i *Index) ExpireBefore(ctx context.Context, t time.Time) ([]store.ExpiredRecord, error) {
-	tx, err := i.db.BeginTx(ctx, nil)
+	return expireBefore(ctx, i.db, t)
+}
+
+// expireBefore performs the ExpireBefore logic; isolated to reduce cyclomatic complexity on the method receiver.
+func expireBefore(ctx context.Context, db *sql.DB, t time.Time) ([]store.ExpiredRecord, error) {
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
+	// Ensure rollback on any error prior to successful commit.
+	committed := false
 	defer func() {
-		if err != nil {
+		if !committed {
 			_ = tx.Rollback()
 		}
 	}()
 
-	const sel = `SELECT id, external FROM secrets WHERE expires_at < ?`
-	rows, err := tx.QueryContext(ctx, sel, t.Unix())
+	recs, err := selectExpired(ctx, tx, t)
 	if err != nil {
 		return nil, err
 	}
+	if err = deleteExpired(ctx, tx, t); err != nil {
+		return nil, err
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+	committed = true
+	return recs, nil
+}
+
+func selectExpired(ctx context.Context, q interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, t time.Time) ([]store.ExpiredRecord, error) {
+	const sel = `SELECT id, external FROM secrets WHERE expires_at < ?`
+	rows, err := q.QueryContext(ctx, sel, t.Unix())
+	if err != nil {
+		return nil, err
+	}
+	return scanExpiredRows(rows)
+}
+
+func deleteExpired(ctx context.Context, e interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}, t time.Time) error {
+	const del = `DELETE FROM secrets WHERE expires_at < ?`
+	_, err := e.ExecContext(ctx, del, t.Unix())
+	return err
+}
+
+// scanExpiredRows reads all rows (id, external) from the provided *sql.Rows into a
+// slice of ExpiredRecord. It always closes the rows. The returned slice may be
+// empty if no rows were present. An error is returned if scanning or rows.Err()
+// produces an error.
+func scanExpiredRows(rows *sql.Rows) ([]store.ExpiredRecord, error) {
+	defer rows.Close()
 	var recs []store.ExpiredRecord
 	for rows.Next() {
 		var r store.ExpiredRecord
 		var extInt int
-		if err = rows.Scan(&r.ID, &extInt); err != nil {
-			if cErr := rows.Close(); cErr != nil {
-				return nil, fmt.Errorf("scan error: %v; close error: %w", err, cErr)
-			}
+		if err := rows.Scan(&r.ID, &extInt); err != nil {
 			return nil, err
 		}
 		r.External = extInt == 1
 		recs = append(recs, r)
 	}
-	if cErr := rows.Close(); cErr != nil {
-		return nil, cErr
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-	const del = `DELETE FROM secrets WHERE expires_at < ?`
-	if _, err = tx.ExecContext(ctx, del, t.Unix()); err != nil {
-		return nil, err
-	}
-	if err = tx.Commit(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return recs, nil
