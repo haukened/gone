@@ -54,7 +54,7 @@ func main() {
 	// ensure the data directory exists with secure permissions (owner rwx)
 	if st, err := os.Stat(cfg.DataDir); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			if mkErr := os.MkdirAll(cfg.DataDir, 0o700); mkErr != nil { // #nosec G301 directory controlled by config
+			if mkErr := os.MkdirAll(cfg.DataDir, 0o600); mkErr != nil {
 				slog.Error("failed to create data directory", "dir", cfg.DataDir, "err", mkErr)
 				os.Exit(3)
 			}
@@ -83,7 +83,7 @@ func main() {
 
 	// filesystem blob storage lives under data dir/blobs
 	blobDir := filepath.Join(cfg.DataDir, "blobs")
-	if err := os.MkdirAll(blobDir, 0o700); err != nil { // #nosec G301
+	if err := os.MkdirAll(blobDir, 0o600); err != nil {
 		slog.Error("create blobs dir", "err", err)
 		os.Exit(5)
 	}
