@@ -11,7 +11,7 @@
 
 (function() {
 	const STORAGE_KEY = 'gone.theme'; // values: 'light' | 'dark'
-	var checkbox = document.getElementById('theme-switch');
+	const checkbox = document.getElementById('theme-switch');
 	if (!checkbox) {
 		return false;
 	}
@@ -19,7 +19,7 @@
 	// guard against server-side rendering (e.g. static export)
 	if (typeof window === 'undefined') { return false; }
 
-	var desc = document.getElementById('theme-switch-desc');
+	const desc = document.getElementById('theme-switch-desc');
 
 	function systemPrefersDark() {
 		try {
@@ -31,8 +31,8 @@
 	}
 
 	function applyTheme(mode, persistParam) {
-		var persist = (persistParam === undefined) ? true : persistParam;
-		var isDark = mode === 'dark';
+		const persist = (persistParam === undefined) ? true : persistParam;
+		const isDark = mode === 'dark';
 		checkbox.checked = isDark; // checked => dark variables active (CSS :has)
 		checkbox.setAttribute('aria-pressed', String(isDark));
 		if (desc) {
@@ -47,7 +47,7 @@
 	}
 
 	function loadInitialTheme() {
-		var stored = "";
+		let stored = "";
 		try {
 			stored = localStorage.getItem(STORAGE_KEY);
 		} catch (_) { return false; }
@@ -61,14 +61,14 @@
 	}
 
 	checkbox.addEventListener('change', function(){
-		var mode = checkbox.checked ? 'dark' : 'light';
+		const mode = checkbox.checked ? 'dark' : 'light';
 		applyTheme(mode, true);
 		return true;
 	});
 
 	// React to system preference changes if user has not explicitly overridden (only when no stored value).
 	if (!localStorage.getItem(STORAGE_KEY) && window.matchMedia) {
-		var mq = window.matchMedia('(prefers-color-scheme: dark)');
+		const mq = window.matchMedia('(prefers-color-scheme: dark)');
 		mq.addEventListener('change', function(e){
 			if (!localStorage.getItem(STORAGE_KEY)) {
 				applyTheme(e.matches ? 'dark' : 'light', true);
@@ -82,9 +82,9 @@
 	// Security warning: show if served over insecure HTTP (excluding localhost & 127.0.0.1 & ::1)
 	(function securityWarning(){
 		try {
-			var insecure = window.location.protocol === 'http:';
+			const insecure = window.location.protocol === 'http:';
 			if (insecure) {
-				var section = document.querySelector('.security-warning');
+				const section = document.querySelector('.security-warning');
 				if (section) {
 					section.hidden = false;
 					section.setAttribute('aria-hidden', 'false');
@@ -100,12 +100,12 @@
 })();
 
 (function autoResize() {
-	var ta = document.getElementById('secret');
+	const ta = document.getElementById('secret');
 	if (!ta) return false;
-  var max = 40 * 16; // 40rem assuming 16px root, adjust as needed
+	const max = 40 * 16; // 40rem assuming 16px root, adjust as needed
 	function grow() {
     ta.style.height = 'auto';
-    var next = Math.min(ta.scrollHeight, max);
+		const next = Math.min(ta.scrollHeight, max);
     ta.style.height = next + 'px';
     ta.style.overflowY = ta.scrollHeight > max ? 'auto' : 'hidden';
 		return true;
@@ -120,9 +120,9 @@
 // Key (32 random bytes) is never sent to server; represented in URL fragment as: v1:<base64url(key)>.
 // Public API attached at window.goneCrypto { generateKey(), encrypt(plaintext|Uint8Array) } (decrypt helper removed – consumption path performs direct subtle.decrypt with nonce + AAD).
 (function cryptoScaffold(){
-	var VERSION = 0x01; // increment for future formats
-	var KEY_BYTES = 32; // 256-bit AES-GCM
-	var NONCE_BYTES = 12; // 96-bit nonce per NIST recommendation
+	const VERSION = 0x01; // increment for future formats
+	const KEY_BYTES = 32; // 256-bit AES-GCM
+	const NONCE_BYTES = 12; // 96-bit nonce per NIST recommendation
 
 	if (window.goneCrypto) {
 		return; // already defined
@@ -131,23 +131,23 @@
 	// Utilities
 	function utf8Encode(str) { return new TextEncoder().encode(str); }
 	function b64urlEncode(bytes) {
-		var bin = '';
-		for (var i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
-		var b64 = btoa(bin).replace(/\+/g,'-').replace(/\//g,'_');
-		var end = b64.length; // manual trim '=' padding instead of regex quantifier
+		let bin = '';
+		for (let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+		const b64 = btoa(bin).replace(/\+/g,'-').replace(/\//g,'_');
+		let end = b64.length; // manual trim '=' padding instead of regex quantifier
 		while (end > 0 && b64.charAt(end-1) === '=') end--;
 		return b64.substring(0, end);
 	}
 	function b64urlDecode(s) {
-		var norm = s.replace(/-/g,'+').replace(/_/g,'/');
+		let norm = s.replace(/-/g,'+').replace(/_/g,'/');
 		while (norm.length % 4) norm += '=';
-		var bin = atob(norm);
-		var out = new Uint8Array(bin.length);
-		for (var i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+		const bin = atob(norm);
+		const out = new Uint8Array(bin.length);
+		for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
 		return out;
 	}
 	function randomBytes(n) {
-		var b = new Uint8Array(n);
+		const b = new Uint8Array(n);
 		crypto.getRandomValues(b);
 		return b;
 	}
@@ -172,16 +172,16 @@
 		} else {
 			throw new Error('data must be string or Uint8Array');
 		}
-		var key = await importKey(keyBytes);
-		var nonce = randomBytes(NONCE_BYTES);
-		var additionalData = new TextEncoder().encode('gone:v1');
-		var ctBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce, additionalData }, key, plaintextBytes);
-		var ct = new Uint8Array(ctBuf);
+		const key = await importKey(keyBytes);
+		const nonce = randomBytes(NONCE_BYTES);
+		const additionalData = new TextEncoder().encode('gone:v1');
+		const ctBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce, additionalData }, key, plaintextBytes);
+		const ct = new Uint8Array(ctBuf);
 			return { nonce, ciphertext: ct };
 	}
 
 	function exportKeyB64(keyBytes) { return b64urlEncode(keyBytes); }
-	function importKeyB64(k) { var b = b64urlDecode(k); if (b.length !== KEY_BYTES) throw new Error('invalid key'); return b; }
+	function importKeyB64(k) { const b = b64urlDecode(k); if (b.length !== KEY_BYTES) throw new Error('invalid key'); return b; }
 
 	window.goneCrypto = {
 		version: VERSION,
@@ -196,107 +196,146 @@
 
 	// Form submission handling with timing instrumentation and result panel.
 	(function submitFlow(){
-		var form = document.getElementById('create-secret');
+		const form = document.getElementById('create-secret');
 		if (!form || !window.goneCrypto) return;
-		var textarea = document.getElementById('secret');
-		var ttlSelect = document.getElementById('ttl');
-		var primaryBtn = form.querySelector('button[type="submit"]');
-		var cardSection = form.closest('.card');
+		const textarea = document.getElementById('secret');
+		const ttlSelect = document.getElementById('ttl');
+		const primaryBtn = form.querySelector('button[type="submit"]');
+		const cardSection = form.closest('.card');
 		if (!textarea || !ttlSelect || !primaryBtn || !cardSection) return;
 
 		function logTiming(label, start, end){
-			var ms = (end - start).toFixed(2);
+			const ms = (end - start).toFixed(2);
 			console.log(`[gone][timing] ${label}: ${ms}ms`);
+		}
+
+		function setStatus(msg){ primaryBtn.textContent = msg; return true; }
+
+		function secureWipe(raw){
+			try {
+				const len = raw.length;
+				textarea.value = ''.padEnd(len, '\u2022');
+				textarea.value = '';
+			} catch(_) {}
+		}
+
+		async function encryptSecret(raw){
+			const key = window.goneCrypto.generateKey();
+			const encStart = performance.now();
+			const encResult = await window.goneCrypto.encrypt(raw, key);
+			const encEnd = performance.now();
+			logTiming('encrypt', encStart, encEnd);
+			return { key, encResult };
+		}
+
+		async function uploadCiphertext(encResult, keyBytes, ttl){
+			const { nonce, ciphertext } = encResult;
+			const version = window.goneCrypto.version;
+			const nonceB64 = window.goneCrypto.b64urlEncode(nonce);
+			const uploadStart = performance.now();
+			setStatus('Uploading…');
+			const resp = await fetch('/api/secret', {
+				method: 'POST',
+				headers: {
+					'X-Gone-Version': String(version),
+					'X-Gone-Nonce': nonceB64,
+					'X-Gone-TTL': ttl,
+					'Content-Type': 'application/octet-stream'
+				},
+				body: ciphertext
+			});
+			const uploadEnd = performance.now();
+			logTiming('upload', uploadStart, uploadEnd);
+			if (!resp.ok) {
+				console.error('[gone] server error', resp.status);
+				setStatus('Error');
+				return null;
+			}
+			return { json: await resp.json(), version, keyBytes };
+		}
+
+		function buildShareURL(id, version, keyBytes){
+			const keyB64 = window.goneCrypto.exportKeyB64(keyBytes);
+			return `${location.origin}/secret/${id}#v${version}:${keyB64}`;
+		}
+
+		function resetButton(original){
+			primaryBtn.disabled = false;
+			primaryBtn.textContent = original;
+		}
+
+		function failureDelayReset(original, delay){
+			setTimeout(function(){ resetButton(original); }, delay);
+		}
+
+		function logTotal(start){
+			const t1 = performance.now();
+			logTiming('total_submit_cycle', start, t1);
 		}
 
 		async function handleSubmit(ev){
 			ev.preventDefault();
-			var raw = textarea.value;
-			if (!raw) {
-				console.warn('[gone] empty secret submission blocked');
-				return;
-			}
-			var ttl = ttlSelect.value; // server expects parseable duration label
-			primaryBtn.disabled = true;
-			var originalBtnHTML = primaryBtn.innerHTML;
-			function setStatus(msg){ primaryBtn.textContent = msg; return true; }
-			var t0 = performance.now();
-			let keyBytes, encResult;
-			try {
-				keyBytes = window.goneCrypto.generateKey();
-				var encStart = performance.now();
-				encResult = await window.goneCrypto.encrypt(raw, keyBytes);
-				var encEnd = performance.now();
-				logTiming('encrypt', encStart, encEnd);
-			} catch(e){
-				console.error('[gone] encryption failed', e);
-				primaryBtn.disabled = false;
-				primaryBtn.textContent = originalBtnHTML;
-				return;
-			}
-			// Secure-ish wipe of textarea content
-			try {
-				var len = raw.length;
-				textarea.value = ''.padEnd(len, '\u2022');
-				textarea.value = '';
-			} catch(_) {}
 
-			// Build request
-			var { nonce, ciphertext } = encResult;
-			var version = window.goneCrypto.version;
-			var nonceB64 = window.goneCrypto.b64urlEncode(nonce);
-			var uploadStart = performance.now();
-			setStatus('Uploading…');
-			let resp, json;
-			try {
-				resp = await fetch('/api/secret', {
-					method: 'POST',
-					headers: {
-						'X-Gone-Version': String(version),
-						'X-Gone-Nonce': nonceB64,
-						'X-Gone-TTL': ttl,
-						'Content-Type': 'application/octet-stream'
-					},
-					body: ciphertext
-				});
-				var uploadEnd = performance.now();
-				logTiming('upload', uploadStart, uploadEnd);
-				if (!resp.ok) {
-					console.error('[gone] server error', resp.status);
-					setStatus('Error');
-					setTimeout(function(){ primaryBtn.disabled = false; primaryBtn.textContent = originalBtnHTML; }, 1200);
-					return;
+			function prepareSubmission(){
+				const raw = textarea.value;
+				if (!raw) { console.warn('[gone] empty secret submission blocked'); return null; }
+				const ttl = ttlSelect.value;
+				primaryBtn.disabled = true;
+				return { raw, ttl, originalBtnHTML: primaryBtn.innerHTML, t0: performance.now() };
+			}
+
+			async function performEncryption(raw, originalBtnHTML){
+				try {
+					const { key, encResult } = await encryptSecret(raw);
+					return { keyBytes: key, encResult };
+				} catch(e){
+					console.error('[gone] encryption failed', e);
+					resetButton(originalBtnHTML);
+					return null;
 				}
-				json = await resp.json();
-			} catch(e){
-				var uploadEnd = performance.now();
-				logTiming('upload_error', uploadStart, uploadEnd);
-				console.error('[gone] upload failed', e);
-				setStatus('Network Err');
-				setTimeout(function(){ primaryBtn.disabled = false; primaryBtn.textContent = originalBtnHTML; }, 1500);
-				return;
 			}
-			var t1 = performance.now();
-			logTiming('total_submit_cycle', t0, t1);
 
-			// varruct share URL
-			var keyB64 = window.goneCrypto.exportKeyB64(keyBytes);
-			var shareURL = `${location.origin}/secret/${json.ID}#v${version}:${keyB64}`;
+			async function performUpload(encResult, keyBytes, ttl, originalBtnHTML){
+				try {
+					const res = await uploadCiphertext(encResult, keyBytes, ttl);
+					if (!res) failureDelayReset(originalBtnHTML, 1200);
+					return res;
+				} catch(e){
+					console.error('[gone] upload failed', e);
+					setStatus('Network Err');
+					failureDelayReset(originalBtnHTML, 1500);
+					return null;
+				}
+			}
 
-				buildAndShowResultPanel({ shareURL, expiresAt: json.expires_at, replaceTarget: cardSection });
+			function finalize(uploadRes, keyBytes, t0){
+				logTotal(t0);
+				const shareURL = buildShareURL(uploadRes.json.ID, uploadRes.version, keyBytes);
+				buildAndShowResultPanel({ shareURL, expiresAt: uploadRes.json.expires_at, replaceTarget: cardSection });
+			}
+
+			const prep = prepareSubmission();
+			if (!prep) return;
+			const { raw, ttl, originalBtnHTML, t0 } = prep;
+			const encryption = await performEncryption(raw, originalBtnHTML);
+			if (!encryption) return;
+			secureWipe(raw);
+			const uploadRes = await performUpload(encryption.encResult, encryption.keyBytes, ttl, originalBtnHTML);
+			if (!uploadRes) return;
+			finalize(uploadRes, encryption.keyBytes, t0);
 		}
 
 		form.addEventListener('submit', handleSubmit);
 
 			// Developer preview: ?preview=result shows a mock panel without submission
 			(function previewCheck(){
-				var params = new URLSearchParams(location.search);
+				const params = new URLSearchParams(location.search);
 				if (params.get('preview') === 'result') {
-					var mockID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-					var mockKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-					var version = window.goneCrypto.version;
-					var mockURL = `${location.origin}/secret/${mockID}#v${version}:${mockKey}`;
-					var future = new Date(Date.now() + 30*60*1000).toISOString();
+					const mockID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+					const mockKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+					const version = window.goneCrypto.version;
+					const mockURL = `${location.origin}/secret/${mockID}#v${version}:${mockKey}`;
+					const future = new Date(Date.now() + 30*60*1000).toISOString();
 					buildAndShowResultPanel({ shareURL: mockURL, expiresAt: future, replaceTarget: form.closest('.card'), focus: false });
 				}
 			})();
@@ -379,58 +418,80 @@
 			var id = pathParts[pathParts.length-1];
 			if (!id) { setStatus('Invalid secret id'); return; }
 
-			(async () => {
+			async function fetchSecret(id) {
+				setStatus('Fetching…');
+				const tFetchStart = performance.now();
+				const resp = await fetch(`/api/secret/${id}`);
+				const tFetchEnd = performance.now();
+				logTiming('consume_fetch', tFetchStart, tFetchEnd);
+				if (!resp.ok) {
+					setStatus(resp.status === 404 ? 'Secret not found or already consumed.' : 'Fetch error');
+					return null;
+				}
+				return resp;
+			}
+
+			function validateHeaders(resp) {
+				const versionHdr = parseInt(resp.headers.get('X-Gone-Version')||'0', 10);
+				if (versionHdr !== window.goneCrypto.version) {
+					setStatus('Version mismatch');
+					return null;
+				}
+				const nonceB64 = resp.headers.get('X-Gone-Nonce') || '';
+				return nonceB64;
+			}
+
+			async function decryptPayload(resp, nonceB64, keyB64) {
+				const nonce = window.goneCrypto.b64urlDecode(nonceB64);
+				const ctBuf = new Uint8Array(await resp.arrayBuffer());
+				const keyBytes = window.goneCrypto.importKeyB64(keyB64);
+				const additionalData = new TextEncoder().encode('gone:v1');
+				const cryptoKey = await crypto.subtle.importKey('raw', keyBytes, {name:'AES-GCM'}, false, ['decrypt']);
 				try {
-					setStatus('Fetching…');
-					var tFetchStart = performance.now();
-					var resp = await fetch(`/api/secret/${id}`);
-					var tFetchEnd = performance.now();
-					logTiming('consume_fetch', tFetchStart, tFetchEnd);
-					if (!resp.ok) {
-						setStatus(resp.status === 404 ? 'Secret not found or already consumed.' : 'Fetch error');
-						return;
-					}
-					var nonceB64 = resp.headers.get('X-Gone-Nonce');
-					var versionHdr = parseInt(resp.headers.get('X-Gone-Version')||'0', 10);
-					if (versionHdr !== window.goneCrypto.version) {
-						setStatus('Version mismatch');
-						return;
-					}
-					var nonce = window.goneCrypto.b64urlDecode(nonceB64 || '');
-					var ctBuf = new Uint8Array(await resp.arrayBuffer());
-					var tDecStart = performance.now();
-					// Revarruct envelope bytes to reuse decrypt() expecting envelope format? We switched to raw.
-					// Instead replicate decrypt: import key and call subtle.decrypt directly.
-					var keyBytes = window.goneCrypto.importKeyB64(keyB64);
-					var additionalData = new TextEncoder().encode('gone:v1');
-					var cryptoKey = await crypto.subtle.importKey('raw', keyBytes, {name:'AES-GCM'}, false, ['decrypt']);
-					let ptBuf;
-					try {
-						ptBuf = await crypto.subtle.decrypt({name:'AES-GCM', iv: nonce, additionalData}, cryptoKey, ctBuf);
-					} catch(e) {
-						setStatus('Decryption failed');
-						return;
-					}
-					var tDecEnd = performance.now();
+					const tDecStart = performance.now();
+					const ptBuf = await crypto.subtle.decrypt({name:'AES-GCM', iv: nonce, additionalData}, cryptoKey, ctBuf);
+					const tDecEnd = performance.now();
 					logTiming('consume_decrypt', tDecStart, tDecEnd);
-					logTiming('consume_total', tFetchStart, tDecEnd);
-					var plaintext = new TextDecoder().decode(ptBuf);
-					if (pre) {
-						pre.textContent = plaintext;
-						pre.hidden = false;
-					}
-					if (actions) actions.hidden = false;
-					setStatus('Decrypted');
-					copyBtn?.addEventListener('click', async ()=>{
+					return new TextDecoder().decode(ptBuf);
+				} catch(_) {
+					setStatus('Decryption failed');
+					return null;
+				}
+			}
+
+			function showPlaintext(text) {
+				if (pre) {
+					pre.textContent = text;
+					pre.hidden = false;
+				}
+				if (actions) actions.hidden = false;
+				setStatus('Decrypted');
+				if (copyBtn) {
+					copyBtn.addEventListener('click', async ()=>{
 						try {
-							await navigator.clipboard.writeText(plaintext);
+							await navigator.clipboard.writeText(text);
 							copyBtn.textContent='Copied!';
 							setTimeout(()=>copyBtn.textContent='Copy Secret', 2500);
 						} catch(_) {
 							copyBtn.textContent='Copy failed';
 							setTimeout(()=>copyBtn.textContent='Copy Secret', 2500);
-						}}
-					);
+						}
+					});
+				}
+			}
+
+			(async function runConsume(){
+				try {
+					const resp = await fetchSecret(id);
+					if (!resp) return;
+					const nonceB64 = validateHeaders(resp);
+					if (!nonceB64) return;
+					const tStartTotal = performance.now();
+					const plaintext = await decryptPayload(resp, nonceB64, keyB64);
+					if (!plaintext) return;
+					showPlaintext(plaintext);
+					const tEndTotal = performance.now();
+					logTiming('consume_total', tStartTotal, tEndTotal);
 				} catch(e) {
 					console.error('[gone] consume error', e);
 					setStatus('Unexpected error');
