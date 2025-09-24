@@ -73,10 +73,22 @@ func (s *Store) Consume(ctx context.Context, id string) (meta app.Meta, rc io.Re
 	if cerr != nil {
 		return meta, nil, 0, cerr
 	}
-	// Interpret expiry at store layer: if already expired, treat as not found.
-	if !res.ExpiresAt.IsZero() && now.After(res.ExpiresAt) || now.Equal(res.ExpiresAt) {
+	if expired(now, res.ExpiresAt) {
 		return meta, nil, 0, app.ErrNotFound
 	}
+	return s.buildConsumeResult(id, res)
+}
+
+// expired reports whether the resource is expired at now.
+func expired(now time.Time, expiresAt time.Time) bool {
+	if expiresAt.IsZero() {
+		return false
+	}
+	return now.After(expiresAt) || now.Equal(expiresAt)
+}
+
+// buildConsumeResult constructs return values for a consumed secret depending on storage mode.
+func (s *Store) buildConsumeResult(id string, res *IndexResult) (meta app.Meta, rc io.ReadCloser, size int64, err error) {
 	meta = res.Meta
 	size = res.Size
 	if res.External {
