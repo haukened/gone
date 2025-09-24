@@ -15,6 +15,11 @@ Primary File: `web/js/app.js` (intentionally single bundle until complexity just
 4. Deterministic Refactors: Any complexity or size reduction should preserve observable behavior and timing logging semantics.
 5. Accessibility: Maintain focus management and semantic elements (e.g., `h2`, `button`, ARIA labels). Do not remove accessible names for brevity.
 
+## Avoid XSS Risks
+- Never manipulate the DOM with untrusted input via `innerHTML` or similar. Prefer `textContent` or explicit element creation.
+- Any use of `innerHTML` must be limited to static, trusted markup (e.g., embedded SVG) or sanitized content only.
+- Any use of `innerHTML` must be annotated with a comment explaining the trust boundary and justification, and eslint disabled.
+
 ## Language & Syntax
 - Use `const` by default; use `let` only when reassignment is required. NEVER use `var`.
 - Avoid global symbol leakage: wrap logical areas in IIFEs or module scopes when we migrate to ES modules.
