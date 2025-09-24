@@ -48,7 +48,19 @@
     return { version: parseInt(m[1],10), keyB64:m[2] };
   }
 
-  async function fetchSecret(id){ setStatus('Fetching…'); const t0=performance.now(); const resp=await fetch(`/api/secret/${id}`); const t1=performance.now(); logTiming('consume_fetch',t0,t1); if(!resp.ok){ setStatus(resp.status===404?'Secret not found or already consumed.':'Fetch error'); return null;} return resp; }
+  function validateIdFormat(id){ return /^[0-9a-f]{32}$/.test(id); }
+  async function fetchSecret(id){
+    // Defensive: ensure id is canonical 32-char lowercase hex before network use.
+    if(!validateIdFormat(id)){ setStatus('Invalid secret id'); return null; }
+    const safeId = encodeURIComponent(id); // path segment encoding (should be no-op for hex)
+    setStatus('Fetching…');
+    const t0=performance.now();
+    const resp=await fetch(`/api/secret/${safeId}`);
+    const t1=performance.now();
+    logTiming('consume_fetch',t0,t1);
+    if(!resp.ok){ setStatus(resp.status===404?'Secret not found or already consumed.':'Fetch error'); return null; }
+    return resp;
+  }
 
   function validateHeaders(resp){ const v=parseInt(resp.headers.get('X-Gone-Version')||'0',10); if(v!==window.goneCrypto.version){ setStatus('Version mismatch'); return null;} return resp.headers.get('X-Gone-Nonce')||''; }
 
