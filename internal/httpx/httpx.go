@@ -58,7 +58,8 @@ func (h *Handler) Router() http.Handler {
 	if h.Assets != nil {
 		mux.Handle("/static/", http.StripPrefix("/static/", h.staticHandler()))
 	}
-	return h.secureHeaders(mux)
+	// Order: correlation ID -> security headers -> handlers
+	return h.secureHeaders(CorrelationIDMiddleware(mux))
 }
 
 // secureHeaders middleware adds standard security & cache control headers.

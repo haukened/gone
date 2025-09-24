@@ -12,7 +12,7 @@ func (h *Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
 func (h *Handler) handleReady(w http.ResponseWriter, r *http.Request) {
 	if h.Readiness != nil {
 		if err := h.Readiness(r.Context()); err != nil {
-			h.writeError(w, http.StatusServiceUnavailable, "not ready")
+			h.writeError(r.Context(), w, http.StatusServiceUnavailable, "not ready")
 			return
 		}
 	}

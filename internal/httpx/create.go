@@ -107,14 +107,14 @@ func (h *Handler) handleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	meta, err := h.parseAndValidateCreate(r)
 	if err != nil {
 		code, msg := classifyCreateError(err)
-		h.writeError(w, code, msg)
+		h.writeError(r.Context(), w, code, msg)
 		return
 	}
 	body := http.MaxBytesReader(w, r.Body, meta.contentLength)
 	defer body.Close()
 	id, expires, svcErr := h.Service.CreateSecret(r.Context(), body, meta.contentLength, meta.version, meta.nonce, meta.ttl)
 	if svcErr != nil {
-		h.mapServiceError(w, svcErr)
+		h.mapServiceError(r.Context(), w, svcErr)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

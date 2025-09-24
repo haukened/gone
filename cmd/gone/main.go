@@ -101,9 +101,6 @@ func newBlobStorage(blobDir string) store.BlobStorage {
 
 type templates struct{ index, about, secret *template.Template }
 
-// tplSpec describes a template file to parse with a name added to the base partials template.
-type tplSpec struct{ name, file string }
-
 // parsePage parses the base partials plus a single page template.
 // Parameters:
 //

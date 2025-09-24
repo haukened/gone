@@ -10,18 +10,18 @@ import (
 // handleConsumeSecret implements GET /api/secret/{id}.
 func (h *Handler) handleConsumeSecret(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		h.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		h.writeError(r.Context(), w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	const prefix = "/api/secret/"
 	if len(r.URL.Path) <= len(prefix) || r.URL.Path[:len(prefix)] != prefix {
-		h.writeError(w, http.StatusNotFound, "not found")
+		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
 		return
 	}
 	id := r.URL.Path[len(prefix):]
 	meta, rc, size, err := h.Service.Consume(r.Context(), id)
 	if err != nil {
-		h.mapServiceError(w, err)
+		h.mapServiceError(r.Context(), w, err)
 		return
 	}
 	defer rc.Close()

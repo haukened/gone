@@ -25,7 +25,7 @@ func (tr AboutTemplateRenderer) Execute(w http.ResponseWriter, data any) error {
 // for potential future metrics or configuration exposure.
 func (h *Handler) handleAbout(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/about" { // exact match only
-		h.writeError(w, http.StatusNotFound, "not found")
+		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
 		return
 	}
 	if h.AboutTmpl == nil {

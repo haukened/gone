@@ -10,31 +10,32 @@
   const cardSection = form.closest('.card');
   if (!textarea || !ttlSelect || !primaryBtn || !cardSection) return;
   function logTiming(label, start, end) { console.log(`[gone][timing] ${label}: ${(end - start).toFixed(2)}ms`); }
+  // setStatus temporarily replaces the button label with plain text (no icon).
   function setStatus(msg) { primaryBtn.textContent = msg; return true; }
   function secureWipe(raw) { try { const len = raw.length; textarea.value = ''.padEnd(len, '\u2022'); textarea.value = ''; } catch (_) { /* best-effort */ } }
   async function encryptSecret(raw) { const key = window.goneCrypto.generateKey(); const encStart = performance.now(); const encResult = await window.goneCrypto.encrypt(raw, key); const encEnd = performance.now(); logTiming('encrypt', encStart, encEnd); return { key, encResult }; }
   async function uploadCiphertext(encResult, keyBytes, ttl) { const { nonce, ciphertext } = encResult; const version = window.goneCrypto.version; const nonceB64 = window.goneCrypto.b64urlEncode(nonce); const uploadStart = performance.now(); setStatus('Uploading…'); const resp = await fetch('/api/secret', { method: 'POST', headers: { 'X-Gone-Version': String(version), 'X-Gone-Nonce': nonceB64, 'X-Gone-TTL': ttl, 'Content-Type': 'application/octet-stream' }, body: ciphertext }); const uploadEnd = performance.now(); logTiming('upload', uploadStart, uploadEnd); if (!resp.ok) { console.error('[gone] server error', resp.status); setStatus('Error'); return null; } return { json: await resp.json(), version, keyBytes }; }
   function buildShareURL(id, version, keyBytes) { const keyB64 = window.goneCrypto.exportKeyB64(keyBytes); return `${location.origin}/secret/${id}#v${version}:${keyB64}`; }
-  function resetButton(original) { primaryBtn.disabled = false; primaryBtn.textContent = original; }
+  function resetButton(original) { primaryBtn.disabled = false; primaryBtn.innerHTML = original; }
   function failureDelayReset(original, delay) { setTimeout(function () { resetButton(original); }, delay); }
   function logTotal(start) { const t1 = performance.now(); logTiming('total_submit_cycle', start, t1); }
   async function handleSubmit(ev) {
     ev.preventDefault(); function prepareSubmission() { const raw = textarea.value; if (!raw) { console.warn('[gone] empty secret submission blocked'); return null; } const ttl = ttlSelect.value; primaryBtn.disabled = true; return { raw, ttl, originalBtnHTML: primaryBtn.innerHTML, t0: performance.now() }; }
     async function performEncryption(raw, originalBtnHTML) { try { const { key, encResult } = await encryptSecret(raw); return { keyBytes: key, encResult }; } catch (e) { console.error('[gone] encryption failed', e); resetButton(originalBtnHTML); return null; } }
     async function performUpload(encResult, keyBytes, ttl, originalBtnHTML) { try { const res = await uploadCiphertext(encResult, keyBytes, ttl); if (!res) failureDelayReset(originalBtnHTML, 1200); return res; } catch (e) { console.error('[gone] upload failed', e); setStatus('Network Err'); failureDelayReset(originalBtnHTML, 1500); return null; } }
-    function finalize(uploadRes, keyBytes, t0) {
+    function finalize(uploadRes, keyBytes, t0, originalBtnHTML) {
       logTotal(t0);
       const secretID = uploadRes.json.id;
       if (!secretID) {
         console.error('[gone] missing id in response payload', uploadRes.json);
         setStatus('Error');
-        failureDelayReset(primaryBtn.innerHTML, 1500);
+        failureDelayReset(originalBtnHTML, 1500);
         return;
       }
       const shareURL = buildShareURL(secretID, uploadRes.version, keyBytes);
       buildAndShowResultPanel({ shareURL, expiresAt: uploadRes.json.expires_at, replaceTarget: cardSection });
     }
-    const prep = prepareSubmission(); if (!prep) return; const { raw, ttl, originalBtnHTML, t0 } = prep; const encryption = await performEncryption(raw, originalBtnHTML); if (!encryption) return; secureWipe(raw); const uploadRes = await performUpload(encryption.encResult, encryption.keyBytes, ttl, originalBtnHTML); if (!uploadRes) return; finalize(uploadRes, encryption.keyBytes, t0);
+    const prep = prepareSubmission(); if (!prep) return; const { raw, ttl, originalBtnHTML, t0 } = prep; const encryption = await performEncryption(raw, originalBtnHTML); if (!encryption) return; secureWipe(raw); const uploadRes = await performUpload(encryption.encResult, encryption.keyBytes, ttl, originalBtnHTML); if (!uploadRes) return; finalize(uploadRes, encryption.keyBytes, t0, originalBtnHTML);
   }
   form.addEventListener('submit', handleSubmit);
   (function previewCheck() { const params = new URLSearchParams(location.search); if (params.get('preview') === 'result') { const mockID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; const mockKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'; const version = window.goneCrypto.version; const mockURL = `${location.origin}/secret/${mockID}#v${version}:${mockKey}`; const future = new Date(Date.now() + 30 * 60 * 1000).toISOString(); buildAndShowResultPanel({ shareURL: mockURL, expiresAt: future, replaceTarget: form.closest('.card'), focus: false }); } })();

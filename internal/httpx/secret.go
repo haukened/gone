@@ -17,7 +17,7 @@ type SecretRenderer interface {
 func (h *Handler) handleSecret(w http.ResponseWriter, r *http.Request) {
 	const prefix = "/secret/"
 	if !strings.HasPrefix(r.URL.Path, prefix) || len(r.URL.Path) == len(prefix) { // no id present
-		h.writeError(w, http.StatusNotFound, "not found")
+		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
 		return
 	}
 	if h.SecretTmpl == nil {
