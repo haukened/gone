@@ -104,37 +104,61 @@ type templates struct{ index, about, secret *template.Template }
 // tplSpec describes a template file to parse with a name added to the base partials template.
 type tplSpec struct{ name, file string }
 
-// loadTemplates parses partials plus page templates using a generic loop to avoid duplication.
+// parsePage parses the base partials plus a single page template.
+// Parameters:
+//
+//	base: the already-read partials template content as a string
+//	name: the name to assign to the page template
+//	file: the filename of the page template inside the embedded FS
+//
+// Returns the composed *template.Template or an error.
+func parsePage(base, name, file string) (*template.Template, error) {
+	pageBytes, err := fs.ReadFile(wembed.FS, file)
+	if err != nil {
+		return nil, err
+	}
+	t, err := template.New("partials").Parse(base)
+	if err != nil {
+		return nil, err
+	}
+	return t.New(name).Parse(string(pageBytes))
+}
+
+// parseAllPages parses all known page templates returning individual templates.
+// Splitting this out allows loadTemplates to remain very small and simple.
+func parseAllPages(base string) (idx, about, secret *template.Template, err error) {
+	pages := []struct {
+		name string
+		file string
+		out  **template.Template
+	}{
+		{"index", "index.tmpl.html", &idx},
+		{"about", "about.tmpl.html", &about},
+		{"secret", "secret.tmpl.html", &secret},
+	}
+	for _, p := range pages {
+		var t *template.Template
+		t, err = parsePage(base, p.name, p.file)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		*p.out = t
+	}
+	return idx, about, secret, nil
+}
+
+// loadTemplates reads partials and composes individual page templates.
+// Split into a helper to keep cyclomatic complexity low.
 func loadTemplates() (*templates, error) {
 	partialsBytes, err := fs.ReadFile(wembed.FS, "partials.tmpl.html")
 	if err != nil {
 		return nil, err
 	}
-	base := string(partialsBytes)
-	specs := []tplSpec{{"index", "index.tmpl.html"}, {"about", "about.tmpl.html"}, {"secret", "secret.tmpl.html"}}
-	out := &templates{}
-	for _, spec := range specs {
-		pageBytes, err := fs.ReadFile(wembed.FS, spec.file)
-		if err != nil {
-			return nil, err
-		}
-		t, err := template.New("partials").Parse(base)
-		if err == nil {
-			t, err = t.New(spec.name).Parse(string(pageBytes))
-		}
-		if err != nil {
-			return nil, err
-		}
-		switch spec.name {
-		case "index":
-			out.index = t
-		case "about":
-			out.about = t
-		case "secret":
-			out.secret = t
-		}
+	idx, about, secret, err := parseAllPages(string(partialsBytes))
+	if err != nil {
+		return nil, err
 	}
-	return out, nil
+	return &templates{index: idx, about: about, secret: secret}, nil
 }
 
 func buildService(idx store.Index, blobs store.BlobStorage, cfg *config.Config, clock app.Clock) *app.Service {
