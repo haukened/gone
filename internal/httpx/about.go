@@ -33,11 +33,5 @@ func (h *Handler) handleAbout(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("about unavailable"))
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	if err := h.AboutTmpl.Execute(w, struct{}{}); err != nil {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("template error"))
-	}
+	renderTemplate(w, h.AboutTmpl, struct{}{})
 }

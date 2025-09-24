@@ -25,12 +25,6 @@ func (h *Handler) handleSecret(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("secret template unavailable"))
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
 	// Minimal data today; future fields could include feature flags.
-	if err := h.SecretTmpl.Execute(w, struct{}{}); err != nil {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("template error"))
-	}
+	renderTemplate(w, h.SecretTmpl, struct{}{})
 }

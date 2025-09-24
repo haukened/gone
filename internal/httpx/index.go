@@ -83,8 +83,7 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("index unavailable"))
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
+	// Standard HTML + no-store headers applied via shared helper.
 	view := IndexView{
 		MaxBytes:      h.MaxBody,
 		MaxBytesHuman: humanBytes(h.MaxBody),
@@ -103,12 +102,7 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 			view.TTLOptions = append(view.TTLOptions, TTLOptionView{Label: opt.Label, DurationSeconds: int(opt.Duration.Seconds())})
 		}
 	}
-	if err := h.IndexTmpl.Execute(w, view); err != nil {
-		// Fallback minimal error page; avoid recursive template execution
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("template error"))
-	}
+	renderTemplate(w, h.IndexTmpl, view)
 }
 
 // staticHandler serves embedded/static assets under /static/.
