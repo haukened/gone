@@ -216,7 +216,9 @@
 				const len = raw.length;
 				textarea.value = ''.padEnd(len, '\u2022');
 				textarea.value = '';
-			} catch(_) {}
+			} catch(_) {
+				// Intentionally ignore wipe failures (e.g., DOM not writable); best-effort.
+			}
 		}
 
 		async function encryptSecret(raw){
@@ -343,41 +345,53 @@
 
 		// Builds and replaces a target card with result panel.
 		function buildAndShowResultPanel(opts){
-			var { shareURL, expiresAt, replaceTarget, focus = true } = opts;
-      var BACK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>'
-			var COPY_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
-			var CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
-			var panel = document.createElement('div');
-			var outer = document.createElement('div'); outer.id='result-outer'; panel.appendChild(outer);
-			var h2 = document.createElement('h2'); h2.className='underline'; h2.textContent='Share This Link'; outer.appendChild(h2);
-			var warnP = document.createElement('p'); warnP.className='security-warning-card'; warnP.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>';
-			var warnSpan=document.createElement('span'); warnSpan.textContent='Anyone with this link can view the secret exactly once.'; warnP.appendChild(warnSpan); outer.appendChild(warnP);
-			var card=document.createElement('div'); card.className='card'; outer.appendChild(card);
-			var hintP=document.createElement('p'); hintP.className='hint'; card.appendChild(hintP);
-			var span=document.createElement('span'); hintP.appendChild(span); span.appendChild(document.createTextNode('Expires at '));
-			var timeEl=document.createElement('time'); timeEl.setAttribute('datetime', expiresAt); timeEl.textContent=new Date(expiresAt).toLocaleString(); span.appendChild(timeEl);
-			var input=document.createElement('input'); input.className='share-link'; input.id='share-link'; input.type='text'; input.readOnly=true; input.value=shareURL; card.appendChild(input);
-			var actions=document.createElement('div'); actions.className='result-actions'; card.appendChild(actions);
-			var backLink=document.createElement('a'); backLink.href='/'; backLink.className='back-link'; backLink.innerHTML=BACK_ICON + ' Create Another'; actions.appendChild(backLink);
-			var copyBtn=document.createElement('button'); copyBtn.type='button'; copyBtn.className='copy-primary-btn'; copyBtn.setAttribute('aria-label','Copy full share link'); copyBtn.innerHTML='Copy Link ' + COPY_ICON; actions.appendChild(copyBtn);
+			const { shareURL, expiresAt, replaceTarget, focus = true } = opts;
+	    const BACK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>';
+			const COPY_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+			const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+			const panel = document.createElement('div');
+			const outer = document.createElement('div'); outer.id='result-outer'; panel.appendChild(outer);
+			const h2 = document.createElement('h2'); h2.className='underline'; h2.textContent='Share This Link'; outer.appendChild(h2);
+			const warnP = document.createElement('p'); warnP.className='security-warning-card'; warnP.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>';
+			const warnSpan=document.createElement('span'); warnSpan.textContent='Anyone with this link can view the secret exactly once.'; warnP.appendChild(warnSpan); outer.appendChild(warnP);
+			const card=document.createElement('div'); card.className='card'; outer.appendChild(card);
+			const hintP=document.createElement('p'); hintP.className='hint'; card.appendChild(hintP);
+			const span=document.createElement('span'); hintP.appendChild(span); span.appendChild(document.createTextNode('Expires at '));
+			const timeEl=document.createElement('time'); timeEl.setAttribute('datetime', expiresAt); timeEl.textContent=new Date(expiresAt).toLocaleString(); span.appendChild(timeEl);
+			const input=document.createElement('input'); input.className='share-link'; input.id='share-link'; input.type='text'; input.readOnly=true; input.value=shareURL; card.appendChild(input);
+			const actions=document.createElement('div'); actions.className='result-actions'; card.appendChild(actions);
+			const backLink=document.createElement('a'); backLink.href='/'; backLink.className='back-link'; backLink.innerHTML=BACK_ICON + ' Create Another'; actions.appendChild(backLink);
+			const copyBtn=document.createElement('button'); copyBtn.type='button'; copyBtn.className='copy-primary-btn'; copyBtn.setAttribute('aria-label','Copy full share link'); copyBtn.innerHTML='Copy Link ' + COPY_ICON; actions.appendChild(copyBtn);
 			if (replaceTarget) replaceTarget.replaceWith(panel); else document.body.appendChild(panel);
-			var shareInput = panel.querySelector('#share-link');
-			var copyBtn = panel.querySelector('.copy-primary-btn');
+			const shareInput = panel.querySelector('#share-link');
+			const copyBtnRoot = panel.querySelector('.copy-primary-btn');
 			if (focus && shareInput) shareInput.focus();
-			if (copyBtn) {
-				copyBtn.addEventListener('click', function(){
-					var success = true;
-					try { navigator.clipboard.writeText(shareURL); } catch(_) { try { shareInput.select(); document.execCommand('copy'); } catch(_) { success = false; } }
+			if (copyBtnRoot) {
+				copyBtnRoot.addEventListener('click', async function(){
+					let success = true;
+					try {
+						await navigator.clipboard.writeText(shareURL);
+					} catch(_) {
+						// Minimal non-deprecated fallback: select text and instruct user.
+						if (shareInput) {
+							shareInput.focus();
+							shareInput.select();
+						}
+						success = false;
+					}
 					if (success) {
-						copyBtn.dataset.original = copyBtn.textContent;
-						copyBtn.textContent = 'Copied!';
-						copyBtn.classList.add('copied');
-						copyBtn.disabled = true;
+						copyBtnRoot.dataset.original = copyBtnRoot.textContent;
+						copyBtnRoot.innerHTML = 'Copied! ' + CHECK_ICON;
+						copyBtnRoot.classList.add('copied');
+						copyBtnRoot.disabled = true;
 						setTimeout(function(){
-							copyBtn.textContent = copyBtn.dataset.original || 'Copy Link';
-							copyBtn.classList.remove('copied');
-							copyBtn.disabled = false;
+							copyBtnRoot.innerHTML = copyBtnRoot.dataset.original || 'Copy Link';
+							copyBtnRoot.classList.remove('copied');
+							copyBtnRoot.disabled = false;
 						}, 2200);
+					} else {
+						// Notify user via alert instead of altering button text.
+						alert('Copy failed. Please press \u2318/Ctrl+C to copy manually.');
 					}
 					return success;
 				});
@@ -389,39 +403,39 @@
 		// Secret consumption (decrypt) flow for /secret/{id} pages.
 		(function consumeFlow(){
 			if (!window.goneCrypto) return;
-			var container = document.getElementById('secret-consume');
+			const container = document.getElementById('secret-consume');
 			if (!container) return; // not on consume page
-			var statusEl = document.getElementById('secret-status');
-			var pre = document.getElementById('secret-plaintext');
-			var actions = document.getElementById('secret-actions');
-			var copyBtn = document.getElementById('copy-secret');
+			const statusEl = document.getElementById('secret-status');
+			const pre = document.getElementById('secret-plaintext');
+			const actions = document.getElementById('secret-actions');
+			const copyBtn = document.getElementById('copy-secret');
 
 			function setStatus(msg){ if (statusEl) statusEl.textContent = msg; }
 			function logTiming(label,start,end){ console.log(`[gone][timing] ${label}: ${(end-start).toFixed(2)}ms`); }
 
 			// Parse fragment: #v<version>:<key>
-			var hash = location.hash || '';
-			var fragMatch = /^#v(\d+):([A-Za-z0-9_-]{10,})$/.exec(hash);
+			const hash = location.hash || '';
+			const fragMatch = /^#v(\d+):([A-Za-z0-9_-]{10,})$/.exec(hash);
 			if (!fragMatch) {
 				setStatus('Missing or invalid key fragment. Cannot decrypt.');
 				return;
 			}
-			var fragVersion = parseInt(fragMatch[1], 10);
-			var keyB64 = fragMatch[2];
+			const fragVersion = parseInt(fragMatch[1], 10);
+			const keyB64 = fragMatch[2];
 			if (fragVersion !== window.goneCrypto.version) {
 				setStatus('Unsupported version');
 				return;
 			}
 
 			// Extract ID from path /secret/{id}
-			var pathParts = location.pathname.split('/');
-			var id = pathParts[pathParts.length-1];
+			const pathParts = location.pathname.split('/');
+			const id = pathParts[pathParts.length-1];
 			if (!id) { setStatus('Invalid secret id'); return; }
 
-			async function fetchSecret(id) {
+			async function fetchSecret(secretID) {
 				setStatus('Fetching…');
 				const tFetchStart = performance.now();
-				const resp = await fetch(`/api/secret/${id}`);
+				const resp = await fetch(`/api/secret/${secretID}`);
 				const tFetchEnd = performance.now();
 				logTiming('consume_fetch', tFetchStart, tFetchEnd);
 				if (!resp.ok) {
@@ -441,10 +455,10 @@
 				return nonceB64;
 			}
 
-			async function decryptPayload(resp, nonceB64, keyB64) {
+			async function decryptPayload(resp, nonceB64, fragmentKeyB64) {
 				const nonce = window.goneCrypto.b64urlDecode(nonceB64);
 				const ctBuf = new Uint8Array(await resp.arrayBuffer());
-				const keyBytes = window.goneCrypto.importKeyB64(keyB64);
+				const keyBytes = window.goneCrypto.importKeyB64(fragmentKeyB64);
 				const additionalData = new TextEncoder().encode('gone:v1');
 				const cryptoKey = await crypto.subtle.importKey('raw', keyBytes, {name:'AES-GCM'}, false, ['decrypt']);
 				try {
