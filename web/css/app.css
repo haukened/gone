@@ -48,6 +48,9 @@ body {
 	color: var(--fg);
 }
 
+/* Ensure elements using the hidden attribute stay visually hidden even without JS */
+[hidden] { display: none !important; }
+
 header h1 {
 	margin: 0 0 .25rem 0;
 }

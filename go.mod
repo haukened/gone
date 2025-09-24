@@ -4,14 +4,13 @@ go 1.25
 
 require (
 	github.com/go-playground/validator/v10 v10.27.0
+	github.com/google/uuid v1.6.0
 	github.com/knadh/koanf/providers/env/v2 v2.0.0
 	github.com/knadh/koanf/providers/structs v1.0.0
 	github.com/knadh/koanf/v2 v2.3.0
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/stretchr/testify v1.11.1
 )
-
-require github.com/google/uuid v1.6.0 // indirect
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

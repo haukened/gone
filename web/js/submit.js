@@ -4,41 +4,188 @@
 (function submitFlow() {
   const form = document.getElementById('create-secret');
   if (!form || !window.goneCrypto) return;
+
   const textarea = document.getElementById('secret');
   const ttlSelect = document.getElementById('ttl');
   const primaryBtn = form.querySelector('button[type="submit"]');
   const cardSection = form.closest('.card');
+  const errorBox = document.getElementById('submit-error');
+  const errorContent = document.getElementById('submit-error-content');
   if (!textarea || !ttlSelect || !primaryBtn || !cardSection) return;
-  function logTiming(label, start, end) { console.log(`[gone][timing] ${label}: ${(end - start).toFixed(2)}ms`); }
-  // setStatus temporarily replaces the button label with plain text (no icon).
-  function setStatus(msg) { primaryBtn.textContent = msg; return true; }
-  function secureWipe(raw) { try { const len = raw.length; textarea.value = ''.padEnd(len, '\u2022'); textarea.value = ''; } catch (_) { /* best-effort */ } }
-  async function encryptSecret(raw) { const key = window.goneCrypto.generateKey(); const encStart = performance.now(); const encResult = await window.goneCrypto.encrypt(raw, key); const encEnd = performance.now(); logTiming('encrypt', encStart, encEnd); return { key, encResult }; }
-  async function uploadCiphertext(encResult, keyBytes, ttl) { const { nonce, ciphertext } = encResult; const version = window.goneCrypto.version; const nonceB64 = window.goneCrypto.b64urlEncode(nonce); const uploadStart = performance.now(); setStatus('Uploading…'); const resp = await fetch('/api/secret', { method: 'POST', headers: { 'X-Gone-Version': String(version), 'X-Gone-Nonce': nonceB64, 'X-Gone-TTL': ttl, 'Content-Type': 'application/octet-stream' }, body: ciphertext }); const uploadEnd = performance.now(); logTiming('upload', uploadStart, uploadEnd); if (!resp.ok) { console.error('[gone] server error', resp.status); setStatus('Error'); return null; } return { json: await resp.json(), version, keyBytes }; }
-  function buildShareURL(id, version, keyBytes) { const keyB64 = window.goneCrypto.exportKeyB64(keyBytes); return `${location.origin}/secret/${id}#v${version}:${keyB64}`; }
-  function resetButton(original) { primaryBtn.disabled = false; primaryBtn.innerHTML = original; }
-  function failureDelayReset(original, delay) { setTimeout(function () { resetButton(original); }, delay); }
-  function logTotal(start) { const t1 = performance.now(); logTiming('total_submit_cycle', start, t1); }
+
+  function logTiming(label, start, end) {
+    console.log(`[gone][timing] ${label}: ${(end - start).toFixed(2)}ms`);
+  }
+
+  // setStatus only used for neutral/progress states; error states go to errorBox
+  const originalBtnHTML = primaryBtn.innerHTML;
+
+  function setStatus(msg) {
+    // For progress we simplify the button label; we do not show errors here.
+    primaryBtn.innerHTML = `<span>${msg}</span>`;
+    return true;
+  }
+
+  function showError(msg) {
+    if (!errorBox) return;
+    errorContent.textContent = msg;
+    errorBox.hidden = false;
+    errorBox.setAttribute('aria-hidden', 'false');
+  }
+
+  function secureWipe(raw) {
+    try {
+      const len = raw.length;
+      textarea.value = ''.padEnd(len, '\u2022');
+      textarea.value = '';
+    } catch (_) {
+      // best-effort
+    }
+  }
+
+  async function encryptSecret(raw) {
+    const key = window.goneCrypto.generateKey();
+    const encStart = performance.now();
+    const encResult = await window.goneCrypto.encrypt(raw, key);
+    const encEnd = performance.now();
+    logTiming('encrypt', encStart, encEnd);
+    return { key, encResult };
+  }
+
+  async function uploadCiphertext(encResult, keyBytes, ttl) {
+    const { nonce, ciphertext } = encResult;
+    const version = window.goneCrypto.version;
+    const nonceB64 = window.goneCrypto.b64urlEncode(nonce);
+    const uploadStart = performance.now();
+    setStatus('Uploading…');
+    const resp = await fetch('/api/secret', {
+      method: 'POST',
+      headers: {
+        'X-Gone-Version': String(version),
+        'X-Gone-Nonce': nonceB64,
+        'X-Gone-TTL': ttl,
+        'Content-Type': 'application/octet-stream'
+      },
+      body: ciphertext
+    });
+    const uploadEnd = performance.now();
+    logTiming('upload', uploadStart, uploadEnd);
+    if (!resp.ok) {
+      console.error('[gone] server error', resp.status);
+      showError(resp.status === 413 ? 'Secret too large' : 'Server error creating secret');
+      return null;
+    }
+    return { json: await resp.json(), version, keyBytes };
+  }
+
+  function buildShareURL(id, version, keyBytes) {
+    const keyB64 = window.goneCrypto.exportKeyB64(keyBytes);
+    return `${location.origin}/secret/${id}#v${version}:${keyB64}`;
+  }
+
+  function resetButton() {
+    primaryBtn.disabled = false;
+    primaryBtn.innerHTML = originalBtnHTML;
+  }
+
+  function failureDelayReset(delay) {
+    setTimeout(function () {
+      resetButton();
+    }, delay);
+  }
+
+  function logTotal(start) {
+    const t1 = performance.now();
+    logTiming('total_submit_cycle', start, t1);
+  }
+
   async function handleSubmit(ev) {
-    ev.preventDefault(); function prepareSubmission() { const raw = textarea.value; if (!raw) { console.warn('[gone] empty secret submission blocked'); return null; } const ttl = ttlSelect.value; primaryBtn.disabled = true; return { raw, ttl, originalBtnHTML: primaryBtn.innerHTML, t0: performance.now() }; }
-    async function performEncryption(raw, originalBtnHTML) { try { const { key, encResult } = await encryptSecret(raw); return { keyBytes: key, encResult }; } catch (e) { console.error('[gone] encryption failed', e); resetButton(originalBtnHTML); return null; } }
-    async function performUpload(encResult, keyBytes, ttl, originalBtnHTML) { try { const res = await uploadCiphertext(encResult, keyBytes, ttl); if (!res) failureDelayReset(originalBtnHTML, 1200); return res; } catch (e) { console.error('[gone] upload failed', e); setStatus('Network Err'); failureDelayReset(originalBtnHTML, 1500); return null; } }
-    function finalize(uploadRes, keyBytes, t0, originalBtnHTML) {
+    ev.preventDefault();
+
+    function prepareSubmission() {
+      const raw = textarea.value;
+      if (!raw) {
+        console.warn('[gone] empty secret submission blocked');
+        showError('Cannot submit empty secret');
+        return null;
+      }
+      const ttl = ttlSelect.value;
+      primaryBtn.disabled = true;
+      if (errorBox) errorBox.hidden = true;
+      return { raw, ttl, t0: performance.now() };
+    }
+
+    async function performEncryption(raw) {
+      try {
+        const { key, encResult } = await encryptSecret(raw);
+        return { keyBytes: key, encResult };
+      } catch (e) {
+        console.error('[gone] encryption failed', e);
+        showError('Encryption failed');
+        resetButton();
+        return null;
+      }
+    }
+
+    async function performUpload(encResult, keyBytes, ttl) {
+      try {
+        const res = await uploadCiphertext(encResult, keyBytes, ttl);
+        if (!res) failureDelayReset(1500);
+        return res;
+      } catch (e) {
+        console.error('[gone] upload failed', e);
+        showError('Network error uploading secret');
+        failureDelayReset(1500);
+        return null;
+      }
+    }
+
+    function finalize(uploadRes, keyBytes, t0) {
       logTotal(t0);
       const secretID = uploadRes.json.id;
       if (!secretID) {
         console.error('[gone] missing id in response payload', uploadRes.json);
-        setStatus('Error');
-        failureDelayReset(originalBtnHTML, 1500);
+        showError('Unexpected server response');
+        failureDelayReset(1500);
         return;
       }
       const shareURL = buildShareURL(secretID, uploadRes.version, keyBytes);
-      buildAndShowResultPanel({ shareURL, expiresAt: uploadRes.json.expires_at, replaceTarget: cardSection });
+      buildAndShowResultPanel({
+        shareURL,
+        expiresAt: uploadRes.json.expires_at,
+        replaceTarget: cardSection
+      });
     }
-    const prep = prepareSubmission(); if (!prep) return; const { raw, ttl, originalBtnHTML, t0 } = prep; const encryption = await performEncryption(raw, originalBtnHTML); if (!encryption) return; secureWipe(raw); const uploadRes = await performUpload(encryption.encResult, encryption.keyBytes, ttl, originalBtnHTML); if (!uploadRes) return; finalize(uploadRes, encryption.keyBytes, t0, originalBtnHTML);
+
+    const prep = prepareSubmission();
+    if (!prep) return;
+    const { raw, ttl, t0 } = prep;
+    const encryption = await performEncryption(raw);
+    if (!encryption) return;
+    secureWipe(raw);
+    const uploadRes = await performUpload(encryption.encResult, encryption.keyBytes, ttl);
+    if (!uploadRes) return;
+    finalize(uploadRes, encryption.keyBytes, t0);
   }
+
   form.addEventListener('submit', handleSubmit);
-  (function previewCheck() { const params = new URLSearchParams(location.search); if (params.get('preview') === 'result') { const mockID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; const mockKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'; const version = window.goneCrypto.version; const mockURL = `${location.origin}/secret/${mockID}#v${version}:${mockKey}`; const future = new Date(Date.now() + 30 * 60 * 1000).toISOString(); buildAndShowResultPanel({ shareURL: mockURL, expiresAt: future, replaceTarget: form.closest('.card'), focus: false }); } })();
+
+  (function previewCheck() {
+    const params = new URLSearchParams(location.search);
+    if (params.get('preview') === 'result') {
+      const mockID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      const mockKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+      const version = window.goneCrypto.version;
+      const mockURL = `${location.origin}/secret/${mockID}#v${version}:${mockKey}`;
+      const future = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      buildAndShowResultPanel({
+        shareURL: mockURL,
+        expiresAt: future,
+        replaceTarget: form.closest('.card'),
+        focus: false
+      });
+    }
+  })();
 })();
 
 function buildAndShowResultPanel(opts) {
