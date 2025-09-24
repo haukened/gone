@@ -22,7 +22,18 @@
     ev.preventDefault(); function prepareSubmission() { const raw = textarea.value; if (!raw) { console.warn('[gone] empty secret submission blocked'); return null; } const ttl = ttlSelect.value; primaryBtn.disabled = true; return { raw, ttl, originalBtnHTML: primaryBtn.innerHTML, t0: performance.now() }; }
     async function performEncryption(raw, originalBtnHTML) { try { const { key, encResult } = await encryptSecret(raw); return { keyBytes: key, encResult }; } catch (e) { console.error('[gone] encryption failed', e); resetButton(originalBtnHTML); return null; } }
     async function performUpload(encResult, keyBytes, ttl, originalBtnHTML) { try { const res = await uploadCiphertext(encResult, keyBytes, ttl); if (!res) failureDelayReset(originalBtnHTML, 1200); return res; } catch (e) { console.error('[gone] upload failed', e); setStatus('Network Err'); failureDelayReset(originalBtnHTML, 1500); return null; } }
-    function finalize(uploadRes, keyBytes, t0) { logTotal(t0); const shareURL = buildShareURL(uploadRes.json.ID, uploadRes.version, keyBytes); buildAndShowResultPanel({ shareURL, expiresAt: uploadRes.json.expires_at, replaceTarget: cardSection }); }
+    function finalize(uploadRes, keyBytes, t0) {
+      logTotal(t0);
+      const secretID = uploadRes.json.id;
+      if (!secretID) {
+        console.error('[gone] missing id in response payload', uploadRes.json);
+        setStatus('Error');
+        failureDelayReset(primaryBtn.innerHTML, 1500);
+        return;
+      }
+      const shareURL = buildShareURL(secretID, uploadRes.version, keyBytes);
+      buildAndShowResultPanel({ shareURL, expiresAt: uploadRes.json.expires_at, replaceTarget: cardSection });
+    }
     const prep = prepareSubmission(); if (!prep) return; const { raw, ttl, originalBtnHTML, t0 } = prep; const encryption = await performEncryption(raw, originalBtnHTML); if (!encryption) return; secureWipe(raw); const uploadRes = await performUpload(encryption.encResult, encryption.keyBytes, ttl, originalBtnHTML); if (!uploadRes) return; finalize(uploadRes, encryption.keyBytes, t0);
   }
   form.addEventListener('submit', handleSubmit);

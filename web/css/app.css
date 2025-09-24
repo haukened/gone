@@ -206,6 +206,12 @@ button:disabled {
 	backdrop-filter: blur(2px);
 }
 
+.card-title {
+	font-size: 1.25rem;
+	font-weight: 600;
+	display: block;
+}
+
 .center-wrap {
 	max-width: 900px;
 	margin: 0 auto;
@@ -319,6 +325,35 @@ body:has(#theme-switch:checked) .security-warning-card {
 .security-warning-icon {
 	line-height: 1;
 	display: flex;
+}
+
+/* Security warning variants */
+/* Existing .security-warning-card styles represent the default (legacy) warning palette. */
+/* Explicit variant classes allow multiple alert types without additional markup restructuring. */
+.security-warning-card.warning {
+	/* Mirrors default warning palette (light mode) */
+	background: #fff8e1;
+	color: #4a3b00;
+	border-color: #c99717;
+}
+
+.security-warning-card.danger {
+	background: #ffe8e6;
+	color: #5d0f0a;
+	border-color: #d93025;
+}
+
+body:has(#theme-switch:checked) .security-warning-card.warning {
+	/* Mirrors existing dark-mode warning palette */
+	background: #3a2d00;
+	color: #f8e8b0;
+	border-color: #e6c25c;
+}
+
+body:has(#theme-switch:checked) .security-warning-card.danger {
+	background: #3a0f0c;
+	color: #ffb5ae;
+	border-color: #ff6f61;
 }
 
 .share-link {

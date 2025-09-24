@@ -54,6 +54,7 @@
     try {
       const insecure = window.location.protocol === 'http:';
       if (insecure) {
+        console.warn('[gone] insecure context detected (HTTP)');
         const section = document.querySelector('.security-warning');
         if (section) {
           section.hidden = false;
