@@ -1,5 +1,5 @@
 /* eslint-env browser */
-/* eslint-disable no-restricted-globals */  /* (only if that specific rule fires) */
+/* eslint-disable no-restricted-globals */
 'use strict';
 
 // Theme persistence & future extension hook.
@@ -10,7 +10,7 @@
 // 4. Maintain accessible state attributes (aria-pressed + description) to reflect current/next theme.
 
 (function() {
-	var STORAGE_KEY = 'gone.theme'; // values: 'light' | 'dark'
+	const STORAGE_KEY = 'gone.theme'; // values: 'light' | 'dark'
 	var checkbox = document.getElementById('theme-switch');
 	if (!checkbox) {
 		return false;
@@ -22,10 +22,16 @@
 	var desc = document.getElementById('theme-switch-desc');
 
 	function systemPrefersDark() {
-		return !!(window?.matchMedia && window?.matchMedia('(prefers-color-scheme: dark)').matches);
+		try {
+			if (typeof window !== 'undefined' && window.matchMedia) {
+				return !!window.matchMedia('(prefers-color-scheme: dark)').matches;
+			}
+		} catch(_) { return false; }
+		return false;
 	}
 
-	function applyTheme(mode, persist = true) {
+	function applyTheme(mode, persistParam) {
+		var persist = (persistParam === undefined) ? true : persistParam;
 		var isDark = mode === 'dark';
 		checkbox.checked = isDark; // checked => dark variables active (CSS :has)
 		checkbox.setAttribute('aria-pressed', String(isDark));
@@ -41,9 +47,9 @@
 	}
 
 	function loadInitialTheme() {
-		let stored = "";
+		var stored = "";
 		try {
-			stored = localStorage?.getItem(STORAGE_KEY);
+			stored = localStorage.getItem(STORAGE_KEY);
 		} catch (_) { return false; }
 
 		if (stored !== 'light' && stored !== 'dark') {
@@ -123,21 +129,21 @@
 	}
 
 	// Utilities
-	function utf8Encode(str) {
-		return new TextEncoder().encode(str);
-	}
+	function utf8Encode(str) { return new TextEncoder().encode(str); }
 	function b64urlEncode(bytes) {
 		var bin = '';
-		for (let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
-		return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+		for (var i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+		var b64 = btoa(bin).replace(/\+/g,'-').replace(/\//g,'_');
+		var end = b64.length; // manual trim '=' padding instead of regex quantifier
+		while (end > 0 && b64.charAt(end-1) === '=') end--;
+		return b64.substring(0, end);
 	}
 	function b64urlDecode(s) {
-		s = s.replace(/-/g,'+').replace(/_/g,'/');
-		// pad
-		while (s.length % 4) s += '=';
-		var bin = atob(s);
+		var norm = s.replace(/-/g,'+').replace(/_/g,'/');
+		while (norm.length % 4) norm += '=';
+		var bin = atob(norm);
 		var out = new Uint8Array(bin.length);
-		for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+		for (var i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
 		return out;
 	}
 	function randomBytes(n) {
