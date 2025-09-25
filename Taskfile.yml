@@ -1,0 +1,61 @@
+# https://taskfile.dev
+
+version: '3'
+
+# Build minified assets into web/dist and compile with -tags=prod
+
+vars:
+  MINIFY_BIN: "$(go env GOPATH)/bin/minify"
+
+tasks:
+  # Default: show usage
+  default:
+    cmds:
+      - task -l
+    silent: true
+
+  install-minify:
+    desc: Install tdewolff/minify CLI
+    cmds:
+      - go install github.com/tdewolff/minify/v2/cmd/minify@latest
+
+  clean:
+    desc: Cleans all build artifacts (bin/ and web/dist/)
+    cmds:
+      - rm -rf bin
+      - rm -rf web/dist
+
+  minify:
+    desc: Minify assets into web/dist
+    deps: [install-minify]
+    cmds:
+      - mkdir -p web/dist/{css,js}
+      - cp web/*.html web/dist/
+      - '{{.MINIFY_BIN}} -r -o web/dist/css/ web/css/'
+      - '{{.MINIFY_BIN}} -r -o web/dist/js/ web/js/'
+  
+  build-dev:
+    desc: Build development binary without -tags=prod
+    cmds:
+      - mkdir -p bin
+      - go build -o bin/gone ./cmd/gone
+
+  build-prod:
+    desc: Build production binary with -tags=prod
+    deps: [minify]
+    cmds:
+      - mkdir -p bin
+      - go build -tags=prod -o bin/gone ./cmd/gone
+
+  prod:
+    desc: Orchestrate full production build (clean → minify → copy templates → go build -tags=prod)
+    cmds:
+      - task: clean
+      - task: minify
+      - task: build-prod
+
+  dev:
+    desc: Orchestrate development build (no embed/minify)
+    cmds:
+      - task: clean
+      - task: build-dev
