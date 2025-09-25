@@ -4,12 +4,21 @@ package web
 
 import (
 	"io/fs"
-	"log/slog"
 	"os"
+	"path/filepath"
+	"runtime"
 )
 
-var Assets fs.FS = os.DirFS("web")
+// Assets is a filesystem rooted at the web/ package directory, independent
+// of the process working directory. This makes both `go run ./cmd/gone` and
+// `go test ./web` behave consistently.
+var Assets fs.FS
 
 func init() {
-	slog.Info("serving web assets from disk", "build_tag", "!prod")
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("runtime.Caller failed in web/embed_dev.go")
+	}
+	dir := filepath.Dir(file) // absolute path to the web package dir
+	Assets = os.DirFS(dir)
 }
