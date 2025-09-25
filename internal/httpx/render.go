@@ -3,6 +3,7 @@ package httpx
 import (
 	"bytes"
 	"io"
+	"log/slog"
 	"net/http"
 )
 
@@ -35,8 +36,10 @@ func renderTemplate(w http.ResponseWriter, tmpl interface {
 	cw := newCaptureWriter()
 	err := tmpl.Execute(cw, data)
 	if err != nil {
-		// On template execution error, avoid reflecting partial output back to the
-		// client to reduce any risk of leaking unescaped or sensitive fragments.
+		// On template execution error, avoid reflecting partial output back; emit
+		// a structured log without template internals. We don't have request
+		// context here, so correlation id (cid) is not attached.
+		slog.Error("render", "domain", "ui", "action", "error")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("template error"))
