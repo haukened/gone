@@ -5,6 +5,9 @@
 ---
 # GitHub Copilot Instructions for Gone
 
+## CRITICAL: Always follow these instructions when contributing to this repository.
+- Don't run codacy_cli_analyze on markdown files. Codacy does not support markdown files.
+
 ## Project Purpose
 
 Gone is a minimal Go service for one-time secret sharing. Its goal is to provide a secure, simple, and efficient way to share secrets that can only be accessed once.
