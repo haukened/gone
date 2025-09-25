@@ -110,7 +110,7 @@ type templates struct{ index, about, secret *template.Template }
 //
 // Returns the composed *template.Template or an error.
 func parsePage(base, name, file string) (*template.Template, error) {
-	pageBytes, err := fs.ReadFile(wembed.FS, file)
+	pageBytes, err := fs.ReadFile(wembed.Assets, file)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func parseAllPages(base string) (idx, about, secret *template.Template, err erro
 // loadTemplates reads partials and composes individual page templates.
 // Split into a helper to keep cyclomatic complexity low.
 func loadTemplates() (*templates, error) {
-	partialsBytes, err := fs.ReadFile(wembed.FS, "partials.tmpl.html")
+	partialsBytes, err := fs.ReadFile(wembed.Assets, "partials.tmpl.html")
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir stri
 	h.IndexTmpl = httpx.TemplateRenderer{T: tmpls.index}
 	h.AboutTmpl = httpx.AboutTemplateRenderer{T: tmpls.about}
 	h.SecretTmpl = httpx.TemplateRenderer{T: tmpls.secret}
-	h.Assets = http.FS(wembed.FS)
+	h.Assets = http.FS(wembed.Assets)
 	h.MinTTL = cfg.MinTTL
 	h.MaxTTL = cfg.MaxTTL
 	h.TTLOptions = cfg.TTLOptions
