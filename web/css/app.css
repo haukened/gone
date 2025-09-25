@@ -57,7 +57,7 @@ header h1 {
 
 ul,
 ol {
-	list-style: disc;
+	/* list-style: disc; */
 	margin-left: 0.5rem;
 }
 

@@ -15,27 +15,19 @@
 		</a>
 		<section class="card">
       <h2 class="underline">What is Gone?</h2>
-			<p class=""> Go + One = <strong>Gone</strong></p>
-      <p>
+			<p class="indent"> Go + One = <strong>Gone</strong></p>
+      <p class="indent">
 				Gone is a tool for sharing secrets privately, readable only one time.
       	The server component is written in <a target="_blank" href="https://golang.org">Golang</a>, a language designed for simplicity and efficiency by Google.
 				The client-side application is built with vanilla JavaScript and modern WebCrypto APIs to perform encryption and decryption directly in your browser.
 			</p>
-			<p>
+			<p class="indent">
 				Gone is open source software. The source code is available on <a target="_blank" href="https://github.com/haukened/gone">GitHub</a> under the GNU Affero GPL v3.
 			</p>
 		</section>
 		<section class="card">
-			<h2 class="underline">What is the GNU Affero GPL v3, and what does it mean for users?</h2>
-			<ul>
-				<li><strong>For people who simply use Gone, but aren't hosting their own instance, you have no obligations.</strong></li>
-				<li>For people who modify Gone and host their own instance, you must share your changes.</li>
-				<li>The GNU Affero General Public License version 3 (AGPLv3) is a free, copyleft license for software and other kinds of works, specifically designed to ensure cooperation with the community in the case of network server software.</li>
-				<li>It is similar to the GNU General Public License (GPL), but with an additional requirement that if you run a modified program on a server and let other users interact with it there, your server must also allow them to download the source code corresponding to the modified version running there.</li>
-				<li>This ensures that users who interact with the software over a network have access to its source code, promoting transparency and collaboration.</li>
-				<li>It also ensures that for-profit companies that use the software must also share their modifications with the community, improving the software for everyone not just shareholders.</li>
-				<li>For more information, or to view the full text of the license, visit the <a target="_blank" href="https://www.gnu.org/licenses/agpl-3.0.en.html">GNU website</a>.</li>
-			</ul>
+			<h2 class="underline">What encryption does Gone use?</h2>
+			<p class="indent">Gone uses AES-256-GCM provided by WebCrypto APIs for client-side encryption, which is the same encryption trusted by banks, governments, and security-conscious organizations worldwide.</p>
 		</section>
 		<section class="card">
 			<h2 class="underline">How Gone Keeps Secrets Secret</h2>
@@ -67,6 +59,18 @@
 				<li>Always verify you are on HTTPS (the app warns if not).</li>
 				<li>The secrecy guarantee assumes the sender's and recipient's browsers are not compromised.</li>
 				<li>Anyone who obtains the full share URL (including its key component) can decrypt the secret until first read or expiry.</li>
+			</ul>
+		</section>
+		<section class="card">
+			<h2 class="underline">What is the GNU Affero GPL v3, and what does it mean for users?</h2>
+			<ul>
+				<li><strong>For people who simply use Gone, but aren't hosting their own instance, you have no obligations.</strong></li>
+				<li>For people who modify Gone and host their own instance, you must share your changes.</li>
+				<li>The GNU Affero General Public License version 3 (AGPLv3) is a free, copyleft license for software and other kinds of works, specifically designed to ensure cooperation with the community in the case of network server software.</li>
+				<li>It is similar to the GNU General Public License (GPL), but with an additional requirement that if you run a modified program on a server and let other users interact with it there, your server must also allow them to download the source code corresponding to the modified version running there.</li>
+				<li>This ensures that users who interact with the software over a network have access to its source code, promoting transparency and collaboration.</li>
+				<li>It also ensures that for-profit companies that use the software must also share their modifications with the community, improving the software for everyone not just shareholders.</li>
+				<li>For more information, or to view the full text of the license, visit the <a target="_blank" href="https://www.gnu.org/licenses/agpl-3.0.en.html">GNU website</a>.</li>
 			</ul>
 		</section>
 		<a href="/" class="back-link primary-btn" aria-label="Back to home">
