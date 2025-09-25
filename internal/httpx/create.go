@@ -3,6 +3,7 @@ package httpx
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -104,10 +105,14 @@ func classifyCreateError(err error) (int, string) {
 // handleCreateSecret implements POST /api/secret.
 // It delegates validation to parseAndValidateCreate to reduce complexity.
 func (h *Handler) handleCreateSecret(w http.ResponseWriter, r *http.Request) {
+	cid, _ := GetCorrelationID(r.Context())
+	clog := slog.With("domain", "secret", "cid", cid)
+	clog.Info("create", "action", "start")
 	meta, err := h.parseAndValidateCreate(r)
 	if err != nil {
 		code, msg := classifyCreateError(err)
 		h.writeError(r.Context(), w, code, msg)
+		clog.Error("create", "action", "error", "kind", "validation")
 		return
 	}
 	body := http.MaxBytesReader(w, r.Body, meta.contentLength)
@@ -115,6 +120,7 @@ func (h *Handler) handleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	id, expires, svcErr := h.Service.CreateSecret(r.Context(), body, meta.contentLength, meta.version, meta.nonce, meta.ttl)
 	if svcErr != nil {
 		h.mapServiceError(r.Context(), w, svcErr)
+		clog.Error("create", "action", "error", "kind", "service")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -123,4 +129,5 @@ func (h *Handler) handleCreateSecret(w http.ResponseWriter, r *http.Request) {
 		ID        string    `json:"id"`
 		ExpiresAt time.Time `json:"expires_at"`
 	}{ID: id.String(), ExpiresAt: expires})
+	clog.Info("create", "action", "success", "ttl_secs", int(meta.ttl.Seconds()))
 }

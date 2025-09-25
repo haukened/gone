@@ -3,6 +3,7 @@ package httpx
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 )
@@ -18,10 +19,14 @@ func (h *Handler) handleConsumeSecret(w http.ResponseWriter, r *http.Request) {
 		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
 		return
 	}
+	cid, _ := GetCorrelationID(r.Context())
+	clog := slog.With("domain", "secret", "cid", cid)
+	clog.Info("consume", "action", "start")
 	id := r.URL.Path[len(prefix):]
 	meta, rc, size, err := h.Service.Consume(r.Context(), id)
 	if err != nil {
 		h.mapServiceError(r.Context(), w, err)
+		clog.Error("consume", "action", "error")
 		return
 	}
 	defer rc.Close()
@@ -30,5 +35,10 @@ func (h *Handler) handleConsumeSecret(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	w.WriteHeader(http.StatusOK)
-	_, _ = io.CopyN(w, rc, size)
+	_, err = io.CopyN(w, rc, size)
+	if err != nil {
+		clog.Error("consume", "action", "error")
+		return
+	}
+	clog.Info("consume", "action", "success")
 }
