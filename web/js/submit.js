@@ -17,14 +17,8 @@
     console.log(`[gone][timing] ${label}: ${(end - start).toFixed(2)}ms`);
   }
 
-  // setStatus only used for neutral/progress states; error states go to errorBox
-  const originalBtnHTML = primaryBtn.innerHTML;
-
-  function setStatus(msg) {
-    // For progress we simplify the button label; we do not show errors here.
-    primaryBtn.innerHTML = `<span>${msg}</span>`;
-    return true;
-  }
+  // We deliberately avoid mutating button innerHTML dynamically to reduce XSS surface.
+  // Progress is indicated solely via disabled state + aria-busy attribute.
 
   function showError(msg) {
     if (!errorBox) return;
@@ -57,7 +51,7 @@
     const version = window.goneCrypto.version;
     const nonceB64 = window.goneCrypto.b64urlEncode(nonce);
     const uploadStart = performance.now();
-    setStatus('Uploading…');
+    primaryBtn.setAttribute('aria-busy', 'true');
     const resp = await fetch('/api/secret', {
       method: 'POST',
       headers: {
@@ -85,7 +79,7 @@
 
   function resetButton() {
     primaryBtn.disabled = false;
-    primaryBtn.innerHTML = originalBtnHTML;
+    primaryBtn.removeAttribute('aria-busy');
   }
 
   function failureDelayReset(delay) {
@@ -99,73 +93,78 @@
     logTiming('total_submit_cycle', start, t1);
   }
 
-  async function handleSubmit(ev) {
-    ev.preventDefault();
-
-    function prepareSubmission() {
-      const raw = textarea.value;
-      if (!raw) {
-        console.warn('[gone] empty secret submission blocked');
-        showError('Cannot submit empty secret');
-        return null;
-      }
-      const ttl = ttlSelect.value;
-      primaryBtn.disabled = true;
-      if (errorBox) errorBox.hidden = true;
-      return { raw, ttl, t0: performance.now() };
+  function prepareSubmission() {
+    const raw = textarea.value;
+    if (!raw) {
+      console.warn('[gone] empty secret submission blocked');
+      showError('Cannot submit empty secret');
+      return null;
     }
+    const ttl = ttlSelect.value;
+    primaryBtn.disabled = true;
+    if (errorBox) errorBox.hidden = true;
+    return { raw, ttl, t0: performance.now() };
+  }
 
-    async function performEncryption(raw) {
-      try {
-        const { key, encResult } = await encryptSecret(raw);
-        return { keyBytes: key, encResult };
-      } catch (e) {
-        console.error('[gone] encryption failed', e);
-        showError('Encryption failed');
-        resetButton();
-        return null;
-      }
+  async function performEncryption(raw) {
+    try {
+      const { key, encResult } = await encryptSecret(raw);
+      return { keyBytes: key, encResult };
+    } catch (e) {
+      console.error('[gone] encryption failed', e);
+      showError('Encryption failed');
+      resetButton();
+      return null;
     }
+  }
 
-    async function performUpload(encResult, keyBytes, ttl) {
-      try {
-        const res = await uploadCiphertext(encResult, keyBytes, ttl);
-        if (!res) failureDelayReset(1500);
-        return res;
-      } catch (e) {
-        console.error('[gone] upload failed', e);
-        showError('Network error uploading secret');
-        failureDelayReset(1500);
-        return null;
-      }
+  async function performUpload(encResult, keyBytes, ttl) {
+    try {
+      const res = await uploadCiphertext(encResult, keyBytes, ttl);
+      if (!res) failureDelayReset(1500);
+      return res;
+    } catch (e) {
+      console.error('[gone] upload failed', e);
+      showError('Network error uploading secret');
+      failureDelayReset(1500);
+      return null;
     }
+  }
 
-    function finalize(uploadRes, keyBytes, t0) {
-      logTotal(t0);
-      const secretID = uploadRes.json.id;
-      if (!secretID) {
-        console.error('[gone] missing id in response payload', uploadRes.json);
-        showError('Unexpected server response');
-        failureDelayReset(1500);
-        return;
-      }
-      const shareURL = buildShareURL(secretID, uploadRes.version, keyBytes);
-      buildAndShowResultPanel({
-        shareURL,
-        expiresAt: uploadRes.json.expires_at,
-        replaceTarget: cardSection
-      });
+  function finalizeSubmission(uploadRes, keyBytes, t0) {
+    logTotal(t0);
+    const secretID = uploadRes.json.id;
+    if (!secretID) {
+      console.error('[gone] missing id in response payload', uploadRes.json);
+      showError('Unexpected server response');
+      failureDelayReset(1500);
+      return;
     }
+    const shareURL = buildShareURL(secretID, uploadRes.version, keyBytes);
+    buildAndShowResultPanel({
+      shareURL,
+      expiresAt: uploadRes.json.expires_at,
+      replaceTarget: cardSection
+    });
+    resetButton();
+  }
 
-    const prep = prepareSubmission();
-    if (!prep) return;
-    const { raw, ttl, t0 } = prep;
+  async function runSubmission(raw, ttl, t0) {
     const encryption = await performEncryption(raw);
     if (!encryption) return;
     secureWipe(raw);
     const uploadRes = await performUpload(encryption.encResult, encryption.keyBytes, ttl);
     if (!uploadRes) return;
-    finalize(uploadRes, encryption.keyBytes, t0);
+    finalizeSubmission(uploadRes, encryption.keyBytes, t0);
+  }
+
+  function handleSubmit(ev) {
+    ev.preventDefault();
+    const prep = prepareSubmission();
+    if (!prep) return;
+    const { raw, ttl, t0 } = prep;
+    // Fire and forget; internal helpers handle errors & UI state.
+    runSubmission(raw, ttl, t0);
   }
 
   form.addEventListener('submit', handleSubmit);
