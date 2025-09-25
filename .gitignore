@@ -38,3 +38,6 @@ go.work.sum
 # the binary
 /gone
 /cmd/gone/gone
+
+# local tmp folder for development
+/.tmp/
