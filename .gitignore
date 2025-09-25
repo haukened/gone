@@ -38,6 +38,10 @@ go.work.sum
 # the binary
 /gone
 /cmd/gone/gone
+/bin
 
 # local tmp folder for development
 /.tmp/
+
+# web dist assets
+/web/dist/
