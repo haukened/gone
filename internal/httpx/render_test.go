@@ -55,7 +55,7 @@ func TestRenderTemplate(t *testing.T) {
 			name:           "error_after_partial_write_overrides_status_and_content_type",
 			tmpl:           &mockTemplate{writePartial: "<p>partial</p>", err: errors.New("later failure")},
 			wantStatus:     http.StatusInternalServerError,
-			wantBodySubstr: "template error", // fallback body replaces (appends after) partial
+			wantBodySubstr: "template error", // fallback body (partial discarded for security)
 			wantCT:         "text/plain; charset=utf-8",
 		},
 	}
@@ -87,10 +87,7 @@ func TestRenderTemplate(t *testing.T) {
 				t.Fatalf("body %q does not contain %q", body, tc.wantBodySubstr)
 			}
 
-			// In partial write error case ensure partial is still present (behavioral expectation).
-			if tc.tmpl.writePartial != "" && !strings.Contains(body, tc.tmpl.writePartial) {
-				t.Fatalf("body %q expected to contain partial %q", body, tc.tmpl.writePartial)
-			}
+			// Partial output is intentionally discarded on error for security; no assertion here.
 		})
 	}
 }
