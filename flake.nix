@@ -49,7 +49,9 @@
             # The Nix packages provided in the environment
             packages = [
               unstable.go_1_25
+              unstable.gopls
               unstable.delve
+              unstable.go-tools
             ] ++ (with pkgs; [
               gosec
               minify
