@@ -5,7 +5,7 @@ version: '3'
 # Build minified assets into web/dist and compile with -tags=prod
 
 vars:
-  MINIFY_BIN: "$(go env GOPATH)/bin/minify"
+  MINIFY_BIN: "minify"
 
 tasks:
   # Default: show usage
@@ -14,10 +14,11 @@ tasks:
       - task -l
     silent: true
 
-  install-minify:
-    desc: Install tdewolff/minify CLI
-    cmds:
-      - go install github.com/tdewolff/minify/v2/cmd/minify@latest
+  # deprecated in favor of using the flake provided by nixpkgs
+  #install-minify:
+  #  desc: Install tdewolff/minify CLI
+  #  cmds:
+  #    - go install github.com/tdewolff/minify/v2/cmd/minify@latest
 
   clean:
     desc: Cleans all build artifacts (bin/ and web/dist/)
@@ -27,7 +28,6 @@ tasks:
 
   minify:
     desc: Minify assets into web/dist
-    deps: [install-minify]
     cmds:
       - mkdir -p web/dist/{css,js}
       - cp web/*.html web/dist/
