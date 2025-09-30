@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>Error - Gone</title>
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<link rel="stylesheet" href="/static/css/app.css" />
+</head>
+<body>
+	{{ template "header" . }}
+  <main class="center-wrap">
+    <section class="card">
+      <span class="card-title">Error {{ .Status }} - {{ .Title }}</span>
+      <p>{{ .Message }}</p>
+      <a href="/" class="back-link primary-btn" aria-label="Back to home">Back to home</a>
+    </section>
+  </main>
+  {{ template "footer" . }}
+  <script src="/static/js/theme.js" defer></script>
+</body>
+</html>

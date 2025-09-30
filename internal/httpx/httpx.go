@@ -30,6 +30,7 @@ type Handler struct {
 	IndexTmpl  IndexRenderer               // optional renderer for index page
 	AboutTmpl  AboutRenderer               // optional renderer for about page
 	SecretTmpl SecretRenderer              // optional renderer for secret consumption page
+	ErrorTmpl  IndexRenderer               // optional renderer for generic error pages (404, 500, etc.)
 	Assets     http.FileSystem             // static assets filesystem (optional)
 	MinTTL     time.Duration               // lower TTL bound (from config)
 	MaxTTL     time.Duration               // upper TTL bound (from config)
@@ -58,8 +59,40 @@ func (h *Handler) Router() http.Handler {
 	if h.Assets != nil {
 		mux.Handle("/static/", http.StripPrefix("/static/", h.staticHandler()))
 	}
-	// Order: correlation ID -> security headers -> handlers
-	return h.secureHeaders(CorrelationIDMiddleware(mux))
+	// We can't set a NotFoundHandler on net/http ServeMux; instead wrap the constructed mux
+	// with a fallback that checks for 404 responses after attempting routing.
+	wrapped := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Use a ResponseRecorder-like shim to detect if a handler wrote anything.
+		rw := &probeWriter{ResponseWriter: w}
+		mux.ServeHTTP(rw, r)
+		if rw.wroteHeader { // some handler handled it
+			return
+		}
+		// No handler matched: choose JSON vs HTML based on path prefix.
+		if len(r.URL.Path) >= 5 && r.URL.Path[:5] == "/api/" {
+			h.writeError(r.Context(), w, http.StatusNotFound, "not found")
+			return
+		}
+		h.renderErrorPage(w, r, http.StatusNotFound, "Not Found", "The page you requested was not found.")
+	})
+	// Order: correlation ID -> security headers -> fallback wrapper
+	return h.secureHeaders(CorrelationIDMiddleware(wrapped))
+}
+
+// probeWriter records whether a downstream handler wrote headers/body.
+type probeWriter struct {
+	http.ResponseWriter
+	wroteHeader bool
+}
+
+func (p *probeWriter) WriteHeader(code int) {
+	p.wroteHeader = true
+	p.ResponseWriter.WriteHeader(code)
+}
+
+func (p *probeWriter) Write(b []byte) (int, error) {
+	p.wroteHeader = true
+	return p.ResponseWriter.Write(b)
 }
 
 // secureHeaders middleware adds standard security & cache control headers.

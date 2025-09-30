@@ -79,3 +79,25 @@ func TestStaticHandler(t *testing.T) {
 		panic("missing cache-control")
 	}
 }
+
+// TestNotFoundHTML ensures non-API unknown routes return an HTML 404 page (not JSON).
+func TestNotFoundHTML(t *testing.T) {
+	indexTmpl := template.Must(template.New("index").Parse(`<html><body>Index</body></html>`))
+	errorTmpl := template.Must(template.New("error").Parse(`<!DOCTYPE html><html><body>Error {{ .Status }} - {{ .Title }} :: {{ .Message }}</body></html>`))
+	h := httpx.New(noopService{}, 100, nil)
+	h.IndexTmpl = httpx.TemplateRenderer{T: indexTmpl}
+	h.ErrorTmpl = httpx.TemplateRenderer{T: errorTmpl}
+	req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+	w := httptest.NewRecorder()
+	h.Router().ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 got %d", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+		t.Fatalf("expected html content-type got %s", ct)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "Error 404") || strings.Contains(body, `{"error"`) {
+		t.Fatalf("unexpected body: %s", body)
+	}
+}

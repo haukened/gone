@@ -7,6 +7,14 @@ import (
 	"net/http"
 )
 
+// errorPageData supplies fields for the generic error template.
+// Title and Message should be short and not leak internal state.
+type errorPageData struct {
+	Status  int
+	Title   string
+	Message string
+}
+
 // captureWriter buffers template output and any status the template might set.
 type captureWriter struct {
 	buf    bytes.Buffer
@@ -55,6 +63,33 @@ func renderTemplate(w http.ResponseWriter, tmpl interface {
 		// Safe: bytes come solely from html/template (auto-escaped). We avoid direct
 		// string concatenation or manual construction. Using io.Copy from a new reader
 		// helps certain linters recognize this as a buffered transfer of trusted content.
+		_, _ = io.Copy(w, bytes.NewReader(cw.buf.Bytes()))
+	}
+}
+
+// renderErrorPage renders an HTML error page if an error template is configured; otherwise
+// falls back to plain text. It intentionally does not include correlation IDs in the body.
+func (h *Handler) renderErrorPage(w http.ResponseWriter, r *http.Request, status int, title, message string) {
+	if h.ErrorTmpl == nil {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(http.StatusText(status)))
+		return
+	}
+	// We need to ensure the provided status code is used even if template doesn't set one.
+	cw := newCaptureWriter()
+	err := h.ErrorTmpl.Execute(cw, errorPageData{Status: status, Title: title, Message: message})
+	if err != nil {
+		slog.Error("render", "domain", "ui", "action", "error")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("template error"))
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	if cw.buf.Len() > 0 {
 		_, _ = io.Copy(w, bytes.NewReader(cw.buf.Bytes()))
 	}
 }

@@ -74,8 +74,7 @@ func humanTTL(sec int) string {
 
 // handleIndex renders the root HTML page.
 func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" { // only exact root handled here
-		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
+	if r.URL.Path != "/" { // only exact root handled here; let outer fallback produce 404
 		return
 	}
 	if h.IndexTmpl == nil {

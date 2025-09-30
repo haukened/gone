@@ -99,7 +99,7 @@ func newBlobStorage(blobDir string) store.BlobStorage {
 	return blobs
 }
 
-type templates struct{ index, about, secret *template.Template }
+type templates struct{ index, about, secret, errorPage *template.Template }
 
 // parsePage parses the base partials plus a single page template.
 // Parameters:
@@ -123,7 +123,7 @@ func parsePage(base, name, file string) (*template.Template, error) {
 
 // parseAllPages parses all known page templates returning individual templates.
 // Splitting this out allows loadTemplates to remain very small and simple.
-func parseAllPages(base string) (idx, about, secret *template.Template, err error) {
+func parseAllPages(base string) (idx, about, secret, errorPage *template.Template, err error) {
 	pages := []struct {
 		name string
 		file string
@@ -132,16 +132,17 @@ func parseAllPages(base string) (idx, about, secret *template.Template, err erro
 		{"index", "index.tmpl.html", &idx},
 		{"about", "about.tmpl.html", &about},
 		{"secret", "secret.tmpl.html", &secret},
+		{"error", "error.tmpl.html", &errorPage},
 	}
 	for _, p := range pages {
 		var t *template.Template
 		t, err = parsePage(base, p.name, p.file)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		*p.out = t
 	}
-	return idx, about, secret, nil
+	return idx, about, secret, errorPage, nil
 }
 
 // loadTemplates reads partials and composes individual page templates.
@@ -151,11 +152,11 @@ func loadTemplates() (*templates, error) {
 	if err != nil {
 		return nil, err
 	}
-	idx, about, secret, err := parseAllPages(string(partialsBytes))
+	idx, about, secret, errorPage, err := parseAllPages(string(partialsBytes))
 	if err != nil {
 		return nil, err
 	}
-	return &templates{index: idx, about: about, secret: secret}, nil
+	return &templates{index: idx, about: about, secret: secret, errorPage: errorPage}, nil
 }
 
 func buildService(idx store.Index, blobs store.BlobStorage, cfg *config.Config, clock app.Clock) *app.Service {
@@ -177,6 +178,9 @@ func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir stri
 	h.IndexTmpl = httpx.TemplateRenderer{T: tmpls.index}
 	h.AboutTmpl = httpx.AboutTemplateRenderer{T: tmpls.about}
 	h.SecretTmpl = httpx.TemplateRenderer{T: tmpls.secret}
+	if tmpls.errorPage != nil {
+		h.ErrorTmpl = httpx.TemplateRenderer{T: tmpls.errorPage}
+	}
 	h.Assets = http.FS(wembed.Assets)
 	h.MinTTL = cfg.MinTTL
 	h.MaxTTL = cfg.MaxTTL
