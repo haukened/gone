@@ -59,3 +59,11 @@ tasks:
     cmds:
       - task: clean
       - task: build-dev
+
+  run:
+    desc: Run development locally
+    cmds:
+      - task: clean
+      - task: dev
+      - mkdir -p .tmp
+      - GONE_DATA_DIR=.tmp bin/gone
