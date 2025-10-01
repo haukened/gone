@@ -123,12 +123,38 @@ Importable into Postman / Insomnia / ReDoc.
 
 ---
 
+>[! NOTE]
+> Everything below this line is advanced detail for operators and developers.
+> Read on if you're curious, but most people can stop here.
+
+---
+
 ## 6. Build & Run (Local Dev)
+This project uses [Task](https://taskfile.dev) (`Taskfile.yml`) to coordinate building the binary and (for production) minifying and embedding static assets.
+
+Please first install Task: https://taskfile.dev/docs/installation
+
+Core tasks:
+| Task | What it does |
+|------|---------------|
+| `task dev` | Clean + build development binary (no minified assets, no `-tags=prod`). |
+| `task prod` | Full production build: clean, minify assets into `web/dist`, build with `-tags=prod`. |
+| `task run` | Convenience: rebuild dev binary and run with a temporary data dir. |
+| `task cover` | Run tests with coverage output. |
+
+Development build:
 ```sh
-go build ./cmd/gone && ./gone
+task dev
+./bin/gone
 ```
 
-With overrides:
+Production build (minified assets embedded):
+```sh
+task prod
+./bin/gone
+```
+
+Run with overrides (development example):
 ```sh
 GONE_ADDR=127.0.0.1:8080 \
 GONE_DATA_DIR=$(pwd)/data \
@@ -136,7 +162,12 @@ GONE_TTL_OPTIONS="5m,30m,1h" \
 GONE_MAX_BYTES=$((1024*1024)) \
 GONE_METRICS_ADDR=127.0.0.1:9090 \
 GONE_METRICS_TOKEN=localtok \
-go run ./cmd/gone
+./bin/gone
+```
+
+Or just:
+```sh
+task run
 ```
 
 ---
@@ -225,150 +256,4 @@ Disable by removing parameter & clearing the key.
 ---
 
 ## 12. License
-GNU Affero General Public License v3.0 – see `LICENSE`.
-
-## Deployment
-Gone is designed to be deployed in Docker. It does not accept command line arguments or config files. Instead, it is configured entirely through environment variables.
-
-## Configuration
-Gone can be configured using the following environment variables:
-
-| Environment Variable    | Description                                                                   | Default Value            |
-|-------------------------|-------------------------------------------------------------------------------|--------------------------|
-| `GONE_ADDR`             | The address the service listens on.                                           | `:8080`                  |
-| `GONE_DATA_DIR`         | The directory where secrets are stored.                                       | `/data`                  |
-| `GONE_INLINE_MAX_BYTES` | Maximum size of a secret to be stored inline in sqlite3 (bytes).              | `8192` (8 KiB)           |
-| `GONE_MAX_BYTES`        | Maximum size of a secret (bytes).                                             | `1048576` (1 MiB)        |
-| `GONE_TTL_OPTIONS`      | Time-to-live options for a secret.                                            | `5m,30m,1h,2h,4h,8h,24h` |
-| `GONE_METRICS_ADDR`     | Optional separate listener (e.g. `127.0.0.1:9090`) for JSON metrics. Empty disables. | (empty)                  |
-| `GONE_METRICS_TOKEN`    | Optional bearer token required for metrics requests.                          | (empty)                  |
-| `GONE_ADDR`             | Service listen address (ip:port or :port).                                     | `:8080`                  |
-
-Derived values:
-* `MinTTL` and `MaxTTL` are computed automatically as the smallest / largest durations in `GONE_TTL_OPTIONS`.
-* SQLite DSN is fixed to WAL mode, FULL synchronous: `<DataDir>/gone.db`.
-
-`GONE_TTL_OPTIONS` must be a comma-separated list of valid Go duration strings using only seconds (s), minutes (m), and hours (h) units (examples: `30s`, `5m`, `1h30m`). The smallest and largest provided durations become the enforced MinTTL and MaxTTL bounds respectively.
-
-`GONE_MAX_BYTES` can be calculated as `1024 * 1024` for 1 MiB, `1024 * 10` for 10 KiB, etc. `1024` bytes is `1KiB`, `1024 * 1024` bytes is `1MiB`, `1024 * 1024 * 1024` bytes is `1GiB`, and so on.
-
-Any requested TTL within the inclusive min/max range is accepted even if it is not explicitly listed in `GONE_TTL_OPTIONS`. The configured list powers the UI dropdown and defines the bounds; it does not constrain valid intermediate durations.
-
-## Metrics (Optional)
-
-Metrics are persisted to SQLite and can be exposed via a separate listener if `GONE_METRICS_ADDR` is set. By default no metrics endpoint is served. If `GONE_METRICS_TOKEN` is set, clients must supply:
-
-```
-Authorization: Bearer <token>
-```
-
-### JSON Format
-`GET /` on the metrics listener returns:
-
-```json
-{
-	"counters": {
-		"secrets_created_total": 123,
-		"secrets_consumed_total": 118,
-		"secrets_expired_deleted_total": 47
-	},
-	"summaries": {
-		"janitor_deleted_per_cycle": {
-			"count": 42,
-			"sum": 420,
-			"min": 1,
-			"max": 25
-		}
-	}
-}
-```
-
-All values are 64-bit integers. Summaries expose aggregated count/sum/min/max across persisted and in-memory (unflushed) observations.
-
-### Metric Definitions
-| Name | Type | Meaning |
-|------|------|---------|
-| `secrets_created_total` | counter | Number of secrets successfully stored |
-| `secrets_consumed_total` | counter | Number of secrets successfully consumed (and deleted) |
-| `secrets_expired_deleted_total` | counter | Expired secrets removed by the janitor |
-| `janitor_deleted_per_cycle` | summary (count,sum,min,max) | Distribution of expired deletions per janitor cycle |
-
-Persistence & Flushing:
-* Counters & summaries are maintained in memory then flushed (default ~5s cadence) to SQLite.
-* On shutdown `Stop()` triggers a final flush to preserve recent increments.
-* Snapshot endpoint (metrics listener `/`) merges persisted + unflushed deltas.
-
-Enabling & Querying Example:
-```sh
-GONE_METRICS_ADDR=127.0.0.1:9090 GONE_METRICS_TOKEN=tok go run ./cmd/gone &
-curl -H 'Authorization: Bearer tok' http://127.0.0.1:9090/
-```
-
-### Security Note
-Do not expose the metrics listener publicly without a reverse proxy / firewall. Even aggregate counters can leak operational patterns. Binding to `127.0.0.1` and scraping locally is recommended for most deployments.
-
-## Storage & Persistence
-Gone stores metadata (IDs, expirations, consumed state) in SQLite (WAL mode enforced) and larger ciphertext blobs on the filesystem under `GONE_DATA_DIR` (subdirectory `blobs/`). Inline ciphertext below `GONE_INLINE_MAX_BYTES` is stored directly in SQLite to reduce filesystem churn.
-
-## Quick Start (Docker)
-Pull and run the latest image, mounting a data directory:
-
-```sh
-docker run --rm \
-	-p 8080:8080 \
-	-e GONE_DATA_DIR=/data \
-	-e GONE_TTL_OPTIONS="5m,30m,1h,2h,4h" \
-	-v $(pwd)/data:/data \
-	ghcr.io/haukened/gone:latest
-```
-
-Then visit: http://localhost:8080/
-
-## Build & Run (Local)
-
-```sh
-go build ./cmd/gone && ./gone
-```
-
-Environment overrides example:
-```sh
-GONE_ADDR=127.0.0.1:8080 \
-GONE_DATA_DIR=$(pwd)/data \
-GONE_TTL_OPTIONS="5m,30m,1h" \
-GONE_MAX_BYTES=$((1024*1024)) \
-GONE_METRICS_ADDR=127.0.0.1:9090 \
-GONE_METRICS_TOKEN=localtok \
-go run ./cmd/gone
-```
-
-## Security Headers
-The server sets security-focused headers (see middleware) including:
-* `Cache-Control: no-store`
-* `Referrer-Policy: no-referrer`
-* `X-Content-Type-Options: nosniff`
-* `Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
-
-Notes:
-* CSP disallows inline scripts/styles and blocks all external origins except self + data URIs for images.
-* `frame-ancestors 'none'` supersedes the need for `X-Frame-Options`.
-* Static assets set a short public cache; dynamic pages force `no-store`.
-
-## Debug / Timing Instrumentation
-Client performance timing logs are disabled by default. Enable them via either:
-* Add query parameter `?debug=timing` to any page URL, or
-* In DevTools console: `localStorage.setItem('goneDebugTiming', '1')` then refresh.
-
-Disable by removing the parameter and running: `localStorage.removeItem('goneDebugTiming')`.
-
-## API Specification
-The full REST interface (including all possible HTTP status codes) is defined in `docs/openapi.yaml`.
-You can view it locally or import into tools like Insomnia / Postman / ReDoc.
-
-## Roadmap (Excerpt)
-* Rate limiting / abuse guard
-* Optional Prometheus exposition
-* CSP tightening & documentation
-* Graceful shutdown coordination improvements
-
-## License
 GNU Affero General Public License v3.0 – see `LICENSE`.
