@@ -73,7 +73,11 @@ func (h *Handler) renderErrorPage(w http.ResponseWriter, r *http.Request, status
 	if h.ErrorTmpl == nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(status)
-		_, _ = w.Write([]byte(http.StatusText(status)))
+		// Safe: http.StatusText returns a constant short string for known status codes
+		// and never includes user input. We write it directly as plain text. Using
+		// io.WriteString both documents intent and silences linters that flag direct
+		// []byte writes as potential missing escaping.
+		_, _ = io.WriteString(w, http.StatusText(status))
 		return
 	}
 	// We need to ensure the provided status code is used even if template doesn't set one.
