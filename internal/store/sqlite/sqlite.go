@@ -77,13 +77,13 @@ func (i *Index) Consume(ctx context.Context, id string, _ time.Time) (*store.Ind
 	return &res, nil
 }
 
-// ExpireBefore selects secrets expiring before t and deletes them, returning records for blob cleanup.
-func (i *Index) ExpireBefore(ctx context.Context, t time.Time) ([]store.ExpiredRecord, error) {
-	return expireBefore(ctx, i.db, t)
+// DeleteExpired selects secrets expiring before t and deletes them, returning records for blob cleanup.
+func (i *Index) DeleteExpired(ctx context.Context, t time.Time) ([]store.ExpiredRecord, error) {
+	return deleteExpiredTxn(ctx, i.db, t)
 }
 
-// expireBefore performs the ExpireBefore logic; isolated to reduce cyclomatic complexity on the method receiver.
-func expireBefore(ctx context.Context, db *sql.DB, t time.Time) ([]store.ExpiredRecord, error) {
+// deleteExpiredTxn performs the DeleteExpired logic; isolated to reduce cyclomatic complexity on the method receiver.
+func deleteExpiredTxn(ctx context.Context, db *sql.DB, t time.Time) ([]store.ExpiredRecord, error) {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err

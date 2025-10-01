@@ -55,7 +55,7 @@ func (m *mockStore) Consume(ctx context.Context, id string) (Meta, io.ReadCloser
 	return m.consumeMeta, io.NopCloser(strings.NewReader(m.consumeData)), m.consumeSize, nil
 }
 
-func (m *mockStore) ExpireBefore(ctx context.Context, t time.Time) (int, error) {
+func (m *mockStore) DeleteExpired(ctx context.Context, t time.Time) (int, error) {
 	_ = ctx
 	_ = t
 	return 0, nil

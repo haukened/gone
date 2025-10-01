@@ -158,7 +158,7 @@ func TestStoreConsumeExpired(t *testing.T) {
 	}
 }
 
-func TestStoreExpireBefore(t *testing.T) {
+func TestStoreDeleteExpired(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	clk := fixedClock{now: now}
@@ -182,7 +182,7 @@ func TestStoreExpireBefore(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(blobDir, "44444444444444444444444444444444.blob")); err != nil {
 		t.Fatalf("missing ext blob: %v", err)
 	}
-	count, err := st.ExpireBefore(ctx, now)
+	count, err := st.DeleteExpired(ctx, now)
 	if err != nil {
 		t.Fatalf("ExpireBefore: %v", err)
 	}
@@ -257,7 +257,7 @@ func (m mockIndex) Insert(_ context.Context, _ string, _ app.Meta, _ []byte, _ b
 func (m mockIndex) Consume(_ context.Context, _ string, _ time.Time) (*store.IndexResult, error) {
 	return nil, app.ErrNotFound
 }
-func (m mockIndex) ExpireBefore(_ context.Context, _ time.Time) ([]store.ExpiredRecord, error) {
+func (m mockIndex) DeleteExpired(_ context.Context, _ time.Time) ([]store.ExpiredRecord, error) {
 	return nil, nil
 }
 func (m mockIndex) ListExternalIDs(_ context.Context) ([]string, error) { return nil, nil }

@@ -20,7 +20,7 @@ type Index interface {
 	Insert(ctx context.Context, id string, meta app.Meta, inline []byte, external bool, size int64, createdAt, expiresAt time.Time) error
 	// Consume returns secret data and hard-deletes the row in the same transaction.
 	Consume(ctx context.Context, id string, now time.Time) (*IndexResult, error)
-	ExpireBefore(ctx context.Context, t time.Time) (expired []ExpiredRecord, err error)
+	DeleteExpired(ctx context.Context, t time.Time) (expired []ExpiredRecord, err error)
 	// ListExternalIDs returns IDs of secrets whose payloads are stored externally.
 	ListExternalIDs(ctx context.Context) ([]string, error)
 }

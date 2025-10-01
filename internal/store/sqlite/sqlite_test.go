@@ -129,7 +129,7 @@ func TestIndexConsumeExpired(t *testing.T) {
 	}
 }
 
-func TestIndexExpireBefore(t *testing.T) {
+func TestIndexDeleteExpired(t *testing.T) {
 	db := openTestDB(t)
 	ix, err := New(db)
 	if err != nil {
@@ -147,9 +147,9 @@ func TestIndexExpireBefore(t *testing.T) {
 	if err := ix.Insert(ctx, "future", app.Meta{Version: 1, NonceB64u: "n3"}, []byte("f"), false, 1, now, now.Add(30*time.Minute)); err != nil {
 		t.Fatalf("insert future: %v", err)
 	}
-	recs, err := ix.ExpireBefore(ctx, now)
+	recs, err := ix.DeleteExpired(ctx, now)
 	if err != nil {
-		t.Fatalf("ExpireBefore: %v", err)
+		t.Fatalf("DeleteExpired: %v", err)
 	}
 	if len(recs) != 2 {
 		t.Fatalf("expected 2 expired records, got %d (%+v)", len(recs), recs)
@@ -251,26 +251,26 @@ func TestIndexConsumeBeginTxError(t *testing.T) {
 	}
 }
 
-func TestIndexExpireBeforeNone(t *testing.T) {
+func TestIndexDeleteExpiredNone(t *testing.T) {
 	db := openTestDB(t)
 	ix, _ := New(db)
 	ctx := context.Background()
 	now := time.Now().UTC()
-	recs, err := ix.ExpireBefore(ctx, now)
+	recs, err := ix.DeleteExpired(ctx, now)
 	if err != nil {
-		t.Fatalf("ExpireBefore empty: %v", err)
+		t.Fatalf("DeleteExpired empty: %v", err)
 	}
 	if len(recs) != 0 {
 		t.Fatalf("expected 0 recs, got %d", len(recs))
 	}
 }
 
-func TestIndexExpireBeforeBeginTxError(t *testing.T) {
+func TestIndexDeleteExpiredBeginTxError(t *testing.T) {
 	db := openTestDB(t)
 	ix, _ := New(db)
 	db.Close()
 	ctx := context.Background()
-	if _, err := ix.ExpireBefore(ctx, time.Now()); err == nil {
+	if _, err := ix.DeleteExpired(ctx, time.Now()); err == nil {
 		t.Fatalf("expected error on closed DB")
 	}
 }

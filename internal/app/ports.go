@@ -42,10 +42,10 @@ type SecretStore interface {
 	// the same secret after a successful consume.
 	Consume(ctx context.Context, id string) (meta Meta, rc io.ReadCloser, size int64, err error)
 
-	// ExpireBefore removes (or tombstones) secrets whose expiry precedes 't'
-	// and returns the count of secrets affected. Best-effort cleanup of blob
-	// files is acceptable; failures should be surfaced via error.
-	ExpireBefore(ctx context.Context, t time.Time) (n int, err error)
+	// DeleteExpired removes (or tombstones) secrets whose expiry is <= t and
+	// returns the count of secrets affected. Best-effort cleanup of blob files
+	// is acceptable; failures should be surfaced via error.
+	DeleteExpired(ctx context.Context, t time.Time) (n int, err error)
 
 	// Reconcile performs consistency checks between metadata/index and blob
 	// storage, deleting orphans on either side. It should be idempotent and

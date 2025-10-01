@@ -102,10 +102,10 @@ func (s *Store) buildConsumeResult(id string, res *IndexResult) (meta app.Meta, 
 	return meta, rc, int64(len(res.Inline)), nil
 }
 
-// ExpireBefore removes expired secrets before the given time and returns the count.
+// DeleteExpired removes expired secrets whose expiry is <= t and returns the count.
 // Blob files for expired records are removed best-effort.
-func (s *Store) ExpireBefore(ctx context.Context, t time.Time) (int, error) {
-	expired, err := s.index.ExpireBefore(ctx, t)
+func (s *Store) DeleteExpired(ctx context.Context, t time.Time) (int, error) {
+	expired, err := s.index.DeleteExpired(ctx, t)
 	if err != nil {
 		return 0, err
 	}
