@@ -1,11 +1,12 @@
 openapi: 3.0.3
 info:
   title: Gone Secret Sharing API
-  version: 0.1.0
+  version: 0.1.1
   description: |
     Minimal API for one-time secret creation and consumption.
     Secrets are created with a TTL and may be stored inline or in external blob storage.
     Retrieval consumes (deletes) the secret exactly once.
+    This spec enumerates all HTTP statuses the current implementation may emit.
 servers:
   - url: http://localhost:8080
 paths:
@@ -71,13 +72,31 @@ paths:
                     type: string
                     format: date-time
         '400':
-          description: Validation error (TTL, size, headers)
+          description: Generic validation error (invalid content length, missing headers, invalid version/ttl, unknown fallback)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Path not found (incorrect URL such as /api/secret/extra)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method not allowed (non-POST on /api/secret)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '411':
+          description: Content length required (missing Content-Length header)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '413':
-          description: Payload too large
+          description: Payload too large (size exceeds configured max)
           content:
             application/json:
               schema:
@@ -118,14 +137,20 @@ paths:
               schema:
                 type: string
                 format: binary
+        '400':
+          description: Invalid ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Not found (missing, expired, or already consumed)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '400':
-          description: Invalid ID format
+        '405':
+          description: Method not allowed (non-GET on /api/secret/{id})
           content:
             application/json:
               schema:
@@ -150,6 +175,10 @@ paths:
           description: Service ready
         '503':
           description: Not yet ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
     Error:
