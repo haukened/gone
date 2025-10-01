@@ -25,6 +25,14 @@ type Service struct {
 	MaxBytes int64
 	MinTTL   time.Duration
 	MaxTTL   time.Duration
+	Metrics  Metrics // optional metrics collector (may be nil)
+}
+
+// Metrics defines the minimal counter interface the Service depends on.
+// Implemented by the metrics.Manager (Inc only) without importing that package
+// here to avoid a dependency cycle.
+type Metrics interface {
+	Inc(name string, delta int64)
 }
 
 // CreateSecret validates inputs, assigns a new ID, determines expiry, and persists the secret.
@@ -52,6 +60,10 @@ func (s *Service) CreateSecret(ctx context.Context, ct io.Reader, size int64, ve
 	if err = s.Store.Save(ctx, id.String(), meta, ct, size, expiresAt); err != nil {
 		return id, expiresAt, err
 	}
+	if s.Metrics != nil {
+		// Assumes metric name constant defined in metrics package; hard-code string to avoid import.
+		s.Metrics.Inc("secrets_created_total", 1)
+	}
 	return id, expiresAt, nil
 }
 
@@ -61,6 +73,9 @@ func (s *Service) Consume(ctx context.Context, idStr string) (Meta, io.ReadClose
 		return Meta{}, nil, 0, domain.ErrInvalidID
 	}
 	meta, rc, size, err := s.Store.Consume(ctx, idStr)
+	if err == nil && s.Metrics != nil {
+		s.Metrics.Inc("secrets_consumed_total", 1)
+	}
 	return meta, rc, size, err
 }
 

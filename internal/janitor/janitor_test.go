@@ -123,3 +123,42 @@ func TestStartAlreadyStartedSimplified(t *testing.T) {
 	}
 	j.Stop()
 }
+
+// externalCollector captures emitted metrics for verification.
+type externalCollector struct {
+	mu       sync.Mutex
+	counters map[string]int64
+	observes map[string][]int64
+}
+
+func newExternalCollector() *externalCollector {
+	return &externalCollector{counters: make(map[string]int64), observes: make(map[string][]int64)}
+}
+
+func (e *externalCollector) Inc(name string, delta int64) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.counters[name] += delta
+}
+func (e *externalCollector) Observe(name string, v int64) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.observes[name] = append(e.observes[name], v)
+}
+
+func TestJanitorExternalMetrics(t *testing.T) {
+	fs := &fakeStore{expireCount: 4}
+	ec := newExternalCollector()
+	j := New(fs, ec, Config{Interval: time.Hour})
+	j.runCycle(context.Background())
+	ec.mu.Lock()
+	defer ec.mu.Unlock()
+	if ec.counters["secrets_expired_deleted_total"] != 4 {
+		f := ec.counters["secrets_expired_deleted_total"]
+		t.Fatalf("expected external counter 4 got %d", f)
+	}
+	obs := ec.observes["janitor_deleted_per_cycle"]
+	if len(obs) != 1 || obs[0] != 4 {
+		t.Fatalf("unexpected observations %+v", obs)
+	}
+}

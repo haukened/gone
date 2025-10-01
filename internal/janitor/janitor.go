@@ -77,6 +77,7 @@ type Janitor struct {
 	store   Store
 	cfg     Config
 	metrics *Metrics
+	ext     ExternalMetrics // optional external metrics collector
 
 	ticker *time.Ticker
 	stopCh chan struct{}
@@ -85,7 +86,14 @@ type Janitor struct {
 }
 
 // New constructs but does not start a Janitor.
-func New(store Store, _ interface{}, cfg Config) *Janitor { // second param kept to preserve call sites; ignored
+// ExternalMetrics defines the subset of a metrics collector Janitor uses.
+// We define Observe to support per-cycle distribution recording.
+type ExternalMetrics interface {
+	Inc(name string, delta int64)
+	Observe(name string, value int64)
+}
+
+func New(store Store, ext ExternalMetrics, cfg Config) *Janitor { // second param previously ignored now used
 	if cfg.Interval <= 0 {
 		cfg.Interval = time.Minute
 	}
@@ -96,6 +104,7 @@ func New(store Store, _ interface{}, cfg Config) *Janitor { // second param kept
 		store:   store,
 		cfg:     cfg,
 		metrics: &Metrics{},
+		ext:     ext,
 		stopCh:  make(chan struct{}),
 		doneCh:  make(chan struct{}),
 	}
@@ -164,6 +173,10 @@ func (j *Janitor) runCycle(ctx context.Context) {
 	}
 	j.metrics.addProcessed(count)
 	j.metrics.addDeleted(count)
+	if j.ext != nil && count > 0 { // only emit if something happened
+		j.ext.Inc("secrets_expired_deleted_total", int64(count))
+		j.ext.Observe("janitor_deleted_per_cycle", int64(count))
+	}
 	// Orphan count unknown with simplified Reconcile; skip addOrphans.
 	j.metrics.recordCycle(time.Since(start))
 	log.Info("cycle complete", "processed", count, "deleted", count, "ms", time.Since(start).Milliseconds())
