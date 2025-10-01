@@ -35,11 +35,12 @@ type Config struct {
 
 // Manager aggregates metric events and flushes them.
 type Manager struct {
-	cfg    Config
-	db     *sql.DB
-	events chan event
-	stop   chan struct{}
-	done   chan struct{}
+	cfg     Config
+	db      *sql.DB
+	events  chan event
+	stop    chan struct{}
+	done    chan struct{}
+	started bool
 
 	// in-memory deltas (protected by mu)
 	mu        sync.Mutex
@@ -111,11 +112,20 @@ func (m *Manager) InitSchema(ctx context.Context) error {
 
 // Start launches the background flush loop.
 func (m *Manager) Start(ctx context.Context) {
+	if m.started {
+		return
+	}
+	m.started = true
 	go m.loop(ctx)
 }
 
 // Stop signals flush loop to exit and performs a final flush.
 func (m *Manager) Stop(ctx context.Context) {
+	if !m.started {
+		// No loop running; just flush any deltas.
+		_ = m.flush(ctx)
+		return
+	}
 	close(m.stop)
 	<-m.done
 	_ = m.flush(ctx)
