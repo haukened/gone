@@ -16,7 +16,16 @@
     if (statusEl) statusEl.textContent = msg;
   }
 
+  const debugTiming = (function(){
+    try {
+      const params = new URLSearchParams(location.search);
+      if (params.get('debug') === 'timing') return true;
+      return (window.localStorage && localStorage.getItem('goneDebugTiming') === '1');
+    } catch(_) { return false; }
+  })();
+
   function logTiming(label, start, end) {
+    if (!debugTiming) return;
     console.log(`[gone][timing] ${label}: ${(end - start).toFixed(2)}ms`);
   }
 

@@ -13,7 +13,16 @@
   const errorContent = document.getElementById('submit-error-content');
   if (!textarea || !ttlSelect || !primaryBtn || !cardSection) return;
 
+  const debugTiming = (function(){
+    try {
+      const params = new URLSearchParams(location.search);
+      if (params.get('debug') === 'timing') return true;
+      return (window.localStorage && localStorage.getItem('goneDebugTiming') === '1');
+    } catch(_) { return false; }
+  })();
+
   function logTiming(label, start, end) {
+    if (!debugTiming) return;
     console.log(`[gone][timing] ${label}: ${(end - start).toFixed(2)}ms`);
   }
 
@@ -42,7 +51,7 @@
     const encStart = performance.now();
     const encResult = await window.goneCrypto.encrypt(raw, key);
     const encEnd = performance.now();
-    logTiming('encrypt', encStart, encEnd);
+  logTiming('encrypt', encStart, encEnd);
     return { key, encResult };
   }
 
@@ -63,7 +72,7 @@
       body: ciphertext
     });
     const uploadEnd = performance.now();
-    logTiming('upload', uploadStart, uploadEnd);
+  logTiming('upload', uploadStart, uploadEnd);
     if (!resp.ok) {
       console.error('[gone] server error', resp.status);
       showError(resp.status === 413 ? 'Secret too large' : 'Server error creating secret');
@@ -132,7 +141,7 @@
   }
 
   function finalizeSubmission(uploadRes, keyBytes, t0) {
-    logTotal(t0);
+  logTotal(t0);
     const secretID = uploadRes.json.id;
     if (!secretID) {
       console.error('[gone] missing id in response payload', uploadRes.json);
