@@ -68,6 +68,7 @@ func writePlainStatus(w http.ResponseWriter, status int) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(status)
 	// constant body; safe
+	// nosemgrep
 	_, _ = w.Write([]byte(http.StatusText(status)))
 }
 
