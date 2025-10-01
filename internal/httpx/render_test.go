@@ -48,14 +48,14 @@ func TestRenderTemplate(t *testing.T) {
 			name:           "error_no_prior_write_sets_500_and_plain_text",
 			tmpl:           &mockTemplate{err: errors.New("boom")},
 			wantStatus:     http.StatusInternalServerError,
-			wantBodySubstr: "template error",
+			wantBodySubstr: http.StatusText(http.StatusInternalServerError),
 			wantCT:         "text/plain; charset=utf-8",
 		},
 		{
 			name:           "error_after_partial_write_overrides_status_and_content_type",
 			tmpl:           &mockTemplate{writePartial: "<p>partial</p>", err: errors.New("later failure")},
 			wantStatus:     http.StatusInternalServerError,
-			wantBodySubstr: "template error", // fallback body (partial discarded for security)
+			wantBodySubstr: http.StatusText(http.StatusInternalServerError), // fallback body (partial discarded for security)
 			wantCT:         "text/plain; charset=utf-8",
 		},
 	}

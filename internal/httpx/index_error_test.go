@@ -68,8 +68,8 @@ func TestIndexHandlerErrors(t *testing.T) {
 		if rec.Header().Get("Content-Type") != "text/plain; charset=utf-8" {
 			t.Fatalf("expected plain text content-type got %s", rec.Header().Get("Content-Type"))
 		}
-		if rec.Body.String() != "template error" {
-			t.Fatalf("expected template error body got %s", rec.Body.String())
+		if rec.Body.String() != http.StatusText(http.StatusInternalServerError) {
+			t.Fatalf("expected body %q got %q", http.StatusText(http.StatusInternalServerError), rec.Body.String())
 		}
 	})
 }

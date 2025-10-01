@@ -33,7 +33,7 @@ func TestHandleAbout_AllBranches(t *testing.T) {
 	}{
 		{name: "wrong path", path: "/aboutx", tmpl: aboutTemplateRenderer(), direct: true, wantStatus: http.StatusNotFound},
 		{name: "nil template", path: "/about", tmpl: nil, direct: true, wantStatus: http.StatusServiceUnavailable, wantContains: []string{"about unavailable"}},
-		{name: "template error", path: "/about", tmpl: stubAboutErr{}, direct: true, wantStatus: http.StatusInternalServerError, wantContains: []string{"template error"}, wantCT: "text/plain; charset=utf-8"},
+		{name: "template error", path: "/about", tmpl: stubAboutErr{}, direct: true, wantStatus: http.StatusInternalServerError, wantContains: []string{http.StatusText(http.StatusInternalServerError)}, wantCT: "text/plain; charset=utf-8"},
 		{name: "success", path: "/about", tmpl: aboutTemplateRenderer(), direct: true, wantStatus: http.StatusOK, wantContains: []string{"How Gone Keeps Secrets Secret"}, wantCT: "text/html; charset=utf-8", wantCacheCtrl: "no-store"},
 	}
 	for _, tc := range tests {

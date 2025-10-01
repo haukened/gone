@@ -39,58 +39,17 @@ func (c *captureWriter) WriteHeader(status int)      { c.status = status }
 func renderTemplate(w http.ResponseWriter, tmpl interface {
 	Execute(http.ResponseWriter, any) error
 }, data any) {
-	// Always enforce no-store caching.
-	w.Header().Set("Cache-Control", "no-store")
-	cw := newCaptureWriter()
-	err := tmpl.Execute(cw, data)
-	if err != nil {
-		// On template execution error, avoid reflecting partial output back; emit
-		// a structured log without template internals. We don't have request
-		// context here, so correlation id (cid) is not attached.
-		slog.Error("render", "domain", "ui", "action", "error")
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("template error"))
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	status := cw.status
-	if status == 0 { // template never set status explicitly
-		status = http.StatusOK
-	}
-	w.WriteHeader(status)
-	writeUsingCopy(w, cw)
+	execAndWriteTemplate(w, tmpl, data, http.StatusOK)
 }
 
 // renderErrorPage renders an HTML error page if an error template is configured; otherwise
 // falls back to plain text. It intentionally does not include correlation IDs in the body.
 func (h *Handler) renderErrorPage(w http.ResponseWriter, _ *http.Request, status int, title, message string) {
-	// Always add standard security headers.
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-
-	// If no template, fall back to plain text.
 	if h.ErrorTmpl == nil {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(status)
-		http.Error(w, http.StatusText(status), status) // constant, no user input
+		writePlainStatus(w, status)
 		return
 	}
-
-	// We need to ensure the provided status code is used even if template doesn't set one.
-	cw := newCaptureWriter()
-	err := h.ErrorTmpl.Execute(cw, errorPageData{Status: status, Title: title, Message: message})
-	if err != nil {
-		slog.Error("render", "domain", "ui", "action", "error")
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusInternalServerError)
-		http.Error(w, "template error", http.StatusInternalServerError) // constant, no user input
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	writeUsingCopy(w, cw)
+	execAndWriteTemplate(w, h.ErrorTmpl, errorPageData{Status: status, Title: title, Message: message}, status)
 }
 
 // Safe: bytes come solely from html/template (auto-escaped). We avoid direct
@@ -98,6 +57,38 @@ func (h *Handler) renderErrorPage(w http.ResponseWriter, _ *http.Request, status
 // helps certain linters recognize this as a buffered transfer of trusted content.
 func writeUsingCopy(w http.ResponseWriter, cw *captureWriter) {
 	if cw.buf.Len() > 0 {
-		io.Copy(w, bytes.NewReader(cw.buf.Bytes()))
+		_, _ = io.Copy(w, bytes.NewReader(cw.buf.Bytes()))
 	}
+}
+
+// writePlainStatus writes a plain text status response with standard headers.
+func writePlainStatus(w http.ResponseWriter, status int) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(status)
+	// constant body; safe
+	_, _ = w.Write([]byte(http.StatusText(status)))
+}
+
+// execAndWriteTemplate centralizes template execution, buffering and error handling.
+// If tmpl execution fails, it emits a generic 500 without leaking partial output.
+// desiredStatus is used when the template does not set an explicit status.
+func execAndWriteTemplate(w http.ResponseWriter, tmpl interface {
+	Execute(http.ResponseWriter, any) error
+}, data any, desiredStatus int) {
+	w.Header().Set("Cache-Control", "no-store")
+	cw := newCaptureWriter()
+	if err := tmpl.Execute(cw, data); err != nil {
+		slog.Error("render", "domain", "ui", "action", "error")
+		writePlainStatus(w, http.StatusInternalServerError)
+		return
+	}
+	status := cw.status
+	if status == 0 {
+		status = desiredStatus
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	writeUsingCopy(w, cw)
 }

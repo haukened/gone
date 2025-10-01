@@ -72,7 +72,7 @@ func TestHandleSecret(t *testing.T) {
 			path:               "/secret/abc123",
 			tmpl:               errTemplate{},
 			wantStatus:         http.StatusInternalServerError,
-			wantBodyContains:   "template error",
+			wantBodyContains:   http.StatusText(http.StatusInternalServerError),
 			wantContentType:    "text/plain; charset=utf-8",
 			wantCacheControl:   "no-store",
 			assertContentType:  true,
