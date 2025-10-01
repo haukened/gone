@@ -12,6 +12,7 @@ on:
       - 'README.md'
       - 'LICENSE'
       - 'docs/**'
+      - "Taskfile.yml"
   pull_request:
     branches: [main, develop]
   workflow_dispatch:

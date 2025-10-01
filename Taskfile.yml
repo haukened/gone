@@ -62,11 +62,14 @@ tasks:
 
   run:
     desc: Run development locally
+    env:
+      GONE_DATA_DIR: ".tmp"
+      GONE_METRICS_ADDR: ":9090"
     cmds:
       - task: clean
       - task: dev
       - cmd: mkdir -p .tmp
-      - cmd: GONE_DATA_DIR=.tmp bin/gone
+      - cmd: bin/gone
         interactive: true
         ignore_error: true
   
