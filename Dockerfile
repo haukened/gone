@@ -16,11 +16,13 @@ COPY . .
 # Install minify (v2 path) and prepare/minify static assets (HTML copied like task prod)
 RUN go install github.com/tdewolff/minify/v2/cmd/minify@latest
 
+# Create the directories for minified assets
+RUN mkdir -p web/dist/css web/dist/js
+RUN cp web/*.tmpl.html web/dist/
+
 # Create the directories for minified assets and run minify
-RUN mkdir -p web/dist/css web/dist/js && \
-    cp web/*.tmpl.html web/dist/ && \
-    minify -r -o web/dist/css/ web/css/ && \
-    minify -r -o web/dist/js/ web/js/
+RUN minify -r -o web/dist/css/ web/css/
+RUN minify -r -o web/dist/js/ web/js/
 
 # build static linked binary
 RUN mkdir -p bin
