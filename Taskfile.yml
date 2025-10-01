@@ -65,5 +65,13 @@ tasks:
     cmds:
       - task: clean
       - task: dev
-      - mkdir -p .tmp
-      - GONE_DATA_DIR=.tmp bin/gone
+      - cmd: mkdir -p .tmp
+      - cmd: GONE_DATA_DIR=.tmp bin/gone
+        interactive: true
+        ignore_error: true
+  
+  cover:
+    desc: Run tests with coverage output
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out
