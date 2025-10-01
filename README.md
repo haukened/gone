@@ -10,24 +10,222 @@
 
 # gone
 
-Go + One = Gone.  Written in Go, there until its __*gone*__.
+Go + One = Gone — a tiny service for sharing a secret exactly once.
 
-## Purpose
-Gone is a minimal Go service designed for one-time secret sharing. It enables users to securely share sensitive information by ensuring that secrets are encrypted client-side, transmitted safely, and can only be accessed once before being permanently deleted.
+Gone lets you paste a sensitive value (password, token, wifi key), generate a one‑time link, and send that link. The first person to open it sees the secret; after that it’s gone for good.
 
-## Security Model
-Gone prioritizes security through simplicity and strong encryption practices. Secrets are encrypted on the client side, meaning the service never sees the unencrypted data. Each secret can only be read once, preventing unauthorized access or reuse. This one-time read mechanism, combined with the absence of server-side encryption keys, ensures that secrets remain confidential and ephemeral.
+---
 
-## How It Works
-1. The client encrypts the message locally before sending it to the Gone service using AES-GCM with the Web Crypto API.
-2. The client sends the encrypted message (but not the decryption key) to the Gone service for temporary storage.
-3. The client gives the decryption key to the user, embedded in the URL fragment.
-4. When the recipient accesses the secret link, the encrypted data is retrieved and returned to the client, still encrypted.
-5. After the secret is accessed once, it is immediately deleted from the server, making it inaccessible thereafter.
-6. The client decrypts the message locally in the browser using the passphrase included in the URL fragment (not sent to the server).
-7. The server never has access to the plaintext message or any encryption keys, and therefore cannot decrypt the data.
+## 1. Quick Start (90‑second demo)
 
-This straightforward design guarantees secure, ephemeral message sharing without the complexity of managing server-side encryption keys or persistent storage.
+Run with Docker:
+
+```sh
+docker run --rm -p 8080:8080 ghcr.io/haukened/gone:latest
+```
+
+Visit http://localhost:8080, paste a secret, pick an expiry, copy the generated link, send it. The recipient opens the link, the secret displays once, and the server deletes it immediately.
+
+Want metrics? (optional)
+```sh
+docker run --rm \
+	-p 8080:8080 -p 9090:9090 \
+	-e GONE_METRICS_ADDR=0.0.0.0:9090 \
+	-e GONE_METRICS_TOKEN=tok \
+	ghcr.io/haukened/gone:latest
+```
+
+Fetch metrics snapshot:
+```sh
+curl -H 'Authorization: Bearer tok' http://localhost:9090/
+```
+
+---
+
+## 2. Basic Usage
+1. You type a secret in the web form and choose how long it should live (its TTL).
+2. Your browser encrypts it locally before it ever leaves your machine.
+3. The server stores only the encrypted blob plus when it should expire.
+4. You get a link like: `https://example/secret/abcd#v1:ENC_KEY_MATERIAL`.
+5. You send that full URL (including everything after the `#`) to someone.
+6. When they open it, the server gives their browser the encrypted blob once, deletes it, and the browser decrypts it locally using the part after `#`.
+7. A refresh or second visit won’t work—the secret is already gone.
+
+Guarantees (simple terms):
+* Server never learns the plaintext.
+* Link works only one time.
+* Expired or used links are dead.
+
+---
+
+## 3. Configuration
+Environment variables only (no flags, no config files):
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GONE_ADDR` | Listen address (`host:port` or `:port`). | `:8080` |
+| `GONE_DATA_DIR` | Data directory (SQLite DB + blobs). | `/data` |
+| `GONE_INLINE_MAX_BYTES` | Max ciphertext size stored inline in SQLite. | `8192` |
+| `GONE_MAX_BYTES` | Absolute max secret size (bytes). | `1048576` |
+| `GONE_TTL_OPTIONS` | Comma list of selectable TTLs. | `5m,30m,1h,2h,4h,8h,24h` |
+| `GONE_METRICS_ADDR` | Optional metrics listener address. | (empty) |
+| `GONE_METRICS_TOKEN` | Optional bearer token required for metrics. | (empty) |
+
+Derived automatically:
+* MinTTL / MaxTTL = smallest / largest in `GONE_TTL_OPTIONS` (accepted range is any duration inside that span, not just the listed ones).
+* SQLite DSN → `<GONE_DATA_DIR>/gone.db` (WAL mode, FULL sync enforced).
+
+TTL Format: comma‑separated Go durations using `s`, `m`, `h` (e.g. `30s,5m,90m,2h`).
+
+---
+
+## 4. Metrics (Optional)
+Disabled unless `GONE_METRICS_ADDR` is set. If `GONE_METRICS_TOKEN` is non‑empty you must supply `Authorization: Bearer <token>`.
+
+JSON snapshot example:
+```json
+{
+	"counters": {
+		"secrets_created_total": 123,
+		"secrets_consumed_total": 118,
+		"secrets_expired_deleted_total": 47
+	},
+	"summaries": {
+		"janitor_deleted_per_cycle": {"count": 42, "sum": 420, "min": 1, "max": 25}
+	}
+}
+```
+
+Definitions:
+| Name | Type | Meaning |
+|------|------|---------|
+| `secrets_created_total` | counter | Secrets stored |
+| `secrets_consumed_total` | counter | Secrets consumed & deleted |
+| `secrets_expired_deleted_total` | counter | Expired secrets janitor removed |
+| `janitor_deleted_per_cycle` | summary | Distribution of expirations per janitor run |
+
+Persistence notes:
+* In‑memory metrics flushed periodically to SQLite; snapshot merges persisted + current deltas.
+* Graceful stop attempts a final flush.
+
+Enable + fetch quickly:
+```sh
+GONE_METRICS_ADDR=127.0.0.1:9090 GONE_METRICS_TOKEN=tok \
+	go run ./cmd/gone &
+curl -H 'Authorization: Bearer tok' http://127.0.0.1:9090/
+```
+
+---
+
+## 5. API Specification
+OpenAPI file: `docs/openapi.yaml` (enumerates every emitted status code).
+Importable into Postman / Insomnia / ReDoc.
+
+---
+
+## 6. Build & Run (Local Dev)
+```sh
+go build ./cmd/gone && ./gone
+```
+
+With overrides:
+```sh
+GONE_ADDR=127.0.0.1:8080 \
+GONE_DATA_DIR=$(pwd)/data \
+GONE_TTL_OPTIONS="5m,30m,1h" \
+GONE_MAX_BYTES=$((1024*1024)) \
+GONE_METRICS_ADDR=127.0.0.1:9090 \
+GONE_METRICS_TOKEN=localtok \
+go run ./cmd/gone
+```
+
+---
+
+## 7. Storage & Persistence
+* Metadata (IDs, expiry, consumed state) → SQLite (WAL, FULL sync).
+* Ciphertext: inline if ≤ `GONE_INLINE_MAX_BYTES`; otherwise filesystem blob under `blobs/` in data dir.
+* Expirations cleared by janitor + immediate deletion on consume.
+
+---
+
+## 8. Security & Architecture (Deep Dive)
+This section is intentionally lower in the file—most users can stop above.
+
+### Encryption & One‑Time Retrieval (Protocol v1)
+1. Browser creates random AES‑GCM key + nonce (Web Crypto API).
+2. Encrypts plaintext with AAD `gone:v1`.
+3. Sends ciphertext + nonce (`X-Gone-Nonce`) + version (`X-Gone-Version`). Key never leaves browser.
+4. Server stores ciphertext + metadata only.
+5. Response returns secret ID + expiry.
+6. Share link: `https://host/secret/{id}#v1:<base64url-key>`.
+7. First GET streams ciphertext and deletes record atomically.
+8. Browser decrypts locally; reload fails (already deleted).
+
+Properties:
+* Compromise yields only ciphertext & nonces.
+* Must possess both path ID and fragment key.
+* Atomic consume prevents replay.
+* AES‑GCM integrity + fixed AAD protect against tamper.
+
+### Threat Model Snapshot
+Defended:
+* TLS transport assumed.
+* No server knowledge of keys / plaintext.
+* Atomic single consumption.
+* Timely expiry deletion.
+
+Out of Scope (current):
+* Malicious browser extensions.
+* Brute force ID enumeration (future: lightweight rate limiting).
+* Sophisticated timing side channels.
+* URL hygiene / accidental fragment leakage.
+* Large scale DoS floods.
+
+Operational Tips:
+* Keep TTLs short for higher sensitivity.
+* Restrict metrics listener to loopback or secured network.
+* Backups should exclude transient expired blobs (or run quiescent snapshot).
+
+### Future Hardening Ideas
+* Optional separate KMS‑sealed metadata.
+* Link burn confirmation UX.
+* Structured audit events (without sensitive payload) to external sink.
+
+---
+
+## 9. Security Headers
+Middleware sets:
+* `Cache-Control: no-store`
+* `Referrer-Policy: no-referrer`
+* `X-Content-Type-Options: nosniff`
+* `Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
+
+Notes:
+* CSP blocks inline code; only same‑origin static assets permitted (images allow data URIs).
+* `frame-ancestors 'none'` removes need for X-Frame-Options.
+* Dynamic pages: forced no‑store; static assets may be cached briefly.
+
+---
+
+## 10. Debug / Timing Instrumentation
+Enable client timing logs either:
+* Append `?debug=timing` to a page URL, or
+* DevTools: `localStorage.setItem('goneDebugTiming','1')` then refresh.
+
+Disable by removing parameter & clearing the key.
+
+---
+
+## 11. Roadmap (Excerpt)
+* Rate limiting / abuse guard
+* Optional Prometheus exposition
+* CSP tightening & documentation
+* Graceful shutdown coordination improvements
+
+---
+
+## 12. License
+GNU Affero General Public License v3.0 – see `LICENSE`.
 
 ## Deployment
 Gone is designed to be deployed in Docker. It does not accept command line arguments or config files. Instead, it is configured entirely through environment variables.
@@ -44,6 +242,11 @@ Gone can be configured using the following environment variables:
 | `GONE_TTL_OPTIONS`      | Time-to-live options for a secret.                                            | `5m,30m,1h,2h,4h,8h,24h` |
 | `GONE_METRICS_ADDR`     | Optional separate listener (e.g. `127.0.0.1:9090`) for JSON metrics. Empty disables. | (empty)                  |
 | `GONE_METRICS_TOKEN`    | Optional bearer token required for metrics requests.                          | (empty)                  |
+| `GONE_ADDR`             | Service listen address (ip:port or :port).                                     | `:8080`                  |
+
+Derived values:
+* `MinTTL` and `MaxTTL` are computed automatically as the smallest / largest durations in `GONE_TTL_OPTIONS`.
+* SQLite DSN is fixed to WAL mode, FULL synchronous: `<DataDir>/gone.db`.
 
 `GONE_TTL_OPTIONS` must be a comma-separated list of valid Go duration strings using only seconds (s), minutes (m), and hours (h) units (examples: `30s`, `5m`, `1h30m`). The smallest and largest provided durations become the enforced MinTTL and MaxTTL bounds respectively.
 
@@ -90,6 +293,17 @@ All values are 64-bit integers. Summaries expose aggregated count/sum/min/max ac
 | `secrets_expired_deleted_total` | counter | Expired secrets removed by the janitor |
 | `janitor_deleted_per_cycle` | summary (count,sum,min,max) | Distribution of expired deletions per janitor cycle |
 
+Persistence & Flushing:
+* Counters & summaries are maintained in memory then flushed (default ~5s cadence) to SQLite.
+* On shutdown `Stop()` triggers a final flush to preserve recent increments.
+* Snapshot endpoint (metrics listener `/`) merges persisted + unflushed deltas.
+
+Enabling & Querying Example:
+```sh
+GONE_METRICS_ADDR=127.0.0.1:9090 GONE_METRICS_TOKEN=tok go run ./cmd/gone &
+curl -H 'Authorization: Bearer tok' http://127.0.0.1:9090/
+```
+
 ### Security Note
 Do not expose the metrics listener publicly without a reverse proxy / firewall. Even aggregate counters can leak operational patterns. Binding to `127.0.0.1` and scraping locally is recommended for most deployments.
 
@@ -132,8 +346,23 @@ The server sets security-focused headers (see middleware) including:
 * `Cache-Control: no-store`
 * `Referrer-Policy: no-referrer`
 * `X-Content-Type-Options: nosniff`
-* `X-Frame-Options: DENY`
-* `Content-Security-Policy` (planned explicit enumeration)
+* `Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
+
+Notes:
+* CSP disallows inline scripts/styles and blocks all external origins except self + data URIs for images.
+* `frame-ancestors 'none'` supersedes the need for `X-Frame-Options`.
+* Static assets set a short public cache; dynamic pages force `no-store`.
+
+## Debug / Timing Instrumentation
+Client performance timing logs are disabled by default. Enable them via either:
+* Add query parameter `?debug=timing` to any page URL, or
+* In DevTools console: `localStorage.setItem('goneDebugTiming', '1')` then refresh.
+
+Disable by removing the parameter and running: `localStorage.removeItem('goneDebugTiming')`.
+
+## API Specification
+The full REST interface (including all possible HTTP status codes) is defined in `docs/openapi.yaml`.
+You can view it locally or import into tools like Insomnia / Postman / ReDoc.
 
 ## Roadmap (Excerpt)
 * Rate limiting / abuse guard
