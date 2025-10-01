@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log/slog"
@@ -45,60 +46,52 @@ type realClock struct{}
 
 func (realClock) Now() time.Time { return time.Now().UTC() }
 
-func loadConfig() *config.Config {
+func loadConfig() (*config.Config, error) {
 	cfg, err := config.Load()
 	if err != nil {
-		slog.Error("configuration error", "err", err)
-		os.Exit(2)
+		return nil, fmt.Errorf("load config: %w", err)
 	}
-	return cfg
+	return cfg, nil
 }
 
-func ensureDataDir(dir string) (string, string) {
+func ensureDataDir(dir string) (string, string, error) {
 	if st, err := os.Stat(dir); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			if mkErr := os.MkdirAll(dir, 0o600); mkErr != nil {
-				slog.Error("failed to create data directory", "dir", dir, "err", mkErr)
-				os.Exit(3)
+			if mkErr := os.MkdirAll(dir, 0o700); mkErr != nil {
+				return "", "", fmt.Errorf("create data dir: %w", mkErr)
 			}
 		} else {
-			slog.Error("stat data directory", "dir", dir, "err", err)
-			os.Exit(3)
+			return "", "", fmt.Errorf("stat data dir: %w", err)
 		}
 	} else if !st.IsDir() {
-		slog.Error("data path not directory", "dir", dir)
-		os.Exit(3)
+		return "", "", fmt.Errorf("data path not directory: %s", dir)
 	}
 	blobDir := filepath.Join(dir, "blobs")
-	if err := os.MkdirAll(blobDir, 0o600); err != nil {
-		slog.Error("create blobs dir", "err", err)
-		os.Exit(5)
+	if err := os.MkdirAll(blobDir, 0o700); err != nil {
+		return "", "", fmt.Errorf("create blobs dir: %w", err)
 	}
-	return dir, blobDir
+	return dir, blobDir, nil
 }
 
-func openDatabase(dataDir string) (*sql.DB, store.Index) {
+func openDatabase(dataDir string) (*sql.DB, store.Index, error) {
 	dbPath := filepath.Join(dataDir, "gone.db")
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		slog.Error("open sqlite driver", "err", err)
-		os.Exit(4)
+		return nil, nil, fmt.Errorf("open sqlite driver: %w", err)
 	}
 	idx, err := sqlite.New(db)
 	if err != nil {
-		slog.Error("init sqlite schema", "err", err)
-		os.Exit(4)
+		return nil, nil, fmt.Errorf("init sqlite schema: %w", err)
 	}
-	return db, idx
+	return db, idx, nil
 }
 
-func newBlobStorage(blobDir string) store.BlobStorage {
+func newBlobStorage(blobDir string) (store.BlobStorage, error) {
 	blobs, err := filesystem.New(blobDir)
 	if err != nil {
-		slog.Error("init blob storage", "err", err)
-		os.Exit(5)
+		return nil, fmt.Errorf("init blob storage: %w", err)
 	}
-	return blobs
+	return blobs, nil
 }
 
 type templates struct{ index, about, secret, errorPage *template.Template }
@@ -149,8 +142,9 @@ func parseAllPages(base string) (idx, about, secret, errorPage *template.Templat
 
 // loadTemplates reads partials and composes individual page templates.
 // Split into a helper to keep cyclomatic complexity low.
-func loadTemplates() (*templates, error) {
-	partialsBytes, err := fs.ReadFile(wembed.Assets, "partials.tmpl.html")
+// loadTemplatesFrom loads templates from a provided filesystem. Exposed for tests.
+func loadTemplatesFrom(fsys fs.FS) (*templates, error) {
+	partialsBytes, err := fs.ReadFile(fsys, "partials.tmpl.html")
 	if err != nil {
 		return nil, err
 	}
@@ -159,6 +153,10 @@ func loadTemplates() (*templates, error) {
 		return nil, err
 	}
 	return &templates{index: idx, about: about, secret: secret, errorPage: errorPage}, nil
+}
+
+func loadTemplates() (*templates, error) { // retained for existing callers
+	return loadTemplatesFrom(wembed.Assets)
 }
 
 func buildService(idx store.Index, blobs store.BlobStorage, cfg *config.Config, clock app.Clock) *app.Service {
@@ -195,9 +193,18 @@ func newServer(cfg *config.Config, handler http.Handler) *http.Server {
 }
 
 func run() error {
-	cfg := loadConfig()
-	dataDir, blobDir := ensureDataDir(cfg.DataDir)
-	db, idx := openDatabase(dataDir)
+	cfg, err := loadConfig()
+	if err != nil {
+		return err
+	}
+	dataDir, blobDir, err := ensureDataDir(cfg.DataDir)
+	if err != nil {
+		return err
+	}
+	db, idx, err := openDatabase(dataDir)
+	if err != nil {
+		return err
+	}
 	defer db.Close()
 	// Initialize metrics manager & schema early so other components can emit metrics.
 	ctx := context.Background()
@@ -219,7 +226,10 @@ func run() error {
 		}()
 		slog.Info("metrics server started", "addr", cfg.MetricsAddr)
 	}
-	blobs := newBlobStorage(blobDir)
+	blobs, err := newBlobStorage(blobDir)
+	if err != nil {
+		return err
+	}
 	clock := realClock{}
 	svc := buildService(idx, blobs, cfg, clock)
 	// Inject metrics into service (optional interface already defined)
