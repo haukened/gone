@@ -59,12 +59,7 @@ func renderTemplate(w http.ResponseWriter, tmpl interface {
 		status = http.StatusOK
 	}
 	w.WriteHeader(status)
-	if cw.buf.Len() > 0 {
-		// Safe: bytes come solely from html/template (auto-escaped). We avoid direct
-		// string concatenation or manual construction. Using io.Copy from a new reader
-		// helps certain linters recognize this as a buffered transfer of trusted content.
-		_, _ = io.Copy(w, bytes.NewReader(cw.buf.Bytes()))
-	}
+	writeUsingCopy(w, cw)
 }
 
 // renderErrorPage renders an HTML error page if an error template is configured; otherwise
@@ -95,10 +90,14 @@ func (h *Handler) renderErrorPage(w http.ResponseWriter, _ *http.Request, status
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	// Safe: bytes come solely from html/template (auto-escaped). We avoid direct
-	// string concatenation or manual construction. Using io.Copy from a new reader
-	// helps certain linters recognize this as a buffered transfer of trusted content.
+	writeUsingCopy(w, cw)
+}
+
+// Safe: bytes come solely from html/template (auto-escaped). We avoid direct
+// string concatenation or manual construction. Using io.Copy from a new reader
+// helps certain linters recognize this as a buffered transfer of trusted content.
+func writeUsingCopy(w http.ResponseWriter, cw *captureWriter) {
 	if cw.buf.Len() > 0 {
-		_, _ = io.Copy(w, bytes.NewReader(cw.buf.Bytes()))
+		io.Copy(w, bytes.NewReader(cw.buf.Bytes()))
 	}
 }
