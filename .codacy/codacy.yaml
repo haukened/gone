@@ -19,3 +19,4 @@ exclude_paths:
     # Exclude CSS files to avoid stylelint/SCSS linting issues
     # Since we are using plain CSS, not SCSS
     - "**/*.css"
+    - "Dockerfile"
