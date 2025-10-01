@@ -207,6 +207,18 @@ func run() error {
 	}
 	mgr.Start(ctx)
 	defer mgr.Stop(context.Background())
+
+	// Optional metrics server (separate listener) if configured.
+	var metricsSrv *http.Server
+	if cfg.MetricsAddr != "" {
+		metricsSrv = &http.Server{Addr: cfg.MetricsAddr, Handler: metrics.Handler(mgr, cfg.MetricsToken), ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
+		go func() {
+			if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				slog.Error("metrics server error", "err", err)
+			}
+		}()
+		slog.Info("metrics server started", "addr", cfg.MetricsAddr)
+	}
 	blobs := newBlobStorage(blobDir)
 	clock := realClock{}
 	svc := buildService(idx, blobs, cfg, clock)
@@ -226,6 +238,9 @@ func run() error {
 	slog.Info("starting server", "addr", cfg.Addr, "pid", os.Getpid())
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
+	}
+	if metricsSrv != nil {
+		_ = metricsSrv.Shutdown(context.Background())
 	}
 
 	return nil
