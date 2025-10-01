@@ -32,6 +32,8 @@ import (
 	"github.com/haukened/gone/internal/app"
 	"github.com/haukened/gone/internal/config"
 	"github.com/haukened/gone/internal/httpx"
+	"github.com/haukened/gone/internal/janitor"
+	"github.com/haukened/gone/internal/metrics"
 	"github.com/haukened/gone/internal/store"
 	"github.com/haukened/gone/internal/store/filesystem"
 	"github.com/haukened/gone/internal/store/sqlite"
@@ -197,18 +199,35 @@ func run() error {
 	dataDir, blobDir := ensureDataDir(cfg.DataDir)
 	db, idx := openDatabase(dataDir)
 	defer db.Close()
+	// Initialize metrics manager & schema early so other components can emit metrics.
+	ctx := context.Background()
+	mgr := metrics.New(db, metrics.Config{FlushInterval: 5 * time.Second, Logger: slog.Default()})
+	if err := mgr.InitSchema(ctx); err != nil {
+		return err
+	}
+	mgr.Start(ctx)
+	defer mgr.Stop(context.Background())
 	blobs := newBlobStorage(blobDir)
 	clock := realClock{}
 	svc := buildService(idx, blobs, cfg, clock)
+	// Inject metrics into service (optional interface already defined)
+	svc.Metrics = mgr
 	tmpls, err := loadTemplates()
 	if err != nil {
 		return err
 	}
+	// Start janitor with metrics.
+	janCfg := janitor.Config{Interval: time.Minute, Logger: slog.Default()}
+	jan := janitor.New(store.New(idx, blobs, clock, 1024*4), mgr, janCfg) // reuse underlying components
+	jan.Start(ctx)
+	defer jan.Stop()
+
 	srv := newServer(cfg, buildHandler(cfg, svc, db, blobDir, tmpls))
 	slog.Info("starting server", "addr", cfg.Addr, "pid", os.Getpid())
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
 	}
+
 	return nil
 }
 
