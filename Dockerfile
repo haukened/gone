@@ -7,14 +7,14 @@ WORKDIR /app
 
 # Leverage build cache for deps
 COPY go.mod go.sum ./
-RUN --mount-type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
 # Copy source
 COPY . .
 
 # Install minify (v2 path) and prepare/minify static assets (HTML copied like task prod)
-RUN --mount-type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/go/pkg/mod \
     go install github.com/tdewolff/minify/v2/cmd/minify@latest && \
     mkdir -p web/dist/css web/dist/js && \
     cp web/*.html web/dist/ && \
