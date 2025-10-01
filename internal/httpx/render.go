@@ -69,17 +69,19 @@ func renderTemplate(w http.ResponseWriter, tmpl interface {
 
 // renderErrorPage renders an HTML error page if an error template is configured; otherwise
 // falls back to plain text. It intentionally does not include correlation IDs in the body.
-func (h *Handler) renderErrorPage(w http.ResponseWriter, r *http.Request, status int, title, message string) {
+func (h *Handler) renderErrorPage(w http.ResponseWriter, _ *http.Request, status int, title, message string) {
+	// Always add standard security headers.
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+
+	// If no template, fall back to plain text.
 	if h.ErrorTmpl == nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(status)
-		// Safe: http.StatusText returns a constant short string for known status codes
-		// and never includes user input. We write it directly as plain text. Using
-		// io.WriteString both documents intent and silences linters that flag direct
-		// []byte writes as potential missing escaping.
-		_, _ = io.WriteString(w, http.StatusText(status))
+		http.Error(w, http.StatusText(status), status) // constant, no user input
 		return
 	}
+
 	// We need to ensure the provided status code is used even if template doesn't set one.
 	cw := newCaptureWriter()
 	err := h.ErrorTmpl.Execute(cw, errorPageData{Status: status, Title: title, Message: message})
@@ -87,12 +89,15 @@ func (h *Handler) renderErrorPage(w http.ResponseWriter, r *http.Request, status
 		slog.Error("render", "domain", "ui", "action", "error")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("template error"))
+		http.Error(w, "template error", http.StatusInternalServerError) // constant, no user input
 		return
 	}
-	w.Header().Set("Cache-Control", "no-store")
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
+	// Safe: bytes come solely from html/template (auto-escaped). We avoid direct
+	// string concatenation or manual construction. Using io.Copy from a new reader
+	// helps certain linters recognize this as a buffered transfer of trusted content.
 	if cw.buf.Len() > 0 {
 		_, _ = io.Copy(w, bytes.NewReader(cw.buf.Bytes()))
 	}
