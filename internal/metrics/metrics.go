@@ -203,44 +203,66 @@ func (m *Manager) apply(ev event) {
 // Snapshot returns current (persisted + in-memory deltas) by reading persisted
 // state and layering deltas. This is optional and may be refined later.
 func (m *Manager) Snapshot(ctx context.Context) (counters map[string]int64, summaries map[string]summaryAgg, err error) {
-	counters = make(map[string]int64)
-	summaries = make(map[string]summaryAgg)
-	// Load persisted counters.
-	rows, err := m.db.QueryContext(ctx, `SELECT name, value FROM metrics_counters`)
+	counters, err = m.loadPersistedCounters(ctx)
 	if err != nil {
 		return nil, nil, err
+	}
+	summaries, err = m.loadPersistedSummaries(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	m.layerDeltas(counters, summaries)
+	return counters, summaries, nil
+}
+
+// loadPersistedCounters reads counters from storage.
+func (m *Manager) loadPersistedCounters(ctx context.Context) (map[string]int64, error) {
+	counters := make(map[string]int64)
+	rows, err := m.db.QueryContext(ctx, `SELECT name, value FROM metrics_counters`)
+	if err != nil {
+		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var n string
 		var v int64
 		if err := rows.Scan(&n, &v); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		counters[n] = v
 	}
-	// Load persisted summaries.
-	srows, err := m.db.QueryContext(ctx, `SELECT name, count, sum, min, max FROM metrics_summaries`)
+	return counters, nil
+}
+
+// loadPersistedSummaries reads summaries from storage.
+func (m *Manager) loadPersistedSummaries(ctx context.Context) (map[string]summaryAgg, error) {
+	summaries := make(map[string]summaryAgg)
+	rows, err := m.db.QueryContext(ctx, `SELECT name, count, sum, min, max FROM metrics_summaries`)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	defer srows.Close()
-	for srows.Next() {
+	defer rows.Close()
+	for rows.Next() {
 		var n string
 		var c, s, mn, mx int64
-		if err := srows.Scan(&n, &c, &s, &mn, &mx); err != nil {
-			return nil, nil, err
+		if err := rows.Scan(&n, &c, &s, &mn, &mx); err != nil {
+			return nil, err
 		}
 		summaries[n] = summaryAgg{count: c, sum: s, min: mn, max: mx}
 	}
-	// Layer deltas.
+	return summaries, nil
+}
+
+// layerDeltas merges in-memory deltas onto persisted values.
+func (m *Manager) layerDeltas(counters map[string]int64, summaries map[string]summaryAgg) {
 	m.mu.Lock()
+	defer m.mu.Unlock()
 	for n, v := range m.counters {
 		counters[n] += v
 	}
 	for n, agg := range m.summaries {
 		cur := summaries[n]
-		if cur.count == 0 {
+		if cur.count == 0 { // no persisted value yet
 			summaries[n] = *agg
 			continue
 		}
@@ -254,18 +276,35 @@ func (m *Manager) Snapshot(ctx context.Context) (counters map[string]int64, summ
 		}
 		summaries[n] = cur
 	}
-	m.mu.Unlock()
-	return counters, summaries, nil
 }
 
 // flush writes in-memory deltas to SQLite in a single transaction and resets them.
 func (m *Manager) flush(ctx context.Context) error {
-	m.mu.Lock()
-	if len(m.counters) == 0 && len(m.summaries) == 0 {
-		m.mu.Unlock()
+	cCopy, sCopy, ok := m.swapAndCopyDeltas()
+	if !ok { // nothing to flush
 		return nil
 	}
-	// Copy & reset.
+	tx, err := m.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	if err := m.upsertCounters(ctx, tx, cCopy); err != nil {
+		return err
+	}
+	if err := m.upsertSummaries(ctx, tx, sCopy); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// swapAndCopyDeltas copies in-memory deltas and resets maps under lock.
+// Returns false if there is nothing to flush.
+func (m *Manager) swapAndCopyDeltas() (map[string]int64, map[string]*summaryAgg, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.counters) == 0 && len(m.summaries) == 0 {
+		return nil, nil, false
+	}
 	cCopy := make(map[string]int64, len(m.counters))
 	for k, v := range m.counters {
 		cCopy[k] = v
@@ -277,25 +316,27 @@ func (m *Manager) flush(ctx context.Context) error {
 	}
 	m.counters = make(map[string]int64)
 	m.summaries = make(map[string]*summaryAgg)
-	m.mu.Unlock()
+	return cCopy, sCopy, true
+}
 
-	tx, err := m.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	// Upsert counters.
-	for name, delta := range cCopy {
+// upsertCounters persists counter deltas.
+func (m *Manager) upsertCounters(ctx context.Context, tx *sql.Tx, counters map[string]int64) error {
+	for name, delta := range counters {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO metrics_counters(name,value) VALUES(?,?) ON CONFLICT(name) DO UPDATE SET value = value + excluded.value`, name, delta); err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
-	// Upsert summaries.
-	for name, agg := range sCopy {
+	return nil
+}
+
+// upsertSummaries persists summary aggregates.
+func (m *Manager) upsertSummaries(ctx context.Context, tx *sql.Tx, sums map[string]*summaryAgg) error {
+	for name, agg := range sums {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO metrics_summaries(name,count,sum,min,max) VALUES(?,?,?,?,?) ON CONFLICT(name) DO UPDATE SET count = metrics_summaries.count + excluded.count, sum = metrics_summaries.sum + excluded.sum, min = MIN(metrics_summaries.min, excluded.min), max = MAX(metrics_summaries.max, excluded.max)`, name, agg.count, agg.sum, agg.min, agg.max); err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
