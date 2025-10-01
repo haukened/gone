@@ -323,7 +323,9 @@ func (m *Manager) swapAndCopyDeltas() (map[string]int64, map[string]*summaryAgg,
 func (m *Manager) upsertCounters(ctx context.Context, tx *sql.Tx, counters map[string]int64) error {
 	for name, delta := range counters {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO metrics_counters(name,value) VALUES(?,?) ON CONFLICT(name) DO UPDATE SET value = value + excluded.value`, name, delta); err != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				return errors.Join(err, rbErr)
+			}
 			return err
 		}
 	}
@@ -334,7 +336,9 @@ func (m *Manager) upsertCounters(ctx context.Context, tx *sql.Tx, counters map[s
 func (m *Manager) upsertSummaries(ctx context.Context, tx *sql.Tx, sums map[string]*summaryAgg) error {
 	for name, agg := range sums {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO metrics_summaries(name,count,sum,min,max) VALUES(?,?,?,?,?) ON CONFLICT(name) DO UPDATE SET count = metrics_summaries.count + excluded.count, sum = metrics_summaries.sum + excluded.sum, min = MIN(metrics_summaries.min, excluded.min), max = MAX(metrics_summaries.max, excluded.max)`, name, agg.count, agg.sum, agg.min, agg.max); err != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				return errors.Join(err, rbErr)
+			}
 			return err
 		}
 	}
