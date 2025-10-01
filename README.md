@@ -123,7 +123,7 @@ Importable into Postman / Insomnia / ReDoc.
 
 ---
 
->[! NOTE]
+>[!NOTE]
 > Everything below this line is advanced detail for operators and developers.
 > Read on if you're curious, but most people can stop here.
 
