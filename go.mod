@@ -1,6 +1,6 @@
 module github.com/haukened/gone
 
-go 1.25
+go 1.25.1
 
 require (
 	github.com/go-playground/validator/v10 v10.27.0
