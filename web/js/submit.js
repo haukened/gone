@@ -217,7 +217,18 @@ function buildAndShowResultPanel(opts) {
   if (replaceTarget) replaceTarget.replaceWith(panel); else document.body.appendChild(panel);
   const shareInput = panel.querySelector('#share-link');
   const copyBtnRoot = panel.querySelector('.copy-primary-btn');
-  if (focus && shareInput) shareInput.focus();
+  if (focus && shareInput) {
+    shareInput.focus();
+    // Ensure the beginning of the long URL is visible. Some browsers scroll to the end on focus.
+    try {
+      // Defer to next frame so layout/selection are applied after focus.
+      requestAnimationFrame(function() {
+        shareInput.selectionStart = 0;
+        shareInput.selectionEnd = 0;
+        shareInput.scrollLeft = 0;
+      });
+    } catch (_) { /* non-critical */ }
+  }
   if (copyBtnRoot) { copyBtnRoot.addEventListener('click', async function () { let success = true; try { await navigator.clipboard.writeText(shareURL); } catch (_) { if (shareInput) { shareInput.focus(); shareInput.select(); } success = false; } if (success) { copyBtnRoot.innerHTML = 'Copied! ' + CHECK_ICON; copyBtnRoot.classList.add('copied'); copyBtnRoot.disabled = true; setTimeout(function () { copyBtnRoot.innerHTML = 'Copy Link ' + COPY_ICON; copyBtnRoot.classList.remove('copied'); copyBtnRoot.disabled = false; }, 2200); } else { alert('Copy failed. Please press \u2318/Ctrl+C to copy manually.'); } return success; }); }
   console.log('[gone] result panel shown');
 }

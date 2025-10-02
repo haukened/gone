@@ -362,6 +362,9 @@ body:has(#theme-switch:checked) .security-warning-card.danger {
 .share-link {
 	width: 100%;
 	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
+	direction: ltr;
 }
 
 .site-footer {
