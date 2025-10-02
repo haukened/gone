@@ -165,8 +165,9 @@ func Load() (*Config, error) {
 	err = k.UnmarshalWithConf("", &cfg, koanf.UnmarshalConf{
 		Tag: "koanf",
 		DecoderConfig: &mapstructure.DecoderConfig{
-			Result:  &cfg,
-			TagName: "koanf",
+			Result:           &cfg,
+			TagName:          "koanf",
+			WeaklyTypedInput: true,
 			DecodeHook: mapstructure.ComposeDecodeHookFunc(
 				StringToTTLOptions(),
 			),

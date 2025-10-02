@@ -322,3 +322,20 @@ func TestRegisterValidationFails(t *testing.T) {
 		t.Fatalf("expected assert.AnError, got: %v", err)
 	}
 }
+
+func TestNumericEnvCoercion(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
+	t.Setenv("GONE_MAX_BYTES", "2097152") // 2 MiB
+	t.Setenv("GONE_INLINE_MAX_BYTES", "4096")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if cfg.MaxBytes != 2097152 {
+		t.Fatalf("expected MaxBytes 2097152 got %d", cfg.MaxBytes)
+	}
+	if cfg.InlineMaxBytes != 4096 {
+		t.Fatalf("expected InlineMaxBytes 4096 got %d", cfg.InlineMaxBytes)
+	}
+}
