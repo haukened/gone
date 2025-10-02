@@ -22,14 +22,19 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     /usr/local/bin/minify -r -o web/dist/css/ web/css/ && \
     /usr/local/bin/minify -r -o web/dist/js/ web/js/
 
-# build static linked binary
+# Build (attempt fully static) linked binary with CGO for sqlite. Using external link mode and static flags.
 RUN mkdir -p bin
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
+ENV CGO_ENABLED=1
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -trimpath -ldflags="-s -w" -tags=prod -o ./bin/gone ./cmd/gone
+        --mount=type=cache,target=/go/pkg/mod \
+        GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+        go build -trimpath -tags='prod sqlite_omit_load_extension netgo osusergo' \
+            -ldflags='-s -w -linkmode external -extldflags "-static"' \
+            -o ./bin/gone ./cmd/gone || \
+        (echo 'Falling back to dynamic link (static link failed)'; \
+         go build -trimpath -tags='prod sqlite_omit_load_extension netgo osusergo' -ldflags='-s -w' -o ./bin/gone ./cmd/gone)
 
 # Runtime doesn't have mkdir, so create data dir at build time
 # and copy it to final image.
