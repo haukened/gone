@@ -7,7 +7,11 @@
   if (!container) return;
 
   // DOM references
-  const statusEl = document.getElementById('secret-status');
+  // Status/heading element: template currently uses id "secret-heading".
+  // Older code referenced an element id "secret-status" that no longer exists,
+  // so runtime updates were not visible. We first try the current id and then
+  // fall back for any cached/legacy template versions.
+  const statusEl = document.getElementById('secret-heading') || document.getElementById('secret-status');
   const outputTA = document.getElementById('secret-output');
   const actions = document.getElementById('secret-actions');
   const copyBtn = document.getElementById('copy-secret');
@@ -73,7 +77,7 @@
       autoGrow(outputTA);
     }
     if (actions) actions.hidden = false;
-    setStatus('Decrypted');
+    setStatus('Decrypted Secret:');
     attachCopyHandler(text);
   }
 
@@ -111,7 +115,13 @@
     const t1 = performance.now();
     logTiming('consume_fetch', t0, t1);
     if (!resp.ok) {
-      setStatus(resp.status === 404 ? 'Secret not found or already consumed.' : 'Fetch error');
+      if (resp.status === 404 || resp.status === 410) {
+        setStatus('That secret either never existed, has already been consumed, or has expired.');
+      } else if (resp.status === 429) {
+        setStatus('Rate limited. Please wait and retry.');
+      } else {
+        setStatus('Fetch error');
+      }
       return null;
     }
     return resp;
