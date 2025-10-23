@@ -3,7 +3,10 @@ package httpx
 import "testing"
 
 func TestHumanBytes(t *testing.T) {
-	tests := []struct{ in int64; expect string }{
+	tests := []struct {
+		in     int64
+		expect string
+	}{
 		{0, "0 B"},
 		{1, "1 B"},
 		{1023, "1023 B"},
@@ -17,13 +20,16 @@ func TestHumanBytes(t *testing.T) {
 	}
 	for _, tc := range tests {
 		if got := humanBytes(tc.in); got != tc.expect {
-				 t.Fatalf("humanBytes(%d) expected %q got %q", tc.in, tc.expect, got)
+			t.Fatalf("humanBytes(%d) expected %q got %q", tc.in, tc.expect, got)
 		}
 	}
 }
 
 func TestHumanTTL(t *testing.T) {
-	tests := []struct{ in int; expect string }{
+	tests := []struct {
+		in     int
+		expect string
+	}{
 		{0, "0s"},
 		{-5, "0s"},
 		{59, "59s"},
@@ -35,7 +41,7 @@ func TestHumanTTL(t *testing.T) {
 	}
 	for _, tc := range tests {
 		if got := humanTTL(tc.in); got != tc.expect {
-			 t.Fatalf("humanTTL(%d) expected %q got %q", tc.in, tc.expect, got)
+			t.Fatalf("humanTTL(%d) expected %q got %q", tc.in, tc.expect, got)
 		}
 	}
 }
