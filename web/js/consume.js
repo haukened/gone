@@ -76,7 +76,8 @@
       outputTA.hidden = false;
       autoGrow(outputTA);
     }
-    if (actions) actions.hidden = false;
+    // Reveal copy button now that plaintext is available
+    if (copyBtn) copyBtn.hidden = false;
     setStatus('Decrypted Secret:');
     attachCopyHandler(text);
   }
@@ -88,7 +89,8 @@
       outputTA.hidden = false;
       autoGrow(outputTA);
     }
-    if (actions) actions.hidden = false;
+    // Reveal copy button for preview mode
+    if (copyBtn) copyBtn.hidden = false;
     setStatus('Decrypted (preview)');
     attachCopyHandler(mockPlain);
   }
