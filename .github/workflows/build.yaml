@@ -47,6 +47,9 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      - name: Install minify
+        run: go install github.com/tdewolff/minify/v2/cmd/minify@latest
+
       - name: Install Task
         run: go install github.com/go-task/task/v3/cmd/task@latest
 
