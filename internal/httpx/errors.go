@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/haukened/gone/internal/app"
 	"github.com/haukened/gone/internal/domain"
@@ -20,7 +21,10 @@ func (h *Handler) writeError(ctx context.Context, w http.ResponseWriter, code in
 		Error string `json:"error"`
 	}{Error: msg})
 	if cid, ok := GetCorrelationID(ctx); ok {
-		slog.Debug("wrote error response", "cid", cid, "status", code, "msg", msg)
+		// Sanitize to prevent log injection
+		safeMsg := strings.ReplaceAll(msg, "\n", "")
+		safeMsg = strings.ReplaceAll(safeMsg, "\r", "")
+		slog.Debug("wrote error response", "cid", cid, "status", code, "msg", safeMsg)
 	}
 }
 
