@@ -7,25 +7,30 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/haukened/gone/internal/app"
 	"github.com/haukened/gone/internal/domain"
 )
 
-// writeError writes a JSON error body with given status code.
-func (h *Handler) writeError(ctx context.Context, w http.ResponseWriter, code int, msg string) {
+// writeJSONError writes a JSON error body with the provided HTTP status code and
+// message and emits a debug log entry when a correlation ID exists in ctx.
+//
+// Parameters:
+//   - ctx: Request-scoped context that may contain the correlation ID.
+//   - w: HTTP response writer receiving headers/status/body.
+//   - code: HTTP status code to return.
+//   - msg: User-facing error message included in the JSON payload.
+func writeJSONError(ctx context.Context, w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(struct {
 		Error string `json:"error"`
 	}{Error: msg})
-	if cid, ok := GetCorrelationID(ctx); ok {
-		// Sanitize to prevent log injection
-		safeMsg := strings.ReplaceAll(msg, "\n", "")
-		safeMsg = strings.ReplaceAll(safeMsg, "\r", "")
-		slog.Debug("wrote error response", "cid", cid, "status", code, "msg", safeMsg)
-	}
+}
+
+// writeError writes a JSON error body with given status code.
+func (h *Handler) writeError(ctx context.Context, w http.ResponseWriter, code int, msg string) {
+	writeJSONError(ctx, w, code, msg)
 }
 
 // mapServiceError maps domain/store/service errors to HTTP responses.
@@ -52,4 +57,5 @@ func (h *Handler) mapServiceError(ctx context.Context, w http.ResponseWriter, er
 		slog.Error("unhandled service error", "cid", cid, "code", "unhandled", "err_type", "unknown")
 		h.writeError(ctx, w, http.StatusInternalServerError, "internal")
 	}
+
 }
