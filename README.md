@@ -69,7 +69,7 @@ Environment variables only (no flags, no config files):
 | `GONE_MAX_BYTES` | Absolute max secret size (bytes). | `1048576` |
 | `GONE_TTL_OPTIONS` | Comma list of selectable TTLs. | `5m,30m,1h,2h,4h,8h,24h` |
 | `GONE_METRICS_ADDR` | Optional metrics listener address. | (empty) |
-| `GONE_METRICS_TOKEN` | Optional bearer token required for metrics. | (empty) |
+| `GONE_METRICS_TOKEN` | Bearer token required when metrics are enabled. | (empty) |
 
 Derived automatically:
 * MinTTL / MaxTTL = smallest / largest in `GONE_TTL_OPTIONS` (accepted range is any duration inside that span, not just the listed ones).
@@ -80,7 +80,7 @@ TTL Format: comma‑separated Go durations using `s`, `m`, `h` (e.g. `30s,5m,90m
 ---
 
 ## 4. Metrics (Optional)
-Disabled unless `GONE_METRICS_ADDR` is set. If `GONE_METRICS_TOKEN` is non‑empty you must supply `Authorization: Bearer <token>`.
+Disabled unless `GONE_METRICS_ADDR` is set. When metrics are enabled, `GONE_METRICS_TOKEN` is required and clients must supply `Authorization: Bearer <token>`.
 
 JSON snapshot example:
 ```json

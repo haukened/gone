@@ -22,11 +22,27 @@ func TestHandlerAuth(t *testing.T) {
 	f := &fakeSnapshot{c: map[string]int64{"a": 1}, s: map[string]summaryAgg{"x": {count: 2, sum: 5, min: 2, max: 3}}}
 	h := Handler(f, "tok")
 
-	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
-	rw := httptest.NewRecorder()
-	h(rw, req)
-	if rw.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401 got %d", rw.Code)
+	for _, tc := range []struct {
+		name   string
+		header string
+	}{
+		{name: "missing"},
+		{name: "malformed", header: "Basic tok"},
+		{name: "empty bearer", header: "Bearer "},
+		{name: "wrong same length", header: "Bearer bad"},
+		{name: "wrong different length", header: "Bearer wrong-token"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+			if tc.header != "" {
+				req.Header.Set("Authorization", tc.header)
+			}
+			rw := httptest.NewRecorder()
+			h(rw, req)
+			if rw.Code != http.StatusUnauthorized {
+				t.Fatalf("expected 401 got %d", rw.Code)
+			}
+		})
 	}
 
 	req2 := httptest.NewRequest(http.MethodGet, "/metrics", nil)
@@ -51,12 +67,14 @@ func TestHandlerAuth(t *testing.T) {
 	}
 }
 
-func TestHandlerNoToken(t *testing.T) {
+func TestHandlerEmptyConfiguredTokenFailsClosed(t *testing.T) {
 	f := &fakeSnapshot{c: map[string]int64{"c": 10}, s: map[string]summaryAgg{}}
 	h := Handler(f, "")
 	rw := httptest.NewRecorder()
-	h(rw, httptest.NewRequest(http.MethodGet, "/metrics", nil))
-	if rw.Code != http.StatusOK {
-		t.Fatalf("expected 200 got %d", rw.Code)
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	req.Header.Set("Authorization", "Bearer anything")
+	h(rw, req)
+	if rw.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 got %d", rw.Code)
 	}
 }

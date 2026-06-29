@@ -23,6 +23,8 @@ func cleanEnvVars(t *testing.T) map[string]string {
 		"GONE_INLINE_MAX_BYTES",
 		"GONE_MAX_BYTES",
 		"GONE_TTL_OPTIONS",
+		"GONE_METRICS_ADDR",
+		"GONE_METRICS_TOKEN",
 	}
 	for _, v := range vars {
 		val := os.Getenv(v)
@@ -78,6 +80,42 @@ func TestNoTTLOptions(t *testing.T) {
 	_, err := Load()
 	if err == nil {
 		t.Fatalf("expected error, got nil")
+	}
+}
+
+func TestMetricsDisabledAllowsEmptyToken(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if cfg.MetricsAddr != "" || cfg.MetricsToken != "" {
+		t.Fatalf("expected disabled metrics with empty token, got addr=%q token=%q", cfg.MetricsAddr, cfg.MetricsToken)
+	}
+}
+
+func TestMetricsAddrRequiresToken(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
+	t.Setenv("GONE_METRICS_ADDR", "127.0.0.1:9090")
+	_, err := Load()
+	if err == nil {
+		t.Fatalf("expected metrics token validation error")
+	}
+}
+
+func TestMetricsAddrWithToken(t *testing.T) {
+	orig := cleanEnvVars(t)
+	t.Cleanup(func() { restoreEnvVars(t, orig) })
+	t.Setenv("GONE_METRICS_ADDR", "127.0.0.1:9090")
+	t.Setenv("GONE_METRICS_TOKEN", "tok")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if cfg.MetricsAddr != "127.0.0.1:9090" || cfg.MetricsToken != "tok" {
+		t.Fatalf("metrics config mismatch: %+v", cfg)
 	}
 }
 

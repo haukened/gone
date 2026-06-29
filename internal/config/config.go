@@ -28,7 +28,7 @@ type Config struct {
 	MaxTTL         time.Duration      `koanf:"-" validate:"required,gtfield=MinTTL"`
 	TTLOptions     []domain.TTLOption `koanf:"ttl_options" validate:"required"`
 	MetricsAddr    string             `koanf:"metrics_addr" validate:"omitempty,ip_port"`
-	MetricsToken   string             `koanf:"metrics_token"`
+	MetricsToken   string             `koanf:"metrics_token" validate:"required_with=MetricsAddr"`
 }
 
 // DefaultAppConfig provides the default app configuration values.

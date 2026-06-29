@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 )
@@ -12,16 +13,12 @@ type SnapshotProvider interface {
 }
 
 // Handler returns an http.HandlerFunc that writes JSON metrics snapshot.
-// If token is non-empty, requests must include Authorization: Bearer <token>.
+// Requests must include Authorization: Bearer <token>.
 func Handler(provider SnapshotProvider, token string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if token != "" {
-			hdr := r.Header.Get("Authorization")
-			const prefix = "Bearer "
-			if len(hdr) <= len(prefix) || hdr[:len(prefix)] != prefix || hdr[len(prefix):] != token {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
+		if !authorized(r.Header.Get("Authorization"), token) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
 		}
 		counters, summaries, err := provider.Snapshot(r.Context())
 		if err != nil {
@@ -45,4 +42,19 @@ func Handler(provider SnapshotProvider, token string) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resp)
 	}
+}
+
+func authorized(header, token string) bool {
+	if token == "" {
+		return false
+	}
+	const prefix = "Bearer "
+	if len(header) <= len(prefix) || header[:len(prefix)] != prefix {
+		return false
+	}
+	got := header[len(prefix):]
+	if got == "" || len(got) != len(token) {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(got), []byte(token)) == 1
 }
