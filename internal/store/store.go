@@ -64,17 +64,14 @@ func (s *Store) Save(ctx context.Context, id string, meta app.Meta, r io.Reader,
 // reader. Blob deletion failures during Close are tolerated; reconciliation
 // will clean lingering files.
 func (s *Store) Consume(ctx context.Context, id string) (meta app.Meta, rc io.ReadCloser, size int64, err error) {
-	if s == nil || s.index == nil {
+	if s == nil || s.index == nil || s.blobs == nil || s.clock == nil {
 		err = errors.New("store not properly initialized")
 		return
 	}
 	now := s.clock.Now()
-	res, cerr := s.index.Consume(ctx, id, now)
+	res, cerr := s.index.Consume(ctx, id, now, s.blobs.Open)
 	if cerr != nil {
 		return meta, nil, 0, cerr
-	}
-	if expired(now, res.ExpiresAt) {
-		return meta, nil, 0, app.ErrNotFound
 	}
 	return s.buildConsumeResult(id, res)
 }
@@ -92,14 +89,28 @@ func (s *Store) buildConsumeResult(id string, res *IndexResult) (meta app.Meta, 
 	meta = res.Meta
 	size = res.Size
 	if res.External {
-		f, oErr := s.blobs.Consume(id)
-		if oErr != nil {
-			return meta, nil, 0, oErr
+		if res.Reader == nil {
+			return meta, nil, 0, errors.New("external reader missing")
 		}
-		return meta, f, size, nil
+		return meta, &blobDeletingReadCloser{ReadCloser: res.Reader, blobs: s.blobs, id: id}, size, nil
 	}
 	rc = io.NopCloser(newInlineReader(res.Inline))
 	return meta, rc, int64(len(res.Inline)), nil
+}
+
+type blobDeletingReadCloser struct {
+	io.ReadCloser
+	blobs BlobStorage
+	id    string
+}
+
+func (b *blobDeletingReadCloser) Close() error {
+	closeErr := b.ReadCloser.Close()
+	deleteErr := b.blobs.Delete(b.id)
+	if closeErr != nil {
+		return closeErr
+	}
+	return deleteErr
 }
 
 // DeleteExpired removes expired secrets whose expiry is <= t and returns the count.

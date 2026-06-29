@@ -19,16 +19,22 @@ import (
 type Index interface {
 	Insert(ctx context.Context, id string, meta app.Meta, inline []byte, external bool, size int64, createdAt, expiresAt time.Time) error
 	// Consume returns secret data and hard-deletes the row in the same transaction.
-	Consume(ctx context.Context, id string, now time.Time) (*IndexResult, error)
+	// For external payloads, openExternal is called while the consume transaction
+	// is held; if opening fails, the row is left intact.
+	Consume(ctx context.Context, id string, now time.Time, openExternal ExternalOpener) (*IndexResult, error)
 	DeleteExpired(ctx context.Context, t time.Time) (expired []ExpiredRecord, err error)
 	// ListExternalIDs returns IDs of secrets whose payloads are stored externally.
 	ListExternalIDs(ctx context.Context) ([]string, error)
 }
 
+// ExternalOpener opens an external payload without consuming or deleting it.
+type ExternalOpener func(id string) (io.ReadCloser, error)
+
 // IndexResult bundles the data returned by Index.Consume
 type IndexResult struct {
 	Meta      app.Meta
 	Inline    []byte
+	Reader    io.ReadCloser
 	External  bool
 	Size      int64
 	ExpiresAt time.Time
@@ -43,6 +49,8 @@ type IndexResult struct {
 // removal but before successful blob deletion.
 type BlobStorage interface {
 	Write(id string, r io.Reader, size int64) error
+	// Open returns a reader for the blob without deleting it on close.
+	Open(id string) (io.ReadCloser, error)
 	// Consume returns a reader for the blob. Close MUST attempt to delete the
 	// blob file. If deletion fails, Close should return that error (unless a
 	// prior read error is more relevant). Callers should treat the blob as

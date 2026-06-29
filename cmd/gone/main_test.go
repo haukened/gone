@@ -27,7 +27,7 @@ type stubIndex struct{}
 func (stubIndex) Insert(context.Context, string, app.Meta, []byte, bool, int64, time.Time, time.Time) error {
 	return nil
 }
-func (stubIndex) Consume(context.Context, string, time.Time) (*store.IndexResult, error) {
+func (stubIndex) Consume(context.Context, string, time.Time, store.ExternalOpener) (*store.IndexResult, error) {
 	return nil, os.ErrNotExist
 }
 func (stubIndex) DeleteExpired(context.Context, time.Time) ([]store.ExpiredRecord, error) {
@@ -39,6 +39,7 @@ func (stubIndex) ListExternalIDs(context.Context) ([]string, error) { return nil
 type stubBlobStorage struct{}
 
 func (stubBlobStorage) Write(string, io.Reader, int64) error  { return nil }
+func (stubBlobStorage) Open(string) (io.ReadCloser, error)    { return nil, os.ErrNotExist }
 func (stubBlobStorage) Consume(string) (io.ReadCloser, error) { return nil, os.ErrNotExist }
 func (stubBlobStorage) Delete(string) error                   { return nil }
 func (stubBlobStorage) List() ([]string, error)               { return nil, nil }

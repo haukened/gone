@@ -136,6 +136,49 @@ func TestStoreSaveExternalAndConsume(t *testing.T) {
 	}
 }
 
+func TestStoreConsumeExternalOpenFailureIsRetryable(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now().UTC()
+	clk := fixedClock{now: now}
+	db := openTestDB(t)
+	ix, _ := sqlite.New(db)
+	blobs := &flakyOpenBlobStore{failOpen: true}
+	st := store.New(ix, blobs, clk, 4)
+
+	id := "22222222222222222222222222222223"
+	data := []byte("this-is-external-data")
+	if err := st.Save(ctx, id, app.Meta{Version: 2, NonceB64u: "nonceB"}, io.NopCloser(bytesReader(data)), int64(len(data)), now.Add(10*time.Minute)); err != nil {
+		t.Fatalf("Save external: %v", err)
+	}
+	if _, _, _, err := st.Consume(ctx, id); !errors.Is(err, errBlobOpen) {
+		t.Fatalf("expected blob open error, got %v", err)
+	}
+	blobs.failOpen = false
+	gotMeta, rc, size, err := st.Consume(ctx, id)
+	if err != nil {
+		t.Fatalf("retry consume: %v", err)
+	}
+	readData, _ := io.ReadAll(rc)
+	if err := rc.Close(); err != nil {
+		t.Fatalf("close(delete): %v", err)
+	}
+	if string(readData) != string(data) {
+		t.Fatalf("payload mismatch")
+	}
+	if size != int64(len(data)) {
+		t.Fatalf("size mismatch")
+	}
+	if gotMeta.NonceB64u != "nonceB" {
+		t.Fatalf("meta mismatch")
+	}
+	if !blobs.deleted {
+		t.Fatalf("expected blob deleted after successful close")
+	}
+	if _, _, _, err = st.Consume(ctx, id); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound after successful consume, got %v", err)
+	}
+}
+
 func TestStoreConsumeExpired(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -236,12 +279,50 @@ func (r *sliceReader) Read(p []byte) (int, error) {
 	return n, nil
 }
 
+var errBlobOpen = errors.New("blob open failed")
+
+type flakyOpenBlobStore struct {
+	data     []byte
+	failOpen bool
+	deleted  bool
+}
+
+func (f *flakyOpenBlobStore) Write(_ string, r io.Reader, _ int64) error {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	f.data = data
+	return nil
+}
+
+func (f *flakyOpenBlobStore) Open(_ string) (io.ReadCloser, error) {
+	if f.failOpen {
+		return nil, errBlobOpen
+	}
+	return io.NopCloser(bytesReader(f.data)), nil
+}
+
+func (f *flakyOpenBlobStore) Consume(id string) (io.ReadCloser, error) {
+	return f.Open(id)
+}
+
+func (f *flakyOpenBlobStore) Delete(_ string) error {
+	f.deleted = true
+	return nil
+}
+
+func (f *flakyOpenBlobStore) List() ([]string, error) { return nil, nil }
+
 // --- Construction / nil guard tests ---
 
 // mockBlobStore minimal implementation for negative tests.
 type mockBlobStore struct{}
 
 func (m mockBlobStore) Write(_ string, _ io.Reader, _ int64) error { return nil }
+func (m mockBlobStore) Open(_ string) (io.ReadCloser, error) {
+	return io.NopCloser(bytesReader([]byte("x"))), nil
+}
 func (m mockBlobStore) Consume(_ string) (io.ReadCloser, error) {
 	return io.NopCloser(bytesReader([]byte("x"))), nil
 }
@@ -254,7 +335,7 @@ type mockIndex struct{}
 func (m mockIndex) Insert(_ context.Context, _ string, _ app.Meta, _ []byte, _ bool, _ int64, _ time.Time, _ time.Time) error {
 	return nil
 }
-func (m mockIndex) Consume(_ context.Context, _ string, _ time.Time) (*store.IndexResult, error) {
+func (m mockIndex) Consume(_ context.Context, _ string, _ time.Time, _ store.ExternalOpener) (*store.IndexResult, error) {
 	return nil, app.ErrNotFound
 }
 func (m mockIndex) DeleteExpired(_ context.Context, _ time.Time) ([]store.ExpiredRecord, error) {

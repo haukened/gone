@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"io"
 	"time"
 
 	"github.com/haukened/gone/internal/app"
@@ -56,16 +57,72 @@ func (i *Index) Insert(ctx context.Context, id string, meta app.Meta, inline []b
 	return err
 }
 
-// Consume hard-deletes the row and returns its data (including expiry) if it existed.
-// Expiration is not interpreted here; callers decide if an expired row constitutes not found.
-func (i *Index) Consume(ctx context.Context, id string, _ time.Time) (*store.IndexResult, error) {
-	const del = `DELETE FROM secrets WHERE id=? RETURNING version, nonce_b64u, inline, external, size, expires_at`
+// Consume hard-deletes the row and returns its data if it existed and is not expired.
+// External blobs are opened before the delete is committed; if opening fails,
+// the transaction rolls back and the metadata row remains retryable.
+func (i *Index) Consume(ctx context.Context, id string, now time.Time, openExternal store.ExternalOpener) (*store.IndexResult, error) {
+	conn, err := i.db.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	if _, err = conn.ExecContext(ctx, "BEGIN IMMEDIATE"); err != nil {
+		return nil, err
+	}
+	var opened io.ReadCloser
+	committed := false
+	defer func() {
+		if !committed {
+			_, _ = conn.ExecContext(context.Background(), "ROLLBACK")
+			if opened != nil {
+				_ = opened.Close()
+			}
+		}
+	}()
+	res, err := selectSecretForConsume(ctx, conn, id)
+	if err != nil {
+		return nil, err
+	}
+	if !res.ExpiresAt.IsZero() && !now.Before(res.ExpiresAt) {
+		if err = deleteSecret(ctx, conn, id); err != nil {
+			return nil, err
+		}
+		if _, err = conn.ExecContext(ctx, "COMMIT"); err != nil {
+			return nil, err
+		}
+		committed = true
+		return nil, app.ErrNotFound
+	}
+	if res.External {
+		if openExternal == nil {
+			return nil, errors.New("external opener required")
+		}
+		opened, err = openExternal(id)
+		if err != nil {
+			return nil, err
+		}
+		res.Reader = opened
+	}
+	if err = deleteSecret(ctx, conn, id); err != nil {
+		return nil, err
+	}
+	if _, err = conn.ExecContext(ctx, "COMMIT"); err != nil {
+		return nil, err
+	}
+	committed = true
+	return res, nil
+}
+
+func selectSecretForConsume(ctx context.Context, q interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}, id string) (*store.IndexResult, error) {
+	const sel = `SELECT version, nonce_b64u, inline, external, size, expires_at FROM secrets WHERE id=?`
 	var (
 		res         store.IndexResult
 		extInt      int
 		expiresUnix int64
 	)
-	row := i.db.QueryRowContext(ctx, del, id)
+	row := q.QueryRowContext(ctx, sel, id)
 	if err := row.Scan(&res.Meta.Version, &res.Meta.NonceB64u, &res.Inline, &extInt, &res.Size, &expiresUnix); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, app.ErrNotFound
@@ -75,6 +132,24 @@ func (i *Index) Consume(ctx context.Context, id string, _ time.Time) (*store.Ind
 	res.External = extInt == 1
 	res.ExpiresAt = time.Unix(expiresUnix, 0).UTC()
 	return &res, nil
+}
+
+func deleteSecret(ctx context.Context, e interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}, id string) error {
+	const del = `DELETE FROM secrets WHERE id=?`
+	result, err := e.ExecContext(ctx, del, id)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return app.ErrNotFound
+	}
+	return nil
 }
 
 // DeleteExpired selects secrets expiring before t and deletes them, returning records for blob cleanup.

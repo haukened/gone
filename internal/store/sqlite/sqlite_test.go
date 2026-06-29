@@ -1,10 +1,14 @@
 package sqlite
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
+	"io"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -44,7 +48,7 @@ func TestIndexInsertAndConsumeInline(t *testing.T) {
 		t.Fatalf("Insert inline: %v", err)
 	}
 	// Consume
-	res, err := ix.Consume(ctx, id, now.Add(1*time.Second))
+	res, err := ix.Consume(ctx, id, now.Add(1*time.Second), nil)
 	if err != nil {
 		t.Fatalf("Consume: %v", err)
 	}
@@ -61,7 +65,7 @@ func TestIndexInsertAndConsumeInline(t *testing.T) {
 		t.Fatalf("meta mismatch: %+v", res.Meta)
 	}
 	// Double consume should yield not found
-	if _, err := ix.Consume(ctx, id, now.Add(2*time.Second)); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Consume(ctx, id, now.Add(2*time.Second), nil); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound on second consume, got %v", err)
 	}
 }
@@ -80,7 +84,9 @@ func TestIndexInsertAndConsumeExternal(t *testing.T) {
 	if err := ix.Insert(ctx, id, meta, nil, true, 1234, now, expires); err != nil {
 		t.Fatalf("Insert external: %v", err)
 	}
-	res2, err := ix.Consume(ctx, id, now.Add(1*time.Second))
+	res2, err := ix.Consume(ctx, id, now.Add(1*time.Second), func(string) (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader([]byte("blob"))), nil
+	})
 	if err != nil {
 		t.Fatalf("Consume: %v", err)
 	}
@@ -90,11 +96,103 @@ func TestIndexInsertAndConsumeExternal(t *testing.T) {
 	if len(res2.Inline) != 0 {
 		t.Fatalf("expected empty inline slice")
 	}
+	if res2.Reader == nil {
+		t.Fatalf("expected external reader")
+	}
+	res2.Reader.Close()
 	if res2.Size != 1234 {
 		t.Fatalf("size mismatch")
 	}
 	if res2.Meta.Version != meta.Version || res2.Meta.NonceB64u != meta.NonceB64u {
 		t.Fatalf("meta mismatch")
+	}
+}
+
+func TestIndexConsumeExternalOpenFailureLeavesRow(t *testing.T) {
+	db := openTestDB(t)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ctx := context.Background()
+	id := "ext-open-failure"
+	meta := app.Meta{Version: 2, NonceB64u: "nonceD"}
+	now := time.Now().UTC()
+	expires := now.Add(10 * time.Minute)
+	if err := ix.Insert(ctx, id, meta, nil, true, 1234, now, expires); err != nil {
+		t.Fatalf("Insert external: %v", err)
+	}
+	openErr := errors.New("open failed")
+	if _, err := ix.Consume(ctx, id, now.Add(time.Second), func(string) (io.ReadCloser, error) {
+		return nil, openErr
+	}); !errors.Is(err, openErr) {
+		t.Fatalf("expected open error, got %v", err)
+	}
+	res, err := ix.Consume(ctx, id, now.Add(2*time.Second), func(string) (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader([]byte("blob"))), nil
+	})
+	if err != nil {
+		t.Fatalf("expected retry consume to succeed, got %v", err)
+	}
+	if !res.External || res.Reader == nil {
+		t.Fatalf("expected external result with reader")
+	}
+	res.Reader.Close()
+}
+
+func TestIndexConsumeExternalConcurrentOnlyOneSucceeds(t *testing.T) {
+	db := openTestDB(t)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ctx := context.Background()
+	id := "ext-concurrent"
+	now := time.Now().UTC()
+	if err := ix.Insert(ctx, id, app.Meta{Version: 1, NonceB64u: "nonceE"}, nil, true, 4, now, now.Add(time.Minute)); err != nil {
+		t.Fatalf("Insert external: %v", err)
+	}
+	var opens int32
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			res, err := ix.Consume(ctx, id, now.Add(time.Second), func(string) (io.ReadCloser, error) {
+				atomic.AddInt32(&opens, 1)
+				time.Sleep(50 * time.Millisecond)
+				return io.NopCloser(bytes.NewReader([]byte("blob"))), nil
+			})
+			if err == nil && res != nil && res.Reader != nil {
+				_ = res.Reader.Close()
+			}
+			errs <- err
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+
+	successes := 0
+	notFound := 0
+	for err := range errs {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, app.ErrNotFound):
+			notFound++
+		default:
+			t.Fatalf("unexpected consume error: %v", err)
+		}
+	}
+	if successes != 1 || notFound != 1 {
+		t.Fatalf("expected one success and one not found, got success=%d not_found=%d", successes, notFound)
+	}
+	if got := atomic.LoadInt32(&opens); got != 1 {
+		t.Fatalf("expected exactly one external open, got %d", got)
 	}
 }
 
@@ -113,18 +211,15 @@ func TestIndexConsumeExpired(t *testing.T) {
 		t.Fatalf("Insert: %v", err)
 	}
 	// After expiry, index still returns the row (and deletes it) via DELETE RETURNING.
-	res, err := ix.Consume(ctx, id, now.Add(2*time.Second))
-	if err != nil {
-		t.Fatalf("expected consume to return data, got error: %v", err)
+	res, err := ix.Consume(ctx, id, now.Add(2*time.Second), nil)
+	if !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("expected expired consume to return not found, got: %v", err)
 	}
-	if res.Meta.NonceB64u != meta.NonceB64u {
-		t.Fatalf("meta mismatch")
-	}
-	if res.ExpiresAt.IsZero() {
-		t.Fatalf("expected ExpiresAt in result")
+	if res != nil {
+		t.Fatalf("expected no result for expired consume")
 	}
 	// Second consume is not found.
-	if _, err := ix.Consume(ctx, id, now.Add(3*time.Second)); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Consume(ctx, id, now.Add(3*time.Second), nil); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound on second consume, got %v", err)
 	}
 }
@@ -171,14 +266,14 @@ func TestIndexDeleteExpired(t *testing.T) {
 		t.Fatalf("unexpected external flag for gone-inl")
 	}
 	// Ensure rows actually removed
-	if _, err := ix.Consume(ctx, "gone-ext", now.Add(1*time.Second)); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Consume(ctx, "gone-ext", now.Add(1*time.Second), nil); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("expected not found for removed gone-ext")
 	}
-	if _, err := ix.Consume(ctx, "gone-inl", now.Add(1*time.Second)); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Consume(ctx, "gone-inl", now.Add(1*time.Second), nil); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("expected not found for removed gone-inl")
 	}
 	// Future one still there
-	if _, err := ix.Consume(ctx, "future", now.Add(1*time.Second)); err != nil {
+	if _, err := ix.Consume(ctx, "future", now.Add(1*time.Second), nil); err != nil {
 		t.Fatalf("future consume failed: %v", err)
 	}
 }
@@ -235,7 +330,7 @@ func TestIndexConsumeMissing(t *testing.T) {
 	ix, _ := New(db)
 	ctx := context.Background()
 	now := time.Now().UTC()
-	if _, err := ix.Consume(ctx, "nope", now); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Consume(ctx, "nope", now, nil); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -246,7 +341,7 @@ func TestIndexConsumeBeginTxError(t *testing.T) {
 	// Close DB to force BeginTx error
 	db.Close()
 	ctx := context.Background()
-	if _, err := ix.Consume(ctx, "any", time.Now()); err == nil {
+	if _, err := ix.Consume(ctx, "any", time.Now(), nil); err == nil {
 		t.Fatalf("expected error from BeginTx after close")
 	}
 }

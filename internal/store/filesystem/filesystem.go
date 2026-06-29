@@ -63,6 +63,19 @@ func (b *BlobStore) Write(id string, r io.Reader, size int64) error {
 	return nil
 }
 
+// Open opens a blob file for reading by ID without deleting it on Close.
+func (b *BlobStore) Open(id string) (io.ReadCloser, error) {
+	if err := validateID(id); err != nil {
+		return nil, err
+	}
+	p := b.path(id)
+	f, err := os.Open(p) // #nosec G304 path constructed internally
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
 // Consume opens a blob file for reading by ID and returns a ReadCloser whose
 // Close deletes the underlying file (delete-on-close semantics).
 func (b *BlobStore) Consume(id string) (io.ReadCloser, error) {
