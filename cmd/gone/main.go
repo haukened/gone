@@ -160,7 +160,7 @@ func loadTemplates() (*templates, error) { // retained for existing callers
 }
 
 func buildService(idx store.Index, blobs store.BlobStorage, cfg *config.Config, clock app.Clock) *app.Service {
-	st := store.New(idx, blobs, clock, 1024*4)
+	st := store.New(idx, blobs, clock, cfg.InlineMaxBytes)
 	return &app.Service{Store: st, Clock: clock, MaxBytes: cfg.MaxBytes, MinTTL: cfg.MinTTL, MaxTTL: cfg.MaxTTL}
 }
 
@@ -240,7 +240,7 @@ func run() error {
 	}
 	// Start janitor with metrics.
 	janCfg := janitor.Config{Interval: time.Minute, Logger: slog.Default()}
-	jan := janitor.New(store.New(idx, blobs, clock, 1024*4), mgr, janCfg) // reuse underlying components
+	jan := janitor.New(store.New(idx, blobs, clock, cfg.InlineMaxBytes), mgr, janCfg) // reuse underlying components
 	jan.Start(ctx)
 	defer jan.Stop()
 

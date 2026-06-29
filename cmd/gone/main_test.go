@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -43,6 +44,43 @@ func (stubBlobStorage) Open(string) (io.ReadCloser, error)    { return nil, os.E
 func (stubBlobStorage) Consume(string) (io.ReadCloser, error) { return nil, os.ErrNotExist }
 func (stubBlobStorage) Delete(string) error                   { return nil }
 func (stubBlobStorage) List() ([]string, error)               { return nil, nil }
+
+type recordingIndex struct {
+	inline   []byte
+	external bool
+}
+
+func (r *recordingIndex) Insert(_ context.Context, _ string, _ app.Meta, inline []byte, external bool, _ int64, _, _ time.Time) error {
+	r.inline = inline
+	r.external = external
+	return nil
+}
+func (r *recordingIndex) Consume(context.Context, string, time.Time, store.ExternalOpener) (*store.IndexResult, error) {
+	return nil, os.ErrNotExist
+}
+func (r *recordingIndex) DeleteExpired(context.Context, time.Time) ([]store.ExpiredRecord, error) {
+	return nil, nil
+}
+func (r *recordingIndex) ListExternalIDs(context.Context) ([]string, error) { return nil, nil }
+
+type recordingBlobStorage struct {
+	wrote bool
+	data  []byte
+}
+
+func (r *recordingBlobStorage) Write(_ string, src io.Reader, _ int64) error {
+	data, err := io.ReadAll(src)
+	if err != nil {
+		return err
+	}
+	r.wrote = true
+	r.data = data
+	return nil
+}
+func (r *recordingBlobStorage) Open(string) (io.ReadCloser, error)    { return nil, os.ErrNotExist }
+func (r *recordingBlobStorage) Consume(string) (io.ReadCloser, error) { return nil, os.ErrNotExist }
+func (r *recordingBlobStorage) Delete(string) error                   { return nil }
+func (r *recordingBlobStorage) List() ([]string, error)               { return nil, nil }
 
 // TestEnsureDataDir verifies directory and blob subdirectory creation.
 func TestEnsureDataDir(t *testing.T) {
@@ -79,7 +117,7 @@ func TestLoadTemplates(t *testing.T) {
 
 // TestBuildService validates service field propagation.
 func TestBuildService(t *testing.T) {
-	cfg := &config.Config{MaxBytes: 1234, MinTTL: time.Minute, MaxTTL: 2 * time.Minute}
+	cfg := &config.Config{InlineMaxBytes: 64, MaxBytes: 1234, MinTTL: time.Minute, MaxTTL: 2 * time.Minute}
 	// Build service using stub index/blob implementations by wrapping underlying store.New expectations.
 	s := buildService(stubIndex{}, stubBlobStorage{}, cfg, realClock{})
 	if s.MaxBytes != 1234 {
@@ -87,6 +125,26 @@ func TestBuildService(t *testing.T) {
 	}
 	if s.MinTTL != time.Minute || s.MaxTTL != 2*time.Minute {
 		t.Fatalf("TTL mismatch")
+	}
+}
+
+func TestBuildServiceUsesConfiguredInlineThreshold(t *testing.T) {
+	idx := &recordingIndex{}
+	blobs := &recordingBlobStorage{}
+	cfg := &config.Config{InlineMaxBytes: 4, MaxBytes: 32, MinTTL: time.Minute, MaxTTL: 2 * time.Minute}
+	s := buildService(idx, blobs, cfg, realClock{})
+
+	if _, _, err := s.CreateSecret(context.Background(), strings.NewReader("external"), int64(len("external")), 1, "nonce", time.Minute); err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	if !blobs.wrote {
+		t.Fatalf("expected payload to be written to blob storage")
+	}
+	if !idx.external {
+		t.Fatalf("expected index insert to mark secret external")
+	}
+	if len(idx.inline) != 0 {
+		t.Fatalf("expected no inline payload, got %d bytes", len(idx.inline))
 	}
 }
 
