@@ -13,8 +13,13 @@
   // fall back for any cached/legacy template versions.
   const statusEl = document.getElementById('secret-heading') || document.getElementById('secret-status');
   const outputTA = document.getElementById('secret-output');
-  const actions = document.getElementById('secret-actions');
+  const fileOutput = document.getElementById('file-output');
+  const fileOutputName = document.getElementById('file-output-name');
+  const fileOutputMeta = document.getElementById('file-output-meta');
   const copyBtn = document.getElementById('copy-secret');
+  const downloadBtn = document.getElementById('download-file');
+  const FILE_MAGIC = new TextEncoder().encode('GONEFILE1');
+  let downloadURL = '';
 
   function setStatus(msg) {
     if (statusEl) statusEl.textContent = msg;
@@ -34,6 +39,58 @@
   }
 
   // --- Helpers ------------------------------------------------------------
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
+    const units = ['B', 'KiB', 'MiB', 'GiB'];
+    let value = bytes;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    const digits = unit === 0 ? 0 : value < 10 ? 1 : 0;
+    return `${value.toFixed(digits)} ${units[unit]}`;
+  }
+
+  function sanitizeFileName(name) {
+    const parts = String(name || '').split(/[\\/]+/).filter(Boolean);
+    const base = (parts.length ? parts[parts.length - 1] : '').replace(/[\x00-\x1f\x7f]/g, '').trim();
+    if (!base || base === '.' || base === '..') return 'download.bin';
+    return base;
+  }
+
+  function hasFileMagic(bytes) {
+    if (!bytes || bytes.length < FILE_MAGIC.length) return false;
+    for (let i = 0; i < FILE_MAGIC.length; i++) {
+      if (bytes[i] !== FILE_MAGIC[i]) return false;
+    }
+    return true;
+  }
+
+  function parseFileEnvelope(bytes) {
+    if (!hasFileMagic(bytes)) return null;
+    if (bytes.length < FILE_MAGIC.length + 4) throw new Error('truncated file envelope');
+    let offset = FILE_MAGIC.length;
+    const metadataLength = (
+      (bytes[offset] << 24) |
+      (bytes[offset + 1] << 16) |
+      (bytes[offset + 2] << 8) |
+      bytes[offset + 3]
+    ) >>> 0;
+    offset += 4;
+    if (metadataLength > bytes.length - offset) throw new Error('invalid file metadata length');
+    const metadataBytes = bytes.subarray(offset, offset + metadataLength);
+    offset += metadataLength;
+    const metadata = JSON.parse(new TextDecoder().decode(metadataBytes));
+    const content = bytes.subarray(offset);
+    if (!metadata || metadata.kind !== 'file') throw new Error('invalid file metadata');
+    const name = sanitizeFileName(metadata.name);
+    const type = typeof metadata.type === 'string' && metadata.type ? metadata.type : 'application/octet-stream';
+    const size = Number(metadata.size);
+    if (!Number.isFinite(size) || size < 0 || size !== content.length) throw new Error('file size mismatch');
+    return { name, type, size, content };
+  }
+
   function autoGrow(ta) {
     if (!ta) return;
     const max = 40 * 16;
@@ -76,10 +133,38 @@
       outputTA.hidden = false;
       autoGrow(outputTA);
     }
+    if (fileOutput) fileOutput.hidden = true;
+    if (downloadBtn) downloadBtn.hidden = true;
     // Reveal copy button now that plaintext is available
     if (copyBtn) copyBtn.hidden = false;
     setStatus('Decrypted Secret:');
     attachCopyHandler(text);
+  }
+
+  function showFile(filePayload) {
+    if (outputTA) {
+      outputTA.value = '';
+      outputTA.hidden = true;
+    }
+    if (copyBtn) copyBtn.hidden = true;
+    if (fileOutputName) fileOutputName.textContent = filePayload.name;
+    if (fileOutputMeta) fileOutputMeta.textContent = `${formatBytes(filePayload.size)} - ${filePayload.type}`;
+    if (fileOutput) fileOutput.hidden = false;
+    if (downloadURL) URL.revokeObjectURL(downloadURL);
+    const blob = new Blob([filePayload.content], { type: filePayload.type });
+    downloadURL = URL.createObjectURL(blob);
+    if (downloadBtn) {
+      downloadBtn.hidden = false;
+      downloadBtn.onclick = function () {
+        const link = document.createElement('a');
+        link.href = downloadURL;
+        link.download = filePayload.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      };
+    }
+    setStatus('Decrypted File:');
   }
 
   function handlePreview(params) {
@@ -89,6 +174,8 @@
       outputTA.hidden = false;
       autoGrow(outputTA);
     }
+    if (fileOutput) fileOutput.hidden = true;
+    if (downloadBtn) downloadBtn.hidden = true;
     // Reveal copy button for preview mode
     if (copyBtn) copyBtn.hidden = false;
     setStatus('Decrypted (preview)');
@@ -149,7 +236,7 @@
       const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce, additionalData: aad }, cryptoKey, ct);
       const t1 = performance.now();
       logTiming('consume_decrypt', t0, t1);
-      return new TextDecoder().decode(pt);
+      return new Uint8Array(pt);
     } catch (_) {
       setStatus('Decryption failed');
       return null;
@@ -163,9 +250,21 @@
       const nonceB64 = validateHeaders(resp);
       if (!nonceB64) return;
       const t0 = performance.now();
-      const plaintext = await decryptPayload(resp, nonceB64, keyB64);
-      if (!plaintext) return;
-      showPlaintext(plaintext);
+      const plaintextBytes = await decryptPayload(resp, nonceB64, keyB64);
+      if (plaintextBytes === null) return;
+      let filePayload;
+      try {
+        filePayload = parseFileEnvelope(plaintextBytes);
+      } catch (e) {
+        console.error('[gone] invalid file envelope', e);
+        setStatus('Invalid file payload');
+        return;
+      }
+      if (filePayload) {
+        showFile(filePayload);
+      } else {
+        showPlaintext(new TextDecoder().decode(plaintextBytes));
+      }
       const t1 = performance.now();
       logTiming('consume_total', t0, t1);
     } catch (e) {
@@ -196,5 +295,8 @@
     setStatus('Invalid secret id');
     return;
   }
+  window.addEventListener('beforeunload', function () {
+    if (downloadURL) URL.revokeObjectURL(downloadURL);
+  });
   run(id, frag.keyB64);
 })();

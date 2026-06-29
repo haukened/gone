@@ -101,6 +101,7 @@ textarea {
 }
 
 textarea:focus-visible,
+input:focus-visible,
 select:focus-visible,
 button:focus-visible {
 	outline: 2px solid var(--accent);
@@ -247,6 +248,63 @@ button:disabled {
 	gap: .5rem;
 }
 
+.file-field {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	gap: .75rem;
+	align-items: center;
+	border: 1px dashed var(--border);
+	border-radius: var(--control-radius);
+	padding: 1rem;
+	min-height: 12rem;
+}
+
+.file-output {
+	border: 1px solid var(--border);
+	border-radius: var(--control-radius);
+	padding: 1rem;
+	background: var(--code-bg);
+}
+
+.file-output-meta,
+.file-summary {
+	color: var(--muted);
+	font-size: .85rem;
+	overflow-wrap: anywhere;
+}
+
+.file-output-name {
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.file-picker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: .6rem 1rem;
+	border: 1px solid var(--accent);
+	border-radius: var(--control-radius);
+	color: var(--accent);
+	font-weight: 500;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.file-picker:hover,
+.file-picker:focus-within {
+	color: var(--accent-hover);
+	border-color: var(--accent-hover);
+}
+
+.file-picker input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+
 .hint {
 	font-size: .75rem;
 	color: var(--muted);
@@ -262,6 +320,43 @@ button:disabled {
 
 .indent {
 	margin-left: 2rem;
+}
+
+.mode-toggle {
+	display: inline-grid;
+	grid-template-columns: 1fr 1fr;
+	align-self: flex-start;
+	border: 1px solid var(--border);
+	border-radius: var(--control-radius);
+	overflow: hidden;
+}
+
+.mode-toggle input {
+	position: absolute;
+	opacity: 0;
+	width: 1px;
+	height: 1px;
+}
+
+.mode-toggle label {
+	cursor: pointer;
+	font-size: .85rem;
+	font-weight: 500;
+	padding: .45rem .9rem;
+	color: var(--muted);
+	background: var(--bg);
+	min-width: 4.5rem;
+	text-align: center;
+}
+
+.mode-toggle input:checked+label {
+	color: #fff;
+	background: var(--accent);
+}
+
+.mode-toggle input:focus-visible+label {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
 }
 
 .primary-btn {
@@ -328,6 +423,21 @@ body:has(#theme-switch:checked) .security-warning-card {
 .security-warning-icon {
 	line-height: 1;
 	display: flex;
+}
+
+.secondary-btn {
+	background: var(--bg);
+	border-color: var(--border);
+	color: var(--fg);
+	font-size: .85rem;
+	padding: .5rem .8rem;
+}
+
+.secondary-btn:hover:not(:disabled),
+.secondary-btn:focus-visible:not(:disabled) {
+	background: var(--code-bg);
+	border-color: var(--accent);
+	color: var(--accent);
 }
 
 /* Security warning variants */
@@ -495,4 +605,16 @@ select {
 .select-wrapper:hover::after,
 .select-wrapper:focus-within::after {
 	background: var(--select-arrow-hover);
+}
+
+@media (max-width: 620px) {
+	.file-field {
+		grid-template-columns: 1fr;
+		align-items: stretch;
+	}
+
+	.file-picker,
+	.secondary-btn {
+		width: 100%;
+	}
 }

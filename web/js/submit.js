@@ -6,12 +6,22 @@
   if (!form || !window.goneCrypto) return;
 
   const textarea = document.getElementById('secret');
+  const modeText = document.getElementById('mode-text');
+  const modeFile = document.getElementById('mode-file');
+  const fileField = document.getElementById('file-field');
+  const fileInput = document.getElementById('secret-file');
+  const fileSummary = document.getElementById('file-summary');
+  const clearFileBtn = document.getElementById('clear-file');
   const ttlSelect = document.getElementById('ttl');
   const primaryBtn = form.querySelector('button[type="submit"]');
   const cardSection = form.closest('.card');
   const errorBox = document.getElementById('submit-error');
   const errorContent = document.getElementById('submit-error-content');
   if (!textarea || !ttlSelect || !primaryBtn || !cardSection) return;
+
+  const FILE_MAGIC = new TextEncoder().encode('GONEFILE1');
+  const GCM_TAG_BYTES = 16;
+  const maxBytes = parseInt(form.dataset.maxBytes || '0', 10) || 0;
 
   const debugTiming = (function(){
     try {
@@ -46,12 +56,97 @@
     }
   }
 
+  function clearError() {
+    if (errorBox) {
+      errorBox.hidden = true;
+      errorBox.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
+    const units = ['B', 'KiB', 'MiB', 'GiB'];
+    let value = bytes;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    const digits = unit === 0 ? 0 : value < 10 ? 1 : 0;
+    return `${value.toFixed(digits)} ${units[unit]}`;
+  }
+
+  function sanitizeFileName(name) {
+    const parts = String(name || '').split(/[\\/]+/).filter(Boolean);
+    const base = (parts.length ? parts[parts.length - 1] : '').replace(/[\x00-\x1f\x7f]/g, '').trim();
+    if (!base || base === '.' || base === '..') return 'download.bin';
+    return base;
+  }
+
+  function getSelectedMode() {
+    return modeFile && modeFile.checked ? 'file' : 'text';
+  }
+
+  function selectedFile() {
+    return fileInput && fileInput.files && fileInput.files.length ? fileInput.files[0] : null;
+  }
+
+  function updateModeUI() {
+    const fileMode = getSelectedMode() === 'file';
+    textarea.hidden = fileMode;
+    textarea.disabled = fileMode;
+    if (fileField) fileField.hidden = !fileMode;
+    if (fileInput) fileInput.disabled = !fileMode;
+    if (!fileMode) textarea.focus();
+  }
+
+  function updateFileSummary() {
+    const file = selectedFile();
+    if (!file) {
+      if (fileSummary) fileSummary.textContent = 'No file selected';
+      if (clearFileBtn) clearFileBtn.hidden = true;
+      return;
+    }
+    const name = sanitizeFileName(file.name);
+    const type = file.type || 'application/octet-stream';
+    if (fileSummary) fileSummary.textContent = `${name} - ${formatBytes(file.size)} - ${type}`;
+    if (clearFileBtn) clearFileBtn.hidden = false;
+  }
+
+  function estimateCiphertextBytes(plaintextBytes) {
+    return plaintextBytes + GCM_TAG_BYTES;
+  }
+
+  async function buildFileEnvelope(file) {
+    const name = sanitizeFileName(file.name);
+    const type = file.type || 'application/octet-stream';
+    const metadata = { kind: 'file', name, type, size: file.size };
+    const metadataBytes = new TextEncoder().encode(JSON.stringify(metadata));
+    const envelopeSize = FILE_MAGIC.length + 4 + metadataBytes.length + file.size;
+    if (maxBytes && estimateCiphertextBytes(envelopeSize) > maxBytes) {
+      throw new Error('file too large');
+    }
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+    const envelope = new Uint8Array(FILE_MAGIC.length + 4 + metadataBytes.length + fileBytes.length);
+    let offset = 0;
+    envelope.set(FILE_MAGIC, offset);
+    offset += FILE_MAGIC.length;
+    envelope[offset++] = (metadataBytes.length >>> 24) & 0xff;
+    envelope[offset++] = (metadataBytes.length >>> 16) & 0xff;
+    envelope[offset++] = (metadataBytes.length >>> 8) & 0xff;
+    envelope[offset++] = metadataBytes.length & 0xff;
+    envelope.set(metadataBytes, offset);
+    offset += metadataBytes.length;
+    envelope.set(fileBytes, offset);
+    return envelope;
+  }
+
   async function encryptSecret(raw) {
     const key = window.goneCrypto.generateKey();
     const encStart = performance.now();
     const encResult = await window.goneCrypto.encrypt(raw, key);
     const encEnd = performance.now();
-  logTiming('encrypt', encStart, encEnd);
+    logTiming('encrypt', encStart, encEnd);
     return { key, encResult };
   }
 
@@ -72,7 +167,7 @@
       body: ciphertext
     });
     const uploadEnd = performance.now();
-  logTiming('upload', uploadStart, uploadEnd);
+    logTiming('upload', uploadStart, uploadEnd);
     if (!resp.ok) {
       console.error('[gone] server error', resp.status);
       showError(resp.status === 413 ? 'Secret too large' : 'Server error creating secret');
@@ -103,16 +198,25 @@
   }
 
   function prepareSubmission() {
+    const mode = getSelectedMode();
+    const ttl = ttlSelect.value;
     const raw = textarea.value;
-    if (!raw) {
+    let file = null;
+    if (mode === 'file') {
+      file = selectedFile();
+      if (!file) {
+        console.warn('[gone] empty file submission blocked');
+        showError('Choose a file before encrypting');
+        return null;
+      }
+    } else if (!raw) {
       console.warn('[gone] empty secret submission blocked');
       showError('Cannot submit empty secret');
       return null;
     }
-    const ttl = ttlSelect.value;
     primaryBtn.disabled = true;
-    if (errorBox) errorBox.hidden = true;
-    return { raw, ttl, t0: performance.now() };
+    clearError();
+    return { mode, raw, file, ttl, t0: performance.now() };
   }
 
   async function performEncryption(raw) {
@@ -141,7 +245,7 @@
   }
 
   function finalizeSubmission(uploadRes, keyBytes, t0) {
-  logTotal(t0);
+    logTotal(t0);
     const secretID = uploadRes.json.id;
     if (!secretID) {
       console.error('[gone] missing id in response payload', uploadRes.json);
@@ -158,25 +262,47 @@
     resetButton();
   }
 
-  async function runSubmission(raw, ttl, t0) {
-    const encryption = await performEncryption(raw);
+  async function runSubmission(prep) {
+    let payload = prep.raw;
+    try {
+      if (prep.mode === 'file') payload = await buildFileEnvelope(prep.file);
+    } catch (e) {
+      console.warn('[gone] file payload rejected', e);
+      showError(e && e.message === 'file too large' ? 'File too large for this server limit' : 'File could not be read');
+      resetButton();
+      return;
+    }
+    const encryption = await performEncryption(payload);
     if (!encryption) return;
-    secureWipe(raw);
-    const uploadRes = await performUpload(encryption.encResult, encryption.keyBytes, ttl);
+    if (prep.mode === 'text') secureWipe(prep.raw);
+    if (prep.mode === 'file' && fileInput) fileInput.value = '';
+    updateFileSummary();
+    const uploadRes = await performUpload(encryption.encResult, encryption.keyBytes, prep.ttl);
     if (!uploadRes) return;
-    finalizeSubmission(uploadRes, encryption.keyBytes, t0);
+    finalizeSubmission(uploadRes, encryption.keyBytes, prep.t0);
   }
 
   function handleSubmit(ev) {
     ev.preventDefault();
     const prep = prepareSubmission();
     if (!prep) return;
-    const { raw, ttl, t0 } = prep;
     // Fire and forget; internal helpers handle errors & UI state.
-    runSubmission(raw, ttl, t0);
+    runSubmission(prep);
   }
 
   form.addEventListener('submit', handleSubmit);
+  if (modeText) modeText.addEventListener('change', updateModeUI);
+  if (modeFile) modeFile.addEventListener('change', updateModeUI);
+  if (fileInput) fileInput.addEventListener('change', updateFileSummary);
+  if (clearFileBtn) {
+    clearFileBtn.addEventListener('click', function () {
+      if (fileInput) fileInput.value = '';
+      updateFileSummary();
+      if (fileInput) fileInput.focus();
+    });
+  }
+  updateModeUI();
+  updateFileSummary();
 
   (function previewCheck() {
     const params = new URLSearchParams(location.search);
