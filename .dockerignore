@@ -1,0 +1,12 @@
+.git
+.github
+.direnv
+.tmp
+bin
+web/dist
+gone
+cmd/gone/gone
+*.out
+coverage.*
+.env
+.envrc

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // openTempDB creates an isolated sqlite database file for tests.
@@ -15,7 +15,7 @@ func openTempDB(t *testing.T) *sql.DB {
 	t.Helper()
 	dir := t.TempDir()
 	p := filepath.Join(dir, "m.db")
-	db, err := sql.Open("sqlite3", p)
+	db, err := sql.Open("sqlite", p)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}

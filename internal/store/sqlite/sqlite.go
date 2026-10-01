@@ -12,9 +12,12 @@ import (
 	"github.com/haukened/gone/internal/app"
 	"github.com/haukened/gone/internal/store"
 
-	// database/sql SQLite driver
-	_ "github.com/mattn/go-sqlite3"
+	// database/sql SQLite driver (pure Go, no CGO)
+	_ "modernc.org/sqlite"
 )
+
+// DriverName is the database/sql driver name registered by modernc.org/sqlite.
+const DriverName = "sqlite"
 
 var _ store.Index = (*Index)(nil)
 

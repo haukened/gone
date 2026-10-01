@@ -170,6 +170,19 @@ Or just:
 task run
 ```
 
+Gone is pure Go (SQLite via [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite)), so it builds with `CGO_ENABLED=0` into a fully static binary; `task prod` does this by default. Requires Go 1.27+.
+
+### Container image
+The `Dockerfile` uses [Docker Hardened Images](https://dhi.io): `dhi.io/golang` (builder) and the distroless `dhi.io/static` runtime (no shell or package manager; runs as UID `65532`). Both are pinned by digest and kept current by Dependabot.
+
+Pulling DHI images needs a (free) Docker Hub account:
+```sh
+docker login dhi.io
+docker build -t gone .
+```
+
+The release workflow publishes multi-arch (`linux/amd64`, `linux/arm64`) images with SBOM and provenance attestations, and requires the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` to pull the base images.
+
 ---
 
 ## 7. Storage & Persistence
