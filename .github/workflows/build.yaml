@@ -21,6 +21,14 @@ on:
         description: 'Reason for running the workflow'
         required: false
 
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: '1.27'
+  MINIFY_VERSION: v2.24.17
+  TASK_VERSION: v3.54.0
+
 jobs:
   # Fast correctness check for PRs and branch pushes. No artifacts.
   verify:
@@ -28,16 +36,16 @@ jobs:
     # Skip when we're building tagged releases (handled by build_release)
     if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
-          go-version: '1.25'
+          go-version: ${{ env.GO_VERSION }}
           check-latest: true
 
       - name: Restore Go module cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/go/pkg/mod
@@ -48,10 +56,10 @@ jobs:
         run: go mod download
 
       - name: Install minify
-        run: go install github.com/tdewolff/minify/v2/cmd/minify@latest
+        run: go install github.com/tdewolff/minify/v2/cmd/minify@${{ env.MINIFY_VERSION }}
 
       - name: Install Task
-        run: go install github.com/go-task/task/v3/cmd/task@latest
+        run: go install github.com/go-task/task/v3/cmd/task@${{ env.TASK_VERSION }}
 
       # Ensure production pipeline compiles (minify + embed + -tags=prod)
       - name: Build (prod via Taskfile)
@@ -61,7 +69,7 @@ jobs:
         run: go test -v -coverprofile=coverage.out ./...
 
       - name: Save Go module cache
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             ~/go/pkg/mod
@@ -84,34 +92,38 @@ jobs:
     runs-on: ubuntu-latest
     needs: verify
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
-          go-version: '1.25'
+          go-version: ${{ env.GO_VERSION }}
           check-latest: true
 
       - name: Restore Go module cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/go/pkg/mod
             ~/go/bin
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
 
+      - name: Install minify
+        run: go install github.com/tdewolff/minify/v2/cmd/minify@${{ env.MINIFY_VERSION }}
+
       - name: Install Task
-        run: go install github.com/go-task/task/v3/cmd/task@latest
+        run: go install github.com/go-task/task/v3/cmd/task@${{ env.TASK_VERSION }}
 
       - name: Build (prod via Taskfile)
         run: $HOME/go/bin/task prod
 
-
       # On tags, cut a GitHub Release with the built binary
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             bin/gone

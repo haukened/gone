@@ -73,14 +73,24 @@ func ensureDataDir(dir string) (string, string, error) {
 	return dir, blobDir, nil
 }
 
+// openDatabase opens <dataDir>/gone.db with the hardened DSN (WAL, foreign
+// keys, busy timeout, FULL synchronous) and initializes the secrets schema.
+//
+// Parameters:
+//   - dataDir: directory holding the SQLite database file.
+//
+// Returns:
+//   - *sql.DB: the opened database handle (caller must Close).
+//   - store.Index: SQLite-backed index over db.
+//   - error: non-nil if the driver cannot open or the schema cannot be created.
 func openDatabase(dataDir string) (*sql.DB, store.Index, error) {
-	dbPath := filepath.Join(dataDir, "gone.db")
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open(sqlite.DriverName, config.SQLiteDSNFor(dataDir))
 	if err != nil {
 		return nil, nil, fmt.Errorf("open sqlite driver: %w", err)
 	}
 	idx, err := sqlite.New(db)
 	if err != nil {
+		_ = db.Close()
 		return nil, nil, fmt.Errorf("init sqlite schema: %w", err)
 	}
 	return db, idx, nil

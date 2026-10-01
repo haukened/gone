@@ -60,9 +60,9 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - Security and simplicity are paramount in all suggestions.
 
 ## Tech Stack
-- Go 1.22+
+- Go 1.27+
 - net/http
-- SQLite (WAL mode)
+- SQLite (WAL mode) via pure-Go `modernc.org/sqlite` (no CGO; builds with `CGO_ENABLED=0`)
 - Filesystem blobs for secret storage
 - Vanilla JavaScript with WebCrypto API for client-side cryptography
 
@@ -92,6 +92,7 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - Containerized deployment preferred
 - Run container as non-root user
 - Use multi-stage Docker builds for minimal image size
+- Base images are Docker Hardened Images (`dhi.io/golang` builder, distroless `dhi.io/static` runtime), pinned by digest
 - Mount persistent storage at `/var/lib/gone`
 - Expose health endpoints at `/healthz` and `/readyz`
 

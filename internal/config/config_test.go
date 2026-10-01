@@ -232,7 +232,7 @@ func TestSQLiteDSN(t *testing.T) {
 	orig := cleanEnvVars(t)
 	t.Cleanup(func() { restoreEnvVars(t, orig) })
 
-	params := "?_journal_mode=WAL&_foreign_keys=on&_busy_timeout=5000&_synchronous=FULL"
+	params := "?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=synchronous(FULL)"
 
 	join := func(a, b string) string {
 		if len(a) == 0 {
@@ -294,10 +294,10 @@ func TestSQLiteDSN(t *testing.T) {
 			assert.Equal(t, want, got, "expected DSN mismatch")
 
 			// Structural assertions.
-			assert.True(t, contains(got, "_journal_mode=WAL"), "missing WAL mode")
-			assert.True(t, contains(got, "_foreign_keys=on"), "missing foreign keys pragma")
-			assert.True(t, contains(got, "_busy_timeout=5000"), "missing busy timeout")
-			assert.True(t, contains(got, "_synchronous=FULL"), "missing synchronous FULL")
+			assert.True(t, contains(got, "_pragma=journal_mode(WAL)"), "missing WAL mode")
+			assert.True(t, contains(got, "_pragma=foreign_keys(1)"), "missing foreign keys pragma")
+			assert.True(t, contains(got, "_pragma=busy_timeout(5000)"), "missing busy timeout")
+			assert.True(t, contains(got, "_pragma=synchronous(FULL)"), "missing synchronous FULL")
 			assert.Equal(t, 1, countRune(got, '?'), "expected exactly one '?' in DSN")
 		})
 	}

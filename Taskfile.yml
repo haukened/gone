@@ -41,11 +41,13 @@ tasks:
       - go build -o bin/gone ./cmd/gone
 
   build-prod:
-    desc: Build production binary with -tags=prod
+    desc: Build static production binary with -tags=prod (CGO disabled)
     deps: [minify]
+    env:
+      CGO_ENABLED: '0'
     cmds:
       - mkdir -p bin
-      - go build -tags=prod -o bin/gone ./cmd/gone
+      - go build -trimpath -tags=prod -ldflags='-s -w -buildid=' -o bin/gone ./cmd/gone
 
   prod:
     desc: Orchestrate full production build (clean → minify → copy templates → go build -tags=prod)

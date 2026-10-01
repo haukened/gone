@@ -19,7 +19,7 @@ import (
 	"github.com/haukened/gone/internal/domain"
 	"github.com/haukened/gone/internal/store"
 	"github.com/haukened/gone/internal/store/sqlite"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // stubIndex implements store.Index minimally for buildService test.
@@ -165,7 +165,7 @@ func TestBuildHandler_IndexRoute(t *testing.T) {
 	// Prepare temp DB for sqlite index.
 	tmp := t.TempDir()
 	dbPath := filepath.Join(tmp, "gone.db")
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
@@ -222,6 +222,37 @@ func TestOpenDatabase_Error(t *testing.T) {
 	// Make file path unwritable by using a directory with no write; sqlite should fail create db file.
 	if _, _, err := openDatabase(dir); err == nil {
 		t.Fatalf("expected openDatabase error")
+	}
+}
+
+// TestOpenDatabase_AppliesHardenedPragmas verifies the hardened DSN pragmas are
+// applied to connections returned by openDatabase.
+func TestOpenDatabase_AppliesHardenedPragmas(t *testing.T) {
+	db, _, err := openDatabase(t.TempDir())
+	if err != nil {
+		t.Fatalf("openDatabase: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	tests := []struct {
+		pragma string
+		want   string
+	}{
+		{pragma: "journal_mode", want: "wal"},
+		{pragma: "foreign_keys", want: "1"},
+		{pragma: "busy_timeout", want: "5000"},
+		{pragma: "synchronous", want: "2"}, // FULL
+	}
+	for _, tt := range tests {
+		t.Run(tt.pragma, func(t *testing.T) {
+			var got string
+			if err := db.QueryRow("PRAGMA " + tt.pragma).Scan(&got); err != nil {
+				t.Fatalf("query pragma: %v", err)
+			}
+			if !strings.EqualFold(got, tt.want) {
+				t.Fatalf("PRAGMA %s = %q, want %q", tt.pragma, got, tt.want)
+			}
+		})
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 
 	"github.com/haukened/gone/internal/app"
 )
@@ -21,8 +21,8 @@ import (
 func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	dir := t.TempDir()
-	dsn := filepath.Join(dir, "test.db?_busy_timeout=5000&cache=shared")
-	db, err := sql.Open("sqlite3", dsn)
+	dsn := filepath.Join(dir, "test.db") + "?_pragma=busy_timeout(5000)"
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
