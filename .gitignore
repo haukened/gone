@@ -50,3 +50,6 @@ TODO.md
 
 # nix stuff
 .direnv/
+
+# local MCP servers
+.mcp.json
