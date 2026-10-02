@@ -11,103 +11,41 @@
 //   file bytes, concatenated in header order
 //
 // Plaintext without the magic prefix is treated as a legacy text-only secret.
+// Requires window.goneFileMeta (fileMeta.js).
 (function envelopeModule() {
-  if (window.goneEnvelope) return;
+  if (window.goneEnvelope || !window.goneFileMeta) return;
+  const meta = window.goneFileMeta;
 
   const MAGIC = new Uint8Array([0x47, 0x4f, 0x4e, 0x45, 0x32, 0x00, 0x00, 0x00]);
   const PREFIX_BYTES = MAGIC.length + 4;
   const MAX_HEADER_BYTES = 16 * 1024;
   const MAX_FILES = 10;
-  const MAX_NAME_CHARS = 255;
   const GCM_TAG_BYTES = 16;
-  const FALLBACK_NAME = 'file';
-  const DEFAULT_TYPE = 'application/octet-stream';
 
-  // MIME types that are safe to hand to the browser as-is. Anything else is
-  // downloaded as application/octet-stream so it is never rendered inline.
-  const SAFE_TYPES = new Set([
-    'application/pdf',
-    'application/zip',
-    'application/gzip',
-    'application/json',
-    'application/x-tar',
-    'application/x-7z-compressed',
-    'text/plain',
-    'text/csv',
-    'image/png',
-    'image/jpeg',
-    'image/gif',
-    'image/webp',
-    'audio/mpeg',
-    'video/mp4'
-  ]);
-
-  // Controls, bidi overrides/isolates and zero-width characters.
-  const UNSAFE_RANGES = [
-    [0x00, 0x1f], [0x7f, 0x9f], [0x200b, 0x200f],
-    [0x202a, 0x202e], [0x2066, 0x2069], [0xfeff, 0xfeff]
-  ];
-
-  function isUnsafeChar(ch) {
-    const cp = ch.codePointAt(0);
-    for (let i = 0; i < UNSAFE_RANGES.length; i++) {
-      if (cp >= UNSAFE_RANGES[i][0] && cp <= UNSAFE_RANGES[i][1]) return true;
-    }
-    return false;
+  function utf8(s) {
+    return new TextEncoder().encode(s || '');
   }
 
-  function stripUnsafeChars(s) {
-    let out = '';
-    for (const ch of s) {
-      if (!isUnsafeChar(ch)) out += ch;
-    }
-    return out;
+  function sumSizes(entries, start) {
+    return entries.reduce(function (sum, f) { return sum + f.size; }, start);
   }
 
-  function sanitizeFileName(name) {
-    const parts = String(name || '').split(/[\\/]+/).filter(Boolean);
-    let base = parts.length ? parts[parts.length - 1] : '';
-    base = stripUnsafeChars(base).trim();
-    if (!base || base === '.' || base === '..') return FALLBACK_NAME;
-    return Array.from(base).slice(0, MAX_NAME_CHARS).join('');
-  }
-
-  function safeType(type) {
-    const t = String(type || '').toLowerCase().split(';')[0].trim();
-    return SAFE_TYPES.has(t) ? t : DEFAULT_TYPE;
-  }
-
-  function buildHeader(msgBytes, files) {
-    return {
-      v: 2,
-      msg: msgBytes.length,
-      files: files.map(function (f) {
-        return { name: sanitizeFileName(f.name), type: safeType(f.type), size: f.bytes.length };
-      })
-    };
-  }
-
-  // headerBytesFor returns the encoded header for a message length and file
-  // metadata list without needing the file contents.
-  function headerBytesFor(msgLen, fileMetas) {
-    const header = {
-      v: 2,
-      msg: msgLen,
-      files: fileMetas.map(function (f) {
-        return { name: sanitizeFileName(f.name), type: safeType(f.type), size: f.size };
-      })
-    };
-    return new TextEncoder().encode(JSON.stringify(header));
+  // headerBytes encodes the JSON header for a message length and file
+  // metadata list ({name, type, size}); names and types are sanitized.
+  function headerBytes(msgLen, fileMetas) {
+    const files = fileMetas.map(function (f) {
+      return { name: meta.sanitizeFileName(f.name), type: meta.safeType(f.type), size: f.size };
+    });
+    return utf8(JSON.stringify({ v: 2, msg: msgLen, files: files }));
   }
 
   // encryptedSize returns the ciphertext size (including the GCM tag) the
   // server will see for the given message and file metadata.
   function encryptedSize(message, fileMetas) {
-    const msgLen = new TextEncoder().encode(message || '').length;
+    const msgLen = utf8(message).length;
     if (!fileMetas.length) return msgLen + GCM_TAG_BYTES;
-    const header = headerBytesFor(msgLen, fileMetas);
-    const fileTotal = fileMetas.reduce(function (sum, f) { return sum + f.size; }, 0);
-    return PREFIX_BYTES + header.length + msgLen + fileTotal + GCM_TAG_BYTES;
+    const header = headerBytes(msgLen, fileMetas);
+    return sumSizes(fileMetas, PREFIX_BYTES + header.length + msgLen + GCM_TAG_BYTES);
   }
 
   // Big-endian u32 helpers (DataView defaults to big-endian).
@@ -115,69 +53,65 @@
     return new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   }
 
-  function writeU32(buf, offset, n) {
-    viewOf(buf).setUint32(offset, n);
-  }
-
-  function readU32(buf, offset) {
-    return viewOf(buf).getUint32(offset);
+  // concatParts writes each part sequentially into a new buffer of length total.
+  function concatParts(parts, total) {
+    const out = new Uint8Array(total);
+    let offset = 0;
+    parts.forEach(function (p) {
+      out.set(p, offset);
+      offset += p.length;
+    });
+    return out;
   }
 
   // encode builds the plaintext. files is [{name, type, bytes: Uint8Array}].
   // A text-only secret is encoded as raw UTF-8 for compatibility.
   function encode(message, files) {
-    const msgBytes = new TextEncoder().encode(message || '');
+    const msgBytes = utf8(message);
     if (!files || !files.length) return msgBytes;
     if (files.length > MAX_FILES) throw new Error('too many files');
-    const header = new TextEncoder().encode(JSON.stringify(buildHeader(msgBytes, files)));
+    const metas = files.map(function (f) { return { name: f.name, type: f.type, size: f.bytes.length }; });
+    const header = headerBytes(msgBytes.length, metas);
     if (header.length > MAX_HEADER_BYTES) throw new Error('header too large');
-    const total = files.reduce(function (sum, f) { return sum + f.bytes.length; }, PREFIX_BYTES + header.length + msgBytes.length);
-    const out = new Uint8Array(total);
-    out.set(MAGIC, 0);
-    writeU32(out, MAGIC.length, header.length);
-    let offset = PREFIX_BYTES;
-    out.set(header, offset);
-    offset += header.length;
-    out.set(msgBytes, offset);
-    offset += msgBytes.length;
-    files.forEach(function (f) {
-      out.set(f.bytes, offset);
-      offset += f.bytes.length;
-    });
+    const lenField = new Uint8Array(4);
+    viewOf(lenField).setUint32(0, header.length);
+    const parts = [MAGIC, lenField, header, msgBytes].concat(files.map(function (f) { return f.bytes; }));
+    const out = concatParts(parts, sumSizes(metas, PREFIX_BYTES + header.length + msgBytes.length));
     msgBytes.fill(0);
     return out;
   }
 
   function hasMagic(bytes) {
-    if (!bytes || bytes.length < MAGIC.length) return false;
-    for (let i = 0; i < MAGIC.length; i++) {
-      if (bytes[i] !== MAGIC[i]) return false;
-    }
-    return true;
+    return Boolean(bytes) && bytes.length >= MAGIC.length && MAGIC.every(function (b, i) { return bytes[i] === b; });
   }
 
   function isSize(n) {
     return Number.isSafeInteger(n) && n >= 0;
   }
 
+  function isValidFile(f) {
+    return Boolean(f) && isSize(f.size);
+  }
+
+  function isValidShape(h) {
+    return Boolean(h) && h.v === 2 && isSize(h.msg) && Array.isArray(h.files);
+  }
+
+  // validateHeader checks the header shape and that its sizes exactly
+  // account for the available body bytes.
   function validateHeader(h, available) {
-    if (!h || h.v !== 2 || !isSize(h.msg) || !Array.isArray(h.files)) throw new Error('invalid envelope header');
+    if (!isValidShape(h)) throw new Error('invalid envelope header');
     if (h.files.length > MAX_FILES) throw new Error('too many files');
-    let sum = h.msg;
-    h.files.forEach(function (f) {
-      if (!f || !isSize(f.size)) throw new Error('invalid file entry');
-      sum += f.size;
-    });
-    if (sum !== available) throw new Error('envelope size mismatch');
+    if (!h.files.every(isValidFile)) throw new Error('invalid file entry');
+    if (sumSizes(h.files, h.msg) !== available) throw new Error('envelope size mismatch');
   }
 
   function readHeader(bytes) {
     if (bytes.length < PREFIX_BYTES) throw new Error('truncated envelope');
-    const headerLen = readU32(bytes, MAGIC.length);
-    if (headerLen > MAX_HEADER_BYTES || headerLen > bytes.length - PREFIX_BYTES) throw new Error('invalid header length');
-    const raw = bytes.subarray(PREFIX_BYTES, PREFIX_BYTES + headerLen);
-    const header = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(raw));
+    const headerLen = viewOf(bytes).getUint32(MAGIC.length);
+    if (headerLen > Math.min(MAX_HEADER_BYTES, bytes.length - PREFIX_BYTES)) throw new Error('invalid header length');
     const bodyStart = PREFIX_BYTES + headerLen;
+    const header = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(PREFIX_BYTES, bodyStart)));
     validateHeader(header, bytes.length - bodyStart);
     return { header: header, bodyStart: bodyStart };
   }
@@ -189,28 +123,14 @@
       return { message: new TextDecoder().decode(bytes), files: [] };
     }
     const parsed = readHeader(bytes);
-    let offset = parsed.bodyStart;
-    const message = new TextDecoder().decode(bytes.subarray(offset, offset + parsed.header.msg));
-    offset += parsed.header.msg;
+    let offset = parsed.bodyStart + parsed.header.msg;
+    const message = new TextDecoder().decode(bytes.subarray(parsed.bodyStart, offset));
     const files = parsed.header.files.map(function (f) {
       const view = bytes.subarray(offset, offset + f.size);
       offset += f.size;
-      return { name: sanitizeFileName(f.name), type: safeType(f.type), size: f.size, bytes: view };
+      return { name: meta.sanitizeFileName(f.name), type: meta.safeType(f.type), size: f.size, bytes: view };
     });
     return { message: message, files: files };
-  }
-
-  function formatBytes(bytes) {
-    if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    let value = bytes;
-    let unit = 0;
-    while (value >= 1024 && unit < units.length - 1) {
-      value /= 1024;
-      unit++;
-    }
-    const digits = unit === 0 ? 0 : value < 10 ? 1 : 0;
-    return `${value.toFixed(digits)} ${units[unit]}`;
   }
 
   window.goneEnvelope = Object.freeze({
@@ -218,8 +138,8 @@
     encode: encode,
     decode: decode,
     encryptedSize: encryptedSize,
-    sanitizeFileName: sanitizeFileName,
-    safeType: safeType,
-    formatBytes: formatBytes
+    sanitizeFileName: meta.sanitizeFileName,
+    safeType: meta.safeType,
+    formatBytes: meta.formatBytes
   });
 })();
