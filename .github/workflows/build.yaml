@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     tags: ['v*.*.*', 'v*.*', 'v*']
     paths-ignore:
       - '.github/instructions/**'
@@ -14,7 +14,7 @@ on:
       - 'docs/**'
       - "Taskfile.yml"
   pull_request:
-    branches: [main, develop]
+    branches: [main]
   workflow_dispatch:
     inputs:
       reason:
@@ -86,7 +86,12 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
 
       - name: Upload coverage to Codacy
-        if: github.ref == 'refs/heads/main'
+        # Upload for main and same-repo PRs (fork PRs lack the secret).
+        # On PRs the reporter attributes coverage to the PR head commit.
+        if: >-
+          github.ref == 'refs/heads/main' ||
+          (github.event_name == 'pull_request' &&
+           github.event.pull_request.head.repo.full_name == github.repository)
         uses: codacy/codacy-coverage-reporter-action@v1.3.0
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
