@@ -219,6 +219,66 @@ func TestEnsureDataDir_FilePathError(t *testing.T) {
 	}
 }
 
+// TestEnsureDataDir_EnforcesPrivatePerms verifies the data and blobs
+// directories end up owner-only (0o700), whether newly created or pre-existing
+// with looser permissions.
+func TestEnsureDataDir_EnforcesPrivatePerms(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(t *testing.T, dir string)
+	}{
+		{name: "new", setup: func(*testing.T, string) {}},
+		{name: "existing loose data dir", setup: func(t *testing.T, dir string) {
+			mkdirMode(t, dir, 0o777)
+		}},
+		{name: "existing loose blobs dir", setup: func(t *testing.T, dir string) {
+			mkdirMode(t, dir, 0o755)
+			mkdirMode(t, filepath.Join(dir, "blobs"), 0o777)
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := filepath.Join(t.TempDir(), "data")
+			tc.setup(t, dir)
+			dataDir, blobDir, err := ensureDataDir(dir)
+			if err != nil {
+				t.Fatalf("ensureDataDir: %v", err)
+			}
+			for _, p := range []string{dataDir, blobDir} {
+				st, err := os.Stat(p)
+				if err != nil {
+					t.Fatalf("stat %s: %v", p, err)
+				}
+				if got := st.Mode().Perm(); got != privateDirPerm {
+					t.Fatalf("%s perm got %o want %o", p, got, privateDirPerm)
+				}
+			}
+		})
+	}
+}
+
+// mkdirMode creates dir and forces mode regardless of the process umask.
+func mkdirMode(t *testing.T, dir string, mode os.FileMode) {
+	t.Helper()
+	if err := os.MkdirAll(dir, mode); err != nil {
+		t.Fatalf("mkdir %s: %v", dir, err)
+	}
+	if err := os.Chmod(dir, mode); err != nil {
+		t.Fatalf("chmod %s: %v", dir, err)
+	}
+}
+
+// Failure path: ensureDataDir where blobs path exists as a file.
+func TestEnsureDataDir_BlobsFileError(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "blobs"), []byte("x"), 0o600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	if _, _, err := ensureDataDir(dir); err == nil {
+		t.Fatalf("expected error when blobs is a file")
+	}
+}
+
 // Failure path: openDatabase with directory lacking permissions (simulate by using dir path as file).
 func TestOpenDatabase_Error(t *testing.T) {
 	tmp := t.TempDir()

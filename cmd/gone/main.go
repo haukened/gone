@@ -54,23 +54,62 @@ func loadConfig() (*config.Config, error) {
 	return cfg, nil
 }
 
+// privateDirPerm is owner-only access (rwx------). Directories need the
+// execute (search) bit for the owner to open files inside them, so 0o700 is
+// the most restrictive mode that still lets the service operate.
+const privateDirPerm os.FileMode = 0o700
+
+// ensureDataDir creates (if needed) the data directory and its blobs
+// subdirectory, and enforces owner-only permissions on both, including
+// directories that already existed with looser modes.
+//
+// Parameters:
+//   - dir: path to the data directory.
+//
+// Returns:
+//   - string: the data directory path.
+//   - string: the blobs directory path.
+//   - error: non-nil if a path is not a directory, cannot be created, or its
+//     permissions cannot be restricted.
 func ensureDataDir(dir string) (string, string, error) {
-	if st, err := os.Stat(dir); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			if mkErr := os.MkdirAll(dir, 0o700); mkErr != nil {
-				return "", "", fmt.Errorf("create data dir: %w", mkErr)
-			}
-		} else {
-			return "", "", fmt.Errorf("stat data dir: %w", err)
-		}
-	} else if !st.IsDir() {
-		return "", "", fmt.Errorf("data path not directory: %s", dir)
+	if err := ensurePrivateDir(dir); err != nil {
+		return "", "", fmt.Errorf("data dir: %w", err)
 	}
 	blobDir := filepath.Join(dir, "blobs")
-	if err := os.MkdirAll(blobDir, 0o700); err != nil {
-		return "", "", fmt.Errorf("create blobs dir: %w", err)
+	if err := ensurePrivateDir(blobDir); err != nil {
+		return "", "", fmt.Errorf("blobs dir: %w", err)
 	}
 	return dir, blobDir, nil
+}
+
+// ensurePrivateDir creates dir if missing and forces its mode to
+// privateDirPerm. MkdirAll does not alter pre-existing directories, so the
+// mode is always re-applied explicitly.
+//
+// Parameters:
+//   - dir: directory path to create or tighten.
+//
+// Returns:
+//   - error: non-nil if dir exists but is not a directory, or if creation,
+//     stat, or chmod fails.
+func ensurePrivateDir(dir string) error {
+	st, err := os.Stat(dir)
+	// Directories need the owner execute (search) bit, so 0o700 is the
+	// strictest usable mode; the rule below assumes file semantics.
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		if mkErr := os.MkdirAll(dir, privateDirPerm); mkErr != nil { // nosemgrep: incorrect-default-permission
+			return fmt.Errorf("create: %w", mkErr)
+		}
+	case err != nil:
+		return fmt.Errorf("stat: %w", err)
+	case !st.IsDir():
+		return fmt.Errorf("not a directory: %s", dir)
+	}
+	if err := os.Chmod(dir, privateDirPerm); err != nil { // nosemgrep: incorrect-default-permission
+		return fmt.Errorf("restrict permissions: %w", err)
+	}
+	return nil
 }
 
 // openDatabase opens <dataDir>/gone.db with the hardened DSN (WAL, foreign
