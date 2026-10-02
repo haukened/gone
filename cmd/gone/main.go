@@ -250,6 +250,87 @@ func newServer(cfg *config.Config, handler http.Handler) *http.Server {
 	}
 }
 
+// startMetrics initializes the metrics schema, starts the flush loop, and,
+// when enabled, starts the token-protected metrics listener.
+//
+// Parameters:
+//   - ctx: context for schema initialization and the flush loop.
+//   - db: database the metrics manager persists to.
+//   - cfg: configuration supplying the metrics address and token.
+//
+// Returns:
+//   - *metrics.Manager: the started manager; the caller must Stop it.
+//   - *http.Server: the metrics listener, or nil when metrics are disabled.
+//   - error: non-nil if schema initialization fails.
+func startMetrics(ctx context.Context, db *sql.DB, cfg *config.Config) (*metrics.Manager, *http.Server, error) {
+	mgr := metrics.New(db, metrics.Config{FlushInterval: 5 * time.Second, Logger: slog.Default()})
+	if err := mgr.InitSchema(ctx); err != nil {
+		return nil, nil, err
+	}
+	mgr.Start(ctx)
+	if cfg.MetricsAddr != "" && cfg.MetricsToken == "" {
+		slog.Warn("metrics disabled: GONE_METRICS_ADDR set but GONE_METRICS_TOKEN is empty")
+	}
+	if !cfg.MetricsEnabled() {
+		return mgr, nil, nil
+	}
+	srv := &http.Server{Addr: cfg.MetricsAddr, Handler: metrics.Handler(mgr, cfg.MetricsToken), ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("metrics server error", "err", err)
+		}
+	}()
+	slog.Info("metrics server started", "addr", cfg.MetricsAddr)
+	return mgr, srv, nil
+}
+
+// components bundles the long-lived components assembled by run.
+type components struct {
+	cfg     *config.Config
+	db      *sql.DB
+	idx     store.Index
+	blobDir string
+	mgr     *metrics.Manager
+}
+
+// serve wires the service, janitor, and HTTP server, then blocks serving
+// requests until the listener stops.
+//
+// Parameters:
+//   - ctx: context for the janitor loop.
+//
+// Returns:
+//   - error: non-nil if blob storage, templates, or the listener fail.
+func (a *components) serve(ctx context.Context) error {
+	blobs, err := newBlobStorage(a.blobDir)
+	if err != nil {
+		return err
+	}
+	tmpls, err := loadTemplates()
+	if err != nil {
+		return err
+	}
+	clock := realClock{}
+	svc := buildService(a.idx, blobs, a.cfg, clock)
+	svc.Metrics = a.mgr
+	janStore := store.New(a.idx, blobs, clock, a.cfg.InlineMaxBytes).WithMetrics(a.mgr)
+	jan := janitor.New(janStore, a.mgr, janitor.Config{Interval: time.Minute, Logger: slog.Default()})
+	jan.Start(ctx)
+	defer jan.Stop()
+
+	srv := newServer(a.cfg, buildHandler(a.cfg, svc, a.db, a.blobDir, tmpls))
+	slog.Info("starting server", "addr", a.cfg.Addr, "pid", os.Getpid())
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
+}
+
+// run loads configuration, prepares storage and metrics, and serves until
+// the HTTP listener exits.
+//
+// Returns:
+//   - error: non-nil if any startup step or the listener fails.
 func run() error {
 	cfg, err := loadConfig()
 	if err != nil {
@@ -264,58 +345,17 @@ func run() error {
 		return err
 	}
 	defer db.Close()
-	// Initialize metrics manager & schema early so other components can emit metrics.
 	ctx := context.Background()
-	mgr := metrics.New(db, metrics.Config{FlushInterval: 5 * time.Second, Logger: slog.Default()})
-	if err := mgr.InitSchema(ctx); err != nil {
+	mgr, metricsSrv, err := startMetrics(ctx, db, cfg)
+	if err != nil {
 		return err
 	}
-	mgr.Start(ctx)
 	defer mgr.Stop(context.Background())
-
-	// Optional metrics server (separate listener) if configured.
-	var metricsSrv *http.Server
-	if cfg.MetricsAddr != "" && cfg.MetricsToken == "" {
-		slog.Warn("metrics disabled: GONE_METRICS_ADDR set but GONE_METRICS_TOKEN is empty")
-	}
-	if cfg.MetricsEnabled() {
-		metricsSrv = &http.Server{Addr: cfg.MetricsAddr, Handler: metrics.Handler(mgr, cfg.MetricsToken), ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
-		go func() {
-			if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				slog.Error("metrics server error", "err", err)
-			}
-		}()
-		slog.Info("metrics server started", "addr", cfg.MetricsAddr)
-	}
-	blobs, err := newBlobStorage(blobDir)
-	if err != nil {
-		return err
-	}
-	clock := realClock{}
-	svc := buildService(idx, blobs, cfg, clock)
-	// Inject metrics into service (optional interface already defined)
-	svc.Metrics = mgr
-	tmpls, err := loadTemplates()
-	if err != nil {
-		return err
-	}
-	// Start janitor with metrics.
-	janCfg := janitor.Config{Interval: time.Minute, Logger: slog.Default()}
-	janStore := store.New(idx, blobs, clock, cfg.InlineMaxBytes).WithMetrics(mgr) // reuse underlying components
-	jan := janitor.New(janStore, mgr, janCfg)
-	jan.Start(ctx)
-	defer jan.Stop()
-
-	srv := newServer(cfg, buildHandler(cfg, svc, db, blobDir, tmpls))
-	slog.Info("starting server", "addr", cfg.Addr, "pid", os.Getpid())
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return err
-	}
 	if metricsSrv != nil {
-		_ = metricsSrv.Shutdown(context.Background())
+		defer func() { _ = metricsSrv.Shutdown(context.Background()) }()
 	}
-
-	return nil
+	a := &components{cfg: cfg, db: db, idx: idx, blobDir: blobDir, mgr: mgr}
+	return a.serve(ctx)
 }
 
 func main() {
