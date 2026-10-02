@@ -29,6 +29,8 @@ env:
   MINIFY_VERSION: v2.24.17
   TASK_VERSION: v3.54.0
   NODE_VERSION: '24'
+  ESLINT_VERSION: '9.39.5'
+  STYLELINT_VERSION: '17.15.0'
 
 jobs:
   # Fast correctness check for PRs and branch pushes. No artifacts.
@@ -74,8 +76,20 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Lint JavaScript and CSS
+        env:
+          ESLINT_USE_FLAT_CONFIG: 'false'
+        run: |
+          npx --yes eslint@${{ env.ESLINT_VERSION }} --max-warnings 0 web/js test/js
+          npx --yes stylelint@${{ env.STYLELINT_VERSION }} 'web/css/*.css'
+
       - name: Run JavaScript tests
-        run: node --test 'test/js/*.test.js'
+        run: >-
+          node --test --experimental-test-coverage
+          --test-coverage-include='web/js/**'
+          --test-reporter=spec --test-reporter-destination=stdout
+          --test-reporter=lcov --test-reporter-destination=lcov.info
+          'test/js/*.test.js'
 
       - name: Save Go module cache
         uses: actions/cache/save@v6
@@ -98,6 +112,22 @@ jobs:
           coverage-reports: coverage.out
           language: 'go'
           force-coverage-parser: 'go'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Separate step because the Go report needs a forced parser; each
+      # step runs report --partial + final, and a repeated final simply
+      # recalculates the commit's aggregate coverage.
+      - name: Upload JavaScript coverage to Codacy
+        if: >-
+          github.ref == 'refs/heads/main' ||
+          (github.event_name == 'pull_request' &&
+           github.event.pull_request.head.repo.full_name == github.repository)
+        uses: codacy/codacy-coverage-reporter-action@v1.3.0
+        with:
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          coverage-reports: lcov.info
+          language: 'javascript'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

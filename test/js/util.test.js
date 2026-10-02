@@ -83,49 +83,45 @@ test('el assigns properties and children', () => {
   assert.equal(u.el('i', {}).children.length, 0);
 });
 
-test('setContent replaces children with nodes and text', () => {
-  reset();
-  load('util');
-  const old = h('b');
-  const node = h('p', {}, [old]);
-  const icon = h('svg');
-  window.goneUtil.setContent(node, ['<b>x</b> ', icon]);
-  assert.equal(old.parentNode, null);
-  assert.equal(node.textContent, '<b>x</b> ');
-  assert.equal(node.children[0].nodeType, 3);
-  assert.equal(node.children[1], icon);
-});
-
-test('flashCopied swaps content then restores it', (t) => {
+test('flashCopied relabels and announces, then restores both', (t) => {
   reset();
   load('util');
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const icon = h('svg');
-  const btn = h('button', {}, [icon]);
-  window.goneUtil.flashCopied(btn, ['done ', h('i')]);
-  assert.equal(btn.textContent, 'done ');
-  assert.equal(btn.children[1].tagName, 'I');
-  assert.equal(icon.parentNode, null);
-  assert.ok(btn.classList.contains('copied'));
-  assert.equal(btn.disabled, true);
-  t.mock.timers.tick(2200);
-  assert.deepEqual(btn.children, [icon]);
-  assert.equal(icon.parentNode, btn);
-  assert.equal(btn.classList.contains('copied'), false);
+  const label = h('span', { textContent: 'Copy link' });
+  const btn = h('button', {}, [h('svg'), label]);
+  const status = h('span');
+  const u = window.goneUtil;
+  u.flashCopied(btn, status, 'Link copied.');
+  assert.equal(label.textContent, 'Copied');
+  assert.equal(status.textContent, 'Link copied.');
   assert.equal(btn.disabled, false);
+  t.mock.timers.tick(1000);
+  u.flashCopied(btn, status, 'Again.');
+  assert.equal(status.textContent, 'Again.');
+  t.mock.timers.tick(2199);
+  assert.equal(label.textContent, 'Copied');
+  t.mock.timers.tick(1);
+  assert.equal(label.textContent, 'Copy link');
+  assert.equal(status.textContent, '');
+  u.flashCopied(btn, null, 'x');
+  assert.equal(label.textContent, 'Copied');
+  t.mock.timers.tick(2200);
+  assert.equal(label.textContent, 'Copy link');
 });
 
-test('copyText reports success and failure', async () => {
+test('copyText reports success, and on failure selects and explains', async () => {
   const env = reset();
   load('util');
   const u = window.goneUtil;
-  assert.equal(await u.copyText('abc'), true);
+  const status = h('span');
+  assert.equal(await u.copyText('abc', null, status), true);
   assert.equal(env.clipboard.text, 'abc');
+  assert.equal(status.textContent, '');
   env.clipboard.fail = true;
   let called = 0;
-  assert.equal(await u.copyText('x', () => { called++; }), false);
-  assert.equal(await u.copyText('x'), false);
+  assert.equal(await u.copyText('x', () => { called++; }, status), false);
   assert.equal(called, 1);
-  assert.equal(env.alerts.length, 2);
-  assert.match(env.alerts[0], /Copy failed/);
+  assert.match(status.textContent, /press Ctrl\+C/);
+  assert.equal(await u.copyText('x'), false);
+  assert.deepEqual(env.alerts, []);
 });

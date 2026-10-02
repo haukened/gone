@@ -15,7 +15,7 @@ function setup(opts) {
   const inner = h('span');
   const form = h('form', {}, [dropZone, input, listEl, inner]);
   env.document.body.appendChild(form);
-  load('util', 'fileMeta', 'submitFiles');
+  load('util', 'fileMeta', 'icons', 'submitFiles');
   const counts = { add: 0, change: 0 };
   const state = { busy: false };
   const sel = window.goneFileSelection.create(Object.assign({
@@ -27,7 +27,7 @@ function setup(opts) {
   return { env, form, input, dropZone, listEl, inner, sel, counts, state };
 }
 
-test('requires util and fileMeta; loads once', () => {
+test('requires util, fileMeta and icons; loads once', () => {
   reset();
   load('submitFiles');
   assert.equal(window.goneFileSelection, undefined);
@@ -49,8 +49,11 @@ test('add dedupes, renders sanitized entries and resets the input', () => {
   assert.equal(listEl.hidden, false);
   const items = listEl.querySelectorAll('li');
   assert.equal(items.length, 3);
-  assert.equal(items[0].querySelector('.file-item-name').textContent, 'a.txt');
-  assert.equal(items[0].querySelector('.file-item-meta').textContent, '3 B');
+  assert.equal(items[0].querySelector('.name').textContent, 'a.txt');
+  assert.equal(items[0].querySelector('.size').textContent, '3 B');
+  assert.equal(items[0].children[0].getAttribute('class'), 'ico');
+  assert.ok(items[0].querySelector('button').classList.contains('linkbtn'));
+  assert.equal(items[0].querySelector('button').textContent, 'Remove');
   assert.equal(items[0].querySelector('button').getAttribute('aria-label'), 'Remove a.txt');
   assert.deepEqual(sel.metas(), [
     { name: 'dir/a.txt', type: 'text/plain', size: 3 },
@@ -134,7 +137,7 @@ test('optional elements and callbacks may be omitted', () => {
   const env = reset();
   const form = h('form');
   env.document.body.appendChild(form);
-  load('util', 'fileMeta', 'submitFiles');
+  load('util', 'fileMeta', 'icons', 'submitFiles');
   const sel = window.goneFileSelection.create({ form });
   sel.add([mk('a', 'x')]);
   sel.remove(0);

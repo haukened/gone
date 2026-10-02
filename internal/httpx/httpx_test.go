@@ -224,7 +224,7 @@ func TestHealthAndReady(t *testing.T) {
 }
 func TestHandleSecretPage(t *testing.T) {
 	// provide a minimal secret template
-	tmpl := template.Must(template.New("secret").Parse(`<!DOCTYPE html><html><body>{{template "header" .}}<div id="secret-consume"></div></body></html>`))
+	tmpl := template.Must(template.New("secret").Parse(`<!DOCTYPE html><html><body>{{template "header" .}}<div id="view-open"></div></body></html>`))
 	h := httpx.New(mockService{}, 1024, nil)
 	// Need partials header template to satisfy reference; keep it simple
 	tmplWithPartials := template.Must(template.New("partials").Parse(`{{define "header"}}<header>H</header>{{end}}`))

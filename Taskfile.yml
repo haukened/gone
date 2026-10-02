@@ -29,8 +29,10 @@ tasks:
   minify:
     desc: Minify assets into web/dist
     cmds:
-      - mkdir -p web/dist/{css,js}
+      - mkdir -p web/dist/{css,js,fonts,img}
       - cp web/*.html web/dist/
+      - cp web/fonts/* web/dist/fonts/
+      - cp web/img/* web/dist/img/
       - '{{.MINIFY_BIN}} -r -o web/dist/css/ web/css/'
       - '{{.MINIFY_BIN}} -r -o web/dist/js/ web/js/'
   
@@ -96,3 +98,11 @@ tasks:
     desc: Run JavaScript unit tests with coverage output
     cmds:
       - node --test --experimental-test-coverage --test-coverage-include='web/js/**' 'test/js/*.test.js'
+
+  lint-web:
+    desc: Lint JavaScript (ESLint) and CSS (stylelint) via npx, matching CI
+    env:
+      ESLINT_USE_FLAT_CONFIG: 'false'
+    cmds:
+      - npx --yes eslint@9.39.5 --max-warnings 0 web/js test/js
+      - npx --yes stylelint@17.15.0 'web/css/*.css'

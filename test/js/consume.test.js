@@ -7,21 +7,30 @@ const { fakeResponse, installFetch } = require('./fakes');
 
 const ID = '0123456789abcdef0123456789abcdef';
 const VALID_FRAG = '#v1:' + 'A'.repeat(43);
+const BASE = 'https://gone.test/secret/';
 
 // boot builds the consume page at url, loads every module and runs consume.js.
 function boot(t, url, opts) {
   const o = opts || {};
   const env = reset(url);
-  const ids = ['secret-heading', 'secret-output', 'copy-secret', 'download-all', 'download-progress', 'file-section',
-    'file-output-list', 'ack-banner', 'ack-card', 'ack-title', 'ack-text'];
-  const root = h('section', { id: o.noPage ? 'other' : 'secret-consume' });
-  ids.forEach((id) => root.appendChild(h(id === 'secret-output' ? 'textarea' : 'div', { id, hidden: true })));
-  env.document.body.appendChild(root);
+  const ids = ['open-heading', 'download-progress', 'consume-status', 'consume-error-text',
+    'revealed-heading', 'ack-warning', 'copy-secret', 'secret-output', 'copy-status', 'file-output-list',
+    'download-all', 'gone-heading'];
+  const open = h('div', { id: o.noPage ? 'other' : 'view-open' }, [
+    h('button', { id: 'open-secret' }, [h('span', { textContent: 'Open secret' })]),
+    h('div', { id: 'consume-error', hidden: true })
+  ]);
+  const revealed = h('div', { id: 'view-revealed', hidden: true }, [h('div', { id: 'message-panel', hidden: true }),
+    h('div', { id: 'file-section', hidden: true })]);
+  const gone = h('div', { id: 'view-gone', hidden: true });
+  ids.forEach((id) => open.appendChild(h(id === 'file-output-list' ? 'ul' : 'div', { id, hidden: id === 'ack-warning' || id === 'download-progress' })));
+  env.document.body.append(open, revealed, gone);
   const logs = captureConsole(t);
   load('util', 'crypto', 'fileMeta', 'envelope', 'icons');
   fastUtil();
   load(...(o.modules || ['consumeApi', 'consumeView', 'consume']));
-  return { env, logs, $: (id) => env.document.getElementById(id) };
+  const $ = (id) => env.document.getElementById(id);
+  return { env, logs, $, open: () => $('open-secret').click() };
 }
 
 // sealed encrypts plaintext under a new key and returns fetch handlers.
@@ -31,59 +40,65 @@ async function sealed(plaintext) {
   const gc = window.goneCrypto;
   const key = gc.generateKey();
   const enc = await gc.encrypt(plaintext, key);
+  const headers = (len) => ({
+    'Content-Length': String(len), 'X-Gone-Claim': 'claim-1',
+    'X-Gone-Version': '1', 'X-Gone-Nonce': gc.b64urlEncode(enc.nonce)
+  });
   return {
-    keyB64: gc.exportKeyB64(key),
-    get: () => fakeResponse({
-      headers: {
-        'Content-Length': String(enc.ciphertext.length), 'X-Gone-Claim': 'claim-1',
-        'X-Gone-Version': '1', 'X-Gone-Nonce': gc.b64urlEncode(enc.nonce)
-      },
-      chunks: [enc.ciphertext.slice()]
-    })
+    frag: `#v1:${gc.exportKeyB64(key)}`,
+    get: () => fakeResponse({ headers: headers(enc.ciphertext.length), chunks: [enc.ciphertext.slice()] }),
+    short: () => fakeResponse({ headers: headers(enc.ciphertext.length + 1), chunks: [enc.ciphertext.slice()] })
   };
 }
+
+const disabled = ($) => $('open-secret').getAttribute('aria-disabled') === 'true';
 
 test('does nothing without dependencies or the consume page', (t) => {
   reset();
   load('consume');
-  const { $, env } = boot(t, 'https://gone.test/secret/' + ID + VALID_FRAG, { noPage: true });
-  assert.equal($('secret-heading').textContent, '');
-  assert.equal(env.windowListeners.beforeunload, undefined);
-  const b = boot(t, 'https://gone.test/secret/' + ID + VALID_FRAG, { modules: ['consumeView', 'consume'] });
-  assert.equal(b.$('secret-heading').textContent, '');
+  const calls = installFetch([]);
+  const a = boot(t, BASE + ID + VALID_FRAG, { noPage: true });
+  a.open();
+  assert.equal(a.env.windowListeners.beforeunload, undefined);
+  const b = boot(t, BASE + ID + VALID_FRAG, { modules: ['consumeView', 'consume'] });
+  b.open();
+  assert.equal(b.env.windowListeners.beforeunload, undefined);
+  assert.equal(calls.length, 0);
 });
 
 test('preview mode shows sample or custom text without fetching', (t) => {
   const calls = installFetch([]);
-  const a = boot(t, 'https://gone.test/secret/x?preview=secret');
-  assert.match(a.$('secret-output').value, /preview of a decrypted secret/);
-  assert.equal(a.$('secret-heading').textContent, 'Decrypted (preview)');
-  const b = boot(t, 'https://gone.test/secret/x?preview=secret&text=hi%20there');
-  assert.equal(b.$('secret-output').value, 'hi there');
+  const a = boot(t, BASE + 'x?preview=secret');
+  assert.match(a.$('secret-output').textContent, /preview of a decrypted secret/);
+  assert.equal(a.$('view-revealed').hidden, false);
+  const b = boot(t, BASE + 'x?preview=secret&text=hi%20there');
+  assert.equal(b.$('secret-output').textContent, 'hi there');
   assert.equal(calls.length, 0);
 });
 
-test('fragment and id problems are reported without fetching', (t) => {
+test('fragment and id problems are reported and lock Open without fetching', (t) => {
   const calls = installFetch([]);
+  const BAD = /everything after the #/;
   const cases = [
-    ['https://gone.test/secret/' + ID, 'Missing or invalid key fragment. Cannot decrypt.'],
-    ['https://gone.test/secret/' + ID + '#v1:short', 'Missing or invalid key fragment. Cannot decrypt.'],
-    ['https://gone.test/secret/' + ID + '#v1:bad+chars/xx', 'Missing or invalid key fragment. Cannot decrypt.'],
-    ['https://gone.test/secret/' + ID + '#v1:AAAAAAAAAAAA', 'Missing or invalid key fragment. Cannot decrypt.'],
-    ['https://gone.test/secret/' + ID + '#v1:' + 'A'.repeat(42) + 'B', 'Missing or invalid key fragment. Cannot decrypt.'],
-    ['https://gone.test/secret/' + ID + '#v01:' + 'A'.repeat(43), 'Missing or invalid key fragment. Cannot decrypt.'],
-    ['https://gone.test/secret/' + ID + '#v256:' + 'A'.repeat(43), 'Missing or invalid key fragment. Cannot decrypt.'],
-    ['https://gone.test/secret/' + ID + '#v2:' + 'A'.repeat(43), 'Unsupported version'],
-    ['https://gone.test/secret/not-an-id' + VALID_FRAG, 'Invalid secret id']
+    [BASE + ID, BAD],
+    [BASE + ID + '#v1:short', BAD],
+    [BASE + ID + '#v1:bad+chars/xx', BAD],
+    [BASE + ID + '#v1:' + 'A'.repeat(42) + 'B', BAD],
+    [BASE + ID + '#v01:' + 'A'.repeat(43), BAD],
+    [BASE + ID + '#v2:' + 'A'.repeat(43), /newer version of Gone/],
+    [BASE + 'not-an-id' + VALID_FRAG, /isn\u2019t valid/]
   ];
   for (const [url, want] of cases) {
-    const { $ } = boot(t, url);
-    assert.equal($('secret-heading').textContent, want, url);
+    const { $, open } = boot(t, url);
+    assert.match($('consume-error-text').textContent, want, url);
+    assert.equal($('consume-error').hidden, false);
+    assert.ok(disabled($), url);
+    open();
   }
   assert.equal(calls.length, 0);
 });
 
-test('happy path: fetch, decrypt, decode files, then acknowledge', async (t) => {
+test('nothing is fetched until Open; then fetch, decrypt, decode files and acknowledge', async (t) => {
   const plain = await (async () => {
     reset();
     load('fileMeta', 'envelope');
@@ -91,47 +106,86 @@ test('happy path: fetch, decrypt, decode files, then acknowledge', async (t) => 
   })();
   const s = await sealed(plain);
   const calls = installFetch([s.get, () => fakeResponse({ status: 204 })]);
-  const { $, env } = boot(t, `https://gone.test/secret/${ID}#v1:${s.keyB64}`);
+  const { $, env, open } = boot(t, BASE + ID + s.frag);
+  assert.equal(calls.length, 0);
+  assert.equal(env.windowListeners.beforeunload, undefined);
+  open();
+  open();
+  assert.equal($('open-secret').getAttribute('aria-busy'), 'true');
   assert.equal(typeof env.windowListeners.beforeunload, 'function');
   assert.equal(typeof env.windowListeners.pagehide, 'function');
-  await waitFor(() => !$('ack-banner').hidden);
-  assert.equal($('secret-heading').textContent, 'Decrypted Secret + 1 file:');
-  assert.equal($('secret-output').value, 'top secret');
+  await waitFor(() => calls.length === 2);
+  await waitFor(() => $('view-revealed').hidden === false);
+  assert.equal($('revealed-heading').textContent, 'Here\u2019s your secret and a file.');
+  assert.equal($('secret-output').textContent, 'top secret');
   assert.equal($('file-output-list').children.length, 1);
-  assert.equal($('ack-card').classList.contains('danger'), false);
+  assert.equal($('ack-warning').hidden, true);
   assert.equal(calls[0].url, `https://gone.test/api/secret/${ID}`);
   assert.equal(calls[1].init.method, 'DELETE');
   assert.deepEqual(calls[1].init.headers, { 'X-Gone-Claim': 'claim-1' });
+  open();
+  assert.equal(calls.length, 2);
   const ev = { preventDefault() { this.prevented = true; } };
   env.windowListeners.beforeunload(ev);
   assert.equal(ev.prevented, true);
   env.windowListeners.pagehide();
 });
 
-test('text-only secret with failed acknowledgement shows a warning', async (t) => {
+test('a failed acknowledgement shows the warning', async (t) => {
   const s = await sealed('just text');
   installFetch([s.get, ...Array(3).fill(() => fakeResponse({ status: 500 }))]);
-  const { $ } = boot(t, `https://gone.test/secret/${ID}#v1:${s.keyB64}`);
-  await waitFor(() => !$('ack-banner').hidden);
-  assert.equal($('secret-heading').textContent, 'Decrypted Secret:');
-  assert.equal($('secret-output').value, 'just text');
-  assert.ok($('ack-card').classList.contains('danger'));
+  const { $, open } = boot(t, BASE + ID + s.frag);
+  open();
+  await waitFor(() => !$('ack-warning').hidden);
+  assert.equal($('revealed-heading').textContent, 'Here\u2019s your secret.');
+  assert.equal($('secret-output').textContent, 'just text');
 });
 
-test('known errors show their message; unexpected ones are generic', async (t) => {
+test('a retryable failure leaves Open usable and the retry reuses the claim', async (t) => {
+  const s = await sealed('again');
+  const calls = installFetch([s.short, s.short, s.short, s.get, () => fakeResponse({ status: 204 })]);
+  const { $, logs, open } = boot(t, BASE + ID + s.frag);
+  open();
+  await waitFor(() => !$('consume-error').hidden);
+  assert.match($('consume-error-text').textContent, /interrupted/);
+  assert.equal(disabled($), false);
+  assert.equal($('open-secret').hasAttribute('aria-busy'), false);
+  assert.ok(logs.error.length > 0);
+  open();
+  assert.equal($('consume-error').hidden, true);
+  await waitFor(() => calls.length === 5);
+  assert.deepEqual(calls[3].init.headers, { 'X-Gone-Claim': 'claim-1' });
+  await waitFor(() => $('view-revealed').hidden === false);
+});
+
+test('final failures lock Open; gone shows the gone view', async (t) => {
   const s = await sealed('x');
+  const locked = (re) => (d) => {
+    assert.match(d.$('consume-error-text').textContent, re);
+    assert.ok(disabled(d.$));
+  };
+  const gone = (d) => {
+    assert.equal(d.$('view-gone').hidden, false);
+    assert.equal(d.$('consume-error').hidden, true);
+    assert.equal(d.logs.error.length, 0);
+  };
   const cases = [
-    ['gone', [() => fakeResponse({ status: 404 })], `#v1:${s.keyB64}`, /This secret is gone/],
-    ['wrong key', [s.get], '#v1:' + 'A'.repeat(43), /Couldn.t verify/],
-    ['unexpected', [() => ({ ok: true, status: 200, headers: { get() { throw new Error('boom'); } } })], `#v1:${s.keyB64}`, /^Unexpected error$/]
+    ['wrong key', [s.get], '#v1:' + 'A'.repeat(43), locked(/Couldn.t verify/)],
+    ['bad request', [() => fakeResponse({ status: 400 })], s.frag, locked(/isn\u2019t valid/)],
+    ['unexpected', [() => ({ ok: true, status: 200, headers: { get() { throw new Error('boom'); } } })], s.frag,
+      locked(/^Something went wrong opening this secret\. Try again\.$/)],
+    ['gone 404', [() => fakeResponse({ status: 404 })], s.frag, gone],
+    ['gone 410', [() => fakeResponse({ status: 410 })], s.frag, gone]
   ];
-  for (const [name, handlers, frag, want] of cases) {
+  for (const [name, handlers, frag, check] of cases) {
     await t.test(name, async (st) => {
       const calls = installFetch(handlers);
-      const { $, logs } = boot(st, `https://gone.test/secret/${ID}${frag}`);
-      await waitFor(() => logs.error.length > 0);
-      assert.match($('secret-heading').textContent, want);
-      assert.equal($('download-progress').hidden, true);
+      const d = boot(st, BASE + ID + frag);
+      d.open();
+      await waitFor(() => d.logs.error.length > 0 || d.$('view-gone').hidden === false);
+      check(d);
+      assert.equal(d.$('download-progress').hidden, true);
+      d.open();
       assert.equal(calls.length, 1);
     });
   }
@@ -141,9 +195,11 @@ test('a malformed envelope is reported and not acknowledged', async (t) => {
   const bad = new Uint8Array([0x47, 0x4f, 0x4e, 0x45, 0x32, 0, 0, 0, 0, 0, 0, 2, 0x7b, 0x7d]);
   const s = await sealed(bad);
   const calls = installFetch([s.get]);
-  const { $, logs } = boot(t, `https://gone.test/secret/${ID}#v1:${s.keyB64}`);
+  const { $, logs, open } = boot(t, BASE + ID + s.frag);
+  open();
   await waitFor(() => logs.error.length >= 2);
   assert.match(logs.error[0], /invalid envelope/);
-  assert.equal($('secret-heading').textContent, 'This secret\u2019s contents are malformed; ask the sender to resend it.');
+  assert.equal($('consume-error-text').textContent, 'This secret\u2019s contents are damaged. Ask the sender to share it again.');
+  assert.ok(disabled($));
   assert.equal(calls.length, 1);
 });

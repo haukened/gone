@@ -19,11 +19,12 @@
     return '';
   }
 
-  function renderBar(meter, size, maxBytes, problem) {
-    if (!meter) return;
-    meter.max = maxBytes || 1;
-    meter.value = Math.min(size, meter.max);
-    meter.classList.toggle('over', Boolean(problem));
+  function renderBar(els, size, maxBytes, problem) {
+    if (els.meter) {
+      els.meter.max = maxBytes || 1;
+      els.meter.value = Math.min(size, els.meter.max);
+    }
+    if (els.box) els.box.classList.toggle('over', Boolean(problem));
   }
 
   function renderLabel(label, size, maxBytes) {
@@ -32,17 +33,17 @@
     label.textContent = `${formatBytes(size)} of ${formatBytes(maxBytes)}${over}`;
   }
 
-  function renderWarning(warning, problem) {
-    if (!warning) return;
-    warning.textContent = problem;
-    warning.hidden = !problem;
+  function renderWarning(els, problem) {
+    if (els.warningText && els.warningText.textContent !== problem) els.warningText.textContent = problem;
+    if (els.warning) els.warning.hidden = !problem;
   }
 
-  // render updates the optional meter/label/warning elements in els.
+  // render updates the optional elements in els: {box, meter, label,
+  // warning, warningText}. box gets the "over" class while problem is set.
   function render(els, size, maxBytes, problem) {
-    renderBar(els.meter, size, maxBytes, problem);
+    renderBar(els, size, maxBytes, problem);
     renderLabel(els.label, size, maxBytes);
-    renderWarning(els.warning, problem);
+    renderWarning(els, problem);
   }
 
   window.goneSizeMeter = Object.freeze({

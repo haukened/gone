@@ -135,13 +135,21 @@ function matches(node, sel) {
 }
 
 class FakeDocument {
-  constructor() {
+  constructor(readyState) {
+    this.documentElement = new FakeElement('html');
     this.body = new FakeElement('body');
     this.activeElement = null;
+    this.readyState = readyState || 'complete';
+    this.title = '';
+    this.listeners = new Map();
   }
   createElement(tag) { return new FakeElement(tag); }
   createElementNS(ns, tag) { const el = new FakeElement(tag); el.namespaceURI = ns; return el; }
+  createRange() { return { selectNodeContents(n) { this.node = n; } }; }
   querySelector(sel) { return this.body.querySelector(sel); }
+  querySelectorAll(sel) { return this.body.querySelectorAll(sel); }
+  addEventListener(type, fn) { FakeElement.prototype.addEventListener.call(this, type, fn); }
+  dispatch(type, props) { return FakeElement.prototype.dispatch.call(this, type, props); }
   createTextNode(text) { return new FakeText(text); }
   getElementById(id) {
     let found = null;
@@ -168,15 +176,17 @@ function define(name, value) {
 }
 
 const GONE_GLOBALS = ['goneUtil', 'goneCrypto', 'goneFileMeta', 'goneEnvelope', 'goneConsumeApi', 'goneConsumeView',
-  'goneFileSelection', 'goneSizeMeter', 'goneUpload', 'goneResultPanel', 'goneIcons'];
+  'goneFileSelection', 'goneSizeMeter', 'goneUpload', 'goneResultPanel', 'goneIcons', 'goneTheme'];
 
 // reset installs a fresh fake browser at url and removes loaded gone modules.
-// Returns {document, alerts, clipboard, logs, storage}.
+// opts: {storage, storageThrows, readyState}.
+// Returns {document, alerts, clipboard, storage, selection, windowListeners}.
 function reset(url, opts) {
   const o = opts || {};
   GONE_GLOBALS.forEach((g) => { delete globalThis[g]; });
   const env = { alerts: [], clipboard: { text: '', fail: false }, storage: o.storage || {}, windowListeners: {} };
-  env.document = new FakeDocument();
+  env.selection = { ranges: [] };
+  env.document = new FakeDocument(o.readyState);
   define('window', globalThis);
   define('document', env.document);
   define('location', new URL(url || 'https://gone.test/'));
@@ -196,6 +206,10 @@ function reset(url, opts) {
       getItem: (k) => (k in env.storage ? env.storage[k] : null),
       setItem: (k, v) => { env.storage[k] = String(v); }
     });
+  define('getSelection', () => ({
+    removeAllRanges() { env.selection.ranges = []; },
+    addRange(r) { env.selection.ranges.push(r); }
+  }));
   delete globalThis.matchMedia;
   define('addEventListener', (type, fn) => { env.windowListeners[type] = fn; });
   return env;

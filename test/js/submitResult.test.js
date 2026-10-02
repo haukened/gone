@@ -2,88 +2,84 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load, h, captureConsole } = require('./harness');
+const { reset, load, h } = require('./harness');
 
-const URL_ = 'https://gone.test/secret/abc#v1:KEY';
-const EXPIRES = '2030-01-02T03:04:05Z';
-
-function setup(t) {
+// page builds the compose and result views; omit lists ids to leave out.
+function page(omit) {
+  const skip = new Set(omit || []);
   const env = reset();
-  load('util', 'icons', 'submitResult');
-  return { env, logs: captureConsole(t), rp: window.goneResultPanel };
+  const make = (id, tag, props, kids) => (skip.has(id) ? null : h(tag, Object.assign({ id }, props), kids));
+  const nodes = {
+    compose: make('compose', 'div'),
+    view: make('result', 'div', { hidden: true }),
+    heading: make('result-heading', 'h1'),
+    input: make('share-link', 'input'),
+    label: h('span', { textContent: 'Copy link' }),
+    status: make('copy-status', 'span'),
+    expiry: make('result-expiry', 'time')
+  };
+  nodes.btn = make('copy-link', 'button', {}, [h('svg'), nodes.label]);
+  const kids = [nodes.heading, nodes.input, nodes.btn, nodes.status, nodes.expiry].filter(Boolean);
+  if (nodes.view) nodes.view.append(...kids);
+  env.document.body.append(...[nodes.compose, nodes.view].filter(Boolean));
+  load('util', 'submitResult');
+  return Object.assign({ env, panel: window.goneResultPanel }, nodes);
 }
 
-test('requires util and icons; loads once', (t) => {
+test('requires util; loads once', () => {
   reset();
   load('submitResult');
   assert.equal(window.goneResultPanel, undefined);
-  load('util', 'submitResult');
-  assert.equal(window.goneResultPanel, undefined);
-  const { rp } = setup(t);
+  const p = page();
   load('submitResult');
-  assert.equal(window.goneResultPanel, rp);
+  assert.equal(window.goneResultPanel, p.panel);
+  assert.ok(Object.isFrozen(p.panel));
 });
 
-test('show replaces the target and focuses the link start', (t) => {
-  const { env, rp, logs } = setup(t);
-  const target = h('section', { className: 'card' });
-  env.document.body.appendChild(target);
-  const panel = rp.show({ shareURL: URL_, expiresAt: EXPIRES, replaceTarget: target });
-  assert.equal(env.document.body.children[0], panel);
-  assert.equal(target.parentNode, null);
-  const input = panel.querySelector('#share-link');
-  assert.equal(input.value, URL_);
-  assert.equal(input.readOnly, true);
-  assert.equal(env.document.activeElement, input);
-  assert.equal(input.selectionStart, 0);
-  assert.equal(input.scrollLeft, 0);
-  assert.equal(panel.querySelector('h2').textContent, 'Share This Link');
-  assert.match(panel.querySelector('.security-warning-card').textContent, /exactly once/);
-  assert.equal(panel.querySelector('.security-warning-card').children[0].tagName, 'SVG');
-  const time = panel.querySelector('time');
-  assert.equal(time.getAttribute('datetime'), EXPIRES);
-  assert.equal(time.textContent, new Date(EXPIRES).toLocaleString());
-  assert.match(panel.querySelector('.hint').textContent, /^Expires at /);
-  const back = panel.querySelector('a');
-  assert.equal(back.href, '/');
-  assert.equal(back.textContent, ' Create Another');
-  assert.equal(back.children[0].tagName, 'SVG');
-  assert.deepEqual(logs.log, ['[gone] result panel shown']);
+test('show fills the link and expiry, swaps views and focuses the heading', () => {
+  const p = page();
+  const at = '2030-01-02T03:04:05Z';
+  const view = p.panel.show({ shareURL: 'https://gone.test/secret/x#k', expiresAt: at });
+  assert.equal(view, p.view);
+  assert.equal(p.input.value, 'https://gone.test/secret/x#k');
+  assert.equal(p.expiry.getAttribute('datetime'), new Date(at).toISOString());
+  assert.ok(p.expiry.textContent.length > 0);
+  assert.equal(p.compose.hidden, true);
+  assert.equal(p.view.hidden, false);
+  assert.equal(p.env.document.title, 'Gone \u00b7 Your link is ready');
+  assert.equal(p.env.document.activeElement, p.heading);
 });
 
-test('show appends to body without a target and can skip focus', (t) => {
-  const { env, rp } = setup(t);
-  const panel = rp.show({ shareURL: URL_, expiresAt: EXPIRES, focus: false });
-  assert.equal(env.document.body.children[0], panel);
-  assert.equal(env.document.activeElement, null);
+test('focus:false and missing optional nodes are tolerated', () => {
+  const p = page(['compose', 'result-heading', 'result-expiry', 'copy-status']);
+  assert.equal(p.panel.show({ shareURL: 'u', expiresAt: 0, focus: false }), p.view);
+  assert.equal(p.env.document.activeElement, null);
+  const q = page();
+  q.panel.show({ shareURL: 'u', expiresAt: 0, focus: false });
+  assert.equal(q.env.document.activeElement, null);
 });
 
-test('focus survives a failing requestAnimationFrame', (t) => {
-  const { env, rp } = setup(t);
-  globalThis.requestAnimationFrame = () => { throw new Error('no raf'); };
-  const panel = rp.show({ shareURL: URL_, expiresAt: EXPIRES });
-  assert.equal(env.document.activeElement, panel.querySelector('#share-link'));
+test('show returns null when required nodes are missing', () => {
+  for (const id of ['result', 'share-link', 'copy-link']) {
+    const p = page([id]);
+    assert.equal(p.panel.show({ shareURL: 'u', expiresAt: 0 }), null, id);
+  }
 });
 
-test('copy button copies the link, or selects it when copy fails', async (t) => {
-  const { env, rp } = setup(t);
+test('copy button copies and announces, or selects the link on failure', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const panel = rp.show({ shareURL: URL_, expiresAt: EXPIRES, focus: false });
-  const copy = panel.querySelector('button');
-  assert.equal(copy.getAttribute('aria-label'), 'Copy full share link');
-  const ev = copy.click();
-  assert.deepEqual(await ev.settled, [true]);
-  assert.equal(env.clipboard.text, URL_);
-  assert.equal(copy.textContent, 'Copied! ');
-  assert.equal(copy.children[1].tagName, 'SVG');
+  const p = page();
+  p.panel.show({ shareURL: 'https://gone.test/s#k', expiresAt: 0 });
+  p.panel.show({ shareURL: 'https://gone.test/s#k2', expiresAt: 0 });
+  await p.btn.click().settled;
+  assert.equal(p.env.clipboard.text, 'https://gone.test/s#k2');
+  assert.equal(p.label.textContent, 'Copied');
+  assert.equal(p.status.textContent, 'Link copied to clipboard.');
   t.mock.timers.tick(2200);
-  assert.equal(copy.textContent, 'Copy Link ');
-  assert.equal(copy.children[1].tagName, 'SVG');
-
-  env.clipboard.fail = true;
-  assert.deepEqual(await copy.click().settled, [false]);
-  const input = panel.querySelector('#share-link');
-  assert.equal(env.document.activeElement, input);
-  assert.equal(input.selected, true);
-  assert.equal(copy.textContent, 'Copy Link ');
+  p.env.clipboard.fail = true;
+  await p.btn.click().settled;
+  assert.equal(p.input.selected, true);
+  assert.equal(p.env.document.activeElement, p.input);
+  assert.match(p.status.textContent, /press Ctrl\+C/);
+  assert.equal(p.label.textContent, 'Copy link');
 });

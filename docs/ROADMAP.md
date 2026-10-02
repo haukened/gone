@@ -79,7 +79,7 @@ A budget of `0` turns that limit off.
 ---
 
 ## Phase 2: Protocol spec and Go envelope
-**Status: implemented** on `feat/protocol-envelope`.
+**Status: done** (merged in #27).
 
 No user-visible change. This phase writes down the encryption format and adds a Go copy of it, so the passphrase and CLI phases have a fixed reference to build on.
 
@@ -98,6 +98,8 @@ No user-visible change. This phase writes down the encryption format and adds a 
 ---
 
 ## Phase 3: Web UI revamp
+**Status: implemented** on `feat/ui-revamp`. The visual system is documented in [`DESIGN.md`](../DESIGN.md) and the product context in [`PRODUCT.md`](../PRODUCT.md).
+
 A full redesign that keeps today's constraints: vanilla JS, no `innerHTML`, strict CSP, and no third-party assets.
 
 **Scope**
@@ -200,8 +202,8 @@ A single static binary that can send and receive secrets.
 | Phase | Status |
 | ----- | ------ |
 | 1. Rate limiting | Done |
-| 2. Protocol spec + Go envelope | Implemented |
-| 3. Web UI revamp | Planned |
+| 2. Protocol spec + Go envelope | Done |
+| 3. Web UI revamp | Implemented |
 | 4. Sender status + revoke | Planned |
 | 5. Optional passphrase | Planned |
 | 6. CLI | Planned |

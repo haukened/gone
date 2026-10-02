@@ -115,7 +115,7 @@
   function fragmentKey(keyB64) {
     try {
       return importKeyB64(keyB64);
-    } catch (_) {
+    } catch {
       throw fragmentError('invalid_fragment');
     }
   }
