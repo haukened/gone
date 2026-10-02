@@ -26,6 +26,10 @@
   const API_PATH = '/api/secret/';
   const SECRET_ID_RE = /^[0-9a-f]{32}$/;
   const state = { plaintext: null, files: [], urls: [], pending: 0 };
+  // api.endpoint is resolved once by start(); allowedEndpoints is the allowlist
+  // every request URL must appear in before fetch is called.
+  const api = { endpoint: '' };
+  const allowedEndpoints = new Set();
 
   function setStatus(msg) {
     if (statusEl) statusEl.textContent = msg;
@@ -128,14 +132,32 @@
     };
   }
 
+  // registerEndpoint validates the secret id, then pins the resulting URL as
+  // the single allowlisted API endpoint for this page.
+  function registerEndpoint(id) {
+    const url = secretEndpoint(id);
+    allowedEndpoints.clear();
+    allowedEndpoints.add(url);
+    api.endpoint = url;
+  }
+
+  // apiFetch is the only caller of fetch. It never accepts a URL: it uses the
+  // pre-registered endpoint and refuses to send unless it is allowlisted.
+  function apiFetch(method, headers) {
+    const url = api.endpoint;
+    if (allowedEndpoints.has(url)) {
+      return fetch(url, apiInit(method, headers));
+    }
+    return Promise.reject(FetchError('Blocked request to an unexpected URL', false));
+  }
+
   // requestSecret issues the GET (presenting any claim token) and records the
   // claim token the server returns.
   async function requestSecret(claim) {
-    const endpoint = secretEndpoint(claim.id);
     const headers = claim.token ? { 'X-Gone-Claim': claim.token } : {};
     let resp;
     try {
-      resp = await fetch(endpoint, apiInit('GET', headers));
+      resp = await apiFetch('GET', headers);
     } catch (_) {
       throw FetchError('Network error retrieving secret', true);
     }
@@ -201,8 +223,7 @@
 
   // --- Acknowledge (delete) ---------------------------------------------------
   async function ackOnce(claim) {
-    const endpoint = secretEndpoint(claim.id);
-    const resp = await fetch(endpoint, apiInit('DELETE', { 'X-Gone-Claim': claim.token }));
+    const resp = await apiFetch('DELETE', { 'X-Gone-Claim': claim.token });
     return resp.status === 204;
   }
 
@@ -353,9 +374,9 @@
     if (state.plaintext) state.plaintext.fill(0);
   }
 
-  async function run(id, keyB64) {
+  async function run(keyB64) {
     const t0 = performance.now();
-    const claim = { id: id, token: '' };
+    const claim = { token: '' };
     setStatus('Retrieving\u2026');
     const fetched = await fetchWithRetry(claim);
     logTiming('consume_fetch', t0, performance.now());
@@ -405,13 +426,15 @@
     }
     const parts = location.pathname.split('/');
     const id = parts[parts.length - 1];
-    if (!SECRET_ID_RE.test(id)) {
+    try {
+      registerEndpoint(id);
+    } catch (_) {
       setStatus('Invalid secret id');
       return;
     }
     window.addEventListener('beforeunload', guardUnload);
     window.addEventListener('pagehide', cleanup);
-    run(id, frag.keyB64).catch(function (e) {
+    run(frag.keyB64).catch(function (e) {
       console.error('[gone] consume error', e && e.retryable !== undefined ? e.message : e);
       if (progressEl) progressEl.hidden = true;
       setStatus(e && e.retryable !== undefined ? e.message : 'Unexpected error');
