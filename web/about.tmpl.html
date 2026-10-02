@@ -1,95 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="utf-8" />
-	<title>About - Gone</title>
-	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<link rel="stylesheet" href="/static/css/app.css" />
+	{{ template "assets" }}
+	<title>Gone · How Gone keeps a secret</title>
 </head>
 <body>
 	{{ template "header" . }}
-	<main class="center-wrap">
-		<a href="/" class="back-link primary-btn" aria-label="Back to home">
-			<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
-			<span>Back</span>
-		</a>
-		<section class="card">
-      <h2 class="underline">What is Gone?</h2>
-			<p class="indent"> Go + One = <strong>Gone</strong></p>
-      <p class="indent">
-				Gone is a tool for sharing secrets privately, readable only one time.
-      	The server component is written in <a target="_blank" href="https://golang.org">Golang</a>, a language designed for simplicity and efficiency by Google.
-				The client-side application is built with vanilla JavaScript and modern WebCrypto APIs to perform encryption and decryption directly in your browser.
-			</p>
-			<p class="indent">
-				Gone is open source software. The source code is available on <a target="_blank" href="https://github.com/haukened/gone">GitHub</a> under the GNU Affero GPL v3.
-			</p>
-		</section>
-		<section class="card">
-			<h2 class="underline">What encryption does Gone use?</h2>
-			<p class="indent">Gone uses AES-256-GCM provided by WebCrypto APIs for client-side encryption, which is the same encryption trusted by banks, governments, and security-conscious organizations worldwide.</p>
-		</section>
-		<section class="card">
-			<h2 class="underline">How Gone Keeps Secrets Secret</h2>
-			<p class="indent">Gone is designed so the server never learns your secret. The critical cryptography happens entirely in your browser before anything is sent over the network.</p>
-			<h3 class="underline">High Level Flow</h3>
+	<main id="main" tabindex="-1" class="wrap grid">
+		<div class="intro">
+			<h1>How Gone keeps a secret.</h1>
+			<p class="lead">Short answers for the people who send and open secrets, and for the people who run this server.</p>
+		</div>
+		<nav class="toc" aria-label="On this page">
 			<ol>
-				<li><strong>You type a message and/or attach files</strong> in the form. Before anything leaves your device, the browser generates a fresh, random encryption key.</li>
-				<li><strong>Client-side encryption</strong> (using modern WebCrypto primitives) packs the message and files together and transforms them into a single opaque blob. File names and types are encrypted too.</li>
-				<li><strong>Only the encrypted blob</strong> is sent to the Gone server. The key never leaves the browser.</li>
-				<li><strong>The server stores</strong> just that blob plus minimal metadata (expiry time and one-time state).</li>
-				<li><strong>A shareable URL</strong> is produced. The secret key is embedded in the URL fragment (the part after <code>#</code>), which browsers never send to the server.</li>
-				<li><strong>The recipient loads the URL</strong>; their browser extracts the key locally and downloads the encrypted blob. From that moment the secret is reserved for them alone; anyone else who opens the link sees that it is gone.</li>
-				<li><strong>Decryption happens client-side</strong>; the browser verifies every byte arrived intact before showing anything. The server remains blind to the plaintext the entire time.</li>
-				<li><strong>Confirmed deletion</strong>: once the recipient's browser has the complete secret, it tells the server to delete it. If that confirmation never arrives (closed tab, dropped connection), the server deletes it automatically a few minutes later. Either way, it can never be read twice.</li>
+				<li><a href="#what">What is Gone?</a></li>
+				<li><a href="#encryption">Encryption</a></li>
+				<li><a href="#flow">How Gone keeps secrets</a></li>
+				<li><a href="#files">File attachments</a></li>
+				<li><a href="#why">Why this matters</a></li>
+				<li><a href="#threats">Threat model notes</a></li>
+				<li><a href="#license">License</a></li>
 			</ol>
-		</section>
-		<section class="card">
-			<h3 class="underline">File Attachments</h3>
-			<ul>
-				<li>Attach up to 10 files of any type. The message and all files share one size limit, shown on the form.</li>
-				<li>Files are encrypted in your browser exactly like the message; the server cannot see their names, types, or contents.</li>
-				<li>The recipient downloads each file individually or all at once. Gone warns them before leaving the page with files still unsaved, because the secret cannot be opened again.</li>
-				<li>File names are cleaned up (folders and hidden control characters removed), and uncommon file types are saved as generic downloads so they can't run in the browser.</li>
-			</ul>
-		</section>
-		<section class="card">
-			<h3 class="underline">Why This Matters</h3>
-			<ul>
-				<li><strong>Zero server knowledge:</strong> Compromise of the storage tier yields only ciphertext.</li>
-				<li><strong>Ephemeral access:</strong> One-time retrieval shrinks the attack window.</li>
-				<li><strong>Short TTLs:</strong> Automatic expiry further limits exposure if a link lingers.</li>
-				<li><strong>No password reuse risk:</strong> You never transmit existing credentials in the clear.</li>
-			</ul>
-		</section>
-		<section class="card">
-			<h3 class="underline">Threat Model Notes</h3>
-			<ul>
-				<li>Always verify you are on HTTPS (the app warns if not).</li>
-				<li>The secrecy guarantee assumes the sender's and recipient's browsers are not compromised.</li>
-				<li>Anyone who obtains the full share URL (including its key component) can decrypt the secret until first read or expiry.</li>
-				<li>If someone else opens the link first, the intended recipient will see that the secret is gone, a clear sign the link was intercepted.</li>
-				<li>Attachments are only as safe as the device they are saved to; delete downloaded files when you no longer need them.</li>
-			</ul>
-		</section>
-		<section class="card">
-			<h2 class="underline">What is the GNU Affero GPL v3, and what does it mean for users?</h2>
-			<ul>
-				<li><strong>For people who simply use Gone, but aren't hosting their own instance, you have no obligations.</strong></li>
-				<li>For people who modify Gone and host their own instance, you must share your changes.</li>
-				<li>The GNU Affero General Public License version 3 (AGPLv3) is a free, copyleft license for software and other kinds of works, specifically designed to ensure cooperation with the community in the case of network server software.</li>
-				<li>It is similar to the GNU General Public License (GPL), but with an additional requirement that if you run a modified program on a server and let other users interact with it there, your server must also allow them to download the source code corresponding to the modified version running there.</li>
-				<li>This ensures that users who interact with the software over a network have access to its source code, promoting transparency and collaboration.</li>
-				<li>It also ensures that for-profit companies that use the software must also share their modifications with the community, improving the software for everyone not just shareholders.</li>
-				<li>For more information, or to view the full text of the license, visit the <a target="_blank" href="https://www.gnu.org/licenses/agpl-3.0.en.html">GNU website</a>.</li>
-			</ul>
-		</section>
-		<a href="/" class="back-link primary-btn" aria-label="Back to home">
-			<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
-			<span>Back</span>
-		</a>
+		</nav>
+		<article class="prose">
+			<section aria-labelledby="what">
+				<h2 id="what">What is Gone?</h2>
+				<p>Go + One = <strong>Gone</strong></p>
+				<p>Gone is a tool for sharing secrets privately, readable only one time. The server component is written in <a href="https://go.dev">Go</a>, a language designed for simplicity and efficiency by Google. The client-side application is built with vanilla JavaScript and modern WebCrypto APIs to perform encryption and decryption directly in your browser.</p>
+				<p>Gone is open source software. The source code is available on <a href="https://github.com/haukened/gone">GitHub</a> under the GNU Affero GPL v3.</p>
+			</section>
+			<section aria-labelledby="encryption">
+				<h2 id="encryption">What encryption does Gone use?</h2>
+				<p>Gone uses AES-256-GCM provided by WebCrypto APIs for client-side encryption, which is the same encryption trusted by banks, governments, and security-conscious organizations worldwide.</p>
+			</section>
+			<section aria-labelledby="flow">
+				<h2 id="flow">How Gone keeps secrets secret</h2>
+				<p>Gone is designed so the server never learns your secret. The critical cryptography happens entirely in your browser before anything is sent over the network.</p>
+				<h3>High-level flow</h3>
+				<ol>
+					<li><strong>You type a message and/or attach files</strong> in the form. Before anything leaves your device, the browser generates a fresh, random encryption key.</li>
+					<li><strong>Client-side encryption</strong> (using modern WebCrypto primitives) packs the message and files together and transforms them into a single opaque blob. File names and types are encrypted too.</li>
+					<li><strong>Only the encrypted blob</strong> is sent to the Gone server. The key never leaves the browser.</li>
+					<li><strong>The server stores</strong> just that blob plus minimal metadata (expiry time and one-time state).</li>
+					<li><strong>A shareable URL</strong> is produced. The secret key is embedded in the URL fragment (the part after <code>#</code>), which browsers never send to the server.</li>
+					<li><strong>The recipient opens the URL</strong> and presses Open; their browser extracts the key locally and downloads the encrypted blob. From that moment the secret is reserved for them alone; anyone else who opens the link sees that it is gone.</li>
+					<li><strong>Decryption happens client-side</strong>; the browser verifies every byte arrived intact before showing anything. The server remains blind to the plaintext the entire time.</li>
+					<li><strong>Confirmed deletion</strong>: once the recipient's browser has the complete secret, it tells the server to delete it. If that confirmation never arrives (closed tab, dropped connection), the server deletes it automatically a few minutes later. Either way, it can never be read twice.</li>
+				</ol>
+			</section>
+			<section aria-labelledby="files">
+				<h2 id="files">File attachments</h2>
+				<ul>
+					<li>Attach up to 10 files of any type. The message and all files share one size limit, shown on the form.</li>
+					<li>Files are encrypted in your browser exactly like the message; the server cannot see their names, types, or contents.</li>
+					<li>The recipient downloads each file individually or all at once. Gone warns them before leaving the page with files still unsaved, because the secret cannot be opened again.</li>
+					<li>File names are cleaned up (folders and hidden control characters removed), and uncommon file types are saved as generic downloads so they can't run in the browser.</li>
+				</ul>
+			</section>
+			<section aria-labelledby="why">
+				<h2 id="why">Why this matters</h2>
+				<ul>
+					<li><strong>Zero server knowledge:</strong> Compromise of the storage tier yields only ciphertext.</li>
+					<li><strong>Ephemeral access:</strong> One-time retrieval shrinks the attack window.</li>
+					<li><strong>Short TTLs:</strong> Automatic expiry further limits exposure if a link lingers.</li>
+					<li><strong>No password reuse risk:</strong> You never transmit existing credentials in the clear.</li>
+				</ul>
+			</section>
+			<section aria-labelledby="threats">
+				<h2 id="threats">Threat model notes</h2>
+				<ul>
+					<li>Always verify you are on HTTPS (the app warns if not).</li>
+					<li>The secrecy guarantee assumes the sender's and recipient's browsers are not compromised.</li>
+					<li>Anyone who obtains the full share URL (including its key component) can decrypt the secret until first read or expiry.</li>
+					<li>If someone else opens the link first, the intended recipient will see that the secret is gone, a clear sign the link was intercepted.</li>
+					<li>Attachments are only as safe as the device they are saved to; delete downloaded files when you no longer need them.</li>
+				</ul>
+			</section>
+			<section aria-labelledby="license">
+				<h2 id="license">What does the GNU Affero GPL v3 mean for you?</h2>
+				<p>Gone is free, open source software under the GNU Affero General Public License version 3 (AGPLv3). Here is what that means in plain English. This is a summary, not legal advice; the license itself is what counts.</p>
+				<h3>If you use Gone to send or open secrets</h3>
+				<ul>
+					<li><strong>You have no obligations.</strong> Using Gone puts no license terms on you or on what you share.</li>
+					<li>If someone runs a modified version of Gone, they must let you download its source code.</li>
+				</ul>
+				<h3>If you host or change Gone</h3>
+				<ul>
+					<li>You may run Gone unmodified for any purpose. Leave its copyright and license notices in place.</li>
+					<li>You may change Gone however you like. If other people use your changed version over a network, you must offer them its complete source code, free of charge and under the AGPLv3. A link in the footer is enough.</li>
+					<li>If you change Gone, give your version its own name and logo. The Gone name and logo are trademarks and aren't covered by the AGPLv3; see the <a href="https://github.com/haukened/gone/blob/main/TRADEMARKS.md">trademark policy</a>.</li>
+					<li>You don't have to send your changes back to this project, though contributions are welcome.</li>
+					<li>Changes you keep to yourself, with nobody else using them, carry no obligation to share.</li>
+					<li>If you give someone a copy of Gone, such as a container image, include the license and the source code or tell them where to get it.</li>
+				</ul>
+				<h3>If you are a company</h3>
+				<ul>
+					<li>You may use Gone commercially, including running it as a paid service for customers.</li>
+					<li>The same rules apply as for anyone else. Unmodified, there is nothing to share. Modified, anyone who uses your version over a network must be offered its source code under the AGPLv3.</li>
+					<li>You can't relicense Gone or your changes under closed terms, and you can't remove its copyright or license notices.</li>
+				</ul>
+				<p>To read the full license, visit the <a href="https://www.gnu.org/licenses/agpl-3.0.en.html">GNU website</a>.</p>
+			</section>
+			<p><a class="btn btn-secondary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Send a secret</a></p>
+		</article>
 	</main>
 	{{ template "footer" . }}
-	<script src="/static/js/theme.js" defer></script>
 </body>
 </html>

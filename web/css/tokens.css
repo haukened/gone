@@ -1,0 +1,82 @@
+/* Design tokens. Primitives borrow Radix slate/amber and Open Props scales;
+   semantic tokens resolve per colour scheme via light-dark(). */
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("../fonts/atkinson-next-latin.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+:root {
+  --navy-12: #14213d;
+  --navy-11: #3d4a63;
+  --navy-10: #5b6780;
+  --navy-7: #b8c3d1;
+  --navy-6: #d7dee7;
+  --navy-2: #f6f8fa;
+  --white: #fff;
+  --marigold-9: #f2a900;
+  --marigold-11: #b07800;
+  --amber-2: #fff8e6;
+  --amber-7: #e9c46a;
+  --night-2: #0b1324;
+  --night-3: #111b30;
+  --night-6: #22304a;
+  --night-7: #34445f;
+  --mist-12: #e9eef6;
+  --mist-11: #b9c4d6;
+  --mist-10: #8d99af;
+  --umber-2: #2a2210;
+  --umber-7: #6b5214;
+  --font-sans: "Atkinson Hyperlegible Next", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", menlo, consolas, monospace;
+  --step--1: 0.833rem;
+  --step-0: 1rem;
+  --step-1: 1.2rem;
+  --step-2: 1.44rem;
+  --step-3: 1.728rem;
+  --step-5: 2.488rem;
+  --step-num: 4.3rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --radius: 4px;
+  --gap: 1.5rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --color-band: var(--navy-12);
+  --color-band-ink: var(--white);
+  --color-mark: var(--marigold-9);
+  --color-paper: light-dark(var(--navy-2), var(--night-2));
+  --color-surface: light-dark(var(--white), var(--night-3));
+  --color-ink: light-dark(var(--navy-12), var(--mist-12));
+  --color-ink-2: light-dark(var(--navy-11), var(--mist-11));
+  --color-ink-3: light-dark(var(--navy-10), var(--mist-10));
+  --color-line: light-dark(var(--navy-6), var(--night-6));
+  --color-line-strong: light-dark(var(--navy-7), var(--night-7));
+  --color-signal: light-dark(var(--marigold-11), var(--marigold-9));
+  --color-on-ink: light-dark(var(--white), var(--navy-12));
+  --color-warn-bg: light-dark(var(--amber-2), var(--umber-2));
+  --color-warn-line: light-dark(var(--amber-7), var(--umber-7));
+
+  color-scheme: light dark;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@media (max-width: 52rem) {
+  :root {
+    --step-5: 2rem;
+    --step-num: 2.6rem;
+  }
+}

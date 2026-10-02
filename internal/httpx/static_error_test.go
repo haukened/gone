@@ -40,3 +40,23 @@ func TestStaticHandlerErrors(t *testing.T) {
 		}
 	})
 }
+
+// TestStaticHandlerFontType verifies .woff2 assets are served as font/woff2
+// regardless of the host MIME table, so nosniff never blocks the font.
+func TestStaticHandlerFontType(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "f.woff2"), []byte("wOF2"), 0o600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	h := httpx.New(noopService{}, 0, nil)
+	h.Assets = http.FS(os.DirFS(dir))
+	r := httptest.NewRequest(http.MethodGet, "/static/f.woff2", nil)
+	w := httptest.NewRecorder()
+	h.Router().ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d", w.Code)
+	}
+	if got := w.Header().Get("Content-Type"); got != "font/woff2" {
+		t.Fatalf("expected font/woff2 got %q", got)
+	}
+}

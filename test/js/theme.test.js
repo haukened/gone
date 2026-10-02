@@ -6,119 +6,97 @@ const { reset, load, h, captureConsole } = require('./harness');
 
 const KEY = 'gone.theme';
 
-// boot builds the theme switch (and optional warning) then loads theme.js.
-// mq.dark sets the system preference; mq.throws makes matchMedia throw.
+// boot builds the theme toggle and two warnings, then loads theme.js.
+// o.dark sets the system preference; o.mq === false removes matchMedia.
 function boot(t, opts) {
   const o = opts || {};
-  const env = reset(o.url || 'https://gone.test/', { storage: o.storage });
-  const checkbox = h('input', { id: 'theme-switch' });
-  const desc = h('span', { id: 'theme-switch-desc' });
-  const warning = h('section', { className: 'security-warning', hidden: true });
-  env.document.body.append(...[checkbox, o.noDesc ? null : desc, o.noWarning ? null : warning].filter(Boolean));
-  const mq = { matches: Boolean(o.dark), listeners: [], addEventListener(type, fn) { this.listeners.push(fn); } };
-  if (o.mq !== false) {
-    globalThis.matchMedia = () => { if (o.mqThrows) throw new Error('nope'); return mq; };
-  }
-  if (o.storageOverride) globalThis.localStorage = o.storageOverride(env.storage);
+  const env = reset(o.url || 'https://gone.test/', { storage: o.storage, storageThrows: o.storageThrows, readyState: o.readyState });
+  const btn = h('button', { id: 'theme-toggle', hidden: true });
+  const warnings = [h('div', { className: 'security-warning', hidden: true }), h('div', { className: 'security-warning', hidden: true })];
+  if (!o.noToggle) env.document.body.append(btn);
+  env.document.body.append(...warnings);
+  const mq = { matches: Boolean(o.dark), listeners: [], addEventListener(type, fn) { this.listeners.push({ type, fn }); } };
+  if (o.mq !== false) globalThis.matchMedia = (q) => { mq.query = q; return mq; };
   const logs = captureConsole(t);
   load('theme');
-  return { env, checkbox, desc, warning, mq, logs };
+  return { env, btn, warnings, mq, logs, root: env.document.documentElement };
 }
 
-test('does nothing without the switch', (t) => {
-  reset();
-  const logs = captureConsole(t);
-  load('theme');
-  assert.deepEqual(logs.log, []);
+test('applies a valid stored theme before init and ignores junk', (t) => {
+  for (const mode of ['dark', 'light']) {
+    const b = boot(t, { storage: { [KEY]: mode }, dark: mode === 'light' });
+    assert.equal(b.root.dataset.theme, mode);
+    assert.equal(window.goneTheme.effective(), mode);
+    assert.equal(b.btn.getAttribute('aria-pressed'), String(mode === 'dark'));
+  }
+  const b = boot(t, { storage: { [KEY]: 'neon' } });
+  assert.equal(b.root.dataset.theme, undefined);
 });
 
-test('uses the stored theme without persisting', (t) => {
-  for (const mode of ['dark', 'light']) {
-    const b = boot(t, { storage: { [KEY]: mode }, dark: mode !== 'dark' });
-    assert.equal(b.checkbox.checked, mode === 'dark');
-    assert.equal(b.checkbox.getAttribute('aria-pressed'), String(mode === 'dark'));
-    assert.match(b.desc.textContent, new RegExp('Currently ' + mode));
-    assert.equal(b.mq.listeners.length, 0);
-    assert.deepEqual(b.logs.log, ['Gone theme module loaded']);
+test('loads once and exposes a frozen API', (t) => {
+  boot(t);
+  const api = window.goneTheme;
+  assert.ok(Object.isFrozen(api));
+  load('theme');
+  assert.equal(window.goneTheme, api);
+});
+
+test('without a stored choice the toggle reflects the system preference', (t) => {
+  for (const dark of [true, false]) {
+    const b = boot(t, { dark });
+    assert.equal(b.btn.hidden, false);
+    assert.equal(b.mq.query, '(prefers-color-scheme: dark)');
+    assert.equal(b.root.dataset.theme, undefined);
+    assert.equal(b.btn.getAttribute('aria-pressed'), String(dark));
   }
 });
 
-test('falls back to the system preference and persists it', (t) => {
-  const dark = boot(t, { dark: true });
-  assert.equal(dark.checkbox.checked, true);
-  assert.equal(dark.env.storage[KEY], 'dark');
-  const light = boot(t, { storage: { [KEY]: 'bogus' }, dark: false });
-  assert.equal(light.checkbox.checked, false);
-  assert.equal(light.env.storage[KEY], 'light');
-  const none = boot(t, { mq: false });
-  assert.equal(none.env.storage[KEY], 'light');
-  const broken = boot(t, { mq: true, mqThrows: true, storage: { [KEY]: 'x' } });
-  assert.equal(broken.env.storage[KEY], 'light');
-});
-
-test('toggling the switch persists the choice', (t) => {
-  const b = boot(t, { storage: { [KEY]: 'light' }, noDesc: true });
-  b.checkbox.checked = true;
-  b.checkbox.dispatch('change');
-  assert.equal(b.env.storage[KEY], 'dark');
-  b.checkbox.checked = false;
-  b.checkbox.dispatch('change');
+test('clicking toggles, stores and syncs aria-pressed', (t) => {
+  const b = boot(t, { dark: true });
+  b.btn.click();
+  assert.equal(b.root.dataset.theme, 'light');
   assert.equal(b.env.storage[KEY], 'light');
-});
-
-test('follows system changes only while no theme is stored', (t) => {
-  const b = boot(t, { dark: false, storageOverride: (store) => ({
-    getItem: (k) => (k in store ? store[k] : null),
-    setItem: (k, v) => { if (b && b.ready) store[k] = v; }
-  }) });
-  b.ready = true;
-  assert.equal(b.mq.listeners.length, 1);
-  b.mq.listeners[0]({ matches: true });
-  assert.equal(b.checkbox.checked, true);
+  assert.equal(b.btn.getAttribute('aria-pressed'), 'false');
+  b.btn.click();
+  assert.equal(b.root.dataset.theme, 'dark');
   assert.equal(b.env.storage[KEY], 'dark');
-  b.mq.listeners[0]({ matches: false });
-  assert.equal(b.checkbox.checked, true);
+  assert.equal(b.btn.getAttribute('aria-pressed'), 'true');
 });
 
-test('storage write failures are tolerated', (t) => {
-  const failingSet = (store) => ({
-    getItem: (k) => (k in store ? store[k] : null),
-    setItem: () => { throw new Error('quota'); }
-  });
-  const b = boot(t, { storageOverride: failingSet });
-  // initial persistence failed, so the theme is left untouched
-  assert.equal(b.checkbox.getAttribute('aria-pressed'), null);
-  b.checkbox.checked = true;
-  b.checkbox.dispatch('change');
-  assert.equal(b.checkbox.checked, true);
+test('a system change re-syncs the toggle while no choice is applied', (t) => {
+  const b = boot(t, { dark: false });
+  assert.equal(b.mq.listeners[0].type, 'change');
+  b.mq.matches = true;
+  b.mq.listeners[0].fn();
+  assert.equal(b.btn.getAttribute('aria-pressed'), 'true');
 });
 
-test('storage read failures during initial load are tolerated', (t) => {
-  let reads = 0;
-  const b = boot(t, { storageOverride: () => ({
-    getItem: () => { if (reads++ > 0) throw new Error('blocked'); return null; },
-    setItem: () => {}
-  }) });
-  assert.equal(b.checkbox.getAttribute('aria-pressed'), null);
-  assert.deepEqual(b.logs.log, ['Gone theme module loaded']);
+test('works without matchMedia or storage', (t) => {
+  const b = boot(t, { mq: false, storageThrows: true });
+  assert.equal(window.goneTheme.effective(), 'light');
+  assert.equal(b.btn.getAttribute('aria-pressed'), 'false');
+  b.btn.click();
+  assert.equal(b.root.dataset.theme, 'dark');
+  assert.equal(b.btn.getAttribute('aria-pressed'), 'true');
 });
 
-test('shows the insecure-context warning over plain HTTP', (t) => {
-  const b = boot(t, { url: 'http://gone.test/', storage: { [KEY]: 'light' } });
-  assert.equal(b.warning.hidden, false);
-  assert.equal(b.warning.getAttribute('aria-hidden'), 'false');
-  assert.match(b.logs.warn[0], /insecure context/);
-  const n = boot(t, { url: 'http://gone.test/', storage: { [KEY]: 'light' }, noWarning: true });
-  assert.equal(n.logs.warn.length, 1);
-  const s = boot(t, { storage: { [KEY]: 'light' } });
-  assert.equal(s.warning.hidden, true);
+test('a missing toggle is fine', (t) => {
+  boot(t, { noToggle: true });
+  assert.equal(typeof window.goneTheme.toggle, 'function');
 });
 
-test('a failing location lookup does not break loading', (t) => {
-  const env = reset('https://gone.test/', { storage: { [KEY]: 'light' } });
-  env.document.body.appendChild(h('input', { id: 'theme-switch' }));
-  Object.defineProperty(globalThis, 'location', { get() { throw new Error('denied'); }, configurable: true });
-  const logs = captureConsole(t);
-  load('theme');
-  assert.deepEqual(logs.log, ['Gone theme module loaded']);
+test('waits for DOMContentLoaded while the document is loading', (t) => {
+  const b = boot(t, { readyState: 'loading' });
+  assert.equal(b.btn.hidden, true);
+  b.env.document.dispatch('DOMContentLoaded');
+  assert.equal(b.btn.hidden, false);
+});
+
+test('reveals every security warning over plain HTTP only', (t) => {
+  const plain = boot(t, { url: 'http://gone.test/' });
+  assert.ok(plain.warnings.every((w) => w.hidden === false));
+  assert.equal(plain.logs.warn.length, 1);
+  const secure = boot(t);
+  assert.ok(secure.warnings.every((w) => w.hidden === true));
+  assert.deepEqual(secure.logs.warn, []);
 });

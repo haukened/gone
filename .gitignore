@@ -16,6 +16,7 @@
 coverage.*
 *.coverprofile
 profile.cov
+lcov.info
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -61,3 +62,6 @@ TODO.md
 
 # Local JFrog CLI config
 .jfrog/
+
+# Playwright MCP scratch output
+.playwright-mcp/

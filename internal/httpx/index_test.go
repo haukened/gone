@@ -41,7 +41,7 @@ func (noopService) Ack(_ context.Context, _ string, _ string) error {
 
 // TestIndexHandler ensures the index template renders and headers are set.
 func TestIndexHandler(t *testing.T) {
-	tmpl := template.Must(template.New("index").Parse(`<html><body><p>{{ .MaxBytes }}</p>{{ range .TTLOptions }}<option>{{ .Label }}</option>{{ end }}</body></html>`))
+	tmpl := template.Must(template.New("index").Parse(`<html><body><p>{{ .MaxBytes }}</p>{{ range .TTLOptions }}<option{{ if .Default }} selected{{ end }}>{{ .Label }}</option>{{ end }}</body></html>`))
 	h := httpx.New(noopService{}, 1234, nil)
 	h.IndexTmpl = httpx.TemplateRenderer{T: tmpl}
 	h.MinTTL = 5 * time.Minute
@@ -63,12 +63,15 @@ func TestIndexHandler(t *testing.T) {
 			t.Fatalf("expected body to contain %q: %s", expect, body)
 		}
 	}
-	// order check: longest first
+	// order check: shortest first, longest preselected
 	idx1h := strings.Index(body, ">1h<")
 	idx30m := strings.Index(body, ">30m<")
 	idx5m := strings.Index(body, ">5m<")
-	if !(idx1h != -1 && idx30m != -1 && idx5m != -1 && idx1h < idx30m && idx30m < idx5m) {
-		t.Fatalf("expected descending order 1h,30m,5m; got positions %d %d %d in %s", idx1h, idx30m, idx5m, body)
+	if !(idx1h != -1 && idx30m != -1 && idx5m != -1 && idx5m < idx30m && idx30m < idx1h) {
+		t.Fatalf("expected ascending order 5m,30m,1h; got positions %d %d %d in %s", idx5m, idx30m, idx1h, body)
+	}
+	if !strings.Contains(body, "<option selected>1h<") || strings.Count(body, "selected") != 1 {
+		t.Fatalf("expected only the longest option selected: %s", body)
 	}
 }
 

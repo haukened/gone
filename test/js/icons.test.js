@@ -15,36 +15,27 @@ test('loads once', () => {
   assert.equal(window.goneIcons, icons);
 });
 
-test('make builds a decorative SVG from DOM nodes', () => {
+test('make builds a decorative SVG that uses the sprite symbol', () => {
   reset();
   load('icons');
-  const svg = window.goneIcons.make('copy', '24');
+  const svg = window.goneIcons.make('clip');
   assert.equal(svg.namespaceURI, SVG_NS);
   assert.equal(svg.tagName, 'SVG');
-  assert.equal(svg.getAttribute('width'), '24');
-  assert.equal(svg.getAttribute('height'), '24');
-  assert.equal(svg.getAttribute('viewBox'), '0 0 24 24');
-  assert.equal(svg.getAttribute('stroke'), 'currentColor');
+  assert.equal(svg.getAttribute('class'), 'ico');
   assert.equal(svg.getAttribute('aria-hidden'), 'true');
-  assert.deepEqual(svg.children.map((c) => c.tagName), ['RECT', 'PATH']);
-  assert.ok(svg.children.every((c) => c.namespaceURI === SVG_NS));
-  assert.equal(svg.children[0].getAttribute('rx'), '2');
+  assert.equal(svg.getAttribute('focusable'), 'false');
+  assert.equal(svg.children.length, 1);
+  const use = svg.children[0];
+  assert.equal(use.tagName, 'USE');
+  assert.equal(use.namespaceURI, SVG_NS);
+  assert.equal(use.getAttribute('href'), '#i-clip');
+  assert.notEqual(window.goneIcons.make('clip'), svg);
 });
 
-test('make supports every icon and defaults the size', () => {
+test('make rejects anything but lowercase letters', () => {
   reset();
   load('icons');
-  const counts = { copy: 2, check: 1, back: 2, warn: 3 };
-  Object.entries(counts).forEach(([name, n]) => {
-    const svg = window.goneIcons.make(name);
-    assert.equal(svg.getAttribute('width'), '1em');
-    assert.equal(svg.children.length, n);
-  });
-  assert.notEqual(window.goneIcons.make('check'), window.goneIcons.make('check'));
-});
-
-test('make rejects unknown icons', () => {
-  reset();
-  load('icons');
-  assert.throws(() => window.goneIcons.make('<img onerror=x>'), /unknown icon/);
+  for (const bad of ['', 'Clip', 'a-b', '"><img onerror=x>', 'x" href="javascript:1', null, 7]) {
+    assert.throws(() => window.goneIcons.make(bad), /invalid icon/, String(bad));
+  }
 });

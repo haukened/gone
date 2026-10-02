@@ -1,13 +1,14 @@
 'use strict';
 
 // Shared helpers for gone page scripts: timing logs, delays, element
-// building, and copy-button feedback. No helper here parses HTML.
+// building, and copy feedback. No helper here parses HTML.
 // Exposed as window.goneUtil.
 (function utilModule() {
   if (window.goneUtil) return;
 
   const COPIED_MS = 2200;
-  const COPY_FAILED = 'Copy failed. Please press \u2318/Ctrl+C to copy manually.';
+  const COPY_FAILED = 'Couldn\u2019t copy automatically. It\u2019s selected: press Ctrl+C (\u2318C on Mac).';
+  const copyTimers = new WeakMap();
 
   // readDebugTiming enables [gone][timing] logs via ?debug=timing or the
   // goneDebugTiming=1 localStorage flag.
@@ -15,7 +16,7 @@
     try {
       if (new URLSearchParams(location.search).get('debug') === 'timing') return true;
       return Boolean(window.localStorage) && localStorage.getItem('goneDebugTiming') === '1';
-    } catch (_) {
+    } catch {
       return false;
     }
   }
@@ -52,37 +53,35 @@
     return node;
   }
 
-  // setContent replaces node's children with parts (nodes or strings, which
-  // become text nodes). Never parses markup.
-  function setContent(node, parts) {
-    node.replaceChildren(...parts);
-  }
-
-  // flashCopied shows doneParts on btn briefly, then restores its previous
-  // children.
-  function flashCopied(btn, doneParts) {
-    const idle = Array.from(btn.childNodes);
-    setContent(btn, doneParts);
-    btn.classList.add('copied');
-    btn.disabled = true;
-    setTimeout(function () {
-      setContent(btn, idle);
-      btn.classList.remove('copied');
-      btn.disabled = false;
+  // flashCopied relabels btn's <span> to "Copied" and announces message in
+  // the status live region, restoring both after a moment. btn stays enabled
+  // so keyboard focus is never dropped.
+  function flashCopied(btn, status, message) {
+    const label = btn.querySelector('span');
+    const prev = copyTimers.get(btn);
+    if (prev) clearTimeout(prev.timer);
+    const idle = prev ? prev.idle : label.textContent;
+    label.textContent = 'Copied';
+    setText(status, message);
+    const timer = setTimeout(function () {
+      label.textContent = idle;
+      setText(status, '');
+      copyTimers.delete(btn);
     }, COPIED_MS);
+    copyTimers.set(btn, { timer: timer, idle: idle });
   }
 
-  // copyText writes text to the clipboard. On failure it runs onFail (if
-  // given), then asks the user to copy manually.
+  // copyText writes text to the clipboard. On failure it runs select (if
+  // given) so the user can copy by hand, and puts guidance in status.
   //
   // Returns a promise resolving to whether the copy succeeded.
-  async function copyText(text, onFail) {
+  async function copyText(text, select, status) {
     try {
       await navigator.clipboard.writeText(text);
       return true;
-    } catch (_) {
-      if (onFail) onFail();
-      alert(COPY_FAILED);
+    } catch {
+      if (select) select();
+      setText(status, COPY_FAILED);
       return false;
     }
   }
@@ -93,7 +92,6 @@
     allPresent: allPresent,
     setText: setText,
     el: el,
-    setContent: setContent,
     flashCopied: flashCopied,
     copyText: copyText
   });

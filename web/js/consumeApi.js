@@ -16,14 +16,16 @@
   const SECRET_ID_RE = /^[0-9a-f]{32}$/;
   const DECIMAL_RE = /^(0|[1-9][0-9]{0,14})$/;
   const GONE_MESSAGE = 'This secret is gone: it never existed, was already opened, has expired, or was opened elsewhere. If your own download was interrupted, ask the sender to share it again.';
+  const INVALID_LINK = 'This link isn\u2019t valid. Check that you copied all of it.';
   const STATUS_MESSAGES = new Map([
-    [400, 'Invalid secret link'],
+    [400, INVALID_LINK],
     [404, GONE_MESSAGE],
     [410, GONE_MESSAGE],
-    [429, 'Slow down: too many requests. Please wait and retry.']
+    [429, 'Too many requests right now. Wait a moment, then try again.']
   ]);
-  const NETWORK_ERROR = 'Network error retrieving secret';
-  const INCOMPLETE_ERROR = 'Download was incomplete';
+  const NETWORK_ERROR = 'Couldn\u2019t reach the server. Check your connection.';
+  const INCOMPLETE_ERROR = 'The download was interrupted.';
+  const SERVER_ERROR = 'The server had a problem retrieving this secret.';
   const VERIFY_ERROR = 'Couldn\u2019t verify this secret. The link may be incomplete or wrong; ask the sender to resend it.';
 
   // api.endpoint is resolved once by registerEndpoint(); allowedEndpoints is
@@ -31,11 +33,18 @@
   const api = { endpoint: '' };
   const allowedEndpoints = new Set();
 
-  // FetchError carries a user-facing message and whether retrying may help.
-  function FetchError(message, retryable) {
+  // FetchError carries a user-facing message, whether retrying may help,
+  // and the HTTP status that caused it (0 when there was none).
+  function FetchError(message, retryable, status) {
     const e = new Error(message);
     e.retryable = retryable;
+    e.status = status || 0;
     return e;
+  }
+
+  // isGone reports whether e means the secret no longer exists (404/410).
+  function isGone(e) {
+    return isFetchError(e) && (e.status === 404 || e.status === 410);
   }
 
   // isFetchError reports whether e carries a user-facing message.
@@ -44,7 +53,7 @@
   }
 
   function statusMessage(status) {
-    return STATUS_MESSAGES.get(status) || 'Server error retrieving secret';
+    return STATUS_MESSAGES.get(status) || SERVER_ERROR;
   }
 
   // declaredLength returns the Content-Length, or -1 when it is absent.
@@ -60,11 +69,11 @@
   // a 32-char hex id and pins the result to this page's origin, so no
   // user-controlled value can redirect requests elsewhere.
   function secretEndpoint(id) {
-    if (typeof id !== 'string' || !SECRET_ID_RE.test(id)) throw FetchError('Invalid secret id', false);
+    if (typeof id !== 'string' || !SECRET_ID_RE.test(id)) throw FetchError(INVALID_LINK, false);
     const origin = window.location.origin;
     const endpoint = new URL(API_PATH + id, origin);
     if (endpoint.origin !== origin || endpoint.pathname !== API_PATH + id) {
-      throw FetchError('Invalid secret id', false);
+      throw FetchError(INVALID_LINK, false);
     }
     return endpoint.href;
   }
@@ -139,10 +148,10 @@
     let resp;
     try {
       resp = await apiFetch('GET', headers);
-    } catch (_) {
+    } catch {
       throw FetchError(NETWORK_ERROR, true);
     }
-    if (!resp.ok) throw FetchError(statusMessage(resp.status), resp.status >= 500);
+    if (!resp.ok) throw FetchError(statusMessage(resp.status), resp.status >= 500, resp.status);
     claim.token = resp.headers.get('X-Gone-Claim') || claim.token;
     return resp;
   }
@@ -154,7 +163,7 @@
     let body;
     try {
       body = await readBody(resp, total, onProgress);
-    } catch (_) {
+    } catch {
       throw FetchError(NETWORK_ERROR, true);
     }
     if (total >= 0 && body.length !== total) {
@@ -202,18 +211,20 @@
   // decryption. The key and ciphertext buffers are zeroed afterwards.
   async function decrypt(resp, ciphertext, frag) {
     const gc = window.goneCrypto;
+    let plaintext;
     try {
       if (resp.headers.get('X-Gone-Version') !== String(frag.version)) {
         throw FetchError('Unsupported secret version', false);
       }
       const nonce = gc.b64urlDecode(resp.headers.get('X-Gone-Nonce') || '');
-      return await gc.decrypt(ciphertext, nonce, frag.key);
+      plaintext = await gc.decrypt(ciphertext, nonce, frag.key);
     } catch (e) {
       throw isFetchError(e) ? e : FetchError(VERIFY_ERROR, false);
     } finally {
       frag.key.fill(0);
       ciphertext.fill(0);
     }
+    return plaintext;
   }
 
   // --- Acknowledge (delete) ---------------------------------------------------
@@ -221,7 +232,7 @@
     try {
       const resp = await apiFetch('DELETE', { 'X-Gone-Claim': claim.token });
       return resp.status === 204;
-    } catch (_) {
+    } catch {
       return false;
     }
   }
@@ -237,11 +248,6 @@
   }
 
   window.goneConsumeApi = Object.freeze({
-    FetchError: FetchError,
-    isFetchError: isFetchError,
-    registerEndpoint: registerEndpoint,
-    fetchWithRetry: fetchWithRetry,
-    decrypt: decrypt,
-    acknowledge: acknowledge
+    FetchError, isFetchError, isGone, registerEndpoint, fetchWithRetry, decrypt, acknowledge
   });
 })();

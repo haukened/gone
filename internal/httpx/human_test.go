@@ -38,10 +38,38 @@ func TestHumanTTL(t *testing.T) {
 		{180, "3m"},
 		{3600, "1h"},
 		{7200, "2h"},
+		{86400, "1d"},
+		{172800, "2d"},
+		{90000, "25h"},
 	}
 	for _, tc := range tests {
 		if got := humanTTL(tc.in); got != tc.expect {
 			t.Fatalf("humanTTL(%d) expected %q got %q", tc.in, tc.expect, got)
+		}
+	}
+}
+
+// TestFriendlyTTL covers each unit branch and pluralisation of friendlyTTL.
+func TestFriendlyTTL(t *testing.T) {
+	tests := []struct {
+		in     int
+		expect string
+	}{
+		{0, "0 sec"},
+		{-1, "0 sec"},
+		{45, "45 sec"},
+		{61, "61 sec"},
+		{300, "5 min"},
+		{5400, "90 min"},
+		{3600, "1 hour"},
+		{7200, "2 hours"},
+		{86400, "1 day"},
+		{259200, "3 days"},
+		{90000, "25 hours"},
+	}
+	for _, tc := range tests {
+		if got := friendlyTTL(tc.in); got != tc.expect {
+			t.Fatalf("friendlyTTL(%d) expected %q got %q", tc.in, tc.expect, got)
 		}
 	}
 }

@@ -1,21 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="utf-8" />
-	<title>Error - Gone</title>
-	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<link rel="stylesheet" href="/static/css/app.css" />
+	{{ template "assets" }}
+	<title>Gone · {{ .Title }}</title>
 </head>
 <body>
 	{{ template "header" . }}
-  <main class="center-wrap">
-    <section class="card">
-      <span class="card-title">Error {{ .Status }} - {{ .Title }}</span>
-      <p>{{ .Message }}</p>
-      <a href="/" class="back-link primary-btn" aria-label="Back to home">Back to home</a>
-    </section>
-  </main>
-  {{ template "footer" . }}
-  <script src="/static/js/theme.js" defer></script>
+	<main id="main" tabindex="-1" class="wrap grid">
+		<div class="intro">
+			<h1>{{ .Title }}</h1>
+			<p class="lead">{{ .Message }}</p>
+		</div>
+		<div class="steps">
+			<section class="step" aria-labelledby="error-next">
+				<div class="step-head gone-mark"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-gone" /></svg></div>
+				<div class="step-body">
+					<h2 class="step-name" id="error-next">What you can do</h2>
+					<p class="note">Error {{ .Status }}. Check the address, or start over from the home page.</p>
+					<div class="actions"><a class="btn btn-secondary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Back to home</a></div>
+				</div>
+			</section>
+		</div>
+	</main>
+	{{ template "footer" . }}
 </body>
 </html>

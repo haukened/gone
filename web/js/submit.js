@@ -31,20 +31,24 @@
     const btn = form.querySelector('button[type="submit"]');
     return {
       textarea: byId('secret'),
-      ttlSelect: byId('ttl'),
       uploadProgress: byId('upload-progress'),
       errorBox: byId('submit-error'),
       errorContent: byId('submit-error-content'),
       primaryBtn: btn,
-      primaryLabel: btn ? btn.querySelector('span') : null,
-      cardSection: form.closest('.card')
+      primaryLabel: btn ? btn.querySelector('span') : null
     };
   }
 
-  const { textarea, ttlSelect, uploadProgress, errorBox, errorContent, primaryBtn, primaryLabel, cardSection } = lookupElements();
-  if (!util.allPresent([textarea, ttlSelect, primaryBtn, cardSection])) return;
+  const { textarea, uploadProgress, errorBox, errorContent, primaryBtn, primaryLabel } = lookupElements();
+  if (!util.allPresent([textarea, primaryBtn])) return;
 
-  const meterEls = { meter: byId('size-meter'), label: byId('size-label'), warning: byId('size-warning') };
+  const meterEls = {
+    box: byId('size-box'),
+    meter: byId('size-meter'),
+    label: byId('size-label'),
+    warning: byId('size-warning'),
+    warningText: byId('size-warning-text')
+  };
   const maxBytes = parsePositiveInt(form.dataset.maxBytes);
   const idleLabel = labelText(primaryLabel, 'Encrypt');
   const fileInput = byId('secret-files');
@@ -65,9 +69,13 @@
   }
 
   function setErrorVisible(visible) {
-    if (!errorBox) return;
-    errorBox.hidden = !visible;
-    errorBox.setAttribute('aria-hidden', String(!visible));
+    if (errorBox) errorBox.hidden = !visible;
+  }
+
+  // selectedTTL returns the checked TTL radio's value, or '' for the server default.
+  function selectedTTL() {
+    const ttl = form.elements.namedItem('ttl');
+    return ttl ? ttl.value : '';
   }
 
   function showError(msg) {
@@ -83,7 +91,7 @@
     try {
       textarea.value = ''.padEnd(raw.length, '\u2022');
       textarea.value = '';
-    } catch (_) {
+    } catch {
       // best-effort
     }
   }
@@ -105,7 +113,8 @@
     const size = empty ? 0 : envelope.encryptedSize(textarea.value, selection.metas());
     const problem = currentProblem(size);
     sizeMeter.render(meterEls, size, maxBytes, problem);
-    primaryBtn.disabled = busy || empty || Boolean(problem);
+    // aria-disabled keeps the button focusable; pressing it explains what's missing.
+    primaryBtn.setAttribute('aria-disabled', String(busy || empty || Boolean(problem)));
   }
 
   function setUploadProgress(loaded, total) {
@@ -120,7 +129,9 @@
 
   function setBusy(state) {
     busy = state;
-    primaryBtn.toggleAttribute('aria-busy', state);
+    // aria-busy must be the string "true"; an empty value means false.
+    if (state) primaryBtn.setAttribute('aria-busy', 'true');
+    else primaryBtn.removeAttribute('aria-busy');
     textarea.readOnly = state;
     if (fileInput) fileInput.disabled = state;
     if (!state) {
@@ -149,15 +160,14 @@
   function showResult(json, keyBytes) {
     window.goneResultPanel.show({
       shareURL: uploader.buildShareURL(json.id, keyBytes),
-      expiresAt: json.expires_at,
-      replaceTarget: cardSection
+      expiresAt: json.expires_at
     });
   }
 
   async function runSubmission() {
     const t0 = performance.now();
     const message = textarea.value;
-    const ttl = ttlSelect.value;
+    const ttl = selectedTTL();
     const enc = await encryptCurrent(message);
     if (!enc) return;
     try {
@@ -174,7 +184,7 @@
   }
 
   function submitProblem() {
-    if (isEmpty()) return 'Add a message or at least one file';
+    if (isEmpty()) return 'Add a message or at least one file.';
     return currentProblem(envelope.encryptedSize(textarea.value, selection.metas()));
   }
 
@@ -197,7 +207,7 @@
     const mockKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
     const mockURL = `${location.origin}/secret/${mockID}#v${window.goneCrypto.version}:${mockKey}`;
     const future = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-    window.goneResultPanel.show({ shareURL: mockURL, expiresAt: future, replaceTarget: cardSection, focus: false });
+    window.goneResultPanel.show({ shareURL: mockURL, expiresAt: future, focus: false });
   }
 
   form.addEventListener('submit', handleSubmit);

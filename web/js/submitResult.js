@@ -1,84 +1,60 @@
 'use strict';
 
-// Result panel shown after a secret is created: the share link, its expiry,
-// a copy button, and a link back to the form. Requires window.goneUtil and
-// window.goneIcons. Exposed as window.goneResultPanel.
+// Result view shown after a secret is created: fills the server-rendered
+// #result view with the share link and expiry, wires the copy button, and
+// swaps it in for #compose. Requires window.goneUtil. Exposed as
+// window.goneResultPanel.
 (function resultPanelModule() {
-  const ICON_SIZE = '1.1em';
-  const WARN_TEXT = 'Anyone with this link can view the secret exactly once.';
+  if (window.goneResultPanel || !window.goneUtil) return;
+  const util = window.goneUtil;
 
-  function el(tag, props, children) {
-    return window.goneUtil.el(tag, props, children);
+  function byId(id) {
+    return document.getElementById(id);
   }
 
-  function icon(name, size) {
-    return window.goneIcons.make(name, size || ICON_SIZE);
-  }
-
-  function warningCard() {
-    return el('p', { className: 'security-warning-card' }, [icon('warn', '18'), el('span', { textContent: WARN_TEXT })]);
-  }
-
-  function expiryHint(expiresAt) {
-    const time = el('time', { textContent: new Date(expiresAt).toLocaleString() });
-    time.setAttribute('datetime', expiresAt);
-    return el('p', { className: 'hint' }, [el('span', {}, ['Expires at ', time])]);
-  }
-
-  function copyButton(shareURL, input) {
-    const util = window.goneUtil;
-    const copy = el('button', { type: 'button', className: 'copy-primary-btn' }, ['Copy Link ', icon('copy')]);
-    copy.setAttribute('aria-label', 'Copy full share link');
-    copy.addEventListener('click', async function () {
-      const ok = await util.copyText(shareURL, function () { input.focus(); input.select(); });
-      if (ok) util.flashCopied(copy, ['Copied! ', icon('check')]);
-      return ok;
-    });
-    return copy;
-  }
-
-  function actionsRow(shareURL, input) {
-    const back = el('a', { href: '/', className: 'back-link' }, [icon('back'), ' Create Another']);
-    return el('div', { className: 'result-actions' }, [back, copyButton(shareURL, input)]);
-  }
-
-  function buildPanel(shareURL, expiresAt) {
-    const input = el('input', { className: 'share-link', id: 'share-link', type: 'text', readOnly: true, value: shareURL });
-    const card = el('div', { className: 'card' }, [expiryHint(expiresAt), input, actionsRow(shareURL, input)]);
-    const outer = el('div', { id: 'result-outer' }, [
-      el('h2', { className: 'underline', textContent: 'Share This Link' }),
-      warningCard(),
-      card
-    ]);
-    return { panel: el('div', {}, [outer]), input: input };
-  }
-
-  // focusStart focuses the link and keeps its beginning visible; some
-  // browsers scroll a long input to the end on focus.
-  function focusStart(input) {
+  function selectAll(input) {
     input.focus();
-    try {
-      requestAnimationFrame(function () {
-        input.selectionStart = 0;
-        input.selectionEnd = 0;
-        input.scrollLeft = 0;
-      });
-    } catch (_) { /* non-critical */ }
+    input.select();
   }
 
-  // show renders the panel in place of replaceTarget (or appends it to body).
+  // setExpiry writes a human expiry and the machine-readable datetime.
+  function setExpiry(node, expiresAt) {
+    if (!node) return;
+    const when = new Date(expiresAt);
+    node.textContent = when.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    node.setAttribute('datetime', when.toISOString());
+  }
+
+  function wireCopy(btn, input, status) {
+    btn.addEventListener('click', async function () {
+      const ok = await util.copyText(input.value, function () { selectAll(input); }, status);
+      if (ok) util.flashCopied(btn, status, 'Link copied to clipboard.');
+    });
+  }
+
+  // show fills and reveals the result view, hiding the compose view.
   //
-  // opts: {shareURL, expiresAt, replaceTarget, focus = true}.
+  // opts: {shareURL, expiresAt, focus = true}. Returns the result view, or
+  // null when the page lacks it.
   function show(opts) {
-    const built = buildPanel(opts.shareURL, opts.expiresAt);
-    if (opts.replaceTarget) opts.replaceTarget.replaceWith(built.panel);
-    else document.body.appendChild(built.panel);
-    if (opts.focus !== false) focusStart(built.input);
-    console.log('[gone] result panel shown');
-    return built.panel;
+    const view = byId('result');
+    const input = byId('share-link');
+    const btn = byId('copy-link');
+    if (!util.allPresent([view, input, btn])) return null;
+    input.value = opts.shareURL;
+    setExpiry(byId('result-expiry'), opts.expiresAt);
+    if (!btn.dataset.wired) {
+      btn.dataset.wired = '1';
+      wireCopy(btn, input, byId('copy-status'));
+    }
+    const compose = byId('compose');
+    if (compose) compose.hidden = true;
+    view.hidden = false;
+    document.title = 'Gone \u00b7 Your link is ready';
+    const heading = byId('result-heading');
+    if (opts.focus !== false && heading) heading.focus();
+    return view;
   }
 
-  if (!window.goneResultPanel && window.goneUtil && window.goneIcons) {
-    window.goneResultPanel = Object.freeze({ show: show });
-  }
+  window.goneResultPanel = Object.freeze({ show: show });
 })();

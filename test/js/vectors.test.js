@@ -106,7 +106,7 @@ test('server header vectors match the client checks', () => {
   const nonceOK = (s) => {
     try {
       return gc.b64urlDecode(s).length === 12;
-    } catch (_) {
+    } catch {
       return false;
     }
   };

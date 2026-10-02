@@ -49,7 +49,7 @@
   function parseJSON(text) {
     try {
       return JSON.parse(text);
-    } catch (_) {
+    } catch {
       return null;
     }
   }
