@@ -43,12 +43,31 @@
   ]);
 
   // Controls, bidi overrides/isolates and zero-width characters.
-  const UNSAFE_CHARS = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g;
+  const UNSAFE_RANGES = [
+    [0x00, 0x1f], [0x7f, 0x9f], [0x200b, 0x200f],
+    [0x202a, 0x202e], [0x2066, 0x2069], [0xfeff, 0xfeff]
+  ];
+
+  function isUnsafeChar(ch) {
+    const cp = ch.codePointAt(0);
+    for (let i = 0; i < UNSAFE_RANGES.length; i++) {
+      if (cp >= UNSAFE_RANGES[i][0] && cp <= UNSAFE_RANGES[i][1]) return true;
+    }
+    return false;
+  }
+
+  function stripUnsafeChars(s) {
+    let out = '';
+    for (const ch of s) {
+      if (!isUnsafeChar(ch)) out += ch;
+    }
+    return out;
+  }
 
   function sanitizeFileName(name) {
     const parts = String(name || '').split(/[\\/]+/).filter(Boolean);
     let base = parts.length ? parts[parts.length - 1] : '';
-    base = base.replace(UNSAFE_CHARS, '').trim();
+    base = stripUnsafeChars(base).trim();
     if (!base || base === '.' || base === '..') return FALLBACK_NAME;
     return Array.from(base).slice(0, MAX_NAME_CHARS).join('');
   }
@@ -91,15 +110,17 @@
     return PREFIX_BYTES + header.length + msgLen + fileTotal + GCM_TAG_BYTES;
   }
 
+  // Big-endian u32 helpers (DataView defaults to big-endian).
+  function viewOf(buf) {
+    return new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  }
+
   function writeU32(buf, offset, n) {
-    buf[offset] = (n >>> 24) & 0xff;
-    buf[offset + 1] = (n >>> 16) & 0xff;
-    buf[offset + 2] = (n >>> 8) & 0xff;
-    buf[offset + 3] = n & 0xff;
+    viewOf(buf).setUint32(offset, n);
   }
 
   function readU32(buf, offset) {
-    return ((buf[offset] << 24) | (buf[offset + 1] << 16) | (buf[offset + 2] << 8) | buf[offset + 3]) >>> 0;
+    return viewOf(buf).getUint32(offset);
   }
 
   // encode builds the plaintext. files is [{name, type, bytes: Uint8Array}].

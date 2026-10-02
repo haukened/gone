@@ -656,3 +656,113 @@ func TestIndexListExternalIDsClosedDB(t *testing.T) {
 		t.Fatalf("expected error querying closed DB")
 	}
 }
+
+func TestIndexImmediateTx(t *testing.T) {
+	sentinel := errors.New("boom")
+	cases := []struct {
+		name       string
+		fnErr      error
+		wantErr    error
+		wantExists bool
+	}{
+		{name: "commit on nil", fnErr: nil, wantErr: nil, wantExists: false},
+		{name: "commit and not found on dead row", fnErr: errDeadRow, wantErr: app.ErrNotFound, wantExists: false},
+		{name: "rollback on not found", fnErr: app.ErrNotFound, wantErr: app.ErrNotFound, wantExists: true},
+		{name: "rollback on other error", fnErr: sentinel, wantErr: sentinel, wantExists: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := openTestDB(t)
+			ix, err := New(db)
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			ctx := context.Background()
+			now := time.Now().UTC()
+			insertInlineSecret(t, ctx, ix, "row", []byte("x"), now, now.Add(time.Hour))
+			err = ix.immediateTx(ctx, func(conn *sql.Conn) error {
+				if delErr := deleteSecret(ctx, conn, "row"); delErr != nil {
+					t.Fatalf("delete: %v", delErr)
+				}
+				return tc.fnErr
+			})
+			if !errors.Is(err, tc.wantErr) || (tc.wantErr == nil && err != nil) {
+				t.Fatalf("err = %v, want %v", err, tc.wantErr)
+			}
+			if got := rowExists(t, db, "row"); got != tc.wantExists {
+				t.Fatalf("row exists = %v, want %v", got, tc.wantExists)
+			}
+		})
+	}
+}
+
+func TestIndexImmediateTxRollsBackOnPanic(t *testing.T) {
+	db := openTestDB(t)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ctx := context.Background()
+	now := time.Now().UTC()
+	insertInlineSecret(t, ctx, ix, "row", []byte("x"), now, now.Add(time.Hour))
+	func() {
+		defer func() { _ = recover() }()
+		_ = ix.immediateTx(ctx, func(conn *sql.Conn) error {
+			_ = deleteSecret(ctx, conn, "row")
+			panic("boom")
+		})
+	}()
+	if !rowExists(t, db, "row") {
+		t.Fatalf("expected row to survive rolled-back panic")
+	}
+	if _, err := ix.Claim(ctx, "row", "hash", false, now, now.Add(time.Minute), nil); err != nil {
+		t.Fatalf("expected lock released after panic, got %v", err)
+	}
+}
+
+func TestAttachExternalReader(t *testing.T) {
+	openErr := errors.New("open failed")
+	cases := []struct {
+		name       string
+		external   bool
+		opener     store.ExternalOpener
+		wantErr    bool
+		wantReader bool
+	}{
+		{name: "inline ignores opener", external: false, opener: nil},
+		{name: "external without opener", external: true, opener: nil, wantErr: true},
+		{name: "external open error", external: true, opener: func(string) (io.ReadCloser, error) { return nil, openErr }, wantErr: true},
+		{name: "external opens", external: true, opener: func(string) (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewReader([]byte("blob"))), nil
+		}, wantReader: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res := &store.IndexResult{External: tc.external}
+			err := attachExternalReader(res, "id", tc.opener)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tc.wantErr)
+			}
+			if (res.Reader != nil) != tc.wantReader {
+				t.Fatalf("reader set = %v, want %v", res.Reader != nil, tc.wantReader)
+			}
+		})
+	}
+}
+
+func TestHashMatches(t *testing.T) {
+	cases := []struct {
+		stored, presented string
+		want              bool
+	}{
+		{"", "", false},
+		{"", "abc", false},
+		{"abc", "abd", false},
+		{"abc", "abc", true},
+	}
+	for _, tc := range cases {
+		if got := hashMatches(tc.stored, tc.presented); got != tc.want {
+			t.Errorf("hashMatches(%q,%q) = %v, want %v", tc.stored, tc.presented, got, tc.want)
+		}
+	}
+}

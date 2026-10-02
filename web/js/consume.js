@@ -37,9 +37,9 @@
     } catch (_) { return false; }
   })();
 
-  function logTiming(label, start, end) {
+  function logTiming(label, begin, end) {
     if (!debugTiming) return;
-    console.log(`[gone][timing] ${label}: ${(end - start).toFixed(2)}ms`);
+    console.log(`[gone][timing] ${label}: ${(end - begin).toFixed(2)}ms`);
   }
 
   function sleep(ms) {
@@ -100,16 +100,23 @@
     return concatChunks(chunks, received);
   }
 
-  async function fetchOnce(id, claim) {
+  // requestSecret issues the GET (presenting any claim token) and records the
+  // claim token the server returns.
+  async function requestSecret(claim) {
     const headers = claim.token ? { 'X-Gone-Claim': claim.token } : {};
     let resp;
     try {
-      resp = await fetch(`/api/secret/${encodeURIComponent(id)}`, { headers: headers, cache: 'no-store' });
+      resp = await fetch(claim.url, { headers: headers, cache: 'no-store' });
     } catch (_) {
       throw FetchError('Network error retrieving secret', true);
     }
     if (!resp.ok) throw FetchError(statusMessage(resp.status), resp.status >= 500);
     claim.token = resp.headers.get('X-Gone-Claim') || claim.token;
+    return resp;
+  }
+
+  // readComplete reads the whole body and rejects a truncated download.
+  async function readComplete(resp) {
     const total = parseInt(resp.headers.get('Content-Length') || '0', 10) || 0;
     let body;
     try {
@@ -118,16 +125,22 @@
       throw FetchError('Network error retrieving secret', true);
     }
     if (total && body.length !== total) throw FetchError('Download was incomplete', true);
+    return body;
+  }
+
+  async function fetchOnce(claim) {
+    const resp = await requestSecret(claim);
+    const body = await readComplete(resp);
     return { resp: resp, body: body };
   }
 
   // fetchWithRetry retries network failures/truncation, presenting the claim
   // token so the server re-serves the same claim instead of reporting it gone.
-  async function fetchWithRetry(id, claim) {
+  async function fetchWithRetry(claim) {
     let lastErr;
     for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt++) {
       try {
-        return await fetchOnce(id, claim);
+        return await fetchOnce(claim);
       } catch (e) {
         lastErr = e;
         if (!e.retryable || (attempt > 1 && !claim.token)) break;
@@ -158,20 +171,20 @@
   }
 
   // --- Acknowledge (delete) ---------------------------------------------------
-  async function ackOnce(id, token) {
-    const resp = await fetch(`/api/secret/${encodeURIComponent(id)}`, {
+  async function ackOnce(claim) {
+    const resp = await fetch(claim.url, {
       method: 'DELETE',
-      headers: { 'X-Gone-Claim': token },
+      headers: { 'X-Gone-Claim': claim.token },
       keepalive: true,
       cache: 'no-store'
     });
     return resp.status === 204;
   }
 
-  async function acknowledge(id, token) {
+  async function acknowledge(claim) {
     for (let attempt = 1; attempt <= MAX_ACK_ATTEMPTS; attempt++) {
       try {
-        if (await ackOnce(id, token)) return true;
+        if (await ackOnce(claim)) return true;
       } catch (_) {
         // retry
       }
@@ -317,9 +330,9 @@
 
   async function run(id, keyB64) {
     const t0 = performance.now();
-    const claim = { token: '' };
+    const claim = { url: `/api/secret/${encodeURIComponent(id)}`, token: '' };
     setStatus('Retrieving\u2026');
-    const fetched = await fetchWithRetry(id, claim);
+    const fetched = await fetchWithRetry(claim);
     logTiming('consume_fetch', t0, performance.now());
     setStatus('Decrypting\u2026');
     state.plaintext = await decrypt(fetched.resp, fetched.body, keyB64);
@@ -335,7 +348,7 @@
     showMessage(decoded.message);
     showFiles(decoded.files);
     logTiming('consume_total', t0, performance.now());
-    showAckResult(await acknowledge(id, claim.token));
+    showAckResult(await acknowledge(claim));
   }
 
   function handlePreview(params) {
@@ -357,11 +370,20 @@
       return;
     }
     const frag = parseFragment(location.hash);
-    if (!frag) return setStatus('Missing or invalid key fragment. Cannot decrypt.');
-    if (frag.version !== window.goneCrypto.version) return setStatus('Unsupported version');
+    if (!frag) {
+      setStatus('Missing or invalid key fragment. Cannot decrypt.');
+      return;
+    }
+    if (frag.version !== window.goneCrypto.version) {
+      setStatus('Unsupported version');
+      return;
+    }
     const parts = location.pathname.split('/');
     const id = parts[parts.length - 1];
-    if (!/^[0-9a-f]{32}$/.test(id)) return setStatus('Invalid secret id');
+    if (!/^[0-9a-f]{32}$/.test(id)) {
+      setStatus('Invalid secret id');
+      return;
+    }
     window.addEventListener('beforeunload', guardUnload);
     window.addEventListener('pagehide', cleanup);
     run(id, frag.keyB64).catch(function (e) {

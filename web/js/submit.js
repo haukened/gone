@@ -3,7 +3,7 @@
 // Secret creation flow: message + optional files -> envelope -> AES-GCM -> upload.
 (function submitFlow() {
   const form = document.getElementById('create-secret');
-  if (!form || !window.goneCrypto || !window.goneEnvelope) return;
+  if (!allPresent([form, window.goneCrypto, window.goneEnvelope])) return;
   const envelope = window.goneEnvelope;
 
   const textarea = document.getElementById('secret');
@@ -16,16 +16,25 @@
   const uploadProgress = document.getElementById('upload-progress');
   const ttlSelect = document.getElementById('ttl');
   const primaryBtn = form.querySelector('button[type="submit"]');
-  const primaryLabel = primaryBtn ? primaryBtn.querySelector('span') : null;
+  const primaryLabel = primaryBtn && primaryBtn.querySelector('span');
   const cardSection = form.closest('.card');
   const errorBox = document.getElementById('submit-error');
   const errorContent = document.getElementById('submit-error-content');
-  if (!textarea || !ttlSelect || !primaryBtn || !cardSection) return;
+  if (!allPresent([textarea, ttlSelect, primaryBtn, cardSection])) return;
 
-  const maxBytes = parseInt(form.dataset.maxBytes || '0', 10) || 0;
+  const maxBytes = parsePositiveInt(form.dataset.maxBytes);
   const idleLabel = primaryLabel ? primaryLabel.textContent : 'Encrypt';
   let selectedFiles = [];
   let busy = false;
+
+  function allPresent(values) {
+    return values.every(Boolean);
+  }
+
+  function parsePositiveInt(raw) {
+    const n = parseInt(raw || '0', 10);
+    return n > 0 ? n : 0;
+  }
 
   const debugTiming = (function () {
     try {
@@ -85,23 +94,32 @@
     return '';
   }
 
+  function renderMeterBar(size, problem) {
+    if (!sizeMeter) return;
+    sizeMeter.max = maxBytes || 1;
+    sizeMeter.value = Math.min(size, sizeMeter.max);
+    sizeMeter.classList.toggle('over', Boolean(problem));
+  }
+
+  function renderSizeLabel(size) {
+    if (!sizeLabel) return;
+    const over = maxBytes && size > maxBytes ? ' (over limit)' : '';
+    sizeLabel.textContent = `${envelope.formatBytes(size)} of ${envelope.formatBytes(maxBytes)}${over}`;
+  }
+
+  function renderSizeWarning(problem) {
+    if (!sizeWarning) return;
+    sizeWarning.textContent = problem;
+    sizeWarning.hidden = !problem;
+  }
+
   function updateMeter() {
     const empty = !textarea.value && selectedFiles.length === 0;
     const size = empty ? 0 : currentSize();
     const problem = selectionProblem(size);
-    if (sizeMeter) {
-      sizeMeter.max = maxBytes || 1;
-      sizeMeter.value = Math.min(size, sizeMeter.max);
-      sizeMeter.classList.toggle('over', Boolean(problem));
-    }
-    if (sizeLabel) {
-      const over = maxBytes && size > maxBytes ? ' (over limit)' : '';
-      sizeLabel.textContent = `${envelope.formatBytes(size)} of ${envelope.formatBytes(maxBytes)}${over}`;
-    }
-    if (sizeWarning) {
-      sizeWarning.textContent = problem;
-      sizeWarning.hidden = !problem;
-    }
+    renderMeterBar(size, problem);
+    renderSizeLabel(size);
+    renderSizeWarning(problem);
     primaryBtn.disabled = busy || empty || Boolean(problem);
   }
 
