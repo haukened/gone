@@ -23,6 +23,8 @@
 
   const MAX_FETCH_ATTEMPTS = 3;
   const MAX_ACK_ATTEMPTS = 3;
+  const API_PATH = '/api/secret/';
+  const SECRET_ID_RE = /^[0-9a-f]{32}$/;
   const state = { plaintext: null, files: [], urls: [], pending: 0 };
 
   function setStatus(msg) {
@@ -100,13 +102,40 @@
     return concatChunks(chunks, received);
   }
 
+  // secretEndpoint is the only place an API URL is built. It accepts nothing but
+  // a 32-char hex id and pins the result to this page's origin, so no
+  // user-controlled value can redirect requests elsewhere.
+  function secretEndpoint(id) {
+    if (typeof id !== 'string' || !SECRET_ID_RE.test(id)) throw FetchError('Invalid secret id', false);
+    const origin = window.location.origin;
+    const endpoint = new URL(API_PATH + id, origin);
+    if (endpoint.origin !== origin || endpoint.pathname !== API_PATH + id) {
+      throw FetchError('Invalid secret id', false);
+    }
+    return endpoint.href;
+  }
+
+  // apiInit builds fetch options restricted to same-origin, no redirects, no cache.
+  function apiInit(method, headers) {
+    return {
+      method: method,
+      headers: headers,
+      mode: 'same-origin',
+      credentials: 'same-origin',
+      redirect: 'error',
+      cache: 'no-store',
+      keepalive: method === 'DELETE'
+    };
+  }
+
   // requestSecret issues the GET (presenting any claim token) and records the
   // claim token the server returns.
   async function requestSecret(claim) {
+    const endpoint = secretEndpoint(claim.id);
     const headers = claim.token ? { 'X-Gone-Claim': claim.token } : {};
     let resp;
     try {
-      resp = await fetch(claim.url, { headers: headers, cache: 'no-store' });
+      resp = await fetch(endpoint, apiInit('GET', headers));
     } catch (_) {
       throw FetchError('Network error retrieving secret', true);
     }
@@ -172,12 +201,8 @@
 
   // --- Acknowledge (delete) ---------------------------------------------------
   async function ackOnce(claim) {
-    const resp = await fetch(claim.url, {
-      method: 'DELETE',
-      headers: { 'X-Gone-Claim': claim.token },
-      keepalive: true,
-      cache: 'no-store'
-    });
+    const endpoint = secretEndpoint(claim.id);
+    const resp = await fetch(endpoint, apiInit('DELETE', { 'X-Gone-Claim': claim.token }));
     return resp.status === 204;
   }
 
@@ -330,7 +355,7 @@
 
   async function run(id, keyB64) {
     const t0 = performance.now();
-    const claim = { url: `/api/secret/${encodeURIComponent(id)}`, token: '' };
+    const claim = { id: id, token: '' };
     setStatus('Retrieving\u2026');
     const fetched = await fetchWithRetry(claim);
     logTiming('consume_fetch', t0, performance.now());
@@ -380,7 +405,7 @@
     }
     const parts = location.pathname.split('/');
     const id = parts[parts.length - 1];
-    if (!/^[0-9a-f]{32}$/.test(id)) {
+    if (!SECRET_ID_RE.test(id)) {
       setStatus('Invalid secret id');
       return;
     }
