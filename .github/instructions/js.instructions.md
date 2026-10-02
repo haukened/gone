@@ -6,19 +6,19 @@ applyTo: '*.js'
 Purpose: Keep frontend code small, secure, maintainable, dependency‑light, and friendly to static analysis.
 Target Runtime: Evergreen modern browsers (Chromium, Firefox, Safari) – ES2020+ features allowed when natively supported without polyfills.
 ECMAScript Baseline: ES2020. Later features (ES2021+) may be used only when Codacy/ESLint rulesets and all target browsers support them without polyfills. Always `use strict` in non-module files. Forbid `eval`, `new Function`, and dynamic imports from untrusted sources.
-Primary File: `web/js/app.js` (intentionally single bundle until complexity justifies modularization).
+Files: `web/js/` holds small single-responsibility scripts (no bundler). Each is an IIFE that exposes at most one `window.gone*` namespace; load order is set by the `<script>` tags in `web/*.tmpl.html` (e.g. `util.js` → `fileMeta.js` → `crypto.js` → `envelope.js` → flow modules → `submit.js` / `consume.js`).
+Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`). Every new or changed module needs tests; keep coverage at 100% lines.
 
 ## Core Principles
 1. Security First: Never send plaintext secrets or keys to the server; key only lives in the URL fragment. Avoid logging sensitive data. Keep crypto primitives minimal (AES‑256‑GCM via WebCrypto only).
-2. Minimalism: Prefer a single cohesive file over premature bundling. Extract helpers ONLY when it materially reduces complexity or repetition.
+2. Minimalism: No bundler or build-time module system. Split into a new file only when it materially reduces complexity or groups a single responsibility.
 3. Stability: Avoid experimental APIs unless widely shipped. No external JS dependencies unless a critical security or standards need.
 4. Deterministic Refactors: Any complexity or size reduction should preserve observable behavior and timing logging semantics.
 5. Accessibility: Maintain focus management and semantic elements (e.g., `h2`, `button`, ARIA labels). Do not remove accessible names for brevity.
 
 ## Avoid XSS Risks
 - Never manipulate the DOM with untrusted input via `innerHTML` or similar. Prefer `textContent` or explicit element creation.
-- Any use of `innerHTML` must be limited to static, trusted markup (e.g., embedded SVG) or sanitized content only.
-- Any use of `innerHTML` must be annotated with a comment explaining the trust boundary and justification, and eslint disabled.
+- Do not use `innerHTML`, `outerHTML` or `insertAdjacentHTML`, even for static markup. Build icons with `window.goneIcons.make()` (DOM-built SVG) and set mixed content with `goneUtil.setContent()`.
 
 ## Language & Syntax
 - Use `const` by default; use `let` only when reassignment is required. NEVER use `var`.
@@ -51,7 +51,7 @@ Primary File: `web/js/app.js` (intentionally single bundle until complexity just
 
 ## DOM & UI
 - Query elements once per flow; cache references.
-- Prefer `textContent` over `innerHTML` except for static SVG or trusted markup blocks.
+- Use `textContent` or DOM nodes; never parse HTML strings.
 - Avoid constructing large interpolated HTML strings with dynamic user input.
 - Manage focus after dynamic panel insertion.
 - Keep imperative DOM creation for auditability (explicit `createElement` sequence).
@@ -88,7 +88,7 @@ Primary File: `web/js/app.js` (intentionally single bundle until complexity just
 5. Document exception if still above threshold.
 
 ## Migration Path (Optional Future)
-- Phase 1: Split into ES modules (`crypto.js`, `submit.js`, `consume.js`).
+- Phase 1: Split by responsibility into IIFE scripts (done; see `web/js/`). Move to ES modules if the script graph grows further.
 - Phase 2: Add JSDoc typedefs for encrypted payload structure.
 - Phase 3: Consider TypeScript if surface grows substantially (>3 modules or complex state machine).
 

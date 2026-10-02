@@ -29,6 +29,15 @@
   },
   "overrides": [
     {
+      "files": ["test/js/**/*.js"],
+      "env": { "browser": false, "node": true },
+      "globals": { "window": "readonly" },
+      "rules": {
+        "complexity": "off",
+        "max-lines-per-function": "off"
+      }
+    },
+    {
       "files": ["web/js/**/*.js"],
       "env": { "browser": true },
       "rules": {

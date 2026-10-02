@@ -80,3 +80,19 @@ tasks:
     cmds:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -func=coverage.out
+
+  test:
+    desc: Run Go and JavaScript unit tests
+    cmds:
+      - go test ./...
+      - task: test-js
+
+  test-js:
+    desc: Run JavaScript unit tests (requires Node 20+, no npm install)
+    cmds:
+      - node --test 'test/js/*.test.js'
+
+  cover-js:
+    desc: Run JavaScript unit tests with coverage output
+    cmds:
+      - node --test --experimental-test-coverage --test-coverage-include='web/js/**' 'test/js/*.test.js'

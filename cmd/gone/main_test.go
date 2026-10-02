@@ -19,6 +19,7 @@ import (
 	"github.com/haukened/gone/internal/domain"
 	"github.com/haukened/gone/internal/store"
 	"github.com/haukened/gone/internal/store/sqlite"
+	wembed "github.com/haukened/gone/web"
 	_ "modernc.org/sqlite"
 )
 
@@ -106,11 +107,11 @@ func TestEnsureDataDir(t *testing.T) {
 	}
 }
 
-// TestParseAllTemplates ensures embedded templates can be loaded.
+// TestLoadTemplates ensures embedded templates can be loaded.
 func TestLoadTemplates(t *testing.T) {
-	tmpls, err := loadTemplates()
+	tmpls, err := loadTemplatesFrom(wembed.Assets)
 	if err != nil {
-		t.Fatalf("loadTemplates error: %v", err)
+		t.Fatalf("loadTemplatesFrom error: %v", err)
 	}
 	if tmpls.index == nil || tmpls.about == nil || tmpls.secret == nil || tmpls.errorPage == nil {
 		t.Fatalf("expected all templates non-nil")
@@ -195,7 +196,7 @@ func TestBuildHandler_IndexRoute(t *testing.T) {
 	}
 	cfg := &config.Config{MaxBytes: 2048, MinTTL: time.Minute, MaxTTL: 2 * time.Minute, TTLOptions: []domain.TTLOption{{Duration: time.Minute, Label: "1m"}}}
 	svc := buildService(idx, stubBlobStorage{}, cfg, realClock{})
-	h := buildHandler(cfg, svc, db, blobDir, tmpls)
+	h := buildHandler(cfg, svc, db, blobDir, tmpls, wembed.Assets)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)

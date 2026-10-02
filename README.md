@@ -142,7 +142,10 @@ Core tasks:
 | `task dev` | Clean + build development binary (no minified assets, no `-tags=prod`). |
 | `task prod` | Full production build: clean, minify assets into `web/dist`, build with `-tags=prod`. |
 | `task run` | Convenience: rebuild dev binary and run with a temporary data dir. |
-| `task cover` | Run tests with coverage output. |
+| `task cover` | Run Go tests with coverage output. |
+| `task test` | Run Go and JavaScript unit tests. |
+| `task test-js` | Run JavaScript unit tests (`node --test`, Node 20+, no npm install). |
+| `task cover-js` | Run JavaScript unit tests with coverage output. |
 
 Development build:
 ```sh
@@ -273,4 +276,6 @@ Disable by removing parameter & clearing the key.
 ---
 
 ## 12. License
+Copyright © 2025-2026 The Gone Project Contributors.
+
 GNU Affero General Public License v3.0 – see `LICENSE`.
