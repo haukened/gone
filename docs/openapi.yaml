@@ -104,6 +104,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: Internal server error
           content:
@@ -173,6 +175,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: Internal server error
           content:
@@ -211,6 +215,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: Internal server error
           content:
@@ -236,6 +242,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 components:
+  responses:
+    TooManyRequests:
+      description: |
+        Rate limited. The client exceeded its per-address budget (GONE_RATE_CREATE for
+        POST, GONE_RATE_READ for GET and DELETE). Retry after the indicated delay.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+          description: Seconds until the next request will be accepted.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: rate limited
   parameters:
     SecretID:
       in: path

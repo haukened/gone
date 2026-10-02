@@ -26,6 +26,10 @@ func cleanEnvVars(t *testing.T) map[string]string {
 		"GONE_CLAIM_LEASE",
 		"GONE_METRICS_ADDR",
 		"GONE_METRICS_TOKEN",
+		"GONE_RATE_CREATE",
+		"GONE_RATE_READ",
+		"GONE_RATE_BURST",
+		"GONE_TRUSTED_PROXIES",
 	}
 	for _, v := range vars {
 		val := os.Getenv(v)

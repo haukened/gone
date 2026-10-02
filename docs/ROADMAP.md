@@ -49,7 +49,9 @@ Phases 1 and 2 are independent and can be worked on at the same time. The UI rev
 ---
 
 ## Phase 1: Rate limiting
-Server-side only; no client changes.
+**Status: implemented** on `feat/rate-limiting`.
+
+Server-side only; the browser already shows a message on `429`.
 
 **Scope**
 * Per-client token buckets in `internal/httpx` middleware, written with the standard library.
@@ -57,14 +59,14 @@ Server-side only; no client changes.
 * Requests over the limit get `429 Too Many Requests` with a `Retry-After` header and the usual JSON error body.
 * The client address comes from the connection by default. `X-Forwarded-For` is trusted only when the request arrives from an address listed in `GONE_TRUSTED_PROXIES`.
 * Idle buckets are removed on a timer, so memory stays bounded under address churn.
-* A new `rate_limited` metrics counter. Client addresses are never logged.
+* New `rate_limited_create_total` and `rate_limited_read_total` metrics counters. Client addresses are never logged.
 
-**Configuration (proposed)**
+**Configuration**
 | Variable | Purpose |
 | -------- | ------- |
-| `GONE_RATE_CREATE` | Create budget, e.g. `10/m` |
-| `GONE_RATE_READ` | Claim budget, e.g. `30/m` |
-| `GONE_RATE_BURST` | Burst allowance per bucket |
+| `GONE_RATE_CREATE` | Create budget (default `10/m`) |
+| `GONE_RATE_READ` | Claim and acknowledge budget (default `30/m`) |
+| `GONE_RATE_BURST` | Burst allowance per bucket (default `10`) |
 | `GONE_TRUSTED_PROXIES` | CIDRs whose `X-Forwarded-For` header is trusted |
 
 A budget of `0` turns that limit off.
