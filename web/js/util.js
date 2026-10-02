@@ -1,7 +1,8 @@
 'use strict';
 
 // Shared helpers for gone page scripts: timing logs, delays, element
-// building, and copy-button feedback. Exposed as window.goneUtil.
+// building, and copy-button feedback. No helper here parses HTML.
+// Exposed as window.goneUtil.
 (function utilModule() {
   if (window.goneUtil) return;
 
@@ -51,21 +52,21 @@
     return node;
   }
 
-  // setStaticHTML replaces btn's content with html. Trust boundary: html must
-  // be static markup bundled with the app (icons and fixed labels), never
-  // user or server data.
-  function setStaticHTML(btn, html) {
-    btn.innerHTML = html;
+  // setContent replaces node's children with parts (nodes or strings, which
+  // become text nodes). Never parses markup.
+  function setContent(node, parts) {
+    node.replaceChildren(...parts);
   }
 
-  // flashCopied shows doneHTML on btn briefly, then restores idleHTML. Both
-  // must be static, trusted markup.
-  function flashCopied(btn, idleHTML, doneHTML) {
-    setStaticHTML(btn, doneHTML);
+  // flashCopied shows doneParts on btn briefly, then restores its previous
+  // children.
+  function flashCopied(btn, doneParts) {
+    const idle = Array.from(btn.childNodes);
+    setContent(btn, doneParts);
     btn.classList.add('copied');
     btn.disabled = true;
     setTimeout(function () {
-      setStaticHTML(btn, idleHTML);
+      setContent(btn, idle);
       btn.classList.remove('copied');
       btn.disabled = false;
     }, COPIED_MS);
@@ -92,7 +93,7 @@
     allPresent: allPresent,
     setText: setText,
     el: el,
-    setStaticHTML: setStaticHTML,
+    setContent: setContent,
     flashCopied: flashCopied,
     copyText: copyText
   });

@@ -276,4 +276,6 @@ Disable by removing parameter & clearing the key.
 ---
 
 ## 12. License
+Copyright © 2025-2026 The Gone Project Contributors.
+
 GNU Affero General Public License v3.0 – see `LICENSE`.

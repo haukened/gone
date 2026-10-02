@@ -45,17 +45,15 @@ class FakeElement {
     this.value = '';
     this.scrollHeight = 0;
     this._text = '';
-    this._html = '';
   }
 
   get className() { return Array.from(this.classList.set).join(' '); }
   set className(v) { this.classList.set = new Set(String(v).split(/\s+/).filter(Boolean)); }
 
   get textContent() { return this._text + this.children.map((c) => c.textContent).join(''); }
-  set textContent(v) { this._detachAll(); this._text = String(v); this._html = ''; }
+  set textContent(v) { this._detachAll(); this._text = String(v); }
 
-  get innerHTML() { return this._html || this._text; }
-  set innerHTML(v) { this._detachAll(); this._html = String(v); this._text = ''; }
+  get childNodes() { return this.children; }
 
   _detachAll() { this.children.forEach((c) => { c.parentNode = null; }); this.children = []; }
 
@@ -75,8 +73,9 @@ class FakeElement {
     this.children.push(node);
     return node;
   }
-  append(...nodes) { nodes.forEach((n) => this.appendChild(n)); }
-  replaceChildren(...nodes) { this._detachAll(); this._text = ''; this._html = ''; this.append(...nodes); }
+  // append and replaceChildren accept strings, which become text nodes.
+  append(...nodes) { nodes.forEach((n) => this.appendChild(typeof n === 'string' ? new FakeText(n) : n)); }
+  replaceChildren(...nodes) { this._detachAll(); this._text = ''; this.append(...nodes); }
   _removeChild(node) { this.children = this.children.filter((c) => c !== node); node.parentNode = null; }
   remove() { if (this.parentNode) this.parentNode._removeChild(this); }
   replaceWith(node) {
@@ -141,6 +140,7 @@ class FakeDocument {
     this.activeElement = null;
   }
   createElement(tag) { return new FakeElement(tag); }
+  createElementNS(ns, tag) { const el = new FakeElement(tag); el.namespaceURI = ns; return el; }
   querySelector(sel) { return this.body.querySelector(sel); }
   createTextNode(text) { return new FakeText(text); }
   getElementById(id) {
@@ -168,7 +168,7 @@ function define(name, value) {
 }
 
 const GONE_GLOBALS = ['goneUtil', 'goneCrypto', 'goneFileMeta', 'goneEnvelope', 'goneConsumeApi', 'goneConsumeView',
-  'goneFileSelection', 'goneSizeMeter', 'goneUpload', 'goneResultPanel'];
+  'goneFileSelection', 'goneSizeMeter', 'goneUpload', 'goneResultPanel', 'goneIcons'];
 
 // reset installs a fresh fake browser at url and removes loaded gone modules.
 // Returns {document, alerts, clipboard, logs, storage}.

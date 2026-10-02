@@ -26,14 +26,22 @@
     return node ? node.textContent : fallback;
   }
 
-  const textarea = byId('secret');
-  const ttlSelect = byId('ttl');
-  const uploadProgress = byId('upload-progress');
-  const errorBox = byId('submit-error');
-  const errorContent = byId('submit-error-content');
-  const primaryBtn = form.querySelector('button[type="submit"]');
-  const primaryLabel = primaryBtn ? primaryBtn.querySelector('span') : null;
-  const cardSection = form.closest('.card');
+  // lookupElements finds the form's elements; any may be null.
+  function lookupElements() {
+    const btn = form.querySelector('button[type="submit"]');
+    return {
+      textarea: byId('secret'),
+      ttlSelect: byId('ttl'),
+      uploadProgress: byId('upload-progress'),
+      errorBox: byId('submit-error'),
+      errorContent: byId('submit-error-content'),
+      primaryBtn: btn,
+      primaryLabel: btn ? btn.querySelector('span') : null,
+      cardSection: form.closest('.card')
+    };
+  }
+
+  const { textarea, ttlSelect, uploadProgress, errorBox, errorContent, primaryBtn, primaryLabel, cardSection } = lookupElements();
   if (!util.allPresent([textarea, ttlSelect, primaryBtn, cardSection])) return;
 
   const meterEls = { meter: byId('size-meter'), label: byId('size-label'), warning: byId('size-warning') };
@@ -42,15 +50,19 @@
   const fileInput = byId('secret-files');
   let busy = false;
 
-  const selection = window.goneFileSelection.create({
-    form: form,
-    input: fileInput,
-    dropZone: byId('drop-zone'),
-    listEl: byId('file-list'),
-    isBusy: function () { return busy; },
-    onAdd: clearError,
-    onChange: updateMeter
-  });
+  const selection = createSelection();
+
+  function createSelection() {
+    return window.goneFileSelection.create({
+      form: form,
+      input: fileInput,
+      dropZone: byId('drop-zone'),
+      listEl: byId('file-list'),
+      isBusy: function () { return busy; },
+      onAdd: clearError,
+      onChange: updateMeter
+    });
+  }
 
   function setErrorVisible(visible) {
     if (!errorBox) return;

@@ -24,7 +24,7 @@ function setup(t, skip, opts) {
   const env = reset('https://gone.test/secret/x');
   const dom = page(env, skip);
   t.mock.method(console, 'log', () => {});
-  load('util', 'fileMeta');
+  load('util', 'fileMeta', 'icons');
   const delays = (opts && opts.realSleep) ? null : fastUtil();
   load('consumeView');
   return { env, dom, view: window.goneConsumeView, delays };
@@ -35,16 +35,18 @@ const file = (name, text, type) => {
   return { name, type: type || 'text/plain', size: bytes.length, bytes };
 };
 
-test('requires util and fileMeta; loads once; reports presence', (t) => {
+test('requires util, fileMeta and icons; loads once; reports presence', (t) => {
   reset();
   load('consumeView');
+  assert.equal(window.goneConsumeView, undefined);
+  load('util', 'fileMeta', 'consumeView');
   assert.equal(window.goneConsumeView, undefined);
   const { view } = setup(t);
   assert.equal(view.present, true);
   load('consumeView');
   assert.equal(window.goneConsumeView, view);
   reset();
-  load('util', 'fileMeta', 'consumeView');
+  load('util', 'fileMeta', 'icons', 'consumeView');
   assert.equal(window.goneConsumeView.present, false);
 });
 
@@ -104,15 +106,19 @@ test('showMessage fills the output, grows it and wires copy', async (t) => {
   assert.equal(out.style.height, '100px');
   assert.equal(out.style.overflowY, 'hidden');
   const copy = dom['copy-secret'];
+  const idleIcon = h('svg');
+  copy.replaceChildren('Copy Secret ', idleIcon);
   assert.equal(copy.hidden, false);
   await copy.click().settled;
   assert.equal(env.clipboard.text, 'secret text');
-  assert.match(copy.innerHTML, /^Copied!/);
+  assert.equal(copy.textContent, 'Copied! ');
+  assert.equal(copy.children[1].getAttribute('width'), '24');
   t.mock.timers.tick(2200);
-  assert.match(copy.innerHTML, /^Copy Secret <svg/);
+  assert.equal(copy.textContent, 'Copy Secret ');
+  assert.equal(copy.children[1], idleIcon);
   env.clipboard.fail = true;
   await copy.click().settled;
-  assert.match(copy.innerHTML, /^Copy Secret/);
+  assert.equal(copy.children[1], idleIcon);
   assert.equal(env.alerts.length, 1);
 });
 

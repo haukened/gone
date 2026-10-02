@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { reset, load, h, captureConsole, waitFor } = require('./harness');
 const { FakeXHR } = require('./fakes');
 
-const MODULES = ['util', 'crypto', 'fileMeta', 'envelope', 'submitFiles', 'submitMeter', 'submitUpload', 'submitResult'];
+const MODULES = ['util', 'crypto', 'fileMeta', 'envelope', 'submitFiles', 'submitMeter', 'submitUpload', 'icons', 'submitResult'];
 
 // page builds the create form. opts.skip omits optional ids; opts.maxBytes
 // sets data-max-bytes; opts.noLabel drops the button's <span>.

@@ -17,7 +17,7 @@ function boot(t, url, opts) {
   ids.forEach((id) => root.appendChild(h(id === 'secret-output' ? 'textarea' : 'div', { id, hidden: true })));
   env.document.body.appendChild(root);
   const logs = captureConsole(t);
-  load('util', 'crypto', 'fileMeta', 'envelope');
+  load('util', 'crypto', 'fileMeta', 'envelope', 'icons');
   fastUtil();
   load(...(o.modules || ['consumeApi', 'consumeView', 'consume']));
   return { env, logs, $: (id) => env.document.getElementById(id) };

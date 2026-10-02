@@ -9,13 +9,15 @@ const EXPIRES = '2030-01-02T03:04:05Z';
 
 function setup(t) {
   const env = reset();
-  load('util', 'submitResult');
+  load('util', 'icons', 'submitResult');
   return { env, logs: captureConsole(t), rp: window.goneResultPanel };
 }
 
-test('requires util; loads once', (t) => {
+test('requires util and icons; loads once', (t) => {
   reset();
   load('submitResult');
+  assert.equal(window.goneResultPanel, undefined);
+  load('util', 'submitResult');
   assert.equal(window.goneResultPanel, undefined);
   const { rp } = setup(t);
   load('submitResult');
@@ -37,14 +39,15 @@ test('show replaces the target and focuses the link start', (t) => {
   assert.equal(input.scrollLeft, 0);
   assert.equal(panel.querySelector('h2').textContent, 'Share This Link');
   assert.match(panel.querySelector('.security-warning-card').textContent, /exactly once/);
-  assert.match(panel.querySelector('.security-warning-card').innerHTML, /<svg/);
+  assert.equal(panel.querySelector('.security-warning-card').children[0].tagName, 'SVG');
   const time = panel.querySelector('time');
   assert.equal(time.getAttribute('datetime'), EXPIRES);
   assert.equal(time.textContent, new Date(EXPIRES).toLocaleString());
   assert.match(panel.querySelector('.hint').textContent, /^Expires at /);
   const back = panel.querySelector('a');
   assert.equal(back.href, '/');
-  assert.match(back.innerHTML, /Create Another/);
+  assert.equal(back.textContent, ' Create Another');
+  assert.equal(back.children[0].tagName, 'SVG');
   assert.deepEqual(logs.log, ['[gone] result panel shown']);
 });
 
@@ -71,14 +74,16 @@ test('copy button copies the link, or selects it when copy fails', async (t) => 
   const ev = copy.click();
   assert.deepEqual(await ev.settled, [true]);
   assert.equal(env.clipboard.text, URL_);
-  assert.match(copy.innerHTML, /^Copied!/);
+  assert.equal(copy.textContent, 'Copied! ');
+  assert.equal(copy.children[1].tagName, 'SVG');
   t.mock.timers.tick(2200);
-  assert.match(copy.innerHTML, /^Copy Link/);
+  assert.equal(copy.textContent, 'Copy Link ');
+  assert.equal(copy.children[1].tagName, 'SVG');
 
   env.clipboard.fail = true;
   assert.deepEqual(await copy.click().settled, [false]);
   const input = panel.querySelector('#share-link');
   assert.equal(env.document.activeElement, input);
   assert.equal(input.selected, true);
-  assert.match(copy.innerHTML, /^Copy Link/);
+  assert.equal(copy.textContent, 'Copy Link ');
 });

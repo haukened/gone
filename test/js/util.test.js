@@ -83,17 +83,34 @@ test('el assigns properties and children', () => {
   assert.equal(u.el('i', {}).children.length, 0);
 });
 
+test('setContent replaces children with nodes and text', () => {
+  reset();
+  load('util');
+  const old = h('b');
+  const node = h('p', {}, [old]);
+  const icon = h('svg');
+  window.goneUtil.setContent(node, ['<b>x</b> ', icon]);
+  assert.equal(old.parentNode, null);
+  assert.equal(node.textContent, '<b>x</b> ');
+  assert.equal(node.children[0].nodeType, 3);
+  assert.equal(node.children[1], icon);
+});
+
 test('flashCopied swaps content then restores it', (t) => {
   reset();
   load('util');
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const btn = h('button');
-  window.goneUtil.flashCopied(btn, 'idle', 'done');
-  assert.equal(btn.innerHTML, 'done');
+  const icon = h('svg');
+  const btn = h('button', {}, [icon]);
+  window.goneUtil.flashCopied(btn, ['done ', h('i')]);
+  assert.equal(btn.textContent, 'done ');
+  assert.equal(btn.children[1].tagName, 'I');
+  assert.equal(icon.parentNode, null);
   assert.ok(btn.classList.contains('copied'));
   assert.equal(btn.disabled, true);
   t.mock.timers.tick(2200);
-  assert.equal(btn.innerHTML, 'idle');
+  assert.deepEqual(btn.children, [icon]);
+  assert.equal(icon.parentNode, btn);
   assert.equal(btn.classList.contains('copied'), false);
   assert.equal(btn.disabled, false);
 });

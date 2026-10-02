@@ -1,45 +1,45 @@
 'use strict';
 
 // Result panel shown after a secret is created: the share link, its expiry,
-// a copy button, and a link back to the form. Requires window.goneUtil.
-// Exposed as window.goneResultPanel.
+// a copy button, and a link back to the form. Requires window.goneUtil and
+// window.goneIcons. Exposed as window.goneResultPanel.
 (function resultPanelModule() {
-  if (window.goneResultPanel || !window.goneUtil) return;
-  const util = window.goneUtil;
-  const el = util.el;
+  const ICON_SIZE = '1.1em';
+  const WARN_TEXT = 'Anyone with this link can view the secret exactly once.';
 
-  // Static, trusted icon markup (never user or server data).
-  const BACK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>';
-  const COPY_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
-  const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
-  const WARN_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>';
-  const COPY_LABEL = 'Copy Link ' + COPY_ICON;
+  function el(tag, props, children) {
+    return window.goneUtil.el(tag, props, children);
+  }
+
+  function icon(name, size) {
+    return window.goneIcons.make(name, size || ICON_SIZE);
+  }
 
   function warningCard() {
-    const warn = el('p', { className: 'security-warning-card' });
-    util.setStaticHTML(warn, WARN_ICON);
-    warn.appendChild(el('span', { textContent: 'Anyone with this link can view the secret exactly once.' }));
-    return warn;
+    return el('p', { className: 'security-warning-card' }, [icon('warn', '18'), el('span', { textContent: WARN_TEXT })]);
   }
 
   function expiryHint(expiresAt) {
     const time = el('time', { textContent: new Date(expiresAt).toLocaleString() });
     time.setAttribute('datetime', expiresAt);
-    return el('p', { className: 'hint' }, [el('span', {}, [document.createTextNode('Expires at '), time])]);
+    return el('p', { className: 'hint' }, [el('span', {}, ['Expires at ', time])]);
+  }
+
+  function copyButton(shareURL, input) {
+    const util = window.goneUtil;
+    const copy = el('button', { type: 'button', className: 'copy-primary-btn' }, ['Copy Link ', icon('copy')]);
+    copy.setAttribute('aria-label', 'Copy full share link');
+    copy.addEventListener('click', async function () {
+      const ok = await util.copyText(shareURL, function () { input.focus(); input.select(); });
+      if (ok) util.flashCopied(copy, ['Copied! ', icon('check')]);
+      return ok;
+    });
+    return copy;
   }
 
   function actionsRow(shareURL, input) {
-    const back = el('a', { href: '/', className: 'back-link' });
-    util.setStaticHTML(back, BACK_ICON + ' Create Another');
-    const copy = el('button', { type: 'button', className: 'copy-primary-btn' });
-    copy.setAttribute('aria-label', 'Copy full share link');
-    util.setStaticHTML(copy, COPY_LABEL);
-    copy.addEventListener('click', async function () {
-      const ok = await util.copyText(shareURL, function () { input.focus(); input.select(); });
-      if (ok) util.flashCopied(copy, COPY_LABEL, 'Copied! ' + CHECK_ICON);
-      return ok;
-    });
-    return el('div', { className: 'result-actions' }, [back, copy]);
+    const back = el('a', { href: '/', className: 'back-link' }, [icon('back'), ' Create Another']);
+    return el('div', { className: 'result-actions' }, [back, copyButton(shareURL, input)]);
   }
 
   function buildPanel(shareURL, expiresAt) {
@@ -78,5 +78,7 @@
     return built.panel;
   }
 
-  window.goneResultPanel = Object.freeze({ show: show });
+  if (!window.goneResultPanel && window.goneUtil && window.goneIcons) {
+    window.goneResultPanel = Object.freeze({ show: show });
+  }
 })();

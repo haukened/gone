@@ -2,18 +2,16 @@
 
 // DOM side of the consume flow: status/progress, the decrypted message with
 // its copy button, downloadable file entries, and the deletion banner.
-// Requires window.goneUtil and window.goneFileMeta. Exposed as
-// window.goneConsumeView.
+// Requires window.goneUtil, window.goneFileMeta and window.goneIcons.
+// Exposed as window.goneConsumeView.
 (function consumeViewModule() {
-  if (window.goneConsumeView || !window.goneUtil || !window.goneFileMeta) return;
+  if (window.goneConsumeView || !window.goneUtil || !window.goneFileMeta || !window.goneIcons) return;
   const util = window.goneUtil;
+  const icons = window.goneIcons;
   const formatBytes = window.goneFileMeta.formatBytes;
 
   const MAX_TEXTAREA_PX = 40 * 16;
   const DOWNLOAD_SPACING_MS = 400;
-  // Static, trusted icon markup (never user or server data).
-  const COPY_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy-icon lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
-  const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
   const ACK_FAIL_TITLE = 'Couldn\u2019t confirm deletion';
   const ACK_FAIL_TEXT = 'The server did not confirm this secret was deleted. It will still be deleted automatically within a few minutes and cannot be opened again. Save what you need now.';
 
@@ -21,19 +19,24 @@
     return document.getElementById(id);
   }
 
-  const dom = {
-    status: byId('secret-heading'),
-    output: byId('secret-output'),
-    copy: byId('copy-secret'),
-    downloadAll: byId('download-all'),
-    progress: byId('download-progress'),
-    fileSection: byId('file-section'),
-    fileList: byId('file-output-list'),
-    ackBanner: byId('ack-banner'),
-    ackCard: byId('ack-card'),
-    ackTitle: byId('ack-title'),
-    ackText: byId('ack-text')
-  };
+  // lookupDom finds the consume page elements; any may be null.
+  function lookupDom() {
+    return {
+      status: byId('secret-heading'),
+      output: byId('secret-output'),
+      copy: byId('copy-secret'),
+      downloadAll: byId('download-all'),
+      progress: byId('download-progress'),
+      fileSection: byId('file-section'),
+      fileList: byId('file-output-list'),
+      ackBanner: byId('ack-banner'),
+      ackCard: byId('ack-card'),
+      ackTitle: byId('ack-title'),
+      ackText: byId('ack-text')
+    };
+  }
+
+  const dom = lookupDom();
   const state = { plaintext: null, files: [], urls: [], pending: 0 };
 
   function setStatus(msg) {
@@ -71,7 +74,7 @@
     if (!btn) return;
     btn.addEventListener('click', async function () {
       if (await util.copyText(text)) {
-        util.flashCopied(btn, 'Copy Secret ' + COPY_ICON, 'Copied! ' + CHECK_ICON);
+        util.flashCopied(btn, ['Copied! ', icons.make('check', '24')]);
       }
     });
   }

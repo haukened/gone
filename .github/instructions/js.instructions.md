@@ -18,8 +18,7 @@ Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`
 
 ## Avoid XSS Risks
 - Never manipulate the DOM with untrusted input via `innerHTML` or similar. Prefer `textContent` or explicit element creation.
-- Any use of `innerHTML` must be limited to static, trusted markup (e.g., embedded SVG) or sanitized content only.
-- Any use of `innerHTML` must be annotated with a comment explaining the trust boundary and justification, and eslint disabled.
+- Do not use `innerHTML`, `outerHTML` or `insertAdjacentHTML`, even for static markup. Build icons with `window.goneIcons.make()` (DOM-built SVG) and set mixed content with `goneUtil.setContent()`.
 
 ## Language & Syntax
 - Use `const` by default; use `let` only when reassignment is required. NEVER use `var`.
@@ -52,7 +51,7 @@ Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`
 
 ## DOM & UI
 - Query elements once per flow; cache references.
-- Prefer `textContent` over `innerHTML` except for static SVG or trusted markup blocks.
+- Use `textContent` or DOM nodes; never parse HTML strings.
 - Avoid constructing large interpolated HTML strings with dynamic user input.
 - Manage focus after dynamic panel insertion.
 - Keep imperative DOM creation for auditability (explicit `createElement` sequence).
