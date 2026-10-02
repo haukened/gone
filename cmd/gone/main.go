@@ -95,7 +95,7 @@ func ensureDataDir(dir string) (string, string, error) {
 func ensurePrivateDir(dir string) error {
 	st, err := os.Stat(dir)
 	// Directories need the owner execute (search) bit, so 0o700 is the
-	// strictest usable mode; the rule below assumes file semantics.
+	// strictest usable mode; the rules suppressed below assume file semantics.
 	switch {
 	case errors.Is(err, os.ErrNotExist):
 		if mkErr := os.MkdirAll(dir, privateDirPerm); mkErr != nil { // nosemgrep: incorrect-default-permission
@@ -106,7 +106,7 @@ func ensurePrivateDir(dir string) error {
 	case !st.IsDir():
 		return fmt.Errorf("not a directory: %s", dir)
 	}
-	if err := os.Chmod(dir, privateDirPerm); err != nil { // nosemgrep: incorrect-default-permission
+	if err := os.Chmod(dir, privateDirPerm); err != nil { // nosemgrep: incorrect-default-permission, go_file-permissions_rule-fileperm
 		return fmt.Errorf("restrict permissions: %w", err)
 	}
 	return nil
