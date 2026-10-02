@@ -28,6 +28,7 @@ function fakeResponse(opts) {
         const queue = o.chunks.map((c) => c.slice());
         let reads = 0;
         return {
+          cancel: async () => { resp.cancelled = true; throw new Error('cancelled'); },
           read: async () => {
             if (o.readError && reads++ > 0) throw new Error('reset');
             if (!queue.length) return { done: true, value: undefined };

@@ -68,35 +68,48 @@ func Test_parseContentLength(t *testing.T) {
 }
 
 func Test_parseSecretHeaders(t *testing.T) {
-	// success
-	req := httptest.NewRequest(http.MethodPost, "/api/secret", nil)
-	req.Header.Set("X-Gone-Version", "1")
-	req.Header.Set("X-Gone-Nonce", "n")
-	req.Header.Set("X-Gone-TTL", "5m")
-	ver, nonce, ttl, err := parseSecretHeaders(req)
-	if err != nil || ver != 1 || nonce != "n" || ttl != 5*time.Minute {
-		t.Fatalf("unexpected success parse: %v %d %s %v", err, ver, nonce, ttl)
+	const nonce = "AAAAAAAAAAAAAAAA"
+	cases := []struct {
+		name    string
+		headers [][2]string
+		wantErr string
+	}{
+		{"ok", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, ""},
+		{"missing all", nil, "missing required headers"},
+		{"missing nonce", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-TTL", "5m"}}, "missing required headers"},
+		{"empty ttl", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", ""}}, "missing required headers"},
+		{"dup version", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Version", "1"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, "missing required headers"},
+		{"dup nonce", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", nonce}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, "missing required headers"},
+		{"dup ttl", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}, {"X-Gone-TTL", "1h"}}, "missing required headers"},
+		{"version too big", [][2]string{{"X-Gone-Version", "9999"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, "invalid version"},
+		{"version leading zero", [][2]string{{"X-Gone-Version", "01"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, "invalid version"},
+		{"version unsupported", [][2]string{{"X-Gone-Version", "2"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, "invalid version"},
+		{"version signed", [][2]string{{"X-Gone-Version", "+1"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, "invalid version"},
+		{"nonce short", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", "n"}, {"X-Gone-TTL", "5m"}}, "invalid nonce"},
+		{"nonce padded", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", nonce + "=="}, {"X-Gone-TTL", "5m"}}, "invalid nonce"},
+		{"nonce std alphabet", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", "AAAAAAAAAAAAAA+/"}, {"X-Gone-TTL", "5m"}}, "invalid nonce"},
+		{"bad ttl", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "notdur"}}, "invalid ttl"},
 	}
-	// missing
-	req2 := httptest.NewRequest(http.MethodPost, "/api/secret", nil)
-	if _, _, _, err := parseSecretHeaders(req2); err == nil {
-		t.Fatalf("expected missing headers error")
-	}
-	// bad version
-	req3 := httptest.NewRequest(http.MethodPost, "/api/secret", nil)
-	req3.Header.Set("X-Gone-Version", "9999")
-	req3.Header.Set("X-Gone-Nonce", "n")
-	req3.Header.Set("X-Gone-TTL", "5m")
-	if _, _, _, err := parseSecretHeaders(req3); err == nil {
-		t.Fatalf("expected invalid version error")
-	}
-	// bad ttl
-	req4 := httptest.NewRequest(http.MethodPost, "/api/secret", nil)
-	req4.Header.Set("X-Gone-Version", "1")
-	req4.Header.Set("X-Gone-Nonce", "n")
-	req4.Header.Set("X-Gone-TTL", "notdur")
-	if _, _, _, err := parseSecretHeaders(req4); err == nil {
-		t.Fatalf("expected invalid ttl error")
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/secret", nil)
+			for _, h := range c.headers {
+				req.Header.Add(h[0], h[1])
+			}
+			ver, n, ttl, err := parseSecretHeaders(req)
+			if c.wantErr == "" {
+				if err != nil || ver != 1 || n != nonce || ttl != 5*time.Minute {
+					t.Fatalf("unexpected parse: %v %d %s %v", err, ver, n, ttl)
+				}
+				return
+			}
+			if err == nil || err.Error() != c.wantErr {
+				t.Fatalf("err = %v, want %q", err, c.wantErr)
+			}
+			if code, msg := classifyCreateError(err); code != http.StatusBadRequest || msg != c.wantErr {
+				t.Fatalf("classify = %d %q", code, msg)
+			}
+		})
 	}
 }
 
@@ -105,10 +118,10 @@ func Test_parseAndValidateCreate(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/secret", strings.NewReader("abc"))
 	req.Header.Set("Content-Length", "3")
 	req.Header.Set("X-Gone-Version", "1")
-	req.Header.Set("X-Gone-Nonce", "n")
+	req.Header.Set("X-Gone-Nonce", "AAAAAAAAAAAAAAAA")
 	req.Header.Set("X-Gone-TTL", "1m")
 	meta, err := h.parseAndValidateCreate(req)
-	if err != nil || meta.contentLength != 3 || meta.version != 1 || meta.nonce != "n" || meta.ttl != time.Minute {
+	if err != nil || meta.contentLength != 3 || meta.version != 1 || meta.nonce != "AAAAAAAAAAAAAAAA" || meta.ttl != time.Minute {
 		t.Fatalf("unexpected meta %+v err %v", meta, err)
 	}
 	// method error

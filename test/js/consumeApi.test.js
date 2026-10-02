@@ -156,6 +156,33 @@ test('gives up after three attempts with the last error', async (t) => {
   assert.equal(calls.length, 3);
 });
 
+test('Content-Length must be canonical and match exactly when present', async (t) => {
+  const cases = [
+    ['too long', { 'Content-Length': '2' }, true],
+    ['non-canonical', { 'Content-Length': '03' }, false],
+    ['not a number', { 'Content-Length': 'abc' }, false]
+  ];
+  for (const [name, headers, cancels] of cases) {
+    await t.test(name, async (st) => {
+      const { api } = setup(st);
+      const responses = [];
+      const once = () => { const r = ok({ headers })(); responses.push(r); return r; };
+      installFetch([once, once, once]);
+      await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => e.message === 'Download was incomplete' && e.retryable);
+      assert.equal(Boolean(responses[0].cancelled), cancels);
+    });
+  }
+});
+
+test('a missing Content-Length accepts whatever arrives', async (t) => {
+  const { api } = setup(t);
+  const progress = [];
+  installFetch([ok({ headers: { 'X-Gone-Claim': 'tok' } })]);
+  const out = await api.fetchWithRetry({}, (r, total) => progress.push([r, total]));
+  assert.deepEqual(out.body, bytes(1, 2, 3));
+  assert.deepEqual(progress, [[2, -1], [3, -1]]);
+});
+
 test('network failures are retryable', async (t) => {
   const { api } = setup(t);
   installFetch([() => { throw new TypeError('offline'); }, ok()]);
@@ -168,21 +195,30 @@ test('decrypt verifies version, nonce and key, then zeroes buffers', async (t) =
   const { api } = setup(t);
   const gc = window.goneCrypto;
   const key = gc.generateKey();
-  const keyB64 = gc.exportKeyB64(key);
+  const frag = () => ({ version: 1, key: key.slice() });
   const enc = await gc.encrypt('hello', key);
   const headers = (v, nonce) => fakeResponse({ headers: Object.assign({ 'X-Gone-Version': v }, nonce === undefined ? {} : { 'X-Gone-Nonce': nonce }) });
   const nonce = gc.b64urlEncode(enc.nonce);
 
   const ct = enc.ciphertext.slice();
-  const pt = await api.decrypt(headers('1', nonce), ct, keyB64);
+  const f = frag();
+  const pt = await api.decrypt(headers('1', nonce), ct, f);
   assert.equal(new TextDecoder().decode(pt), 'hello');
   assert.ok(ct.every((b) => b === 0));
+  assert.ok(f.key.every((b) => b === 0));
 
-  await assert.rejects(api.decrypt(headers('2', nonce), enc.ciphertext.slice(), keyB64), (e) => e.message === 'Unsupported secret version' && !e.retryable);
-  await assert.rejects(api.decrypt(fakeResponse({}), enc.ciphertext.slice(), keyB64), /Unsupported secret version/);
-  await assert.rejects(api.decrypt(headers('1', undefined), enc.ciphertext.slice(), keyB64), /Couldn.t verify/);
-  await assert.rejects(api.decrypt(headers('1', nonce), enc.ciphertext.slice(), gc.exportKeyB64(gc.generateKey())), (e) => /Couldn.t verify/.test(e.message) && e.retryable === false);
-  await assert.rejects(api.decrypt(headers('1', nonce), enc.ciphertext.slice(), 'AAAA'), /invalid key/);
+  const unsupported = (e) => e.message === 'Unsupported secret version' && !e.retryable;
+  for (const v of ['2', '01', '+1', '1.0']) {
+    await assert.rejects(api.decrypt(headers(v, nonce), enc.ciphertext.slice(), frag()), unsupported, v);
+  }
+  await assert.rejects(api.decrypt(fakeResponse({}), enc.ciphertext.slice(), frag()), unsupported);
+  const verify = (e) => /Couldn.t verify/.test(e.message) && e.retryable === false;
+  for (const n of [undefined, '', nonce + '=', nonce.slice(0, -1) + '_', 'AAAA', '!'.repeat(16)]) {
+    const g = frag();
+    await assert.rejects(api.decrypt(headers('1', n), enc.ciphertext.slice(), g), verify, String(n));
+    assert.ok(g.key.every((b) => b === 0));
+  }
+  await assert.rejects(api.decrypt(headers('1', nonce), enc.ciphertext.slice(), { version: 1, key: gc.generateKey() }), verify);
 });
 
 test('acknowledge sends a keepalive DELETE with the claim', async (t) => {

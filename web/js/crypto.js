@@ -7,6 +7,10 @@
   const KEY_BYTES = 32;
   const NONCE_BYTES = 12;
   const AAD = 'gone:v1';
+  const MAX_FRAGMENT_CHARS = 512;
+  const MAX_VERSION = 255;
+  const B64URL_RE = /^[A-Za-z0-9_-]*$/;
+  const FRAGMENT_RE = /^v([1-9][0-9]{0,2}):([A-Za-z0-9_-]+)$/;
   if (window.goneCrypto) return;
 
   function b64urlEncode(bytes) {
@@ -22,7 +26,12 @@
     return b64.substring(0, end);
   }
 
+  // b64urlDecode accepts only canonical unpadded base64url (docs/protocol.md
+  // section 4): URL alphabet, no padding, zero trailing bits.
   function b64urlDecode(s) {
+    if (typeof s !== 'string' || !B64URL_RE.test(s) || s.length % 4 === 1) {
+      throw new Error('invalid base64url');
+    }
     let norm = s.replace(/-/g, '+').replace(/_/g, '/');
     while (norm.length % 4) {
       norm += '=';
@@ -32,6 +41,7 @@
     for (let i = 0; i < bin.length; i++) {
       out[i] = bin.charCodeAt(i);
     }
+    if (b64urlEncode(out) !== s) throw new Error('invalid base64url');
     return out;
   }
 
@@ -96,8 +106,35 @@
     return b;
   }
 
+  function fragmentError(code) {
+    const e = new Error(code);
+    e.code = code;
+    return e;
+  }
+
+  function fragmentKey(keyB64) {
+    try {
+      return importKeyB64(keyB64);
+    } catch (_) {
+      throw fragmentError('invalid_fragment');
+    }
+  }
+
+  // parseFragment parses a URL fragment without its leading "#" as
+  // "v<version>:<key>" (docs/protocol.md section 7.2). It returns
+  // {version, key} or throws an Error whose code is "invalid_fragment" or
+  // "unsupported_version".
+  function parseFragment(s) {
+    const m = typeof s === 'string' && s.length <= MAX_FRAGMENT_CHARS ? FRAGMENT_RE.exec(s) : null;
+    const version = m ? Number(m[1]) : 0;
+    if (!m || version > MAX_VERSION) throw fragmentError('invalid_fragment');
+    if (version !== VERSION) throw fragmentError('unsupported_version');
+    return { version: version, key: fragmentKey(m[2]) };
+  }
+
   window.goneCrypto = Object.freeze({
     version: VERSION,
+    parseFragment: parseFragment,
     generateKey: generateKey,
     exportKeyB64: exportKeyB64,
     importKeyB64: importKeyB64,

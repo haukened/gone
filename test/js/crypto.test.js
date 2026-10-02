@@ -27,6 +27,26 @@ test('b64url round trips without padding or unsafe chars', () => {
   assert.equal(gc.b64urlEncode(new Uint8Array([0xfb, 0xff])), '-_8');
 });
 
+test('b64url decoding is strict and canonical', () => {
+  for (const bad of [undefined, 42, 'AA==', 'A', 'AAAAA', 'AB', 'AAB', 'A+B/', 'AA AA', 'AQ\n']) {
+    assert.throws(() => gc.b64urlDecode(bad), /invalid base64url/, String(bad));
+  }
+  assert.deepEqual(gc.b64urlDecode(''), new Uint8Array(0));
+  assert.deepEqual(gc.b64urlDecode('AQ'), new Uint8Array([1]));
+});
+
+test('parseFragment returns the version and key or a coded error', () => {
+  const key = gc.generateKey();
+  const f = gc.parseFragment('v1:' + gc.exportKeyB64(key));
+  assert.equal(f.version, 1);
+  assert.deepEqual(f.key, key);
+  const code = (want) => (e) => e.code === want && e.message === want;
+  for (const bad of [undefined, null, 1, '#v1:' + gc.exportKeyB64(key), 'v1:' + 'A'.repeat(600)]) {
+    assert.throws(() => gc.parseFragment(bad), code('invalid_fragment'), String(bad));
+  }
+  assert.throws(() => gc.parseFragment('v9:' + gc.exportKeyB64(key)), code('unsupported_version'));
+});
+
 test('key generation and import/export', () => {
   const key = gc.generateKey();
   assert.equal(key.length, 32);

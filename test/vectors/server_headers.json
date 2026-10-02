@@ -1,0 +1,106 @@
+{
+  "versions": [
+    {
+      "in": "1",
+      "ok": true
+    },
+    {
+      "in": "2",
+      "ok": false
+    },
+    {
+      "in": "0",
+      "ok": false
+    },
+    {
+      "in": "01",
+      "ok": false
+    },
+    {
+      "in": "+1",
+      "ok": false
+    },
+    {
+      "in": "-1",
+      "ok": false
+    },
+    {
+      "in": " 1",
+      "ok": false
+    },
+    {
+      "in": "1 ",
+      "ok": false
+    },
+    {
+      "in": "1.0",
+      "ok": false
+    },
+    {
+      "in": "256",
+      "ok": false
+    },
+    {
+      "in": "1000",
+      "ok": false
+    },
+    {
+      "in": "",
+      "ok": false
+    },
+    {
+      "in": "a",
+      "ok": false
+    },
+    {
+      "in": "１",
+      "ok": false
+    }
+  ],
+  "nonces": [
+    {
+      "in": "AAAAAAAAAAAAAAAA",
+      "ok": true
+    },
+    {
+      "in": "oKGio6Slpqeoqaqr",
+      "ok": true
+    },
+    {
+      "in": "____________----",
+      "ok": true
+    },
+    {
+      "in": "AAAAAAAAAAAAAAA",
+      "ok": false
+    },
+    {
+      "in": "AAAAAAAAAAAAAAAAA",
+      "ok": false
+    },
+    {
+      "in": "AAAAAAAAAAAAAAA=",
+      "ok": false
+    },
+    {
+      "in": "AAAAAAAAAAAAAAA+",
+      "ok": false
+    },
+    {
+      "in": "AAAAAAAAAAAAAAA/",
+      "ok": false
+    },
+    {
+      "in": "AAAAAAAAAAAAAAA ",
+      "ok": false
+    },
+    {
+      "in": "",
+      "ok": false
+    },
+    {
+      "in": "AAAAAAAAAAAAAAAAAAAA",
+      "ok": false
+    }
+  ]
+}

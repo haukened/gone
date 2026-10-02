@@ -30,31 +30,56 @@
     'video/mp4'
   ]);
 
-  // Controls, bidi overrides/isolates and zero-width characters.
+  // Controls, invisible bidi marks, overrides/isolates and zero-width
+  // characters (docs/protocol.md section 6.1).
   const UNSAFE_RANGES = [
-    [0x00, 0x1f], [0x7f, 0x9f], [0x200b, 0x200f],
-    [0x202a, 0x202e], [0x2066, 0x2069], [0xfeff, 0xfeff]
+    [0x00, 0x1f], [0x7f, 0x9f], [0x061c, 0x061c], [0x180e, 0x180e],
+    [0x200b, 0x200f], [0x202a, 0x202e], [0x2060, 0x206f], [0xfeff, 0xfeff]
   ];
 
-  function isSafeChar(ch) {
-    const cp = ch.codePointAt(0);
-    return !UNSAFE_RANGES.some(function (r) { return cp >= r[0] && cp <= r[1]; });
+  function isASCII(s) {
+    for (let i = 0; i < s.length; i++) {
+      if (s.charCodeAt(i) > 0x7f) return false;
+    }
+    return true;
+  }
+
+  function isUnsafe(cp) {
+    return UNSAFE_RANGES.some(function (r) { return cp >= r[0] && cp <= r[1]; });
+  }
+
+  // safeChars drops unsafe characters, turns lone surrogates into U+FFFD
+  // and keeps at most MAX_NAME_CHARS code points.
+  function safeChars(s) {
+    const out = [];
+    for (const ch of s) {
+      if (out.length === MAX_NAME_CHARS) break;
+      const cp = ch.codePointAt(0);
+      if (isUnsafe(cp)) continue;
+      out.push(cp >= 0xd800 && cp <= 0xdfff ? '\ufffd' : ch);
+    }
+    return out.join('');
   }
 
   // sanitizeFileName keeps only the last path segment, strips unsafe
-  // characters, and caps the length; empty or dot names become "file".
+  // characters, caps the length and trims whitespace; empty or dot names
+  // become "file". Must match internal/envelope.SanitizeFileName.
   function sanitizeFileName(name) {
     const parts = String(name || '').split(/[\\/]+/).filter(Boolean);
     const last = parts.length ? parts[parts.length - 1] : '';
-    const base = Array.from(last).filter(isSafeChar).join('').trim();
+    const base = safeChars(last).trim();
     if (base === '' || base === '.' || base === '..') return FALLBACK_NAME;
-    return Array.from(base).slice(0, MAX_NAME_CHARS).join('');
+    return base;
   }
 
-  // safeType returns type when allowlisted, otherwise the generic binary type.
+  // safeType returns the type's essence (before ";", trimmed, lowercased)
+  // when allowlisted, otherwise the generic binary type. Non-ASCII input is
+  // rejected before lowercasing so Unicode case folding cannot forge a match.
   function safeType(type) {
-    const t = String(type || '').toLowerCase().split(';')[0].trim();
-    return SAFE_TYPES.has(t) ? t : DEFAULT_TYPE;
+    const t = String(type || '').split(';')[0].trim();
+    if (!isASCII(t)) return DEFAULT_TYPE;
+    const lower = t.toLowerCase();
+    return SAFE_TYPES.has(lower) ? lower : DEFAULT_TYPE;
   }
 
   // formatBytes renders a byte count as B/KB/MB/GB with at most one decimal.

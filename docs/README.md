@@ -1,6 +1,6 @@
 # Gone API Documentation
 
-This directory contains the OpenAPI specification (`openapi.yaml`) for the Gone one-time secret sharing service. This page summarizes the same API in prose.
+This directory contains the OpenAPI specification (`openapi.yaml`) for the Gone one-time secret sharing service. This page summarizes the same API in prose. The encryption format, link fragment, and client rules are specified in [protocol.md](protocol.md).
 
 ## Design Goals
 - **Minimal surface**: Three secret operations (create, claim, acknowledge) plus health probes.
@@ -26,9 +26,11 @@ Metrics are **not** served on the public listener. When both `GONE_METRICS_ADDR`
 ## Creation Workflow
 1. The client builds the plaintext (see [Payload Format](#payload-format)) and encrypts it locally with AES-256-GCM, producing ciphertext, a version, and a nonce.
 2. The client sends the ciphertext body with these headers:
-   - `X-Gone-Version` (uint8; currently `1`)
-   - `X-Gone-Nonce` (base64url, 12-byte GCM IV)
+   - `X-Gone-Version` (canonical decimal, no sign or leading zeros; currently only `1`)
+   - `X-Gone-Nonce` (exactly 16 unpadded base64url characters encoding the 12-byte GCM IV)
    - `X-Gone-TTL` (Go duration, e.g. `15m`)
+
+   Each header must appear exactly once.
    - `Content-Length` (required; chunked uploads are rejected)
 3. The server validates size and TTL, issues an ID, and stores the ciphertext inline in SQLite (≤ `GONE_INLINE_MAX_BYTES`) or as a filesystem blob.
 4. Response: `201` with JSON `{ "id": "<32-hex>", "expires_at": "RFC3339" }`.
@@ -52,7 +54,7 @@ The server treats the body as opaque ciphertext. Inside the encryption:
 - **Text only:** the plaintext is the raw UTF-8 message.
 - **With attachments (envelope v2):** `"GONE2\0\0\0"` magic (8 bytes), a big-endian `u32` header length, a JSON header `{ "v": 2, "msg": <message byte length>, "files": [{ "name", "type", "size" }] }`, then the message bytes, then each file's bytes in order.
 
-File names, types, and sizes are therefore encrypted along with the contents. The web client allows up to 10 files of any type. The message and all files share the `MaxBytes` limit, which includes the 16-byte GCM tag. Encryption uses AES-256-GCM with AAD `gone:v1`.
+File names, types, and sizes are therefore encrypted along with the contents. Decoders sanitize file names and map MIME types onto an allowlist (see [protocol.md §6](protocol.md#6-sanitization)). The web client allows up to 10 files of any type. The message and all files share the `MaxBytes` limit, which includes the 16-byte GCM tag. Encryption uses AES-256-GCM with AAD `gone:v1`.
 
 ## Error Mapping
 All errors are JSON `{ "error": "<message>" }`.
@@ -61,8 +63,9 @@ All errors are JSON `{ "error": "<message>" }`.
 | --------- | ------ | ------------ |
 | Invalid ID format | 400 | `invalid id` |
 | Malformed claim token (DELETE without/with bad `X-Gone-Claim`, or bad token on GET retry) | 400 | `invalid claim` |
-| Missing `X-Gone-Version` / `X-Gone-Nonce` / `X-Gone-TTL` | 400 | `missing required headers` |
-| Unparseable version | 400 | `invalid version` |
+| Missing, empty, or repeated `X-Gone-Version` / `X-Gone-Nonce` / `X-Gone-TTL` | 400 | `missing required headers` |
+| Non-canonical or unsupported version | 400 | `invalid version` |
+| Nonce not 16 base64url characters (12 bytes) | 400 | `invalid nonce` |
 | Unparseable TTL | 400 | `invalid ttl` |
 | TTL outside `[MinTTL, MaxTTL]` | 400 | `ttl invalid` |
 | Unparseable `Content-Length` | 400 | `invalid content length` |

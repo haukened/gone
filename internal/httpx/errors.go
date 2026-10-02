@@ -33,32 +33,44 @@ func (h *Handler) writeError(ctx context.Context, w http.ResponseWriter, code in
 	writeJSONError(ctx, w, code, msg)
 }
 
+// serviceErrorMapping describes how one service error class is reported.
+type serviceErrorMapping struct {
+	err    error
+	status int
+	msg    string
+	code   string
+	level  slog.Level
+}
+
+// serviceErrorTable lists known service errors in match order.
+var serviceErrorTable = []serviceErrorMapping{
+	{domain.ErrInvalidID, http.StatusBadRequest, "invalid id", "invalid_id", slog.LevelWarn},
+	{domain.ErrInvalidClaim, http.StatusBadRequest, "invalid claim", "invalid_claim", slog.LevelWarn},
+	{domain.ErrInvalidVersion, http.StatusBadRequest, "invalid version", "invalid_version", slog.LevelWarn},
+	{domain.ErrInvalidNonce, http.StatusBadRequest, "invalid nonce", "invalid_nonce", slog.LevelWarn},
+	{app.ErrSizeExceeded, http.StatusRequestEntityTooLarge, "size exceeded", "size_exceeded", slog.LevelWarn},
+	{app.ErrNotFound, http.StatusNotFound, "not found", "not_found", slog.LevelInfo},
+	{domain.ErrTTLInvalid, http.StatusBadRequest, "ttl invalid", "ttl_invalid", slog.LevelWarn},
+	{os.ErrNotExist, http.StatusNotFound, "not found", "not_found", slog.LevelInfo},
+}
+
 // mapServiceError maps domain/store/service errors to HTTP responses.
+// Unknown errors become 500 without logging the raw error string, to avoid
+// leaking IDs or paths.
+//
+// Parameters:
+//   - ctx: request context carrying the correlation ID.
+//   - w: response writer.
+//   - err: error returned by the service.
 func (h *Handler) mapServiceError(ctx context.Context, w http.ResponseWriter, err error) {
 	cid, _ := GetCorrelationID(ctx)
-	switch {
-	case errors.Is(err, domain.ErrInvalidID):
-		slog.Warn("service error", "cid", cid, "code", "invalid_id")
-		h.writeError(ctx, w, http.StatusBadRequest, "invalid id")
-	case errors.Is(err, domain.ErrInvalidClaim):
-		slog.Warn("service error", "cid", cid, "code", "invalid_claim")
-		h.writeError(ctx, w, http.StatusBadRequest, "invalid claim")
-	case errors.Is(err, app.ErrSizeExceeded):
-		slog.Warn("service error", "cid", cid, "code", "size_exceeded")
-		h.writeError(ctx, w, http.StatusRequestEntityTooLarge, "size exceeded")
-	case errors.Is(err, app.ErrNotFound):
-		slog.Info("service error", "cid", cid, "code", "not_found")
-		h.writeError(ctx, w, http.StatusNotFound, "not found")
-	case errors.Is(err, domain.ErrTTLInvalid):
-		slog.Warn("service error", "cid", cid, "code", "ttl_invalid")
-		h.writeError(ctx, w, http.StatusBadRequest, "ttl invalid")
-	case errors.Is(err, os.ErrNotExist):
-		slog.Info("service error", "cid", cid, "code", "not_found", "err_type", "os.ErrNotExist")
-		h.writeError(ctx, w, http.StatusNotFound, "not found")
-	default:
-		// Internal / unexpected: do not log raw error string to avoid leaking IDs or paths.
-		slog.Error("unhandled service error", "cid", cid, "code", "unhandled", "err_type", "unknown")
-		h.writeError(ctx, w, http.StatusInternalServerError, "internal")
+	for _, m := range serviceErrorTable {
+		if errors.Is(err, m.err) {
+			slog.Log(ctx, m.level, "service error", "cid", cid, "code", m.code)
+			h.writeError(ctx, w, m.status, m.msg)
+			return
+		}
 	}
-
+	slog.Error("unhandled service error", "cid", cid, "code", "unhandled", "err_type", "unknown")
+	h.writeError(ctx, w, http.StatusInternalServerError, "internal")
 }

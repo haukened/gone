@@ -6,6 +6,7 @@ const { reset, load, fastUtil, captureConsole, waitFor, h } = require('./harness
 const { fakeResponse, installFetch } = require('./fakes');
 
 const ID = '0123456789abcdef0123456789abcdef';
+const VALID_FRAG = '#v1:' + 'A'.repeat(43);
 
 // boot builds the consume page at url, loads every module and runs consume.js.
 function boot(t, url, opts) {
@@ -45,10 +46,10 @@ async function sealed(plaintext) {
 test('does nothing without dependencies or the consume page', (t) => {
   reset();
   load('consume');
-  const { $, env } = boot(t, 'https://gone.test/secret/' + ID + '#v1:abcdefghijkl', { noPage: true });
+  const { $, env } = boot(t, 'https://gone.test/secret/' + ID + VALID_FRAG, { noPage: true });
   assert.equal($('secret-heading').textContent, '');
   assert.equal(env.windowListeners.beforeunload, undefined);
-  const b = boot(t, 'https://gone.test/secret/' + ID + '#v1:abcdefghijkl', { modules: ['consumeView', 'consume'] });
+  const b = boot(t, 'https://gone.test/secret/' + ID + VALID_FRAG, { modules: ['consumeView', 'consume'] });
   assert.equal(b.$('secret-heading').textContent, '');
 });
 
@@ -68,8 +69,12 @@ test('fragment and id problems are reported without fetching', (t) => {
     ['https://gone.test/secret/' + ID, 'Missing or invalid key fragment. Cannot decrypt.'],
     ['https://gone.test/secret/' + ID + '#v1:short', 'Missing or invalid key fragment. Cannot decrypt.'],
     ['https://gone.test/secret/' + ID + '#v1:bad+chars/xx', 'Missing or invalid key fragment. Cannot decrypt.'],
-    ['https://gone.test/secret/' + ID + '#v2:abcdefghijkl', 'Unsupported version'],
-    ['https://gone.test/secret/not-an-id#v1:abcdefghijkl', 'Invalid secret id']
+    ['https://gone.test/secret/' + ID + '#v1:AAAAAAAAAAAA', 'Missing or invalid key fragment. Cannot decrypt.'],
+    ['https://gone.test/secret/' + ID + '#v1:' + 'A'.repeat(42) + 'B', 'Missing or invalid key fragment. Cannot decrypt.'],
+    ['https://gone.test/secret/' + ID + '#v01:' + 'A'.repeat(43), 'Missing or invalid key fragment. Cannot decrypt.'],
+    ['https://gone.test/secret/' + ID + '#v256:' + 'A'.repeat(43), 'Missing or invalid key fragment. Cannot decrypt.'],
+    ['https://gone.test/secret/' + ID + '#v2:' + 'A'.repeat(43), 'Unsupported version'],
+    ['https://gone.test/secret/not-an-id' + VALID_FRAG, 'Invalid secret id']
   ];
   for (const [url, want] of cases) {
     const { $ } = boot(t, url);
@@ -117,8 +122,8 @@ test('known errors show their message; unexpected ones are generic', async (t) =
   const s = await sealed('x');
   const cases = [
     ['gone', [() => fakeResponse({ status: 404 })], `#v1:${s.keyB64}`, /This secret is gone/],
-    ['bad key length', [s.get], '#v1:AAAAAAAAAAAA', /^Unexpected error$/],
-    ['wrong key', [s.get], '#v1:' + 'A'.repeat(43), /Couldn.t verify/]
+    ['wrong key', [s.get], '#v1:' + 'A'.repeat(43), /Couldn.t verify/],
+    ['unexpected', [() => ({ ok: true, status: 200, headers: { get() { throw new Error('boom'); } } })], `#v1:${s.keyB64}`, /^Unexpected error$/]
   ];
   for (const [name, handlers, frag, want] of cases) {
     await t.test(name, async (st) => {

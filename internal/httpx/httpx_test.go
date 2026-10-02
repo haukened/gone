@@ -57,7 +57,7 @@ func TestHandleCreateSecretSuccess(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/secret", bytes.NewReader([]byte("cipher")))
 	req.Header.Set("Content-Length", "6")
 	req.Header.Set("X-Gone-Version", "1")
-	req.Header.Set("X-Gone-Nonce", "n1")
+	req.Header.Set("X-Gone-Nonce", "AAAAAAAAAAAAAAAA")
 	req.Header.Set("X-Gone-TTL", "5m")
 	w := httptest.NewRecorder()
 	h.Router().ServeHTTP(w, req)

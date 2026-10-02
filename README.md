@@ -212,6 +212,8 @@ The release workflow publishes multi-arch (`linux/amd64`, `linux/arm64`) images 
 This section is intentionally lower in the file—most users can stop above.
 
 ### Encryption & One‑Time Retrieval (Protocol v1)
+The normative byte-level specification, including the envelope format, sanitization rules, and shared test vectors, is [docs/protocol.md](docs/protocol.md).
+
 1. Browser creates random AES‑GCM key + nonce (Web Crypto API).
 2. Encrypts plaintext with AAD `gone:v1`. A text‑only secret is raw UTF‑8; a secret with files is a `GONE2` envelope (magic, JSON header listing the message length and each file's name/type/size, then message bytes, then file bytes) so file names and types are encrypted too.
 3. Sends ciphertext + nonce (`X-Gone-Nonce`) + version (`X-Gone-Version`). Key never leaves browser.

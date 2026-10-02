@@ -24,6 +24,8 @@ func TestMapServiceError(t *testing.T) {
 		{"size exceeded", app.ErrSizeExceeded, http.StatusRequestEntityTooLarge, "size exceeded"},
 		{"not found", app.ErrNotFound, http.StatusNotFound, "not found"},
 		{"ttl invalid", domain.ErrTTLInvalid, http.StatusBadRequest, "ttl invalid"},
+		{"invalid version", domain.ErrInvalidVersion, http.StatusBadRequest, "invalid version"},
+		{"invalid nonce", domain.ErrInvalidNonce, http.StatusBadRequest, "invalid nonce"},
 		{"os not exist", os.ErrNotExist, http.StatusNotFound, "not found"},
 		{"internal default", errors.New("boom"), http.StatusInternalServerError, "internal"},
 	}
