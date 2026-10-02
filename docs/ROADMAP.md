@@ -49,7 +49,7 @@ Phases 1 and 2 are independent and can be worked on at the same time. The UI rev
 ---
 
 ## Phase 1: Rate limiting
-**Status: implemented** on `feat/rate-limiting`.
+**Status: done** (merged in #26).
 
 Server-side only; the browser already shows a message on `429`.
 
@@ -79,6 +79,8 @@ A budget of `0` turns that limit off.
 ---
 
 ## Phase 2: Protocol spec and Go envelope
+**Status: implemented** on `feat/protocol-envelope`.
+
 No user-visible change. This phase writes down the encryption format and adds a Go copy of it, so the passphrase and CLI phases have a fixed reference to build on.
 
 **Scope**
@@ -197,8 +199,8 @@ A single static binary that can send and receive secrets.
 ## Tracking
 | Phase | Status |
 | ----- | ------ |
-| 1. Rate limiting | Planned |
-| 2. Protocol spec + Go envelope | Planned |
+| 1. Rate limiting | Done |
+| 2. Protocol spec + Go envelope | Implemented |
 | 3. Web UI revamp | Planned |
 | 4. Sender status + revoke | Planned |
 | 5. Optional passphrase | Planned |

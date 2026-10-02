@@ -22,18 +22,23 @@ paths:
           name: X-Gone-Version
           required: true
           schema:
-            type: integer
-            minimum: 0
-            maximum: 255
-          description: Client-defined version (used in decryption logic).
+            type: string
+            pattern: '^[1-9][0-9]{0,2}$'
+            example: '1'
+          description: >-
+            Protocol version in canonical decimal (no sign, no leading zeros).
+            Must be a supported version; currently only 1. Must appear exactly
+            once. See docs/protocol.md §3 and §8.
         - in: header
           name: X-Gone-Nonce
           required: true
           schema:
             type: string
-            minLength: 1
-            maxLength: 64
-          description: Base64url encoded nonce used in encryption.
+            pattern: '^[A-Za-z0-9_-]{16}$'
+          description: >-
+            Strict, canonical, unpadded base64url of the 12-byte AES-GCM nonce
+            (protocol v1). Must appear exactly once. See docs/protocol.md §2.1
+            and §4.
         - in: header
           name: X-Gone-TTL
           required: true
@@ -75,7 +80,11 @@ paths:
                     type: string
                     format: date-time
         '400':
-          description: Generic validation error (invalid content length, missing headers, invalid version/ttl, unknown fallback)
+          description: >-
+            Validation error. `error` is one of `invalid content length`,
+            `missing required headers` (absent, empty, or repeated X-Gone-*
+            header), `invalid version`, `invalid nonce`, `invalid ttl`,
+            `ttl invalid`, or `bad request`.
           content:
             application/json:
               schema:
@@ -145,10 +154,12 @@ paths:
                 example: no-store
             X-Gone-Version:
               schema:
-                type: integer
+                type: string
+                pattern: '^[1-9][0-9]{0,2}$'
             X-Gone-Nonce:
               schema:
                 type: string
+                pattern: '^[A-Za-z0-9_-]{16}$'
             Content-Length:
               schema:
                 type: integer

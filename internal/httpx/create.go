@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/haukened/gone/internal/domain"
 )
 
 // requestMeta holds parsed and validated request metadata needed to create a secret.
@@ -45,22 +47,49 @@ func (h *Handler) parseContentLength(r *http.Request) (int64, error) {
 	return cl, nil
 }
 
+// singleHeader returns the sole value of header name. ok is false when the
+// header is absent, repeated, or empty.
+//
+// Parameters:
+//   - r: incoming request.
+//   - name: canonical header name.
+//
+// Returns the value and whether exactly one non-empty value was present.
+func singleHeader(r *http.Request, name string) (string, bool) {
+	vals := r.Header.Values(name)
+	if len(vals) != 1 || vals[0] == "" {
+		return "", false
+	}
+	return vals[0], true
+}
+
+// parseSecretHeaders validates the protocol headers of a create request
+// (docs/protocol.md §8.1). Each header must appear exactly once.
+//
+// Parameters:
+//   - r: incoming request.
+//
+// Returns the version, nonce and TTL, or an error whose message is a key of
+// classifyCreateError's lookup table.
 func parseSecretHeaders(r *http.Request) (uint8, string, time.Duration, error) {
-	versionStr := r.Header.Get("X-Gone-Version")
-	nonce := r.Header.Get("X-Gone-Nonce")
-	ttlStr := r.Header.Get("X-Gone-TTL")
-	if versionStr == "" || nonce == "" || ttlStr == "" {
+	versionStr, okV := singleHeader(r, "X-Gone-Version")
+	nonce, okN := singleHeader(r, "X-Gone-Nonce")
+	ttlStr, okT := singleHeader(r, "X-Gone-TTL")
+	if !okV || !okN || !okT {
 		return 0, "", 0, errors.New("missing required headers")
 	}
-	v64, err := strconv.ParseUint(versionStr, 10, 8)
+	version, err := domain.ParseVersion(versionStr)
 	if err != nil {
-		return 0, "", 0, errors.New("invalid version")
+		return 0, "", 0, err
+	}
+	if err := domain.ValidateProtocol(version, nonce); err != nil {
+		return 0, "", 0, err
 	}
 	ttl, err := time.ParseDuration(ttlStr)
 	if err != nil {
 		return 0, "", 0, errors.New("invalid ttl")
 	}
-	return uint8(v64), nonce, ttl, nil
+	return version, nonce, ttl, nil
 }
 
 func (h *Handler) parseAndValidateCreate(r *http.Request) (*requestMeta, error) {
@@ -92,6 +121,7 @@ func classifyCreateError(err error) (int, string) {
 		"size exceeded":            http.StatusRequestEntityTooLarge,
 		"missing required headers": http.StatusBadRequest,
 		"invalid version":          http.StatusBadRequest,
+		"invalid nonce":            http.StatusBadRequest,
 		"invalid ttl":              http.StatusBadRequest,
 	}
 	msg := err.Error()

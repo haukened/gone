@@ -1,0 +1,75 @@
+{
+  "description": "AES-256-GCM v1; hex fields; AAD is UTF-8 text",
+  "aad": "gone:v1",
+  "cases": [
+    {
+      "name": "empty",
+      "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "nonce": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "ciphertext": "885acdb35a52f45892f4f46e652699cf"
+    },
+    {
+      "name": "text",
+      "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "nonce": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "plaintext": "676f6e6520766563746f72",
+      "ciphertext": "8177124865bd67dc160af5f15acf959dd6178f8e776478492a829c"
+    },
+    {
+      "name": "two blocks plus",
+      "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "nonce": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "plaintext": "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+      "ciphertext": "a6593e6e018e44f82a2ccd984b378e9120fd0b43c6e2143bc4577cdd23f62b5eb2085bf073692de5d86710fdf2310fb710"
+    },
+    {
+      "name": "flipped tag bit",
+      "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "nonce": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "ciphertext": "a6593e6e018e44f82a2ccd984b378e9120fd0b43c6e2143bc4577cdd23f62b5eb2085bf073692de5d86710fdf2310fb711",
+      "error": "decrypt"
+    },
+    {
+      "name": "flipped ciphertext bit",
+      "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "nonce": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "ciphertext": "a7593e6e018e44f82a2ccd984b378e9120fd0b43c6e2143bc4577cdd23f62b5eb2085bf073692de5d86710fdf2310fb710",
+      "error": "decrypt"
+    },
+    {
+      "name": "wrong aad",
+      "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "nonce": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "ciphertext": "a6593e6e018e44f82a2ccd984b378e9120fd0b43c6e2143bc4577cdd23f62b5eb2f68559e7678d3326122fd4a3e982999b",
+      "error": "decrypt"
+    },
+    {
+      "name": "wrong key",
+      "key": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "nonce": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "ciphertext": "a6593e6e018e44f82a2ccd984b378e9120fd0b43c6e2143bc4577cdd23f62b5eb2085bf073692de5d86710fdf2310fb710",
+      "error": "decrypt"
+    },
+    {
+      "name": "short nonce",
+      "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "nonce": "a0a1a2a3a4a5a6a7a8a9aa",
+      "ciphertext": "a6593e6e018e44f82a2ccd984b378e9120fd0b43c6e2143bc4577cdd23f62b5eb2085bf073692de5d86710fdf2310fb710",
+      "error": "decrypt"
+    },
+    {
+      "name": "31-byte key",
+      "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e",
+      "nonce": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "ciphertext": "a6593e6e018e44f82a2ccd984b378e9120fd0b43c6e2143bc4577cdd23f62b5eb2085bf073692de5d86710fdf2310fb710",
+      "error": "decrypt"
+    },
+    {
+      "name": "truncated tag",
+      "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "nonce": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "ciphertext": "a6593e6e018e44f82a2ccd984b378e",
+      "error": "decrypt"
+    }
+  ]
+}

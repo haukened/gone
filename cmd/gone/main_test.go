@@ -140,7 +140,7 @@ func TestBuildServiceUsesConfiguredInlineThreshold(t *testing.T) {
 	cfg := &config.Config{InlineMaxBytes: 4, MaxBytes: 32, MinTTL: time.Minute, MaxTTL: 2 * time.Minute}
 	s := buildService(idx, blobs, cfg, realClock{})
 
-	if _, _, err := s.CreateSecret(context.Background(), strings.NewReader("external"), int64(len("external")), 1, "nonce", time.Minute); err != nil {
+	if _, _, err := s.CreateSecret(context.Background(), strings.NewReader("external"), int64(len("external")), 1, "AAAAAAAAAAAAAAAA", time.Minute); err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
 	if !blobs.wrote {

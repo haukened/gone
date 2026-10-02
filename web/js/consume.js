@@ -11,6 +11,8 @@
   if (!util || !util.allPresent([window.goneCrypto, window.goneEnvelope, api, view]) || !view.present) return;
 
   const MALFORMED = 'This secret\u2019s contents are malformed; ask the sender to resend it.';
+  const BAD_FRAGMENT = 'Missing or invalid key fragment. Cannot decrypt.';
+  const FRAGMENT_PROBLEMS = new Map([['unsupported_version', 'Unsupported version']]);
   const PREVIEW_TEXT = 'This is a preview of a decrypted secret. Customize via ?text=...';
 
   function decodeEnvelope(plaintext) {
@@ -22,14 +24,14 @@
     }
   }
 
-  async function run(keyB64) {
+  async function run(frag) {
     const t0 = performance.now();
     const claim = { token: '' };
     view.setStatus('Retrieving\u2026');
     const fetched = await api.fetchWithRetry(claim, view.setProgress);
     util.logTiming('consume_fetch', t0, performance.now());
     view.setStatus('Decrypting\u2026');
-    const plaintext = await api.decrypt(fetched.resp, fetched.body, keyB64);
+    const plaintext = await api.decrypt(fetched.resp, fetched.body, frag);
     view.keepPlaintext(plaintext);
     view.showDecoded(decodeEnvelope(plaintext));
     util.logTiming('consume_total', t0, performance.now());
@@ -41,17 +43,14 @@
     view.setStatus('Decrypted (preview)');
   }
 
-  function parseFragment(hash) {
-    const m = /^#v(\d+):([A-Za-z0-9_-]{10,})$/.exec(hash || '');
-    if (!m) return null;
-    return { version: parseInt(m[1], 10), keyB64: m[2] };
-  }
-
-  // keyProblem returns a status message when the fragment is unusable.
-  function keyProblem(frag) {
-    if (!frag) return 'Missing or invalid key fragment. Cannot decrypt.';
-    if (frag.version !== window.goneCrypto.version) return 'Unsupported version';
-    return '';
+  // readFragment validates location.hash (one leading "#" removed) before
+  // any network request. Returns {frag, problem}; problem is a status message.
+  function readFragment(hash) {
+    try {
+      return { frag: window.goneCrypto.parseFragment(String(hash).replace(/^#/, '')), problem: '' };
+    } catch (e) {
+      return { frag: null, problem: FRAGMENT_PROBLEMS.get(e.code) || BAD_FRAGMENT };
+    }
   }
 
   // registerFromPath pins the API endpoint to the id in the page URL.
@@ -79,10 +78,9 @@
       handlePreview(params);
       return;
     }
-    const frag = parseFragment(location.hash);
-    const problem = keyProblem(frag);
-    if (problem) {
-      view.setStatus(problem);
+    const parsed = readFragment(location.hash);
+    if (parsed.problem) {
+      view.setStatus(parsed.problem);
       return;
     }
     if (!registerFromPath()) {
@@ -91,7 +89,7 @@
     }
     window.addEventListener('beforeunload', view.guardUnload);
     window.addEventListener('pagehide', view.cleanup);
-    run(frag.keyB64).catch(fail);
+    run(parsed.frag).catch(fail);
   }
 
   start();

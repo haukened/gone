@@ -9,4 +9,12 @@ var (
 	ErrTTLInvalid = errors.New("ttl invalid")
 	// ErrInvalidClaim indicates a malformed claim token.
 	ErrInvalidClaim = errors.New("invalid claim token")
+	// ErrInvalidVersion indicates a malformed or unsupported protocol version.
+	ErrInvalidVersion = errors.New("invalid version")
+	// ErrInvalidNonce indicates a nonce that is not strict base64url of the
+	// version's nonce size.
+	ErrInvalidNonce = errors.New("invalid nonce")
+	// ErrInvalidB64 indicates input that is not strict, canonical, unpadded
+	// base64url.
+	ErrInvalidB64 = errors.New("invalid base64url")
 )

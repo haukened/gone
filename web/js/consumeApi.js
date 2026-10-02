@@ -14,6 +14,7 @@
   const RETRY_BACKOFF_MS = 500;
   const API_PATH = '/api/secret/';
   const SECRET_ID_RE = /^[0-9a-f]{32}$/;
+  const DECIMAL_RE = /^(0|[1-9][0-9]{0,14})$/;
   const GONE_MESSAGE = 'This secret is gone: it never existed, was already opened, has expired, or was opened elsewhere. If your own download was interrupted, ask the sender to share it again.';
   const STATUS_MESSAGES = new Map([
     [400, 'Invalid secret link'],
@@ -22,6 +23,7 @@
     [429, 'Slow down: too many requests. Please wait and retry.']
   ]);
   const NETWORK_ERROR = 'Network error retrieving secret';
+  const INCOMPLETE_ERROR = 'Download was incomplete';
   const VERIFY_ERROR = 'Couldn\u2019t verify this secret. The link may be incomplete or wrong; ask the sender to resend it.';
 
   // api.endpoint is resolved once by registerEndpoint(); allowedEndpoints is
@@ -45,8 +47,13 @@
     return STATUS_MESSAGES.get(status) || 'Server error retrieving secret';
   }
 
-  function headerInt(resp, name) {
-    return parseInt(resp.headers.get(name) || '0', 10) || 0;
+  // declaredLength returns the Content-Length, or -1 when it is absent.
+  // A present but non-canonical value is treated as a broken download.
+  function declaredLength(resp) {
+    const raw = resp.headers.get('Content-Length');
+    if (raw === null) return -1;
+    if (!DECIMAL_RE.test(raw)) throw FetchError(INCOMPLETE_ERROR, true);
+    return Number(raw);
   }
 
   // secretEndpoint is the only place an API URL is built. It accepts nothing but
@@ -102,7 +109,8 @@
     return out;
   }
 
-  // readBody streams the response body, reporting progress as it goes.
+  // readBody streams the response body, reporting progress as it goes. It
+  // stops early once more than total bytes arrive (total < 0 means unknown).
   async function readBody(resp, total, onProgress) {
     if (!resp.body || !resp.body.getReader) {
       return new Uint8Array(await resp.arrayBuffer());
@@ -115,6 +123,10 @@
       if (done) break;
       chunks.push(value);
       received += value.length;
+      if (total >= 0 && received > total) {
+        reader.cancel().catch(() => {});
+        break;
+      }
       onProgress(received, total);
     }
     return concatChunks(chunks, received);
@@ -135,16 +147,20 @@
     return resp;
   }
 
-  // readComplete reads the whole body and rejects a truncated download.
+  // readComplete reads the whole body and, when Content-Length is present,
+  // rejects any body that is not exactly that long (docs/protocol.md 8.2).
   async function readComplete(resp, onProgress) {
-    const total = headerInt(resp, 'Content-Length');
+    const total = declaredLength(resp);
     let body;
     try {
       body = await readBody(resp, total, onProgress);
     } catch (_) {
       throw FetchError(NETWORK_ERROR, true);
     }
-    if (total && body.length !== total) throw FetchError('Download was incomplete', true);
+    if (total >= 0 && body.length !== total) {
+      body.fill(0);
+      throw FetchError(INCOMPLETE_ERROR, true);
+    }
     return body;
   }
 
@@ -180,19 +196,22 @@
   }
 
   // --- Crypto ------------------------------------------------------------------
-  // decrypt authenticates and decrypts ciphertext using the response's version
-  // and nonce headers. The key and ciphertext buffers are zeroed afterwards.
-  async function decrypt(resp, ciphertext, keyB64) {
+  // decrypt authenticates and decrypts ciphertext with frag, the parsed
+  // link fragment ({version, key}). X-Gone-Version must equal the link's
+  // version exactly; a malformed nonce gets the same error as a failed
+  // decryption. The key and ciphertext buffers are zeroed afterwards.
+  async function decrypt(resp, ciphertext, frag) {
     const gc = window.goneCrypto;
-    if (headerInt(resp, 'X-Gone-Version') !== gc.version) throw FetchError('Unsupported secret version', false);
-    const nonce = gc.b64urlDecode(resp.headers.get('X-Gone-Nonce') || '');
-    const keyBytes = gc.importKeyB64(keyB64);
     try {
-      return await gc.decrypt(ciphertext, nonce, keyBytes);
-    } catch (_) {
-      throw FetchError(VERIFY_ERROR, false);
+      if (resp.headers.get('X-Gone-Version') !== String(frag.version)) {
+        throw FetchError('Unsupported secret version', false);
+      }
+      const nonce = gc.b64urlDecode(resp.headers.get('X-Gone-Nonce') || '');
+      return await gc.decrypt(ciphertext, nonce, frag.key);
+    } catch (e) {
+      throw isFetchError(e) ? e : FetchError(VERIFY_ERROR, false);
     } finally {
-      keyBytes.fill(0);
+      frag.key.fill(0);
       ciphertext.fill(0);
     }
   }

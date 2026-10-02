@@ -3,3 +3,4 @@ exclude_paths:
   - ".codacy/**"
   - "**/*_test.go"
   - "test/js/**"
+  - "test/vectors/**"

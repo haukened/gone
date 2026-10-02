@@ -37,7 +37,7 @@ func TestCreateEndpointErrors(t *testing.T) {
 	commonHeaders := func(h http.Header) {
 		h.Set("Content-Length", "10")
 		h.Set("X-Gone-Version", "1")
-		h.Set("X-Gone-Nonce", "n")
+		h.Set("X-Gone-Nonce", "AAAAAAAAAAAAAAAA")
 		h.Set("X-Gone-TTL", "5m")
 	}
 	tests := []struct {

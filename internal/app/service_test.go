@@ -126,7 +126,7 @@ func TestServiceCreateSecretSuccess(t *testing.T) {
 	svc := &Service{Store: ms, Clock: fixedClock{now: now}, MaxBytes: 1024, MinTTL: time.Minute, MaxTTL: 10 * time.Minute}
 	data := "ciphertext"
 	ttl := 2 * time.Minute
-	id, exp, err := svc.CreateSecret(context.Background(), strings.NewReader(data), int64(len(data)), 1, "nonce123", ttl)
+	id, exp, err := svc.CreateSecret(context.Background(), strings.NewReader(data), int64(len(data)), 1, "AAAAAAAAAAAAAAAA", ttl)
 	if err != nil {
 		t.Fatalf("CreateSecret error: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestServiceCreateSecretSuccess(t *testing.T) {
 	if ms.savedID != id.String() {
 		t.Fatalf("savedID mismatch")
 	}
-	if ms.savedMeta.Version != 1 || ms.savedMeta.NonceB64u != "nonce123" {
+	if ms.savedMeta.Version != 1 || ms.savedMeta.NonceB64u != "AAAAAAAAAAAAAAAA" {
 		t.Fatalf("meta mismatch: %+v", ms.savedMeta)
 	}
 	if ms.savedSize != int64(len(data)) {
@@ -157,22 +157,47 @@ func TestServiceCreateSecretTTLInvalid(t *testing.T) {
 	ms := &mockStore{}
 	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 1024, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
 	// below min
-	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, 1, "n", 30*time.Second); err != domain.ErrTTLInvalid {
+	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, 1, "AAAAAAAAAAAAAAAA", 30*time.Second); err != domain.ErrTTLInvalid {
 		t.Fatalf("expected ErrTTLInvalid for below min, got %v", err)
 	}
 	// above max
-	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, 1, "n", 10*time.Minute); err != domain.ErrTTLInvalid {
+	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, 1, "AAAAAAAAAAAAAAAA", 10*time.Minute); err != domain.ErrTTLInvalid {
 		t.Fatalf("expected ErrTTLInvalid for above max, got %v", err)
+	}
+}
+
+func TestServiceCreateSecretProtocolValidation(t *testing.T) {
+	cases := []struct {
+		name    string
+		version uint8
+		nonce   string
+		want    error
+	}{
+		{"unsupported version", 2, "AAAAAAAAAAAAAAAA", domain.ErrInvalidVersion},
+		{"zero version", 0, "AAAAAAAAAAAAAAAA", domain.ErrInvalidVersion},
+		{"short nonce", 1, "n", domain.ErrInvalidNonce},
+		{"non-canonical nonce", 1, "AAAAAAAAAAAAAAA=", domain.ErrInvalidNonce},
+	}
+	for _, c := range cases {
+		ms := &mockStore{}
+		svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 10, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
+		_, _, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, c.version, c.nonce, time.Minute)
+		if !errors.Is(err, c.want) {
+			t.Errorf("%s: err = %v, want %v", c.name, err, c.want)
+		}
+		if ms.saveCalled {
+			t.Errorf("%s: store must not be called", c.name)
+		}
 	}
 }
 
 func TestServiceCreateSecretSizeValidation(t *testing.T) {
 	ms := &mockStore{}
 	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 10, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
-	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader(""), 0, 1, "n", time.Minute); err != ErrSizeExceeded {
+	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader(""), 0, 1, "AAAAAAAAAAAAAAAA", time.Minute); err != ErrSizeExceeded {
 		t.Fatalf("expected ErrSizeExceeded for size 0, got %v", err)
 	}
-	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader("01234567890"), 11, 1, "n", time.Minute); err != ErrSizeExceeded {
+	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader("01234567890"), 11, 1, "AAAAAAAAAAAAAAAA", time.Minute); err != ErrSizeExceeded {
 		t.Fatalf("expected ErrSizeExceeded for oversize, got %v", err)
 	}
 }
@@ -181,7 +206,7 @@ func TestServiceCreateSecretStoreError(t *testing.T) {
 	boom := errors.New("boom")
 	ms := &mockStore{saveErr: boom}
 	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 100, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
-	_, _, err := svc.CreateSecret(context.Background(), strings.NewReader("abc"), 3, 1, "n", 2*time.Minute)
+	_, _, err := svc.CreateSecret(context.Background(), strings.NewReader("abc"), 3, 1, "AAAAAAAAAAAAAAAA", 2*time.Minute)
 	if err != boom {
 		t.Fatalf("expected store error propagation, got %v", err)
 	}

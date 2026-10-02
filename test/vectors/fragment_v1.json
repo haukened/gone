@@ -1,0 +1,125 @@
+[
+  {
+    "input": "v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "version": 1,
+    "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  {
+    "input": "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "version": 1,
+    "key": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+    "input": "v1:__________________________________________w",
+    "version": 1,
+    "key": "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc"
+  },
+  {
+    "input": "",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1:",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "#v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "V1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "x1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v0:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v01:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v+1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1.0:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v256:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1000:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v2:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "unsupported_version"
+  },
+  {
+    "input": "v255:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "unsupported_version"
+  },
+  {
+    "input": "v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+/",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1%3AAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "%761:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8#",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8 ",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHg",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8g",
+    "error": "invalid_fragment"
+  }
+]

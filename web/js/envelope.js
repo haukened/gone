@@ -11,6 +11,7 @@
 //   file bytes, concatenated in header order
 //
 // Plaintext without the magic prefix is treated as a legacy text-only secret.
+// The normative format is docs/protocol.md section 5.
 // Requires window.goneFileMeta (fileMeta.js).
 (function envelopeModule() {
   if (window.goneEnvelope || !window.goneFileMeta) return;
@@ -39,11 +40,18 @@
     return utf8(JSON.stringify({ v: 2, msg: msgLen, files: files }));
   }
 
+  // needsEnvelope reports whether the plaintext must be GONE2: there are
+  // files, or the text itself starts with the magic and would be misread.
+  function needsEnvelope(msgBytes, fileCount) {
+    return fileCount > 0 || hasMagic(msgBytes);
+  }
+
   // encryptedSize returns the ciphertext size (including the GCM tag) the
   // server will see for the given message and file metadata.
   function encryptedSize(message, fileMetas) {
-    const msgLen = utf8(message).length;
-    if (!fileMetas.length) return msgLen + GCM_TAG_BYTES;
+    const msgBytes = utf8(message);
+    const msgLen = msgBytes.length;
+    if (!needsEnvelope(msgBytes, fileMetas.length)) return msgLen + GCM_TAG_BYTES;
     const header = headerBytes(msgLen, fileMetas);
     return sumSizes(fileMetas, PREFIX_BYTES + header.length + msgLen + GCM_TAG_BYTES);
   }
@@ -65,17 +73,18 @@
   }
 
   // encode builds the plaintext. files is [{name, type, bytes: Uint8Array}].
-  // A text-only secret is encoded as raw UTF-8 for compatibility.
+  // A text-only secret is raw UTF-8 unless it starts with the magic.
   function encode(message, files) {
+    const list = files || [];
     const msgBytes = utf8(message);
-    if (!files || !files.length) return msgBytes;
-    if (files.length > MAX_FILES) throw new Error('too many files');
-    const metas = files.map(function (f) { return { name: f.name, type: f.type, size: f.bytes.length }; });
+    if (list.length > MAX_FILES) throw new Error('too many files');
+    if (!needsEnvelope(msgBytes, list.length)) return msgBytes;
+    const metas = list.map(function (f) { return { name: f.name, type: f.type, size: f.bytes.length }; });
     const header = headerBytes(msgBytes.length, metas);
     if (header.length > MAX_HEADER_BYTES) throw new Error('header too large');
     const lenField = new Uint8Array(4);
     viewOf(lenField).setUint32(0, header.length);
-    const parts = [MAGIC, lenField, header, msgBytes].concat(files.map(function (f) { return f.bytes; }));
+    const parts = [MAGIC, lenField, header, msgBytes].concat(list.map(function (f) { return f.bytes; }));
     const out = concatParts(parts, sumSizes(metas, PREFIX_BYTES + header.length + msgBytes.length));
     msgBytes.fill(0);
     return out;
@@ -89,12 +98,16 @@
     return Number.isSafeInteger(n) && n >= 0;
   }
 
+  function isObject(v) {
+    return typeof v === 'object' && v !== null && !Array.isArray(v);
+  }
+
   function isValidFile(f) {
-    return Boolean(f) && isSize(f.size);
+    return isObject(f) && typeof f.name === 'string' && typeof f.type === 'string' && isSize(f.size);
   }
 
   function isValidShape(h) {
-    return Boolean(h) && h.v === 2 && isSize(h.msg) && Array.isArray(h.files);
+    return isObject(h) && h.v === 2 && isSize(h.msg) && Array.isArray(h.files);
   }
 
   // validateHeader checks the header shape and that its sizes exactly
@@ -111,7 +124,7 @@
     const headerLen = viewOf(bytes).getUint32(MAGIC.length);
     if (headerLen > Math.min(MAX_HEADER_BYTES, bytes.length - PREFIX_BYTES)) throw new Error('invalid header length');
     const bodyStart = PREFIX_BYTES + headerLen;
-    const header = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(PREFIX_BYTES, bodyStart)));
+    const header = JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes.subarray(PREFIX_BYTES, bodyStart)));
     validateHeader(header, bytes.length - bodyStart);
     return { header: header, bodyStart: bodyStart };
   }

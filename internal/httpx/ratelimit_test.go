@@ -100,7 +100,7 @@ func createRequest(body io.Reader) *http.Request {
 	req := httptest.NewRequest(http.MethodPost, "/api/secret", body)
 	req.Header.Set("Content-Length", "6")
 	req.Header.Set("X-Gone-Version", "1")
-	req.Header.Set("X-Gone-Nonce", "n1")
+	req.Header.Set("X-Gone-Nonce", "AAAAAAAAAAAAAAAA")
 	req.Header.Set("X-Gone-TTL", "5m")
 	req.RemoteAddr = "192.0.2.10:4000"
 	return req

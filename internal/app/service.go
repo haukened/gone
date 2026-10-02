@@ -46,7 +46,9 @@ type Metrics interface {
 }
 
 // CreateSecret validates inputs, assigns a new ID, determines expiry, and persists the secret.
-// Returns the generated ID and its expiration timestamp.
+// Returns the generated ID and its expiration timestamp, or
+// domain.ErrTTLInvalid, ErrSizeExceeded, domain.ErrInvalidVersion,
+// domain.ErrInvalidNonce, or a storage error.
 // ctx - the http request context for cancellation and deadlines
 // ct - the ciphertext reader
 // size - the size of the ciphertext
@@ -59,6 +61,9 @@ func (s *Service) CreateSecret(ctx context.Context, ct io.Reader, size int64, ve
 	}
 	if size <= 0 || size > s.MaxBytes {
 		return "", time.Time{}, ErrSizeExceeded
+	}
+	if err := domain.ValidateProtocol(version, nonce); err != nil {
+		return "", time.Time{}, err
 	}
 	id, genErr := domain.NewID()
 	if genErr != nil { // extremely unlikely, but propagate
