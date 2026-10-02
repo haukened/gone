@@ -268,7 +268,14 @@ Disable by removing parameter & clearing the key.
 ---
 
 ## 11. Roadmap (Excerpt)
+The full plan for Gone v3 is in [docs/ROADMAP.md](docs/ROADMAP.md). Highlights:
 * Rate limiting / abuse guard
+* Optional passphrase (second factor alongside the link)
+* Sender status & revoke via a private management link
+* Command-line client (`gone-cli`)
+* Web UI revamp
+
+Other ideas:
 * Optional Prometheus exposition
 * CSP tightening & documentation
 * Graceful shutdown coordination improvements
