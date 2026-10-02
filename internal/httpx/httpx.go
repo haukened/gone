@@ -18,7 +18,8 @@ import (
 // It is satisfied by *app.Service in production and mocked in tests.
 type ServicePort interface {
 	CreateSecret(ctx context.Context, ct io.Reader, size int64, version uint8, nonce string, ttl time.Duration) (id domain.SecretID, expiresAt time.Time, err error)
-	Consume(ctx context.Context, idStr string) (app.Meta, io.ReadCloser, int64, error)
+	Claim(ctx context.Context, idStr, token string) (app.ClaimResult, error)
+	Ack(ctx context.Context, idStr, token string) error
 }
 
 // Handler wires HTTP endpoints to the application service.
@@ -53,7 +54,7 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("/about", h.handleAbout)
 	mux.HandleFunc("/secret/", h.handleSecret) // expect /secret/{id}
 	mux.HandleFunc("/api/secret", h.handleCreateSecret)
-	mux.HandleFunc("/api/secret/", h.handleConsumeSecret) // expect /api/secret/{id}
+	mux.HandleFunc("/api/secret/", h.handleConsumeSecret) // expect GET|DELETE /api/secret/{id}
 	mux.HandleFunc("/healthz", h.handleHealth)
 	mux.HandleFunc("/readyz", h.handleReady)
 	if h.Assets != nil {

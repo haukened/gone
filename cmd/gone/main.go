@@ -54,23 +54,62 @@ func loadConfig() (*config.Config, error) {
 	return cfg, nil
 }
 
+// privateDirPerm is owner-only access (rwx------). Directories need the
+// execute (search) bit for the owner to open files inside them, so 0o700 is
+// the most restrictive mode that still lets the service operate.
+const privateDirPerm os.FileMode = 0o700
+
+// ensureDataDir creates (if needed) the data directory and its blobs
+// subdirectory, and enforces owner-only permissions on both, including
+// directories that already existed with looser modes.
+//
+// Parameters:
+//   - dir: path to the data directory.
+//
+// Returns:
+//   - string: the data directory path.
+//   - string: the blobs directory path.
+//   - error: non-nil if a path is not a directory, cannot be created, or its
+//     permissions cannot be restricted.
 func ensureDataDir(dir string) (string, string, error) {
-	if st, err := os.Stat(dir); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			if mkErr := os.MkdirAll(dir, 0o700); mkErr != nil {
-				return "", "", fmt.Errorf("create data dir: %w", mkErr)
-			}
-		} else {
-			return "", "", fmt.Errorf("stat data dir: %w", err)
-		}
-	} else if !st.IsDir() {
-		return "", "", fmt.Errorf("data path not directory: %s", dir)
+	if err := ensurePrivateDir(dir); err != nil {
+		return "", "", fmt.Errorf("data dir: %w", err)
 	}
 	blobDir := filepath.Join(dir, "blobs")
-	if err := os.MkdirAll(blobDir, 0o700); err != nil {
-		return "", "", fmt.Errorf("create blobs dir: %w", err)
+	if err := ensurePrivateDir(blobDir); err != nil {
+		return "", "", fmt.Errorf("blobs dir: %w", err)
 	}
 	return dir, blobDir, nil
+}
+
+// ensurePrivateDir creates dir if missing and forces its mode to
+// privateDirPerm. MkdirAll does not alter pre-existing directories, so the
+// mode is always re-applied explicitly.
+//
+// Parameters:
+//   - dir: directory path to create or tighten.
+//
+// Returns:
+//   - error: non-nil if dir exists but is not a directory, or if creation,
+//     stat, or chmod fails.
+func ensurePrivateDir(dir string) error {
+	st, err := os.Stat(dir)
+	// Directories need the owner execute (search) bit, so 0o700 is the
+	// strictest usable mode; the rules suppressed below assume file semantics.
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		if mkErr := os.MkdirAll(dir, privateDirPerm); mkErr != nil { // nosemgrep: incorrect-default-permission
+			return fmt.Errorf("create: %w", mkErr)
+		}
+	case err != nil:
+		return fmt.Errorf("stat: %w", err)
+	case !st.IsDir():
+		return fmt.Errorf("not a directory: %s", dir)
+	}
+	if err := os.Chmod(dir, privateDirPerm); err != nil { // nosemgrep: incorrect-default-permission, go_file-permissions_rule-fileperm
+		return fmt.Errorf("restrict permissions: %w", err)
+	}
+	return nil
 }
 
 // openDatabase opens <dataDir>/gone.db with the hardened DSN (WAL, foreign
@@ -171,7 +210,7 @@ func loadTemplates() (*templates, error) { // retained for existing callers
 
 func buildService(idx store.Index, blobs store.BlobStorage, cfg *config.Config, clock app.Clock) *app.Service {
 	st := store.New(idx, blobs, clock, cfg.InlineMaxBytes)
-	return &app.Service{Store: st, Clock: clock, MaxBytes: cfg.MaxBytes, MinTTL: cfg.MinTTL, MaxTTL: cfg.MaxTTL}
+	return &app.Service{Store: st, Clock: clock, MaxBytes: cfg.MaxBytes, MinTTL: cfg.MinTTL, MaxTTL: cfg.MaxTTL, ClaimLease: cfg.ClaimLease}
 }
 
 func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir string, tmpls *templates) http.Handler {
@@ -199,9 +238,99 @@ func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir stri
 }
 
 func newServer(cfg *config.Config, handler http.Handler) *http.Server {
-	return &http.Server{Addr: cfg.Addr, Handler: handler, ReadTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 120 * time.Second}
+	// Headers must arrive quickly (slowloris defense); body read/write windows
+	// are sized so a full MaxBytes payload succeeds on modest connections.
+	return &http.Server{
+		Addr:              cfg.Addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 }
 
+// startMetrics initializes the metrics schema, starts the flush loop, and,
+// when enabled, starts the token-protected metrics listener.
+//
+// Parameters:
+//   - ctx: context for schema initialization and the flush loop.
+//   - db: database the metrics manager persists to.
+//   - cfg: configuration supplying the metrics address and token.
+//
+// Returns:
+//   - *metrics.Manager: the started manager; the caller must Stop it.
+//   - *http.Server: the metrics listener, or nil when metrics are disabled.
+//   - error: non-nil if schema initialization fails.
+func startMetrics(ctx context.Context, db *sql.DB, cfg *config.Config) (*metrics.Manager, *http.Server, error) {
+	mgr := metrics.New(db, metrics.Config{FlushInterval: 5 * time.Second, Logger: slog.Default()})
+	if err := mgr.InitSchema(ctx); err != nil {
+		return nil, nil, err
+	}
+	mgr.Start(ctx)
+	if cfg.MetricsAddr != "" && cfg.MetricsToken == "" {
+		slog.Warn("metrics disabled: GONE_METRICS_ADDR set but GONE_METRICS_TOKEN is empty")
+	}
+	if !cfg.MetricsEnabled() {
+		return mgr, nil, nil
+	}
+	srv := &http.Server{Addr: cfg.MetricsAddr, Handler: metrics.Handler(mgr, cfg.MetricsToken), ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("metrics server error", "err", err)
+		}
+	}()
+	slog.Info("metrics server started", "addr", cfg.MetricsAddr)
+	return mgr, srv, nil
+}
+
+// components bundles the long-lived components assembled by run.
+type components struct {
+	cfg     *config.Config
+	db      *sql.DB
+	idx     store.Index
+	blobDir string
+	mgr     *metrics.Manager
+}
+
+// serve wires the service, janitor, and HTTP server, then blocks serving
+// requests until the listener stops.
+//
+// Parameters:
+//   - ctx: context for the janitor loop.
+//
+// Returns:
+//   - error: non-nil if blob storage, templates, or the listener fail.
+func (a *components) serve(ctx context.Context) error {
+	blobs, err := newBlobStorage(a.blobDir)
+	if err != nil {
+		return err
+	}
+	tmpls, err := loadTemplates()
+	if err != nil {
+		return err
+	}
+	clock := realClock{}
+	svc := buildService(a.idx, blobs, a.cfg, clock)
+	svc.Metrics = a.mgr
+	janStore := store.New(a.idx, blobs, clock, a.cfg.InlineMaxBytes).WithMetrics(a.mgr)
+	jan := janitor.New(janStore, a.mgr, janitor.Config{Interval: time.Minute, Logger: slog.Default()})
+	jan.Start(ctx)
+	defer jan.Stop()
+
+	srv := newServer(a.cfg, buildHandler(a.cfg, svc, a.db, a.blobDir, tmpls))
+	slog.Info("starting server", "addr", a.cfg.Addr, "pid", os.Getpid())
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
+}
+
+// run loads configuration, prepares storage and metrics, and serves until
+// the HTTP listener exits.
+//
+// Returns:
+//   - error: non-nil if any startup step or the listener fails.
 func run() error {
 	cfg, err := loadConfig()
 	if err != nil {
@@ -216,54 +345,17 @@ func run() error {
 		return err
 	}
 	defer db.Close()
-	// Initialize metrics manager & schema early so other components can emit metrics.
 	ctx := context.Background()
-	mgr := metrics.New(db, metrics.Config{FlushInterval: 5 * time.Second, Logger: slog.Default()})
-	if err := mgr.InitSchema(ctx); err != nil {
+	mgr, metricsSrv, err := startMetrics(ctx, db, cfg)
+	if err != nil {
 		return err
 	}
-	mgr.Start(ctx)
 	defer mgr.Stop(context.Background())
-
-	// Optional metrics server (separate listener) if configured.
-	var metricsSrv *http.Server
-	if cfg.MetricsAddr != "" {
-		metricsSrv = &http.Server{Addr: cfg.MetricsAddr, Handler: metrics.Handler(mgr, cfg.MetricsToken), ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
-		go func() {
-			if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				slog.Error("metrics server error", "err", err)
-			}
-		}()
-		slog.Info("metrics server started", "addr", cfg.MetricsAddr)
-	}
-	blobs, err := newBlobStorage(blobDir)
-	if err != nil {
-		return err
-	}
-	clock := realClock{}
-	svc := buildService(idx, blobs, cfg, clock)
-	// Inject metrics into service (optional interface already defined)
-	svc.Metrics = mgr
-	tmpls, err := loadTemplates()
-	if err != nil {
-		return err
-	}
-	// Start janitor with metrics.
-	janCfg := janitor.Config{Interval: time.Minute, Logger: slog.Default()}
-	jan := janitor.New(store.New(idx, blobs, clock, cfg.InlineMaxBytes), mgr, janCfg) // reuse underlying components
-	jan.Start(ctx)
-	defer jan.Stop()
-
-	srv := newServer(cfg, buildHandler(cfg, svc, db, blobDir, tmpls))
-	slog.Info("starting server", "addr", cfg.Addr, "pid", os.Getpid())
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return err
-	}
 	if metricsSrv != nil {
-		_ = metricsSrv.Shutdown(context.Background())
+		defer func() { _ = metricsSrv.Shutdown(context.Background()) }()
 	}
-
-	return nil
+	a := &components{cfg: cfg, db: db, idx: idx, blobDir: blobDir, mgr: mgr}
+	return a.serve(ctx)
 }
 
 func main() {

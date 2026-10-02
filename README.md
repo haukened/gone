@@ -24,7 +24,7 @@ Run with Docker:
 docker run --rm -p 8080:8080 ghcr.io/haukened/gone:latest
 ```
 
-Visit http://localhost:8080, paste a secret, pick an expiry, copy the generated link, send it. The recipient opens the link, the secret displays once, and the server deletes it immediately.
+Visit http://localhost:8080, paste a secret and/or attach files, pick an expiry, copy the generated link, send it. The recipient opens the link, the secret displays once, and the server deletes it as soon as their browser confirms it received everything.
 
 Want metrics? (optional)
 ```sh
@@ -43,12 +43,12 @@ curl -H 'Authorization: Bearer tok' http://localhost:9090/
 ---
 
 ## 2. Basic Usage
-1. You type a secret in the web form and choose how long it should live (its TTL).
+1. You type a secret and/or attach files (any type, up to 10 files; message + files share the `GONE_MAX_BYTES` cap) in the web form and choose how long it should live (its TTL).
 2. Your browser encrypts it locally before it ever leaves your machine.
 3. The server stores only the encrypted blob plus when it should expire.
 4. You get a link like: `https://example/secret/abcd#v1:ENC_KEY_MATERIAL`.
 5. You send that full URL (including everything after the `#`) to someone.
-6. When they open it, the server gives their browser the encrypted blob once, deletes it, and the browser decrypts it locally using the part after `#`.
+6. When they open it, the server hands their browser the encrypted blob, the browser decrypts it locally using the part after `#`, then tells the server to delete it.
 7. A refresh or second visit won’t work—the secret is already gone.
 
 Guarantees (simple terms):
@@ -66,10 +66,11 @@ Environment variables only (no flags, no config files):
 | `GONE_ADDR` | Listen address (`host:port` or `:port`). | `:8080` |
 | `GONE_DATA_DIR` | Data directory (SQLite DB + blobs). | `/data` |
 | `GONE_INLINE_MAX_BYTES` | Max ciphertext size stored inline in SQLite. | `8192` |
-| `GONE_MAX_BYTES` | Absolute max secret size (bytes). | `1048576` |
+| `GONE_MAX_BYTES` | Absolute max secret size in bytes (message + attachments combined). | `10485760` (10 MiB) |
 | `GONE_TTL_OPTIONS` | Comma list of selectable TTLs. | `5m,30m,1h,2h,4h,8h,24h` |
+| `GONE_CLAIM_LEASE` | How long an opened secret is reserved for the recipient's browser to finish downloading and confirm deletion. If it never confirms (closed tab, network drop), the secret is deleted when the lease lapses. Max `15m`. | `2m` |
 | `GONE_METRICS_ADDR` | Optional metrics listener address. | (empty) |
-| `GONE_METRICS_TOKEN` | Bearer token required when metrics are enabled. | (empty) |
+| `GONE_METRICS_TOKEN` | Bearer token for the metrics endpoint. Metrics stay disabled unless both this and `GONE_METRICS_ADDR` are set. | (empty) |
 
 Derived automatically:
 * MinTTL / MaxTTL = smallest / largest in `GONE_TTL_OPTIONS` (accepted range is any duration inside that span, not just the listed ones).
@@ -80,7 +81,7 @@ TTL Format: comma‑separated Go durations using `s`, `m`, `h` (e.g. `30s,5m,90m
 ---
 
 ## 4. Metrics (Optional)
-Disabled unless `GONE_METRICS_ADDR` is set. When metrics are enabled, `GONE_METRICS_TOKEN` is required and clients must supply `Authorization: Bearer <token>`.
+Disabled unless both `GONE_METRICS_ADDR` and `GONE_METRICS_TOKEN` are set (an address without a token logs a warning and leaves metrics off). When enabled, clients must supply `Authorization: Bearer <token>`.
 
 JSON snapshot example:
 ```json
@@ -102,6 +103,7 @@ Definitions:
 | `secrets_created_total` | counter | Secrets stored |
 | `secrets_consumed_total` | counter | Secrets consumed & deleted |
 | `secrets_expired_deleted_total` | counter | Expired secrets janitor removed |
+| `secrets_claims_expired_total` | counter | Opened secrets deleted because the recipient never confirmed receipt within the claim lease |
 | `janitor_deleted_per_cycle` | summary | Distribution of expirations per janitor run |
 
 Persistence notes:
@@ -159,7 +161,7 @@ Run with overrides (development example):
 GONE_ADDR=127.0.0.1:8080 \
 GONE_DATA_DIR=$(pwd)/data \
 GONE_TTL_OPTIONS="5m,30m,1h" \
-GONE_MAX_BYTES=$((1024*1024)) \
+GONE_MAX_BYTES=$((10*1024*1024)) \
 GONE_METRICS_ADDR=127.0.0.1:9090 \
 GONE_METRICS_TOKEN=localtok \
 ./bin/gone
@@ -188,7 +190,7 @@ The release workflow publishes multi-arch (`linux/amd64`, `linux/arm64`) images 
 ## 7. Storage & Persistence
 * Metadata (IDs, expiry, consumed state) → SQLite (WAL, FULL sync).
 * Ciphertext: inline if ≤ `GONE_INLINE_MAX_BYTES`; otherwise filesystem blob under `blobs/` in data dir.
-* Expirations cleared by janitor + immediate deletion on consume.
+* Expirations and lapsed claims cleared by janitor; deletion is immediate once the recipient acknowledges receipt.
 
 ---
 
@@ -197,25 +199,27 @@ This section is intentionally lower in the file—most users can stop above.
 
 ### Encryption & One‑Time Retrieval (Protocol v1)
 1. Browser creates random AES‑GCM key + nonce (Web Crypto API).
-2. Encrypts plaintext with AAD `gone:v1`.
+2. Encrypts plaintext with AAD `gone:v1`. A text‑only secret is raw UTF‑8; a secret with files is a `GONE2` envelope (magic, JSON header listing the message length and each file's name/type/size, then message bytes, then file bytes) so file names and types are encrypted too.
 3. Sends ciphertext + nonce (`X-Gone-Nonce`) + version (`X-Gone-Version`). Key never leaves browser.
 4. Server stores ciphertext + metadata only.
 5. Response returns secret ID + expiry.
 6. Share link: `https://host/secret/{id}#v1:<base64url-key>`.
-7. First GET streams ciphertext and deletes record atomically.
-8. Browser decrypts locally; reload fails (already deleted).
+7. First `GET /api/secret/{id}` atomically *claims* the secret and streams the ciphertext with a random claim token (`X-Gone-Claim`) and lease expiry (`X-Gone-Claim-Expires`). Any other GET without that token gets `404`, exactly as if the secret were gone.
+8. If the download is interrupted, the browser retries the GET with `X-Gone-Claim` to receive the same ciphertext again (until the lease lapses).
+9. Browser checks the byte count, decrypts locally (AES‑GCM authenticates every byte), then sends `DELETE /api/secret/{id}` with `X-Gone-Claim`; the server deletes the record and blob (`204`).
+10. If no acknowledgement arrives before `GONE_CLAIM_LEASE` lapses, the janitor deletes the secret anyway. It is never served to a second party.
 
 Properties:
 * Compromise yields only ciphertext & nonces.
 * Must possess both path ID and fragment key.
-* Atomic consume prevents replay.
+* Atomic claim (only the token holder can re-fetch) prevents replay; only a SHA‑256 hash of the claim token is stored.
 * AES‑GCM integrity + fixed AAD protect against tamper.
 
 ### Threat Model Snapshot
 Defended:
 * TLS transport assumed.
 * No server knowledge of keys / plaintext.
-* Atomic single consumption.
+* Atomic single claim; deletion after confirmed receipt or lease expiry.
 * Timely expiry deletion.
 
 Out of Scope (current):

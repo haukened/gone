@@ -38,7 +38,7 @@ func openTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-// writeTempBlob writes a blob directly (helper for orphan tests).
+// writeTempBlob writes a blob directly for orphan cleanup tests.
 func writeTempBlob(t *testing.T, dir, id string, data []byte) {
 	t.Helper()
 	path := filepath.Join(dir, id+".blob")
@@ -47,157 +47,237 @@ func writeTempBlob(t *testing.T, dir, id string, data []byte) {
 	}
 }
 
-func TestStoreSaveInlineAndConsume(t *testing.T) {
+func TestStoreSaveInlineClaimAndAck(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	clk := fixedClock{now: now}
 	db := openTestDB(t)
-	ix, _ := sqlite.New(db)
-	blobDir := t.TempDir()
-	bs, _ := filesystem.New(blobDir)
-	st := store.New(ix, bs, clk, 64) // inlineMax large enough
+	ix, err := sqlite.New(db)
+	if err != nil {
+		t.Fatalf("sqlite.New: %v", err)
+	}
+	bs, err := filesystem.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("filesystem.New: %v", err)
+	}
+	st := store.New(ix, bs, clk, 64)
 
 	id := "11111111111111111111111111111111"
 	meta := app.Meta{Version: 1, NonceB64u: "nonceA"}
 	data := []byte("hello-inline")
 	expires := now.Add(5 * time.Minute)
+	lease := now.Add(time.Minute)
 	if err := st.Save(ctx, id, meta, io.NopCloser(bytesReader(data)), int64(len(data)), expires); err != nil {
 		t.Fatalf("Save inline: %v", err)
 	}
-	// Consume first time
-	gotMeta, rc, size, err := st.Consume(ctx, id)
+	claimed, err := st.Claim(ctx, id, "claim-hash-a", false, lease)
 	if err != nil {
-		t.Fatalf("Consume: %v", err)
+		t.Fatalf("Claim: %v", err)
 	}
-	b, _ := io.ReadAll(rc)
-	rc.Close()
+	b, err := io.ReadAll(claimed.Body)
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+	if err := claimed.Body.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
 	if string(b) != string(data) {
 		t.Fatalf("data mismatch got=%q", b)
 	}
-	if size != int64(len(data)) {
-		t.Fatalf("size mismatch")
+	if claimed.Size != int64(len(data)) {
+		t.Fatalf("size mismatch got=%d", claimed.Size)
 	}
-	if gotMeta.Version != meta.Version || gotMeta.NonceB64u != meta.NonceB64u {
+	if claimed.Meta.Version != meta.Version || claimed.Meta.NonceB64u != meta.NonceB64u {
 		t.Fatalf("meta mismatch")
 	}
-	// Second consume should be not found
-	if _, _, _, err = st.Consume(ctx, id); !errors.Is(err, app.ErrNotFound) {
-		t.Fatalf("expected ErrNotFound second consume, got %v", err)
+	if claimed.ClaimedUntil.Unix() != lease.Unix() {
+		t.Fatalf("lease mismatch got=%v want=%v", claimed.ClaimedUntil, lease)
+	}
+	if _, err = st.Claim(ctx, id, "other-hash", false, lease); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for second fresh claim, got %v", err)
+	}
+	if err := st.Ack(ctx, id, "claim-hash-a"); err != nil {
+		t.Fatalf("Ack: %v", err)
+	}
+	if _, err = st.Claim(ctx, id, "claim-hash-a", true, lease); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound after ack, got %v", err)
 	}
 }
 
-func TestStoreSaveExternalAndConsume(t *testing.T) {
+func TestStoreSaveExternalClaimAndAckDeletesBlob(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	clk := fixedClock{now: now}
 	db := openTestDB(t)
-	ix, _ := sqlite.New(db)
+	ix, err := sqlite.New(db)
+	if err != nil {
+		t.Fatalf("sqlite.New: %v", err)
+	}
 	blobDir := t.TempDir()
-	bs, _ := filesystem.New(blobDir)
-	st := store.New(ix, bs, clk, 4) // inlineMax small to force external
+	bs, err := filesystem.New(blobDir)
+	if err != nil {
+		t.Fatalf("filesystem.New: %v", err)
+	}
+	st := store.New(ix, bs, clk, 4)
 
 	id := "22222222222222222222222222222222"
 	meta := app.Meta{Version: 2, NonceB64u: "nonceB"}
 	data := []byte("this-is-external-data")
 	expires := now.Add(10 * time.Minute)
+	lease := now.Add(time.Minute)
 	if err := st.Save(ctx, id, meta, io.NopCloser(bytesReader(data)), int64(len(data)), expires); err != nil {
 		t.Fatalf("Save external: %v", err)
 	}
-	// File should exist before consume
 	if _, err := os.Stat(filepath.Join(blobDir, id+".blob")); err != nil {
 		t.Fatalf("expected blob file: %v", err)
 	}
-	// Consume
-	gotMeta, rc, size, err := st.Consume(ctx, id)
+	claimed, err := st.Claim(ctx, id, "claim-hash-b", false, lease)
 	if err != nil {
-		t.Fatalf("Consume external: %v", err)
+		t.Fatalf("Claim external: %v", err)
 	}
-	readData, _ := io.ReadAll(rc)
+	readData, err := io.ReadAll(claimed.Body)
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+	if err := claimed.Body.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
 	if string(readData) != string(data) {
 		t.Fatalf("payload mismatch")
 	}
-	if size != int64(len(data)) {
+	if claimed.Size != int64(len(data)) {
 		t.Fatalf("size mismatch")
 	}
-	if gotMeta.Version != meta.Version || gotMeta.NonceB64u != meta.NonceB64u {
+	if claimed.Meta.Version != meta.Version || claimed.Meta.NonceB64u != meta.NonceB64u {
 		t.Fatalf("meta mismatch")
 	}
-	// Close triggers deletion
-	if err := rc.Close(); err != nil {
-		t.Fatalf("close(delete): %v", err)
+	if _, err := os.Stat(filepath.Join(blobDir, id+".blob")); err != nil {
+		t.Fatalf("expected blob to remain after claim reader close: %v", err)
 	}
-	// Blob should now be gone
+	if err := st.Ack(ctx, id, "claim-hash-b"); err != nil {
+		t.Fatalf("Ack: %v", err)
+	}
 	if _, err := os.Stat(filepath.Join(blobDir, id+".blob")); !os.IsNotExist(err) {
-		t.Fatalf("expected blob removed, err=%v", err)
-	}
-	// Second consume -> not found
-	if _, _, _, err := st.Consume(ctx, id); !errors.Is(err, app.ErrNotFound) {
-		t.Fatalf("expected ErrNotFound second consume, got %v", err)
+		t.Fatalf("expected blob removed by ack, err=%v", err)
 	}
 }
 
-func TestStoreConsumeExternalOpenFailureIsRetryable(t *testing.T) {
+func TestStoreClaimExternalOpenFailureIsRetryable(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	clk := fixedClock{now: now}
 	db := openTestDB(t)
-	ix, _ := sqlite.New(db)
+	ix, err := sqlite.New(db)
+	if err != nil {
+		t.Fatalf("sqlite.New: %v", err)
+	}
 	blobs := &flakyOpenBlobStore{failOpen: true}
 	st := store.New(ix, blobs, clk, 4)
 
 	id := "22222222222222222222222222222223"
 	data := []byte("this-is-external-data")
+	lease := now.Add(time.Minute)
 	if err := st.Save(ctx, id, app.Meta{Version: 2, NonceB64u: "nonceB"}, io.NopCloser(bytesReader(data)), int64(len(data)), now.Add(10*time.Minute)); err != nil {
 		t.Fatalf("Save external: %v", err)
 	}
-	if _, _, _, err := st.Consume(ctx, id); !errors.Is(err, errBlobOpen) {
+	if _, err := st.Claim(ctx, id, "claim-hash-c", false, lease); !errors.Is(err, errBlobOpen) {
 		t.Fatalf("expected blob open error, got %v", err)
 	}
 	blobs.failOpen = false
-	gotMeta, rc, size, err := st.Consume(ctx, id)
+	claimed, err := st.Claim(ctx, id, "claim-hash-c", false, lease)
 	if err != nil {
-		t.Fatalf("retry consume: %v", err)
+		t.Fatalf("retry claim: %v", err)
 	}
-	readData, _ := io.ReadAll(rc)
-	if err := rc.Close(); err != nil {
-		t.Fatalf("close(delete): %v", err)
+	readData, err := io.ReadAll(claimed.Body)
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+	if err := claimed.Body.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
 	}
 	if string(readData) != string(data) {
 		t.Fatalf("payload mismatch")
 	}
-	if size != int64(len(data)) {
+	if claimed.Size != int64(len(data)) {
 		t.Fatalf("size mismatch")
 	}
-	if gotMeta.NonceB64u != "nonceB" {
+	if claimed.Meta.NonceB64u != "nonceB" {
 		t.Fatalf("meta mismatch")
 	}
-	if !blobs.deleted {
-		t.Fatalf("expected blob deleted after successful close")
+	if blobs.deleted {
+		t.Fatalf("did not expect blob deleted before ack")
 	}
-	if _, _, _, err = st.Consume(ctx, id); !errors.Is(err, app.ErrNotFound) {
-		t.Fatalf("expected ErrNotFound after successful consume, got %v", err)
+	if err := st.Ack(ctx, id, "claim-hash-c"); err != nil {
+		t.Fatalf("Ack: %v", err)
+	}
+	if !blobs.deleted {
+		t.Fatalf("expected blob deleted after ack")
 	}
 }
 
-func TestStoreConsumeExpired(t *testing.T) {
+func TestStoreClaimExternalMissingReader(t *testing.T) {
+	st := store.New(mockIndex{claimResult: &store.IndexResult{External: true, Size: 7}}, &mockBlobStore{}, fixedClock{now: time.Now()}, 4)
+	_, err := st.Claim(context.Background(), "id", "hash", false, time.Now().Add(time.Minute))
+	if err == nil || err.Error() != "external reader missing" {
+		t.Fatalf("expected missing external reader error, got %v", err)
+	}
+}
+
+func TestStoreClaimExpired(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	clk := fixedClock{now: now}
 	db := openTestDB(t)
-	ix, _ := sqlite.New(db)
-	bs, _ := filesystem.New(t.TempDir())
+	ix, err := sqlite.New(db)
+	if err != nil {
+		t.Fatalf("sqlite.New: %v", err)
+	}
+	bs, err := filesystem.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("filesystem.New: %v", err)
+	}
 	st := store.New(ix, bs, clk, 64)
 
 	id := "33333333333333333333333333333333"
-	meta := app.Meta{Version: 1, NonceB64u: "nC"}
 	data := []byte("x")
-	expires := now.Add(-1 * time.Minute) // already expired
-	if err := st.Save(ctx, id, meta, io.NopCloser(bytesReader(data)), int64(len(data)), expires); err != nil {
+	expires := now.Add(-1 * time.Minute)
+	if err := st.Save(ctx, id, app.Meta{Version: 1, NonceB64u: "nC"}, io.NopCloser(bytesReader(data)), int64(len(data)), expires); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	// Consume should return ErrNotFound because store interprets expired rows.
-	if _, _, _, err := st.Consume(ctx, id); !errors.Is(err, app.ErrNotFound) {
-		t.Fatalf("expected ErrNotFound for expired consume, got %v", err)
+	if _, err := st.Claim(ctx, id, "claim-hash-d", false, now.Add(time.Minute)); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for expired claim, got %v", err)
+	}
+}
+
+func TestStoreAckDeletesExternalBlobOnly(t *testing.T) {
+	cases := []struct {
+		name       string
+		external   bool
+		wantDelete int
+	}{
+		{name: "inline", external: false, wantDelete: 0},
+		{name: "external", external: true, wantDelete: 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			idx := mockIndex{ackExternal: tc.external}
+			blobs := &mockBlobStore{}
+			st := store.New(idx, blobs, fixedClock{now: time.Now()}, 4)
+			if err := st.Ack(context.Background(), "id", "hash"); err != nil {
+				t.Fatalf("Ack: %v", err)
+			}
+			if got := len(blobs.deleteIDs); got != tc.wantDelete {
+				t.Fatalf("delete count got=%d want=%d", got, tc.wantDelete)
+			}
+		})
+	}
+}
+
+func TestStoreAckPropagatesIndexError(t *testing.T) {
+	ackErr := errors.New("ack failed")
+	st := store.New(mockIndex{ackErr: ackErr}, &mockBlobStore{}, fixedClock{now: time.Now()}, 4)
+	if err := st.Ack(context.Background(), "id", "hash"); !errors.Is(err, ackErr) {
+		t.Fatalf("expected ack error, got %v", err)
 	}
 }
 
@@ -206,12 +286,17 @@ func TestStoreDeleteExpired(t *testing.T) {
 	now := time.Now().UTC()
 	clk := fixedClock{now: now}
 	db := openTestDB(t)
-	ix, _ := sqlite.New(db)
+	ix, err := sqlite.New(db)
+	if err != nil {
+		t.Fatalf("sqlite.New: %v", err)
+	}
 	blobDir := t.TempDir()
-	bs, _ := filesystem.New(blobDir)
+	bs, err := filesystem.New(blobDir)
+	if err != nil {
+		t.Fatalf("filesystem.New: %v", err)
+	}
 	st := store.New(ix, bs, clk, 4)
 
-	// Insert: one expired external, one expired inline, one future
 	if err := st.Save(ctx, "44444444444444444444444444444444", app.Meta{Version: 1, NonceB64u: "a"}, io.NopCloser(bytesReader([]byte("external-data"))), int64(len("external-data")), now.Add(-5*time.Minute)); err != nil {
 		t.Fatalf("save ext: %v", err)
 	}
@@ -221,24 +306,40 @@ func TestStoreDeleteExpired(t *testing.T) {
 	if err := st.Save(ctx, "66666666666666666666666666666666", app.Meta{Version: 1, NonceB64u: "c"}, io.NopCloser(bytesReader([]byte("f"))), 1, now.Add(5*time.Minute)); err != nil {
 		t.Fatalf("save future: %v", err)
 	}
-	// Force external for first secret by size > inlineMax (already done) ensure blob exists
 	if _, err := os.Stat(filepath.Join(blobDir, "44444444444444444444444444444444.blob")); err != nil {
 		t.Fatalf("missing ext blob: %v", err)
 	}
 	count, err := st.DeleteExpired(ctx, now)
 	if err != nil {
-		t.Fatalf("ExpireBefore: %v", err)
+		t.Fatalf("DeleteExpired: %v", err)
 	}
 	if count != 2 {
 		t.Fatalf("expected 2 expired removed, got %d", count)
 	}
-	// External blob should be deleted by cleanup
 	if _, err := os.Stat(filepath.Join(blobDir, "44444444444444444444444444444444.blob")); !os.IsNotExist(err) {
 		t.Fatalf("expected external blob removed by janitor, err=%v", err)
 	}
-	// Inline consume working for future
-	if _, _, _, err := st.Consume(ctx, "66666666666666666666666666666666"); err != nil {
-		t.Fatalf("future consume: %v", err)
+	if _, err := st.Claim(ctx, "66666666666666666666666666666666", "future-hash", false, now.Add(time.Minute)); err != nil {
+		t.Fatalf("future claim: %v", err)
+	}
+}
+
+func TestStoreDeleteExpiredCountsClaimMetrics(t *testing.T) {
+	metrics := &countingMetrics{counts: map[string]int64{}}
+	st := store.New(mockIndex{expired: []store.ExpiredRecord{
+		{ID: "claimed-inline", Claimed: true},
+		{ID: "claimed-external", External: true, Claimed: true},
+		{ID: "ttl-external", External: true},
+	}}, &mockBlobStore{}, fixedClock{now: time.Now()}, 4).WithMetrics(metrics)
+	count, err := st.DeleteExpired(context.Background(), time.Now())
+	if err != nil {
+		t.Fatalf("DeleteExpired: %v", err)
+	}
+	if count != 3 {
+		t.Fatalf("count got=%d want=3", count)
+	}
+	if got := metrics.counts[store.CounterClaimsExpired]; got != 2 {
+		t.Fatalf("claimed-expired metric got=%d want=2", got)
 	}
 }
 
@@ -247,25 +348,28 @@ func TestStoreReconcileDeletesOrphan(t *testing.T) {
 	now := time.Now().UTC()
 	clk := fixedClock{now: now}
 	db := openTestDB(t)
-	ix, _ := sqlite.New(db)
+	ix, err := sqlite.New(db)
+	if err != nil {
+		t.Fatalf("sqlite.New: %v", err)
+	}
 	blobDir := t.TempDir()
-	bs, _ := filesystem.New(blobDir)
+	bs, err := filesystem.New(blobDir)
+	if err != nil {
+		t.Fatalf("filesystem.New: %v", err)
+	}
 	st := store.New(ix, bs, clk, 4)
 
-	// Write an orphan blob directly (no index row)
 	writeTempBlob(t, blobDir, "77777777777777777777777777777777", []byte("zzz"))
-	// Ensure List sees it after freshness window
 	time.Sleep(1100 * time.Millisecond)
 	if err := st.Reconcile(ctx); err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	// Orphan should be gone
 	if _, err := os.Stat(filepath.Join(blobDir, "77777777777777777777777777777777.blob")); !os.IsNotExist(err) {
 		t.Fatalf("expected orphan removed, err=%v", err)
 	}
 }
 
-// bytesReader helper (duplicated minimal impl to avoid test import cycles)
+// bytesReader returns a simple reader over b without copying.
 func bytesReader(b []byte) io.Reader { return &sliceReader{b: b} }
 
 type sliceReader struct{ b []byte }
@@ -303,10 +407,6 @@ func (f *flakyOpenBlobStore) Open(_ string) (io.ReadCloser, error) {
 	return io.NopCloser(bytesReader(f.data)), nil
 }
 
-func (f *flakyOpenBlobStore) Consume(id string) (io.ReadCloser, error) {
-	return f.Open(id)
-}
-
 func (f *flakyOpenBlobStore) Delete(_ string) error {
 	f.deleted = true
 	return nil
@@ -316,38 +416,99 @@ func (f *flakyOpenBlobStore) List() ([]string, error) { return nil, nil }
 
 // --- Construction / nil guard tests ---
 
-// mockBlobStore minimal implementation for negative tests.
-type mockBlobStore struct{}
-
-func (m mockBlobStore) Write(_ string, _ io.Reader, _ int64) error { return nil }
-func (m mockBlobStore) Open(_ string) (io.ReadCloser, error) {
-	return io.NopCloser(bytesReader([]byte("x"))), nil
+// mockBlobStore is a minimal BlobStorage implementation for store tests.
+type mockBlobStore struct {
+	data      []byte
+	deleteIDs []string
+	listIDs   []string
+	listErr   error
+	deleteErr error
 }
-func (m mockBlobStore) Consume(_ string) (io.ReadCloser, error) {
-	return io.NopCloser(bytesReader([]byte("x"))), nil
-}
-func (m mockBlobStore) Delete(_ string) error   { return nil }
-func (m mockBlobStore) List() ([]string, error) { return nil, nil }
 
-// mockIndex minimal implementation for negative tests.
-type mockIndex struct{}
+func (m *mockBlobStore) Write(_ string, r io.Reader, _ int64) error {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	m.data = data
+	return nil
+}
+
+func (m *mockBlobStore) Open(_ string) (io.ReadCloser, error) {
+	return io.NopCloser(bytesReader(m.data)), nil
+}
+
+func (m *mockBlobStore) Delete(id string) error {
+	m.deleteIDs = append(m.deleteIDs, id)
+	return m.deleteErr
+}
+
+func (m *mockBlobStore) List() ([]string, error) {
+	if m.listErr != nil {
+		return nil, m.listErr
+	}
+	return m.listIDs, nil
+}
+
+// mockIndex is a configurable Index implementation for store tests.
+type mockIndex struct {
+	claimResult *store.IndexResult
+	claimErr    error
+	ackExternal bool
+	ackErr      error
+	expired     []store.ExpiredRecord
+	listIDs     []string
+	listErr     error
+}
 
 func (m mockIndex) Insert(_ context.Context, _ string, _ app.Meta, _ []byte, _ bool, _ int64, _ time.Time, _ time.Time) error {
 	return nil
 }
-func (m mockIndex) Consume(_ context.Context, _ string, _ time.Time, _ store.ExternalOpener) (*store.IndexResult, error) {
+
+func (m mockIndex) Claim(_ context.Context, _ string, _ string, _ bool, _ time.Time, _ time.Time, _ store.ExternalOpener) (*store.IndexResult, error) {
+	if m.claimErr != nil {
+		return nil, m.claimErr
+	}
+	if m.claimResult != nil {
+		return m.claimResult, nil
+	}
 	return nil, app.ErrNotFound
 }
-func (m mockIndex) DeleteExpired(_ context.Context, _ time.Time) ([]store.ExpiredRecord, error) {
-	return nil, nil
-}
-func (m mockIndex) ListExternalIDs(_ context.Context) ([]string, error) { return nil, nil }
 
-// nil store pointer tests.
-func TestStoreNilReceiverConsume(t *testing.T) {
+func (m mockIndex) Ack(_ context.Context, _ string, _ string) (bool, error) {
+	if m.ackErr != nil {
+		return false, m.ackErr
+	}
+	return m.ackExternal, nil
+}
+
+func (m mockIndex) DeleteExpired(_ context.Context, _ time.Time) ([]store.ExpiredRecord, error) {
+	return m.expired, nil
+}
+
+func (m mockIndex) ListExternalIDs(_ context.Context) ([]string, error) {
+	if m.listErr != nil {
+		return nil, m.listErr
+	}
+	return m.listIDs, nil
+}
+
+// countingMetrics records counter increments by name.
+type countingMetrics struct{ counts map[string]int64 }
+
+func (c *countingMetrics) Inc(name string, delta int64) { c.counts[name] += delta }
+
+func TestStoreNilReceiverClaim(t *testing.T) {
 	var s *store.Store
-	if _, _, _, err := s.Consume(context.Background(), "any"); err == nil {
-		t.Fatalf("expected error on nil store Consume")
+	if _, err := s.Claim(context.Background(), "any", "hash", false, time.Now()); err == nil {
+		t.Fatalf("expected error on nil store Claim")
+	}
+}
+
+func TestStoreNilReceiverAck(t *testing.T) {
+	var s *store.Store
+	if err := s.Ack(context.Background(), "any", "hash"); err == nil {
+		t.Fatalf("expected error on nil store Ack")
 	}
 }
 
@@ -360,26 +521,43 @@ func TestStoreNilReceiverSave(t *testing.T) {
 
 func TestStoreNilIndex(t *testing.T) {
 	clk := fixedClock{now: time.Now()}
-	bs := mockBlobStore{}
+	bs := &mockBlobStore{}
 	s := store.New(nil, bs, clk, 10)
-	if _, _, _, err := s.Consume(context.Background(), "x"); err == nil {
+	if _, err := s.Claim(context.Background(), "x", "hash", false, time.Now()); err == nil {
 		t.Fatalf("expected error with nil index")
+	}
+	if err := s.Ack(context.Background(), "x", "hash"); err == nil {
+		t.Fatalf("expected ack error with nil index")
+	}
+}
+
+func TestStoreNilBlobStorage(t *testing.T) {
+	clk := fixedClock{now: time.Now()}
+	ix := mockIndex{}
+	s := store.New(ix, nil, clk, 10)
+	if _, err := s.Claim(context.Background(), "x", "hash", false, time.Now()); err == nil {
+		t.Fatalf("expected error with nil blob storage")
+	}
+	if err := s.Ack(context.Background(), "x", "hash"); err == nil {
+		t.Fatalf("expected ack error with nil blob storage")
 	}
 }
 
 func TestStoreNilClock(t *testing.T) {
 	ix := mockIndex{}
-	bs := mockBlobStore{}
-	// pass nil clock
+	bs := &mockBlobStore{}
 	s := store.New(ix, bs, nil, 10)
 	if err := s.Save(context.Background(), "x", app.Meta{}, bytesReader([]byte("a")), 1, time.Now()); err == nil {
 		t.Fatalf("expected error with nil clock in Save")
+	}
+	if _, err := s.Claim(context.Background(), "x", "hash", false, time.Now()); err == nil {
+		t.Fatalf("expected error with nil clock in Claim")
 	}
 }
 
 func TestStoreSaveNegativeSize(t *testing.T) {
 	ix := mockIndex{}
-	bs := mockBlobStore{}
+	bs := &mockBlobStore{}
 	clk := fixedClock{now: time.Now()}
 	s := store.New(ix, bs, clk, 10)
 	if err := s.Save(context.Background(), "x", app.Meta{}, bytesReader([]byte("a")), -1, time.Now()); err == nil {
@@ -389,40 +567,9 @@ func TestStoreSaveNegativeSize(t *testing.T) {
 
 // --- Reconcile error path tests ---
 
-// failingBlobStore lets us inject errors for List/Delete.
-type failingBlobStore struct {
-	mockBlobStore
-	listErr   error
-	deleteErr error
-	listIDs   []string
-}
-
-func (f failingBlobStore) List() ([]string, error) {
-	if f.listErr != nil {
-		return nil, f.listErr
-	}
-	return f.listIDs, nil
-}
-func (f failingBlobStore) Delete(_ string) error {
-	return f.deleteErr
-}
-
-// failingIndex allows injecting ListExternalIDs error.
-type failingIndex struct {
-	mockIndex
-	listErr error
-}
-
-func (f failingIndex) ListExternalIDs(_ context.Context) ([]string, error) {
-	if f.listErr != nil {
-		return nil, f.listErr
-	}
-	return nil, nil
-}
-
 func TestStoreReconcileNilIndex(t *testing.T) {
 	clk := fixedClock{now: time.Now()}
-	bs := mockBlobStore{}
+	bs := &mockBlobStore{}
 	s := store.New(nil, bs, clk, 10)
 	if err := s.Reconcile(context.Background()); err == nil {
 		t.Fatalf("expected error with nil index in Reconcile")
@@ -441,7 +588,7 @@ func TestStoreReconcileNilBlobs(t *testing.T) {
 func TestStoreReconcileBlobListError(t *testing.T) {
 	clk := fixedClock{now: time.Now()}
 	ix := mockIndex{}
-	bs := failingBlobStore{listErr: errors.New("list boom")}
+	bs := &mockBlobStore{listErr: errors.New("list boom")}
 	s := store.New(ix, bs, clk, 10)
 	if err := s.Reconcile(context.Background()); err == nil {
 		t.Fatalf("expected list error propagated")
@@ -450,8 +597,8 @@ func TestStoreReconcileBlobListError(t *testing.T) {
 
 func TestStoreReconcileIndexListError(t *testing.T) {
 	clk := fixedClock{now: time.Now()}
-	ix := failingIndex{listErr: errors.New("index list boom")}
-	bs := mockBlobStore{}
+	ix := mockIndex{listErr: errors.New("index list boom")}
+	bs := &mockBlobStore{}
 	s := store.New(ix, bs, clk, 10)
 	if err := s.Reconcile(context.Background()); err == nil {
 		t.Fatalf("expected index list error propagated")
@@ -459,13 +606,10 @@ func TestStoreReconcileIndexListError(t *testing.T) {
 }
 
 func TestStoreReconcileDeleteErrorIgnored(t *testing.T) {
-	// Delete errors should not abort reconciliation after listing succeeds.
 	clk := fixedClock{now: time.Now()}
 	ix := mockIndex{}
-	// Provide an orphan id so Delete is attempted.
-	bs := failingBlobStore{listIDs: []string{"orphan"}, deleteErr: errors.New("del fail")}
+	bs := &mockBlobStore{listIDs: []string{"orphan"}, deleteErr: errors.New("del fail")}
 	s := store.New(ix, bs, clk, 10)
-	// Expect no error because delete failures are ignored (best-effort).
 	if err := s.Reconcile(context.Background()); err != nil {
 		t.Fatalf("unexpected error despite delete failure: %v", err)
 	}

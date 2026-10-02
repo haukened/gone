@@ -18,11 +18,14 @@ func (f fixedClock) Now() time.Time { return f.now }
 
 // mockStore implements SecretStore for tests.
 type mockStore struct {
-	saveErr     error
-	consumeMeta Meta
-	consumeData string
-	consumeSize int64
-	consumeErr  error
+	saveErr error
+
+	claimMeta Meta
+	claimData string
+	claimSize int64
+	claimErr  error
+
+	ackErr error
 
 	// captured on Save
 	savedID      string
@@ -31,7 +34,15 @@ type mockStore struct {
 	savedExpires time.Time
 	saveCalled   bool
 
-	consumeCalled bool
+	claimCalled       bool
+	claimID           string
+	claimHash         string
+	claimRetry        bool
+	claimClaimedUntil time.Time
+
+	ackCalled bool
+	ackID     string
+	ackHash   string
 }
 
 func (m *mockStore) Save(ctx context.Context, id string, meta Meta, r io.Reader, size int64, expiresAt time.Time) error {
@@ -45,14 +56,30 @@ func (m *mockStore) Save(ctx context.Context, id string, meta Meta, r io.Reader,
 	return m.saveErr
 }
 
-func (m *mockStore) Consume(ctx context.Context, id string) (Meta, io.ReadCloser, int64, error) {
+func (m *mockStore) Claim(ctx context.Context, id, claimHash string, retry bool, claimedUntil time.Time) (Claimed, error) {
 	_ = ctx
-	_ = id
-	m.consumeCalled = true
-	if m.consumeErr != nil {
-		return Meta{}, nil, 0, m.consumeErr
+	m.claimCalled = true
+	m.claimID = id
+	m.claimHash = claimHash
+	m.claimRetry = retry
+	m.claimClaimedUntil = claimedUntil
+	if m.claimErr != nil {
+		return Claimed{}, m.claimErr
 	}
-	return m.consumeMeta, io.NopCloser(strings.NewReader(m.consumeData)), m.consumeSize, nil
+	return Claimed{
+		Meta:         m.claimMeta,
+		Body:         io.NopCloser(strings.NewReader(m.claimData)),
+		Size:         m.claimSize,
+		ClaimedUntil: claimedUntil,
+	}, nil
+}
+
+func (m *mockStore) Ack(ctx context.Context, id, claimHash string) error {
+	_ = ctx
+	m.ackCalled = true
+	m.ackID = id
+	m.ackHash = claimHash
+	return m.ackErr
 }
 
 func (m *mockStore) DeleteExpired(ctx context.Context, t time.Time) (int, error) {
@@ -61,6 +88,37 @@ func (m *mockStore) DeleteExpired(ctx context.Context, t time.Time) (int, error)
 	return 0, nil
 }
 func (m *mockStore) Reconcile(ctx context.Context) error { _ = ctx; return nil }
+
+// metricsRecorder captures service metric increments for assertions.
+type metricsRecorder struct {
+	counts map[string]int64
+}
+
+// Inc records the named metric delta.
+func (m *metricsRecorder) Inc(name string, delta int64) {
+	if m.counts == nil {
+		m.counts = make(map[string]int64)
+	}
+	m.counts[name] += delta
+}
+
+// count returns the recorded total for name.
+func (m *metricsRecorder) count(name string) int64 {
+	if m.counts == nil {
+		return 0
+	}
+	return m.counts[name]
+}
+
+// mustClaimToken returns a valid claim token for tests.
+func mustClaimToken(t *testing.T) domain.ClaimToken {
+	t.Helper()
+	tok, err := domain.NewClaimToken()
+	if err != nil {
+		t.Fatalf("NewClaimToken: %v", err)
+	}
+	return tok
+}
 
 func TestServiceCreateSecretSuccess(t *testing.T) {
 	ms := &mockStore{}
@@ -132,48 +190,161 @@ func TestServiceCreateSecretStoreError(t *testing.T) {
 	}
 }
 
-func TestServiceConsumeInvalidID(t *testing.T) {
+func TestServiceClaimInvalidID(t *testing.T) {
 	ms := &mockStore{}
 	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 100, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
-	if _, _, _, err := svc.Consume(context.Background(), "not-an-id"); err != domain.ErrInvalidID {
+	if _, err := svc.Claim(context.Background(), "not-an-id", ""); err != domain.ErrInvalidID {
 		t.Fatalf("expected ErrInvalidID, got %v", err)
 	}
-	if ms.consumeCalled {
+	if ms.claimCalled {
 		t.Fatalf("store should not be called on invalid id")
 	}
 }
 
-func TestServiceConsumeSuccess(t *testing.T) {
+func TestServiceClaim(t *testing.T) {
+	now := time.Unix(1700000500, 0).UTC()
+	validID := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	retryToken := mustClaimToken(t)
+	storeErr := errors.New("claim failed")
 	data := "ciphertext"
-	ms := &mockStore{consumeMeta: Meta{Version: 2, NonceB64u: "nonceX"}, consumeData: data, consumeSize: int64(len(data))}
-	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 100, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
-	id, _ := domain.NewID()
-	meta, rc, size, err := svc.Consume(context.Background(), id.String())
-	if err != nil {
-		t.Fatalf("Consume error: %v", err)
+
+	tests := []struct {
+		name       string
+		token      string
+		lease      time.Duration
+		storeErr   error
+		wantErr    error
+		wantRetry  bool
+		wantLease  time.Duration
+		wantCalled bool
+	}{
+		{name: "fresh claim issues token with default lease", wantLease: DefaultClaimLease, wantCalled: true},
+		{name: "retry passes parsed token hash", token: retryToken.String(), wantRetry: true, wantLease: DefaultClaimLease, wantCalled: true},
+		{name: "custom lease", lease: 90 * time.Second, wantLease: 90 * time.Second, wantCalled: true},
+		{name: "invalid token", token: "bad-token", wantErr: domain.ErrInvalidClaim},
+		{name: "store error", storeErr: storeErr, wantErr: storeErr, wantLease: DefaultClaimLease, wantCalled: true},
 	}
-	if meta.Version != 2 || meta.NonceB64u != "nonceX" {
-		t.Fatalf("meta mismatch: %+v", meta)
-	}
-	b, _ := io.ReadAll(rc)
-	if string(b) != data {
-		t.Fatalf("data mismatch: %s", string(b))
-	}
-	if size != int64(len(data)) {
-		t.Fatalf("size mismatch: %d", size)
-	}
-	if !ms.consumeCalled {
-		t.Fatalf("expected consume called")
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ms := &mockStore{
+				claimMeta: Meta{Version: 2, NonceB64u: "nonceX"},
+				claimData: data,
+				claimSize: int64(len(data)),
+				claimErr:  tc.storeErr,
+			}
+			svc := &Service{
+				Store:      ms,
+				Clock:      fixedClock{now: now},
+				MaxBytes:   100,
+				MinTTL:     time.Minute,
+				MaxTTL:     5 * time.Minute,
+				ClaimLease: tc.lease,
+			}
+
+			res, err := svc.Claim(context.Background(), validID, tc.token)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("Claim error = %v, want %v", err, tc.wantErr)
+			}
+			if ms.claimCalled != tc.wantCalled {
+				t.Fatalf("claimCalled = %v, want %v", ms.claimCalled, tc.wantCalled)
+			}
+			if tc.wantErr != nil {
+				return
+			}
+			if res.Meta.Version != 2 || res.Meta.NonceB64u != "nonceX" {
+				t.Fatalf("meta mismatch: %+v", res.Meta)
+			}
+			b, readErr := io.ReadAll(res.Body)
+			if readErr != nil {
+				t.Fatalf("ReadAll: %v", readErr)
+			}
+			if string(b) != data {
+				t.Fatalf("data mismatch: %s", string(b))
+			}
+			if res.Size != int64(len(data)) {
+				t.Fatalf("size mismatch: %d", res.Size)
+			}
+			if ms.claimID != validID {
+				t.Fatalf("claim id = %q, want %q", ms.claimID, validID)
+			}
+			if ms.claimRetry != tc.wantRetry {
+				t.Fatalf("retry = %v, want %v", ms.claimRetry, tc.wantRetry)
+			}
+			wantToken := res.Token
+			if tc.token != "" {
+				wantToken = retryToken
+				if res.Token.String() != tc.token {
+					t.Fatalf("retry token = %q, want %q", res.Token.String(), tc.token)
+				}
+			} else if _, parseErr := domain.ParseClaimToken(res.Token.String()); parseErr != nil {
+				t.Fatalf("fresh token is invalid: %v", parseErr)
+			}
+			if ms.claimHash != wantToken.Hash() {
+				t.Fatalf("claim hash = %q, want %q", ms.claimHash, wantToken.Hash())
+			}
+			wantUntil := now.Add(tc.wantLease)
+			if !ms.claimClaimedUntil.Equal(wantUntil) {
+				t.Fatalf("store claimedUntil = %v, want %v", ms.claimClaimedUntil, wantUntil)
+			}
+			if !res.ClaimedUntil.Equal(wantUntil) {
+				t.Fatalf("result claimedUntil = %v, want %v", res.ClaimedUntil, wantUntil)
+			}
+		})
 	}
 }
 
-func TestServiceConsumeStoreError(t *testing.T) {
-	sentinel := errors.New("notfound")
-	ms := &mockStore{consumeErr: sentinel}
-	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 100, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
-	id, _ := domain.NewID()
-	_, _, _, err := svc.Consume(context.Background(), id.String())
-	if err != sentinel {
-		t.Fatalf("expected store consume error, got %v", err)
+func TestServiceAck(t *testing.T) {
+	validID := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	validToken := mustClaimToken(t)
+	storeErr := errors.New("ack failed")
+
+	tests := []struct {
+		name       string
+		id         string
+		token      string
+		storeErr   error
+		wantErr    error
+		wantCalled bool
+		wantMetric int64
+	}{
+		{name: "success increments consumed metric", id: validID, token: validToken.String(), wantCalled: true, wantMetric: 1},
+		{name: "store error propagates without metric", id: validID, token: validToken.String(), storeErr: storeErr, wantErr: storeErr, wantCalled: true},
+		{name: "invalid id", id: "bad-id", token: validToken.String(), wantErr: domain.ErrInvalidID},
+		{name: "invalid token", id: validID, token: "bad-token", wantErr: domain.ErrInvalidClaim},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ms := &mockStore{ackErr: tc.storeErr}
+			metrics := &metricsRecorder{}
+			svc := &Service{
+				Store:    ms,
+				Clock:    fixedClock{now: time.Now()},
+				MaxBytes: 100,
+				MinTTL:   time.Minute,
+				MaxTTL:   5 * time.Minute,
+				Metrics:  metrics,
+			}
+
+			err := svc.Ack(context.Background(), tc.id, tc.token)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("Ack error = %v, want %v", err, tc.wantErr)
+			}
+			if ms.ackCalled != tc.wantCalled {
+				t.Fatalf("ackCalled = %v, want %v", ms.ackCalled, tc.wantCalled)
+			}
+			if tc.wantCalled {
+				if ms.ackID != tc.id {
+					t.Fatalf("ack id = %q, want %q", ms.ackID, tc.id)
+				}
+				if ms.ackHash != validToken.Hash() {
+					t.Fatalf("ack hash = %q, want %q", ms.ackHash, validToken.Hash())
+				}
+			}
+			if got := metrics.count("secrets_consumed_total"); got != tc.wantMetric {
+				t.Fatalf("consumed metric = %d, want %d", got, tc.wantMetric)
+			}
+		})
 	}
 }

@@ -23,6 +23,7 @@ func cleanEnvVars(t *testing.T) map[string]string {
 		"GONE_INLINE_MAX_BYTES",
 		"GONE_MAX_BYTES",
 		"GONE_TTL_OPTIONS",
+		"GONE_CLAIM_LEASE",
 		"GONE_METRICS_ADDR",
 		"GONE_METRICS_TOKEN",
 	}
@@ -55,6 +56,48 @@ func TestDefaultConfig(t *testing.T) {
 		t.Fatalf("Load() error: %v", err)
 	}
 	assert.EqualValues(t, DefaultAppConfig, *cfg)
+	if cfg.ClaimLease != 2*time.Minute {
+		t.Fatalf("ClaimLease = %v, want 2m", cfg.ClaimLease)
+	}
+	if cfg.MaxBytes != 10*1024*1024 {
+		t.Fatalf("MaxBytes = %d, want 10 MiB", cfg.MaxBytes)
+	}
+}
+
+func TestClaimLeaseConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   string
+		want    time.Duration
+		wantErr bool
+	}{
+		{name: "ninety seconds", value: "90s", want: 90 * time.Second},
+		{name: "zero rejected", value: "0s", wantErr: true},
+		{name: "over max rejected", value: "16m", wantErr: true},
+		{name: "garbage rejected", value: "garbage", wantErr: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			orig := cleanEnvVars(t)
+			t.Cleanup(func() { restoreEnvVars(t, orig) })
+			t.Setenv("GONE_CLAIM_LEASE", tc.value)
+
+			cfg, err := Load()
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error for claim lease %q", tc.value)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Load() error: %v", err)
+			}
+			if cfg.ClaimLease != tc.want {
+				t.Fatalf("ClaimLease = %v, want %v", cfg.ClaimLease, tc.want)
+			}
+		})
+	}
 }
 
 func TestLoadEnvList(t *testing.T) {
@@ -95,13 +138,38 @@ func TestMetricsDisabledAllowsEmptyToken(t *testing.T) {
 	}
 }
 
-func TestMetricsAddrRequiresToken(t *testing.T) {
+func TestMetricsAddrWithoutTokenDisablesMetrics(t *testing.T) {
 	orig := cleanEnvVars(t)
 	t.Cleanup(func() { restoreEnvVars(t, orig) })
 	t.Setenv("GONE_METRICS_ADDR", "127.0.0.1:9090")
-	_, err := Load()
-	if err == nil {
-		t.Fatalf("expected metrics token validation error")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if cfg.MetricsEnabled() {
+		t.Fatalf("expected metrics disabled without token")
+	}
+}
+
+func TestMetricsEnabled(t *testing.T) {
+	tests := []struct {
+		name  string
+		addr  string
+		token string
+		want  bool
+	}{
+		{"neither", "", "", false},
+		{"addr only", "127.0.0.1:9090", "", false},
+		{"token only", "", "tok", false},
+		{"both", "127.0.0.1:9090", "tok", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Config{MetricsAddr: tt.addr, MetricsToken: tt.token}
+			if got := c.MetricsEnabled(); got != tt.want {
+				t.Fatalf("MetricsEnabled() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -114,7 +182,7 @@ func TestMetricsAddrWithToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error: %v", err)
 	}
-	if cfg.MetricsAddr != "127.0.0.1:9090" || cfg.MetricsToken != "tok" {
+	if cfg.MetricsAddr != "127.0.0.1:9090" || cfg.MetricsToken != "tok" || !cfg.MetricsEnabled() {
 		t.Fatalf("metrics config mismatch: %+v", cfg)
 	}
 }

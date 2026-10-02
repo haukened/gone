@@ -25,8 +25,12 @@ func (f failingService) CreateSecret(_ context.Context, _ io.Reader, _ int64, _ 
 	}
 	return domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), time.Now().Add(time.Hour), nil
 }
-func (f failingService) Consume(_ context.Context, _ string) (app.Meta, io.ReadCloser, int64, error) {
-	return app.Meta{}, nil, 0, errors.New("unused")
+func (f failingService) Claim(_ context.Context, _ string, _ string) (app.ClaimResult, error) {
+	return app.ClaimResult{}, errors.New("unused")
+}
+
+func (f failingService) Ack(_ context.Context, _ string, _ string) error {
+	return errors.New("unused")
 }
 
 func TestCreateEndpointErrors(t *testing.T) {

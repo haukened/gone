@@ -18,10 +18,17 @@ import (
 // files for larger payloads.
 type Index interface {
 	Insert(ctx context.Context, id string, meta app.Meta, inline []byte, external bool, size int64, createdAt, expiresAt time.Time) error
-	// Consume returns secret data and hard-deletes the row in the same transaction.
-	// For external payloads, openExternal is called while the consume transaction
-	// is held; if opening fails, the row is left intact.
-	Consume(ctx context.Context, id string, now time.Time, openExternal ExternalOpener) (*IndexResult, error)
+	// Claim reserves a live secret for a single client and returns its data
+	// without deleting it. A fresh claim (retry=false) requires the row to be
+	// unclaimed and records claimHash with a lease ending at claimedUntil. A retry
+	// (retry=true) requires claimHash to match the stored hash while the lease is
+	// valid. Rows past their TTL or claim lease are deleted and app.ErrNotFound is
+	// returned. For external payloads, openExternal is called while the
+	// transaction is held; if opening fails, the claim is rolled back.
+	Claim(ctx context.Context, id, claimHash string, retry bool, now, claimedUntil time.Time, openExternal ExternalOpener) (*IndexResult, error)
+	// Ack deletes a claimed row when claimHash matches the stored claim and
+	// reports whether its payload was external. Returns app.ErrNotFound otherwise.
+	Ack(ctx context.Context, id, claimHash string) (external bool, err error)
 	DeleteExpired(ctx context.Context, t time.Time) (expired []ExpiredRecord, err error)
 	// ListExternalIDs returns IDs of secrets whose payloads are stored externally.
 	ListExternalIDs(ctx context.Context) ([]string, error)
@@ -30,32 +37,27 @@ type Index interface {
 // ExternalOpener opens an external payload without consuming or deleting it.
 type ExternalOpener func(id string) (io.ReadCloser, error)
 
-// IndexResult bundles the data returned by Index.Consume
+// IndexResult bundles the data returned by Index.Claim.
 type IndexResult struct {
-	Meta      app.Meta
-	Inline    []byte
-	Reader    io.ReadCloser
-	External  bool
-	Size      int64
-	ExpiresAt time.Time
+	Meta         app.Meta
+	Inline       []byte
+	Reader       io.ReadCloser
+	External     bool
+	Size         int64
+	ExpiresAt    time.Time
+	ClaimHash    string    // hex SHA-256 of the active claim token; empty if unclaimed
+	ClaimedUntil time.Time // lease deadline; zero if unclaimed
 }
 
-// BlobStorage abstracts large payload persistence (e.g. filesystem). Implementations
-// MUST provide delete-on-close semantics for Open: calling Open(id) returns an
-// io.ReadCloser whose Close method removes (or permanently invalidates) the
-// underlying blob file. This enforces one-time consumption symmetry with the
-// metadata index hard-delete. Deletion is best-effort; reconciliation routines
-// use Delete/List to clean orphans left by crashes occurring after index
-// removal but before successful blob deletion.
+// BlobStorage abstracts large payload persistence (e.g. filesystem). Reads never
+// delete: a claimed blob must survive until the client acknowledges receipt
+// (Index.Ack) so interrupted downloads can be retried. Deletion happens via
+// Delete on acknowledgement, expiry, or reconciliation; reconciliation uses List
+// to clean orphans left by crashes between index removal and blob deletion.
 type BlobStorage interface {
 	Write(id string, r io.Reader, size int64) error
 	// Open returns a reader for the blob without deleting it on close.
 	Open(id string) (io.ReadCloser, error)
-	// Consume returns a reader for the blob. Close MUST attempt to delete the
-	// blob file. If deletion fails, Close should return that error (unless a
-	// prior read error is more relevant). Callers should treat the blob as
-	// consumed regardless; janitorial cleanup will retry failed deletions.
-	Consume(id string) (io.ReadCloser, error)
 	// Delete force-removes a blob by id (used by expiry and reconciliation).
 	Delete(id string) error
 	// List returns all blob IDs present in storage (filenames sans extension).
@@ -66,4 +68,5 @@ type BlobStorage interface {
 type ExpiredRecord struct {
 	ID       string
 	External bool // true if payload stored in blob storage
+	Claimed  bool // true if the row was claimed but never acknowledged
 }

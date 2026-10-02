@@ -28,9 +28,10 @@ type stubIndex struct{}
 func (stubIndex) Insert(context.Context, string, app.Meta, []byte, bool, int64, time.Time, time.Time) error {
 	return nil
 }
-func (stubIndex) Consume(context.Context, string, time.Time, store.ExternalOpener) (*store.IndexResult, error) {
+func (stubIndex) Claim(context.Context, string, string, bool, time.Time, time.Time, store.ExternalOpener) (*store.IndexResult, error) {
 	return nil, os.ErrNotExist
 }
+func (stubIndex) Ack(context.Context, string, string) (bool, error) { return false, os.ErrNotExist }
 func (stubIndex) DeleteExpired(context.Context, time.Time) ([]store.ExpiredRecord, error) {
 	return nil, nil
 }
@@ -39,11 +40,10 @@ func (stubIndex) ListExternalIDs(context.Context) ([]string, error) { return nil
 // stubBlobStorage implements store.BlobStorage.
 type stubBlobStorage struct{}
 
-func (stubBlobStorage) Write(string, io.Reader, int64) error  { return nil }
-func (stubBlobStorage) Open(string) (io.ReadCloser, error)    { return nil, os.ErrNotExist }
-func (stubBlobStorage) Consume(string) (io.ReadCloser, error) { return nil, os.ErrNotExist }
-func (stubBlobStorage) Delete(string) error                   { return nil }
-func (stubBlobStorage) List() ([]string, error)               { return nil, nil }
+func (stubBlobStorage) Write(string, io.Reader, int64) error { return nil }
+func (stubBlobStorage) Open(string) (io.ReadCloser, error)   { return nil, os.ErrNotExist }
+func (stubBlobStorage) Delete(string) error                  { return nil }
+func (stubBlobStorage) List() ([]string, error)              { return nil, nil }
 
 type recordingIndex struct {
 	inline   []byte
@@ -55,8 +55,11 @@ func (r *recordingIndex) Insert(_ context.Context, _ string, _ app.Meta, inline 
 	r.external = external
 	return nil
 }
-func (r *recordingIndex) Consume(context.Context, string, time.Time, store.ExternalOpener) (*store.IndexResult, error) {
+func (r *recordingIndex) Claim(context.Context, string, string, bool, time.Time, time.Time, store.ExternalOpener) (*store.IndexResult, error) {
 	return nil, os.ErrNotExist
+}
+func (r *recordingIndex) Ack(context.Context, string, string) (bool, error) {
+	return false, os.ErrNotExist
 }
 func (r *recordingIndex) DeleteExpired(context.Context, time.Time) ([]store.ExpiredRecord, error) {
 	return nil, nil
@@ -77,10 +80,9 @@ func (r *recordingBlobStorage) Write(_ string, src io.Reader, _ int64) error {
 	r.data = data
 	return nil
 }
-func (r *recordingBlobStorage) Open(string) (io.ReadCloser, error)    { return nil, os.ErrNotExist }
-func (r *recordingBlobStorage) Consume(string) (io.ReadCloser, error) { return nil, os.ErrNotExist }
-func (r *recordingBlobStorage) Delete(string) error                   { return nil }
-func (r *recordingBlobStorage) List() ([]string, error)               { return nil, nil }
+func (r *recordingBlobStorage) Open(string) (io.ReadCloser, error) { return nil, os.ErrNotExist }
+func (r *recordingBlobStorage) Delete(string) error                { return nil }
+func (r *recordingBlobStorage) List() ([]string, error)            { return nil, nil }
 
 // TestEnsureDataDir verifies directory and blob subdirectory creation.
 func TestEnsureDataDir(t *testing.T) {
@@ -117,7 +119,7 @@ func TestLoadTemplates(t *testing.T) {
 
 // TestBuildService validates service field propagation.
 func TestBuildService(t *testing.T) {
-	cfg := &config.Config{InlineMaxBytes: 64, MaxBytes: 1234, MinTTL: time.Minute, MaxTTL: 2 * time.Minute}
+	cfg := &config.Config{InlineMaxBytes: 64, MaxBytes: 1234, MinTTL: time.Minute, MaxTTL: 2 * time.Minute, ClaimLease: 75 * time.Second}
 	// Build service using stub index/blob implementations by wrapping underlying store.New expectations.
 	s := buildService(stubIndex{}, stubBlobStorage{}, cfg, realClock{})
 	if s.MaxBytes != 1234 {
@@ -125,6 +127,9 @@ func TestBuildService(t *testing.T) {
 	}
 	if s.MinTTL != time.Minute || s.MaxTTL != 2*time.Minute {
 		t.Fatalf("TTL mismatch")
+	}
+	if s.ClaimLease != 75*time.Second {
+		t.Fatalf("ClaimLease mismatch got %v", s.ClaimLease)
 	}
 }
 
@@ -155,8 +160,11 @@ func TestNewServer(t *testing.T) {
 	if srv.Addr != ":9999" {
 		t.Fatalf("addr mismatch got %s", srv.Addr)
 	}
-	if srv.ReadTimeout == 0 || srv.WriteTimeout == 0 {
+	if srv.ReadTimeout == 0 || srv.WriteTimeout == 0 || srv.ReadHeaderTimeout == 0 {
 		t.Fatalf("expected non-zero timeouts")
+	}
+	if srv.ReadHeaderTimeout >= srv.ReadTimeout {
+		t.Fatalf("expected header timeout (%v) tighter than body timeout (%v)", srv.ReadHeaderTimeout, srv.ReadTimeout)
 	}
 }
 
@@ -208,6 +216,66 @@ func TestEnsureDataDir_FilePathError(t *testing.T) {
 	}
 	if _, _, err := ensureDataDir(filePath); err == nil {
 		t.Fatalf("expected error for file path")
+	}
+}
+
+// TestEnsureDataDir_EnforcesPrivatePerms verifies the data and blobs
+// directories end up owner-only (0o700), whether newly created or pre-existing
+// with looser permissions.
+func TestEnsureDataDir_EnforcesPrivatePerms(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(t *testing.T, dir string)
+	}{
+		{name: "new", setup: func(*testing.T, string) {}},
+		{name: "existing loose data dir", setup: func(t *testing.T, dir string) {
+			mkdirMode(t, dir, 0o777)
+		}},
+		{name: "existing loose blobs dir", setup: func(t *testing.T, dir string) {
+			mkdirMode(t, dir, 0o755)
+			mkdirMode(t, filepath.Join(dir, "blobs"), 0o777)
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := filepath.Join(t.TempDir(), "data")
+			tc.setup(t, dir)
+			dataDir, blobDir, err := ensureDataDir(dir)
+			if err != nil {
+				t.Fatalf("ensureDataDir: %v", err)
+			}
+			for _, p := range []string{dataDir, blobDir} {
+				st, err := os.Stat(p)
+				if err != nil {
+					t.Fatalf("stat %s: %v", p, err)
+				}
+				if got := st.Mode().Perm(); got != privateDirPerm {
+					t.Fatalf("%s perm got %o want %o", p, got, privateDirPerm)
+				}
+			}
+		})
+	}
+}
+
+// mkdirMode creates dir and forces mode regardless of the process umask.
+func mkdirMode(t *testing.T, dir string, mode os.FileMode) {
+	t.Helper()
+	if err := os.MkdirAll(dir, mode); err != nil {
+		t.Fatalf("mkdir %s: %v", dir, err)
+	}
+	if err := os.Chmod(dir, mode); err != nil {
+		t.Fatalf("chmod %s: %v", dir, err)
+	}
+}
+
+// Failure path: ensureDataDir where blobs path exists as a file.
+func TestEnsureDataDir_BlobsFileError(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "blobs"), []byte("x"), 0o600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	if _, _, err := ensureDataDir(dir); err == nil {
+		t.Fatalf("expected error when blobs is a file")
 	}
 }
 
