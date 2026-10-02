@@ -53,3 +53,8 @@ TODO.md
 
 # local MCP servers
 .mcp.json
+
+# Codacy local analysis artifacts
+.codacy/.gitignore
+.codacy/codacy.config*.json
+.codacy/generated/
