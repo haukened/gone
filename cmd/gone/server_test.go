@@ -139,7 +139,7 @@ func TestBuildHandler_NilErrorPage(t *testing.T) {
 		about:  template.Must(template.New("about").Parse("a")),
 		secret: template.Must(template.New("secret").Parse("s")),
 	}
-	h := buildHandler(cfg, buildService(idx, stubBlobStorage{}, cfg, realClock{}), db, blobDir, tmpls, wembed.Assets)
+	h := buildHandler(cfg, buildService(idx, stubBlobStorage{}, cfg, realClock{}), db, blobDir, tmpls, wembed.Assets).Router()
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/readyz", nil))
 	if rr.Code != http.StatusOK {

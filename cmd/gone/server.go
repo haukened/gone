@@ -68,8 +68,8 @@ func readinessCheck(db *sql.DB, blobDir string) func(context.Context) error {
 //   - assets: filesystem served under /static.
 //
 // Returns:
-//   - http.Handler: the root router.
-func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir string, tmpls *templates, assets fs.FS) http.Handler {
+//   - *httpx.Handler: the configured handler; call Router to mount routes.
+func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir string, tmpls *templates, assets fs.FS) *httpx.Handler {
 	h := httpx.New(svc, cfg.MaxBytes, readinessCheck(db, blobDir))
 	h.IndexTmpl = httpx.TemplateRenderer{T: tmpls.index}
 	h.AboutTmpl = httpx.AboutTemplateRenderer{T: tmpls.about}
@@ -81,7 +81,7 @@ func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir stri
 	h.MinTTL = cfg.MinTTL
 	h.MaxTTL = cfg.MaxTTL
 	h.TTLOptions = cfg.TTLOptions
-	return h.Router()
+	return h
 }
 
 // newServer builds the public HTTP server with conservative timeouts.
@@ -185,7 +185,7 @@ type components struct {
 	assets  fs.FS
 }
 
-// serve wires the service, janitor, and HTTP server, then blocks serving
+// serve wires the service, janitor, rate limiters, and HTTP server, then blocks serving
 // requests until the listener fails or ctx is canceled.
 //
 // Parameters:
@@ -210,7 +210,9 @@ func (c *components) serve(ctx context.Context) error {
 	jan.Start(ctx)
 	defer jan.Stop()
 
-	srv := newServer(c.cfg, buildHandler(c.cfg, svc, c.db, c.blobDir, tmpls, c.assets))
+	h := buildHandler(c.cfg, svc, c.db, c.blobDir, tmpls, c.assets)
+	applyRateLimits(ctx, h, c.cfg, c.mgr)
+	srv := newServer(c.cfg, h.Router())
 	slog.Info("starting server", "addr", c.cfg.Addr, "pid", os.Getpid())
 	return listenAndServe(ctx, srv)
 }
