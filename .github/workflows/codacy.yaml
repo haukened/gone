@@ -1,0 +1,97 @@
+name: Codacy Client-Side Analysis
+
+# Codacy cannot run Go linters itself ("client-side tools"). This workflow runs
+# them, converts their output to Codacy's format, and uploads the results.
+# With "Run analysis on your build server" enabled in Codacy, every analyzed
+# commit waits for resultsFinal, so this intentionally has no paths-ignore.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codacy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: '1.27'
+  GOSEC_VERSION: v2.29.0
+  STATICCHECK_VERSION: '2026.2.1'
+  GOLANGCI_LINT_VERSION: v2.14.0
+  CODACY_GOSEC_VERSION: '1.0.6'
+  CODACY_STATICCHECK_VERSION: '3.0.22'
+  CODACY_GOLANGCI_LINT_VERSION: '0.0.9'
+  CODACY_API: https://api.codacy.com/2.0
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    # Repository secrets are unavailable to fork PRs.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
+      # Codacy analyzes the PR head commit, not the synthetic merge commit.
+      COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.COMMIT }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - name: Install linters
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@"$GOSEC_VERSION"
+          go install honnef.co/go/tools/cmd/staticcheck@"$STATICCHECK_VERSION"
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@"$GOLANGCI_LINT_VERSION"
+
+      - name: Download Codacy converters
+        run: |
+          mkdir -p "$RUNNER_TEMP/codacy"
+          for pair in \
+            "codacy-gosec:$CODACY_GOSEC_VERSION" \
+            "codacy-staticcheck:$CODACY_STATICCHECK_VERSION" \
+            "codacy-golangci-lint:$CODACY_GOLANGCI_LINT_VERSION"; do
+            name="${pair%%:*}"; ver="${pair##*:}"
+            curl -fsSL -o "$RUNNER_TEMP/codacy/$name" \
+              "https://github.com/codacy/$name/releases/download/$ver/$name-$ver"
+            chmod +x "$RUNNER_TEMP/codacy/$name"
+          done
+
+      # Linters exit non-zero when they find issues; that is expected here.
+      - name: Run linters
+        run: |
+          gosec -fmt json -log "$RUNNER_TEMP/gosec.log" ./... > "$RUNNER_TEMP/gosec.json" || true
+          staticcheck -f json ./... > "$RUNNER_TEMP/staticcheck.json" || true
+          golangci-lint run --output.json.path stdout ./... > "$RUNNER_TEMP/golangci-lint.json" 2>/dev/null || true
+
+      - name: Upload results to Codacy
+        run: |
+          upload() {
+            "$RUNNER_TEMP/codacy/$1" < "$RUNNER_TEMP/$2.json" \
+              | curl -fsS -XPOST -L \
+                  -H "project-token: $PROJECT_TOKEN" \
+                  -H "Content-type: application/json" \
+                  -d @- "$CODACY_API/commit/$COMMIT/issuesRemoteResults"
+            echo
+          }
+          upload codacy-gosec gosec
+          upload codacy-staticcheck staticcheck
+          upload codacy-golangci-lint golangci-lint
+
+      - name: Signal Codacy results are final
+        if: always()
+        run: |
+          curl -fsS -XPOST -L \
+            -H "project-token: $PROJECT_TOKEN" \
+            -H "Content-type: application/json" \
+            "$CODACY_API/commit/$COMMIT/resultsFinal"

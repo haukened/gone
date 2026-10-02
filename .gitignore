@@ -58,3 +58,6 @@ TODO.md
 .codacy/.gitignore
 .codacy/codacy.config*.json
 .codacy/generated/
+
+# Local JFrog CLI config
+.jfrog/
