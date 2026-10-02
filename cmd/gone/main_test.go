@@ -196,7 +196,7 @@ func TestBuildHandler_IndexRoute(t *testing.T) {
 	}
 	cfg := &config.Config{MaxBytes: 2048, MinTTL: time.Minute, MaxTTL: 2 * time.Minute, TTLOptions: []domain.TTLOption{{Duration: time.Minute, Label: "1m"}}}
 	svc := buildService(idx, stubBlobStorage{}, cfg, realClock{})
-	h := buildHandler(cfg, svc, db, blobDir, tmpls, wembed.Assets)
+	h := buildHandler(cfg, svc, db, blobDir, tmpls, wembed.Assets).Router()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)

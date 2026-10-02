@@ -70,7 +70,19 @@ All errors are JSON `{ "error": "<message>" }`.
 | Method not allowed | 405 | `method not allowed` |
 | Missing `Content-Length` on create | 411 | `content length required` |
 | Size > `MaxBytes` | 413 | `size exceeded` |
+| Per-client rate limit exceeded (sets `Retry-After`) | 429 | `rate limited` |
 | Internal failure | 500 | `internal` |
+
+## Rate Limiting
+Each client address has two token buckets: one for creating secrets (`POST /api/secret`, `GONE_RATE_CREATE`) and one for reading them (`GET` and `DELETE /api/secret/{id}`, `GONE_RATE_READ`). Both buckets hold up to `GONE_RATE_BURST` tokens and refill steadily at the configured rate. Health probes, pages, and static assets are not limited.
+
+- Over budget: `429` with `Retry-After: <seconds>` and `{ "error": "rate limited" }`. The request body is never read.
+- Clients are keyed by IPv4 `/32` or IPv6 `/64`.
+- The client address is the TCP peer. `X-Forwarded-For` is honored only when the peer is in `GONE_TRUSTED_PROXIES`; it is then walked right to left, skipping trusted hops, and the first untrusted address is used.
+- Counters are per process. With several replicas, the effective budget is multiplied by the replica count.
+- Each IPv6 `/48` (or IPv4 `/24`) may hold at most 256 tracked clients, and the table holds at most 100,000. Beyond either cap, clients share overflow buckets grouped by that parent network, so one large allocation cannot crowd out other users.
+- Rejections are counted in the `rate_limited_create_total` and `rate_limited_read_total` metrics.
+- Client addresses are never logged; only the correlation ID and scope are.
 
 ## Security Headers
 Every response carries:
@@ -83,7 +95,6 @@ Responses default to `Cache-Control: no-store` and `Pragma: no-cache`; static as
 
 ## Future Extensions (Non-Breaking)
 - Optional JSON POST mode with metadata wrapper.
-- Rate limiting headers.
 - Prometheus exposition format for metrics.
 
 ## Non-Goals

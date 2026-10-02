@@ -8,6 +8,8 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/netip"
+	"sync"
 	"time"
 
 	"github.com/haukened/gone/internal/app"
@@ -36,6 +38,11 @@ type Handler struct {
 	MinTTL     time.Duration               // lower TTL bound (from config)
 	MaxTTL     time.Duration               // upper TTL bound (from config)
 	TTLOptions []domain.TTLOption          // explicit configured TTL options
+
+	CreateLimiter  RateLimiter    // optional limiter for POST /api/secret (nil disables)
+	ReadLimiter    RateLimiter    // optional limiter for /api/secret/{id} (nil disables)
+	TrustedProxies []netip.Prefix // peers whose X-Forwarded-For is honored
+	Metrics        Metrics        // optional counter sink for rate-limit rejections
 }
 
 // New returns a configured Handler.
@@ -47,14 +54,16 @@ func New(svc ServicePort, maxBody int64, readiness func(context.Context) error) 
 }
 
 // Router constructs and returns an http.Handler with all routes mounted and
-// security headers middleware applied.
+// security headers middleware applied. The API routes are rate limited when
+// CreateLimiter or ReadLimiter is set; set them before calling Router.
 func (h *Handler) Router() http.Handler {
+	var xffWarn sync.Once
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", h.handleIndex)
 	mux.HandleFunc("/about", h.handleAbout)
 	mux.HandleFunc("/secret/", h.handleSecret) // expect /secret/{id}
-	mux.HandleFunc("/api/secret", h.handleCreateSecret)
-	mux.HandleFunc("/api/secret/", h.handleConsumeSecret) // expect GET|DELETE /api/secret/{id}
+	mux.HandleFunc("/api/secret", h.limit(h.CreateLimiter, scopeCreate, &xffWarn, h.handleCreateSecret))
+	mux.HandleFunc("/api/secret/", h.limit(h.ReadLimiter, scopeRead, &xffWarn, h.handleConsumeSecret)) // expect GET|DELETE /api/secret/{id}
 	mux.HandleFunc("/healthz", h.handleHealth)
 	mux.HandleFunc("/readyz", h.handleReady)
 	if h.Assets != nil {

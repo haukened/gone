@@ -71,12 +71,21 @@ Environment variables only (no flags, no config files):
 | `GONE_CLAIM_LEASE` | How long an opened secret is reserved for the recipient's browser to finish downloading and confirm deletion. If it never confirms (closed tab, network drop), the secret is deleted when the lease lapses. Max `15m`. | `2m` |
 | `GONE_METRICS_ADDR` | Optional metrics listener address. | (empty) |
 | `GONE_METRICS_TOKEN` | Bearer token for the metrics endpoint. Metrics stay disabled unless both this and `GONE_METRICS_ADDR` are set. | (empty) |
+| `GONE_RATE_CREATE` | Per-client budget for creating secrets, as `N/s`, `N/m`, or `N/h`. `0` disables it. | `10/m` |
+| `GONE_RATE_READ` | Per-client budget for opening and acknowledging secrets (`GET`/`DELETE`). `0` disables it. | `30/m` |
+| `GONE_RATE_BURST` | Requests a client may make back to back before the rate applies (1–1000). | `10` |
+| `GONE_TRUSTED_PROXIES` | Comma list of proxy IPs/CIDRs whose `X-Forwarded-For` header is trusted. | (empty) |
 
 Derived automatically:
 * MinTTL / MaxTTL = smallest / largest in `GONE_TTL_OPTIONS` (accepted range is any duration inside that span, not just the listed ones).
 * SQLite DSN → `<GONE_DATA_DIR>/gone.db` (WAL mode, FULL sync enforced).
 
 TTL Format: comma‑separated Go durations using `s`, `m`, `h` (e.g. `30s,5m,90m,2h`).
+
+### Behind a reverse proxy
+Rate limits key on the client address (IPv4 `/32`, IPv6 `/64`). Behind a load balancer or reverse proxy every request appears to come from the proxy, so all users share one budget. Set `GONE_TRUSTED_PROXIES` to the proxy's address (e.g. `10.0.0.0/8` or `172.18.0.2`) so gone reads the real client from `X-Forwarded-For`. Only list proxies you control: a trusted proxy can make any request look like it came from any address. If `X-Forwarded-For` arrives from an untrusted peer, gone ignores it and logs a one-time warning.
+
+Limits are kept in memory per process, so with several replicas the effective budget is the configured budget times the replica count.
 
 ---
 
@@ -104,6 +113,8 @@ Definitions:
 | `secrets_consumed_total` | counter | Secrets consumed & deleted |
 | `secrets_expired_deleted_total` | counter | Expired secrets janitor removed |
 | `secrets_claims_expired_total` | counter | Opened secrets deleted because the recipient never confirmed receipt within the claim lease |
+| `rate_limited_create_total` | counter | Create requests rejected with `429` by the per-client create budget |
+| `rate_limited_read_total` | counter | Read/acknowledge requests (`GET`/`DELETE /api/secret/{id}`) rejected with `429` |
 | `janitor_deleted_per_cycle` | summary | Distribution of expirations per janitor run |
 
 Persistence notes:
@@ -225,12 +236,15 @@ Defended:
 * Atomic single claim; deletion after confirmed receipt or lease expiry.
 * Timely expiry deletion.
 
+Partially Defended:
+* Brute force ID enumeration: IDs are 128-bit random and reads are rate limited per client.
+* DoS floods: per-client create and read budgets blunt single-source floods; distributed floods need upstream protection.
+
 Out of Scope (current):
 * Malicious browser extensions.
-* Brute force ID enumeration (future: lightweight rate limiting).
 * Sophisticated timing side channels.
 * URL hygiene / accidental fragment leakage.
-* Large scale DoS floods.
+* Large scale distributed DoS.
 
 Operational Tips:
 * Keep TTLs short for higher sensitivity.
@@ -268,7 +282,14 @@ Disable by removing parameter & clearing the key.
 ---
 
 ## 11. Roadmap (Excerpt)
-* Rate limiting / abuse guard
+The full plan for Gone v3 is in [docs/ROADMAP.md](docs/ROADMAP.md). Highlights:
+* Rate limiting / abuse guard (done)
+* Optional passphrase (second factor alongside the link)
+* Sender status & revoke via a private management link
+* Command-line client (`gone-cli`)
+* Web UI revamp
+
+Other ideas:
 * Optional Prometheus exposition
 * CSP tightening & documentation
 * Graceful shutdown coordination improvements
