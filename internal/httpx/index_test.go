@@ -23,8 +23,20 @@ type noopService struct{}
 func (noopService) CreateSecret(_ context.Context, _ io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (domain.SecretID, time.Time, error) {
 	return domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), time.Now().Add(time.Hour), nil
 }
-func (noopService) Consume(_ context.Context, _ string) (app.Meta, io.ReadCloser, int64, error) {
-	return app.Meta{Version: 1, NonceB64u: "n"}, io.NopCloser(bytes.NewReader([]byte("x"))), 1, nil
+func (noopService) Claim(_ context.Context, _ string, _ string) (app.ClaimResult, error) {
+	return app.ClaimResult{
+		Claimed: app.Claimed{
+			Meta:         app.Meta{Version: 1, NonceB64u: "n"},
+			Body:         io.NopCloser(bytes.NewReader([]byte("x"))),
+			Size:         1,
+			ClaimedUntil: time.Unix(2000, 0).UTC(),
+		},
+		Token: domain.ClaimToken("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+	}, nil
+}
+
+func (noopService) Ack(_ context.Context, _ string, _ string) error {
+	return nil
 }
 
 // TestIndexHandler ensures the index template renders and headers are set.

@@ -25,6 +25,14 @@ type Clock interface {
 	Now() time.Time
 }
 
+// Claimed describes a secret reserved for delivery by SecretStore.Claim.
+type Claimed struct {
+	Meta         Meta          // encryption metadata
+	Body         io.ReadCloser // ciphertext stream; caller must Close
+	Size         int64         // ciphertext length in bytes
+	ClaimedUntil time.Time     // lease deadline for retry and acknowledgement
+}
+
 // SecretStore is the storage port for secrets. Implementations must provide
 // durability and the single-consume invariant. They typically coordinate an
 // index (e.g. SQLite) with blob storage (filesystem) but those details are
@@ -35,12 +43,19 @@ type SecretStore interface {
 	// only after the data and metadata are crash-safe (fsync / committed).
 	Save(ctx context.Context, id string, meta Meta, r io.Reader, size int64, expiresAt time.Time) error
 
-	// Consume atomically retrieves the secret and hard-deletes its record so it
-	// can never be retrieved again. It returns metadata, a reader for the
-	// ciphertext, and its size. If the secret is absent or expired an error is
-	// returned. Implementations must guarantee no concurrent caller can obtain
-	// the same secret after a successful consume.
-	Consume(ctx context.Context, id string) (meta Meta, rc io.ReadCloser, size int64, err error)
+	// Claim reserves a secret for a single client and returns its ciphertext
+	// without deleting it, enabling retry of an interrupted download.
+	// With retry=false the secret must be unclaimed; it is bound to claimHash
+	// until claimedUntil. With retry=true claimHash must match the existing
+	// claim while its lease is valid. Implementations must guarantee that no
+	// other claim hash can ever obtain the secret once claimed, and must return
+	// ErrNotFound for absent, expired, or lapsed-claim secrets.
+	Claim(ctx context.Context, id, claimHash string, retry bool, claimedUntil time.Time) (Claimed, error)
+
+	// Ack permanently deletes a claimed secret (metadata and payload) once the
+	// client confirms full receipt. claimHash must match the active claim;
+	// otherwise ErrNotFound is returned.
+	Ack(ctx context.Context, id, claimHash string) error
 
 	// DeleteExpired removes (or tombstones) secrets whose expiry is <= t and
 	// returns the count of secrets affected. Best-effort cleanup of blob files

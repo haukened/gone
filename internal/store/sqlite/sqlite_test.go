@@ -15,6 +15,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/haukened/gone/internal/app"
+	"github.com/haukened/gone/internal/store"
 )
 
 // openTestDB opens a transient SQLite database file in a temp dir with WAL enabled.
@@ -32,83 +33,285 @@ func openTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-func TestIndexInsertAndConsumeInline(t *testing.T) {
-	db := openTestDB(t)
-	ix, err := New(db)
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	ctx := context.Background()
-	id := "inline1"
-	meta := app.Meta{Version: 1, NonceB64u: "nonceA"}
-	inline := []byte("ciphertext-bytes")
-	now := time.Now().UTC()
-	expires := now.Add(5 * time.Minute)
-	if err := ix.Insert(ctx, id, meta, inline, false, int64(len(inline)), now, expires); err != nil {
-		t.Fatalf("Insert inline: %v", err)
-	}
-	// Consume
-	res, err := ix.Consume(ctx, id, now.Add(1*time.Second), nil)
-	if err != nil {
-		t.Fatalf("Consume: %v", err)
-	}
-	if res.External {
-		t.Fatalf("expected inline secret, got external=true")
-	}
-	if res.Size != int64(len(inline)) {
-		t.Fatalf("size mismatch")
-	}
-	if string(res.Inline) != string(inline) {
-		t.Fatalf("inline data mismatch")
-	}
-	if res.Meta.Version != meta.Version || res.Meta.NonceB64u != meta.NonceB64u {
-		t.Fatalf("meta mismatch: %+v", res.Meta)
-	}
-	// Double consume should yield not found
-	if _, err := ix.Consume(ctx, id, now.Add(2*time.Second), nil); !errors.Is(err, app.ErrNotFound) {
-		t.Fatalf("expected ErrNotFound on second consume, got %v", err)
+// insertInlineSecret inserts an inline row using the public index API.
+func insertInlineSecret(t *testing.T, ctx context.Context, ix *Index, id string, data []byte, now, expires time.Time) {
+	t.Helper()
+	if err := ix.Insert(ctx, id, app.Meta{Version: 1, NonceB64u: "nonce-" + id}, data, false, int64(len(data)), now, expires); err != nil {
+		t.Fatalf("insert inline %q: %v", id, err)
 	}
 }
 
-func TestIndexInsertAndConsumeExternal(t *testing.T) {
+// insertExternalSecret inserts an external row using the public index API.
+func insertExternalSecret(t *testing.T, ctx context.Context, ix *Index, id string, size int64, now, expires time.Time) {
+	t.Helper()
+	if err := ix.Insert(ctx, id, app.Meta{Version: 2, NonceB64u: "nonce-" + id}, nil, true, size, now, expires); err != nil {
+		t.Fatalf("insert external %q: %v", id, err)
+	}
+}
+
+// rowExists reports whether a row with id remains in the secrets table.
+func rowExists(t *testing.T, db *sql.DB, id string) bool {
+	t.Helper()
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM secrets WHERE id=?`, id).Scan(&count); err != nil {
+		t.Fatalf("count row %q: %v", id, err)
+	}
+	return count == 1
+}
+
+// hasColumn reports whether the secrets table has a named column.
+func hasColumn(t *testing.T, db *sql.DB, name string) bool {
+	t.Helper()
+	rows, err := db.Query(`SELECT name FROM pragma_table_info('secrets')`)
+	if err != nil {
+		t.Fatalf("pragma table_info: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var got string
+		if err := rows.Scan(&got); err != nil {
+			t.Fatalf("scan column: %v", err)
+		}
+		if got == name {
+			return true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate columns: %v", err)
+	}
+	return false
+}
+
+func TestIndexMigrationAddsClaimColumnsAndPreservesRows(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+	oldSchema := `CREATE TABLE secrets (
+id TEXT PRIMARY KEY,
+version INTEGER NOT NULL,
+nonce_b64u TEXT NOT NULL,
+inline BLOB,
+external INTEGER NOT NULL DEFAULT 0,
+size INTEGER NOT NULL,
+created_at INTEGER NOT NULL,
+expires_at INTEGER NOT NULL
+);`
+	if _, err := db.ExecContext(ctx, oldSchema); err != nil {
+		t.Fatalf("create old schema: %v", err)
+	}
+	now := time.Now().UTC()
+	if _, err := db.ExecContext(ctx, `INSERT INTO secrets (id, version, nonce_b64u, inline, external, size, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?)`, "legacy", 1, "nonce-legacy", []byte("legacy-data"), 0, len("legacy-data"), now.Unix(), now.Add(time.Hour).Unix()); err != nil {
+		t.Fatalf("insert legacy row: %v", err)
+	}
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if !hasColumn(t, db, "claim_hash") || !hasColumn(t, db, "claimed_until") {
+		t.Fatalf("expected migration to add claim columns")
+	}
+	res, err := ix.Claim(ctx, "legacy", "hash-legacy", false, now, now.Add(time.Minute), nil)
+	if err != nil {
+		t.Fatalf("claim legacy row: %v", err)
+	}
+	if string(res.Inline) != "legacy-data" {
+		t.Fatalf("legacy data got=%q", res.Inline)
+	}
+}
+
+func TestIndexClaimInlineBehaviors(t *testing.T) {
+	tests := []struct {
+		name     string
+		id       string
+		setup    func(t *testing.T, ctx context.Context, ix *Index, db *sql.DB, now time.Time)
+		retry    bool
+		hash     string
+		atOffset time.Duration
+		wantErr  error
+		check    func(t *testing.T, ctx context.Context, ix *Index, db *sql.DB, now time.Time)
+	}{
+		{
+			name: "fresh claim succeeds",
+			id:   "fresh",
+			setup: func(t *testing.T, ctx context.Context, ix *Index, _ *sql.DB, now time.Time) {
+				insertInlineSecret(t, ctx, ix, "fresh", []byte("fresh-data"), now, now.Add(time.Hour))
+			},
+			hash: "hash-fresh",
+			check: func(t *testing.T, _ context.Context, _ *Index, _ *sql.DB, _ time.Time) {
+				// Success is fully validated by the shared assertions below.
+			},
+		},
+		{
+			name: "second fresh claim returns not found",
+			id:   "second-fresh",
+			setup: func(t *testing.T, ctx context.Context, ix *Index, _ *sql.DB, now time.Time) {
+				insertInlineSecret(t, ctx, ix, "second-fresh", []byte("claimed-data"), now, now.Add(time.Hour))
+				if _, err := ix.Claim(ctx, "second-fresh", "hash-owner", false, now, now.Add(time.Minute), nil); err != nil {
+					t.Fatalf("initial claim: %v", err)
+				}
+			},
+			hash:    "hash-other",
+			wantErr: app.ErrNotFound,
+		},
+		{
+			name: "retry with correct hash succeeds and returns same data",
+			id:   "retry-correct",
+			setup: func(t *testing.T, ctx context.Context, ix *Index, _ *sql.DB, now time.Time) {
+				insertInlineSecret(t, ctx, ix, "retry-correct", []byte("retry-data"), now, now.Add(time.Hour))
+				first, err := ix.Claim(ctx, "retry-correct", "hash-retry", false, now, now.Add(time.Minute), nil)
+				if err != nil {
+					t.Fatalf("initial claim: %v", err)
+				}
+				if string(first.Inline) != "retry-data" {
+					t.Fatalf("initial data got=%q", first.Inline)
+				}
+			},
+			retry: true,
+			hash:  "hash-retry",
+		},
+		{
+			name: "retry with wrong hash returns not found",
+			id:   "retry-wrong",
+			setup: func(t *testing.T, ctx context.Context, ix *Index, _ *sql.DB, now time.Time) {
+				insertInlineSecret(t, ctx, ix, "retry-wrong", []byte("retry-data"), now, now.Add(time.Hour))
+				if _, err := ix.Claim(ctx, "retry-wrong", "hash-owner", false, now, now.Add(time.Minute), nil); err != nil {
+					t.Fatalf("initial claim: %v", err)
+				}
+			},
+			retry:   true,
+			hash:    "hash-intruder",
+			wantErr: app.ErrNotFound,
+			check: func(t *testing.T, ctx context.Context, ix *Index, _ *sql.DB, now time.Time) {
+				if _, err := ix.Claim(ctx, "retry-wrong", "hash-owner", true, now.Add(2*time.Second), now.Add(time.Minute), nil); err != nil {
+					t.Fatalf("correct retry after wrong retry failed: %v", err)
+				}
+			},
+		},
+		{
+			name: "retry on unclaimed row returns not found",
+			id:   "retry-unclaimed",
+			setup: func(t *testing.T, ctx context.Context, ix *Index, _ *sql.DB, now time.Time) {
+				insertInlineSecret(t, ctx, ix, "retry-unclaimed", []byte("unclaimed-data"), now, now.Add(time.Hour))
+			},
+			retry:   true,
+			hash:    "hash-missing",
+			wantErr: app.ErrNotFound,
+		},
+		{
+			name: "claim after ttl deletes row and returns not found",
+			id:   "ttl-dead",
+			setup: func(t *testing.T, ctx context.Context, ix *Index, _ *sql.DB, now time.Time) {
+				insertInlineSecret(t, ctx, ix, "ttl-dead", []byte("dead-data"), now.Add(-time.Hour), now)
+			},
+			hash:    "hash-dead",
+			wantErr: app.ErrNotFound,
+			check: func(t *testing.T, _ context.Context, _ *Index, db *sql.DB, _ time.Time) {
+				if rowExists(t, db, "ttl-dead") {
+					t.Fatalf("expected expired row deleted")
+				}
+			},
+		},
+		{
+			name:     "claim after lease lapsed deletes row and returns not found",
+			id:       "lease-dead",
+			atOffset: time.Minute,
+			setup: func(t *testing.T, ctx context.Context, ix *Index, _ *sql.DB, now time.Time) {
+				insertInlineSecret(t, ctx, ix, "lease-dead", []byte("lease-data"), now, now.Add(time.Hour))
+				if _, err := ix.Claim(ctx, "lease-dead", "hash-owner", false, now, now.Add(time.Minute), nil); err != nil {
+					t.Fatalf("initial claim: %v", err)
+				}
+			},
+			retry:   true,
+			hash:    "hash-owner",
+			wantErr: app.ErrNotFound,
+			check: func(t *testing.T, _ context.Context, _ *Index, db *sql.DB, _ time.Time) {
+				if rowExists(t, db, "lease-dead") {
+					t.Fatalf("expected lapsed claim row deleted")
+				}
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			db := openTestDB(t)
+			ix, err := New(db)
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			ctx := context.Background()
+			now := time.Now().UTC().Truncate(time.Second)
+			tc.setup(t, ctx, ix, db, now)
+			res, err := ix.Claim(ctx, tc.id, tc.hash, tc.retry, now.Add(tc.atOffset), now.Add(5*time.Minute), nil)
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("expected %v, got %v", tc.wantErr, err)
+				}
+				if res != nil {
+					t.Fatalf("expected nil result on error")
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Claim: %v", err)
+				}
+				if res.External {
+					t.Fatalf("expected inline result")
+				}
+				if len(res.Inline) == 0 {
+					t.Fatalf("expected inline data")
+				}
+				if res.ClaimHash != tc.hash {
+					t.Fatalf("claim hash got=%q want=%q", res.ClaimHash, tc.hash)
+				}
+			}
+			if tc.check != nil {
+				tc.check(t, ctx, ix, db, now)
+			}
+		})
+	}
+}
+
+func TestIndexClaimExternalOpensBlob(t *testing.T) {
 	db := openTestDB(t)
 	ix, err := New(db)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
 	ctx := context.Background()
-	id := "ext1"
-	meta := app.Meta{Version: 2, NonceB64u: "nonceB"}
+	id := "external-open"
 	now := time.Now().UTC()
-	expires := now.Add(10 * time.Minute)
-	if err := ix.Insert(ctx, id, meta, nil, true, 1234, now, expires); err != nil {
-		t.Fatalf("Insert external: %v", err)
-	}
-	res2, err := ix.Consume(ctx, id, now.Add(1*time.Second), func(string) (io.ReadCloser, error) {
+	insertExternalSecret(t, ctx, ix, id, 1234, now, now.Add(time.Hour))
+	var openedID string
+	var opens int
+	res, err := ix.Claim(ctx, id, "hash-ext", false, now, now.Add(time.Minute), func(id string) (io.ReadCloser, error) {
+		openedID = id
+		opens++
 		return io.NopCloser(bytes.NewReader([]byte("blob"))), nil
 	})
 	if err != nil {
-		t.Fatalf("Consume: %v", err)
+		t.Fatalf("Claim external: %v", err)
 	}
-	if !res2.External {
+	defer res.Reader.Close()
+	if !res.External {
 		t.Fatalf("expected external=true")
 	}
-	if len(res2.Inline) != 0 {
-		t.Fatalf("expected empty inline slice")
+	if openedID != id || opens != 1 {
+		t.Fatalf("openExternal id=%q opens=%d", openedID, opens)
 	}
-	if res2.Reader == nil {
+	if res.Reader == nil {
 		t.Fatalf("expected external reader")
 	}
-	res2.Reader.Close()
-	if res2.Size != 1234 {
+	if res.Size != 1234 {
 		t.Fatalf("size mismatch")
 	}
-	if res2.Meta.Version != meta.Version || res2.Meta.NonceB64u != meta.NonceB64u {
-		t.Fatalf("meta mismatch")
+	got, err := io.ReadAll(res.Reader)
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+	if string(got) != "blob" {
+		t.Fatalf("reader data got=%q", got)
 	}
 }
 
-func TestIndexConsumeExternalOpenFailureLeavesRow(t *testing.T) {
+func TestIndexClaimExternalOpenFailureLeavesRowUnclaimed(t *testing.T) {
 	db := openTestDB(t)
 	ix, err := New(db)
 	if err != nil {
@@ -116,31 +319,26 @@ func TestIndexConsumeExternalOpenFailureLeavesRow(t *testing.T) {
 	}
 	ctx := context.Background()
 	id := "ext-open-failure"
-	meta := app.Meta{Version: 2, NonceB64u: "nonceD"}
 	now := time.Now().UTC()
-	expires := now.Add(10 * time.Minute)
-	if err := ix.Insert(ctx, id, meta, nil, true, 1234, now, expires); err != nil {
-		t.Fatalf("Insert external: %v", err)
-	}
+	insertExternalSecret(t, ctx, ix, id, 1234, now, now.Add(time.Hour))
 	openErr := errors.New("open failed")
-	if _, err := ix.Consume(ctx, id, now.Add(time.Second), func(string) (io.ReadCloser, error) {
+	if _, err := ix.Claim(ctx, id, "hash-failed", false, now, now.Add(time.Minute), func(string) (io.ReadCloser, error) {
 		return nil, openErr
 	}); !errors.Is(err, openErr) {
 		t.Fatalf("expected open error, got %v", err)
 	}
-	res, err := ix.Consume(ctx, id, now.Add(2*time.Second), func(string) (io.ReadCloser, error) {
+	res, err := ix.Claim(ctx, id, "hash-after-failure", false, now.Add(time.Second), now.Add(time.Minute), func(string) (io.ReadCloser, error) {
 		return io.NopCloser(bytes.NewReader([]byte("blob"))), nil
 	})
 	if err != nil {
-		t.Fatalf("expected retry consume to succeed, got %v", err)
+		t.Fatalf("expected fresh claim after failed open to succeed, got %v", err)
 	}
-	if !res.External || res.Reader == nil {
-		t.Fatalf("expected external result with reader")
+	if res.Reader != nil {
+		_ = res.Reader.Close()
 	}
-	res.Reader.Close()
 }
 
-func TestIndexConsumeExternalConcurrentOnlyOneSucceeds(t *testing.T) {
+func TestIndexClaimExternalConcurrentOnlyOneFreshClaimSucceeds(t *testing.T) {
 	db := openTestDB(t)
 	ix, err := New(db)
 	if err != nil {
@@ -149,19 +347,17 @@ func TestIndexConsumeExternalConcurrentOnlyOneSucceeds(t *testing.T) {
 	ctx := context.Background()
 	id := "ext-concurrent"
 	now := time.Now().UTC()
-	if err := ix.Insert(ctx, id, app.Meta{Version: 1, NonceB64u: "nonceE"}, nil, true, 4, now, now.Add(time.Minute)); err != nil {
-		t.Fatalf("Insert external: %v", err)
-	}
+	insertExternalSecret(t, ctx, ix, id, 4, now, now.Add(time.Minute))
 	var opens int32
 	start := make(chan struct{})
 	errs := make(chan error, 2)
 	var wg sync.WaitGroup
 	for i := 0; i < 2; i++ {
 		wg.Add(1)
-		go func() {
+		go func(n int) {
 			defer wg.Done()
 			<-start
-			res, err := ix.Consume(ctx, id, now.Add(time.Second), func(string) (io.ReadCloser, error) {
+			res, err := ix.Claim(ctx, id, "hash-concurrent-"+string(rune('a'+n)), false, now.Add(time.Second), now.Add(time.Minute), func(string) (io.ReadCloser, error) {
 				atomic.AddInt32(&opens, 1)
 				time.Sleep(50 * time.Millisecond)
 				return io.NopCloser(bytes.NewReader([]byte("blob"))), nil
@@ -170,7 +366,7 @@ func TestIndexConsumeExternalConcurrentOnlyOneSucceeds(t *testing.T) {
 				_ = res.Reader.Close()
 			}
 			errs <- err
-		}()
+		}(i)
 	}
 	close(start)
 	wg.Wait()
@@ -185,7 +381,7 @@ func TestIndexConsumeExternalConcurrentOnlyOneSucceeds(t *testing.T) {
 		case errors.Is(err, app.ErrNotFound):
 			notFound++
 		default:
-			t.Fatalf("unexpected consume error: %v", err)
+			t.Fatalf("unexpected claim error: %v", err)
 		}
 	}
 	if successes != 1 || notFound != 1 {
@@ -196,35 +392,53 @@ func TestIndexConsumeExternalConcurrentOnlyOneSucceeds(t *testing.T) {
 	}
 }
 
-func TestIndexConsumeExpired(t *testing.T) {
-	db := openTestDB(t)
-	ix, err := New(db)
-	if err != nil {
-		t.Fatalf("New: %v", err)
+func TestIndexAckMatchingHashDeletesRowAndReportsExternal(t *testing.T) {
+	tests := []struct {
+		name     string
+		id       string
+		external bool
+	}{
+		{name: "inline", id: "ack-inline", external: false},
+		{name: "external", id: "ack-external", external: true},
 	}
-	ctx := context.Background()
-	id := "exp1"
-	meta := app.Meta{Version: 1, NonceB64u: "nonceC"}
-	now := time.Now().UTC()
-	expires := now.Add(1 * time.Second)
-	if err := ix.Insert(ctx, id, meta, []byte("x"), false, 1, now, expires); err != nil {
-		t.Fatalf("Insert: %v", err)
-	}
-	// After expiry, index still returns the row (and deletes it) via DELETE RETURNING.
-	res, err := ix.Consume(ctx, id, now.Add(2*time.Second), nil)
-	if !errors.Is(err, app.ErrNotFound) {
-		t.Fatalf("expected expired consume to return not found, got: %v", err)
-	}
-	if res != nil {
-		t.Fatalf("expected no result for expired consume")
-	}
-	// Second consume is not found.
-	if _, err := ix.Consume(ctx, id, now.Add(3*time.Second), nil); !errors.Is(err, app.ErrNotFound) {
-		t.Fatalf("expected ErrNotFound on second consume, got %v", err)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			db := openTestDB(t)
+			ix, err := New(db)
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			ctx := context.Background()
+			now := time.Now().UTC()
+			if tc.external {
+				insertExternalSecret(t, ctx, ix, tc.id, 77, now, now.Add(time.Hour))
+			} else {
+				insertInlineSecret(t, ctx, ix, tc.id, []byte("ack-data"), now, now.Add(time.Hour))
+			}
+			res, err := ix.Claim(ctx, tc.id, "hash-ack", false, now, now.Add(time.Minute), func(string) (io.ReadCloser, error) {
+				return io.NopCloser(bytes.NewReader([]byte("blob"))), nil
+			})
+			if err != nil {
+				t.Fatalf("Claim: %v", err)
+			}
+			if res.Reader != nil {
+				_ = res.Reader.Close()
+			}
+			external, err := ix.Ack(ctx, tc.id, "hash-ack")
+			if err != nil {
+				t.Fatalf("Ack: %v", err)
+			}
+			if external != tc.external {
+				t.Fatalf("external got=%v want=%v", external, tc.external)
+			}
+			if rowExists(t, db, tc.id) {
+				t.Fatalf("expected ack to delete row")
+			}
+		})
 	}
 }
 
-func TestIndexDeleteExpired(t *testing.T) {
+func TestIndexAckMismatchedHashReturnsNotFoundAndLeavesRow(t *testing.T) {
 	db := openTestDB(t)
 	ix, err := New(db)
 	if err != nil {
@@ -232,49 +446,100 @@ func TestIndexDeleteExpired(t *testing.T) {
 	}
 	ctx := context.Background()
 	now := time.Now().UTC()
-	// Insert 3 secrets: one expired external, one expired inline, one future
-	if err := ix.Insert(ctx, "gone-ext", app.Meta{Version: 1, NonceB64u: "n1"}, nil, true, 50, now.Add(-10*time.Minute), now.Add(-5*time.Minute)); err != nil {
-		t.Fatalf("insert ext expired: %v", err)
+	id := "ack-mismatch"
+	insertInlineSecret(t, ctx, ix, id, []byte("ack-data"), now, now.Add(time.Hour))
+	if _, err := ix.Claim(ctx, id, "hash-owner", false, now, now.Add(time.Minute), nil); err != nil {
+		t.Fatalf("Claim: %v", err)
 	}
-	if err := ix.Insert(ctx, "gone-inl", app.Meta{Version: 1, NonceB64u: "n2"}, []byte("abc"), false, 3, now.Add(-9*time.Minute), now.Add(-4*time.Minute)); err != nil {
-		t.Fatalf("insert inl expired: %v", err)
+	if _, err := ix.Ack(ctx, id, "hash-wrong"); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
-	if err := ix.Insert(ctx, "future", app.Meta{Version: 1, NonceB64u: "n3"}, []byte("f"), false, 1, now, now.Add(30*time.Minute)); err != nil {
-		t.Fatalf("insert future: %v", err)
+	if !rowExists(t, db, id) {
+		t.Fatalf("expected row to remain after mismatched ack")
 	}
-	recs, err := ix.DeleteExpired(ctx, now)
+	if _, err := ix.Claim(ctx, id, "hash-owner", true, now.Add(time.Second), now.Add(time.Minute), nil); err != nil {
+		t.Fatalf("expected correct retry after mismatched ack to succeed: %v", err)
+	}
+}
+
+func TestIndexAckMissingReturnsNotFound(t *testing.T) {
+	db := openTestDB(t)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if _, err := ix.Ack(context.Background(), "missing", "hash"); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestIndexAckAllowsLapsedLease(t *testing.T) {
+	db := openTestDB(t)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ctx := context.Background()
+	now := time.Now().UTC()
+	id := "ack-lapsed"
+	insertInlineSecret(t, ctx, ix, id, []byte("ack-data"), now, now.Add(time.Hour))
+	if _, err := ix.Claim(ctx, id, "hash-lapsed", false, now, now.Add(time.Minute), nil); err != nil {
+		t.Fatalf("Claim: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE secrets SET claimed_until=? WHERE id=?`, now.Add(-time.Minute).Unix(), id); err != nil {
+		t.Fatalf("force lapsed lease: %v", err)
+	}
+	if external, err := ix.Ack(ctx, id, "hash-lapsed"); err != nil || external {
+		t.Fatalf("Ack after lapsed lease got external=%v err=%v", external, err)
+	}
+	if rowExists(t, db, id) {
+		t.Fatalf("expected ack to delete row")
+	}
+}
+
+func TestIndexDeleteExpiredRemovesLapsedClaimsAndBoundaryRows(t *testing.T) {
+	db := openTestDB(t)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+	cutoff := now.Add(time.Minute)
+	insertInlineSecret(t, ctx, ix, "ttl-boundary", []byte("ttl"), now, cutoff)
+	insertExternalSecret(t, ctx, ix, "claim-boundary", 42, now, now.Add(time.Hour))
+	insertInlineSecret(t, ctx, ix, "future", []byte("future"), now, cutoff.Add(time.Second))
+	res, err := ix.Claim(ctx, "claim-boundary", "hash-claim-boundary", false, now, cutoff, func(string) (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader([]byte("blob"))), nil
+	})
+	if err != nil {
+		t.Fatalf("Claim boundary row: %v", err)
+	}
+	if res.Reader != nil {
+		_ = res.Reader.Close()
+	}
+	recs, err := ix.DeleteExpired(ctx, cutoff)
 	if err != nil {
 		t.Fatalf("DeleteExpired: %v", err)
 	}
 	if len(recs) != 2 {
 		t.Fatalf("expected 2 expired records, got %d (%+v)", len(recs), recs)
 	}
-	// Build map
-	m := map[string]bool{}
-	extMap := map[string]bool{}
-	for _, r := range recs {
-		m[r.ID] = true
-		extMap[r.ID] = r.External
+	byID := map[string]store.ExpiredRecord{}
+	for _, rec := range recs {
+		byID[rec.ID] = rec
 	}
-	if !m["gone-ext"] || !m["gone-inl"] {
-		t.Fatalf("missing expected IDs in recs: %+v", recs)
+	if rec, ok := byID["ttl-boundary"]; !ok || rec.Claimed || rec.External {
+		t.Fatalf("ttl boundary record got=%+v ok=%v", rec, ok)
 	}
-	if !extMap["gone-ext"] {
-		t.Fatalf("expected external flag for gone-ext")
+	if rec, ok := byID["claim-boundary"]; !ok || !rec.Claimed || !rec.External {
+		t.Fatalf("claim boundary record got=%+v ok=%v", rec, ok)
 	}
-	if extMap["gone-inl"] {
-		t.Fatalf("unexpected external flag for gone-inl")
+	if rowExists(t, db, "ttl-boundary") || rowExists(t, db, "claim-boundary") {
+		t.Fatalf("expected boundary rows removed")
 	}
-	// Ensure rows actually removed
-	if _, err := ix.Consume(ctx, "gone-ext", now.Add(1*time.Second), nil); !errors.Is(err, app.ErrNotFound) {
-		t.Fatalf("expected not found for removed gone-ext")
-	}
-	if _, err := ix.Consume(ctx, "gone-inl", now.Add(1*time.Second), nil); !errors.Is(err, app.ErrNotFound) {
-		t.Fatalf("expected not found for removed gone-inl")
-	}
-	// Future one still there
-	if _, err := ix.Consume(ctx, "future", now.Add(1*time.Second), nil); err != nil {
-		t.Fatalf("future consume failed: %v", err)
+	if !rowExists(t, db, "future") {
+		t.Fatalf("expected future row to remain")
 	}
 }
 
@@ -286,15 +551,9 @@ func TestIndexListExternalIDs(t *testing.T) {
 	}
 	ctx := context.Background()
 	now := time.Now().UTC()
-	if err := ix.Insert(ctx, "inl", app.Meta{Version: 1, NonceB64u: "ni"}, []byte("d"), false, 1, now, now.Add(5*time.Minute)); err != nil {
-		t.Fatalf("insert inline: %v", err)
-	}
-	if err := ix.Insert(ctx, "extA", app.Meta{Version: 1, NonceB64u: "na"}, nil, true, 11, now, now.Add(5*time.Minute)); err != nil {
-		t.Fatalf("insert extA: %v", err)
-	}
-	if err := ix.Insert(ctx, "extB", app.Meta{Version: 1, NonceB64u: "nb"}, nil, true, 12, now, now.Add(5*time.Minute)); err != nil {
-		t.Fatalf("insert extB: %v", err)
-	}
+	insertInlineSecret(t, ctx, ix, "inl", []byte("d"), now, now.Add(5*time.Minute))
+	insertExternalSecret(t, ctx, ix, "extA", 11, now, now.Add(5*time.Minute))
+	insertExternalSecret(t, ctx, ix, "extB", 12, now, now.Add(5*time.Minute))
 	ids, err := ix.ListExternalIDs(ctx)
 	if err != nil {
 		t.Fatalf("ListExternalIDs: %v", err)
@@ -313,7 +572,10 @@ func TestIndexListExternalIDs(t *testing.T) {
 
 func TestIndexInsertDuplicate(t *testing.T) {
 	db := openTestDB(t)
-	ix, _ := New(db)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	ctx := context.Background()
 	now := time.Now().UTC()
 	meta := app.Meta{Version: 1, NonceB64u: "dup"}
@@ -325,30 +587,39 @@ func TestIndexInsertDuplicate(t *testing.T) {
 	}
 }
 
-func TestIndexConsumeMissing(t *testing.T) {
+func TestIndexClaimMissing(t *testing.T) {
 	db := openTestDB(t)
-	ix, _ := New(db)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	ctx := context.Background()
 	now := time.Now().UTC()
-	if _, err := ix.Consume(ctx, "nope", now, nil); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Claim(ctx, "nope", "hash", false, now, now.Add(time.Minute), nil); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
 
-func TestIndexConsumeBeginTxError(t *testing.T) {
+func TestIndexClaimBeginImmediateError(t *testing.T) {
 	db := openTestDB(t)
-	ix, _ := New(db)
-	// Close DB to force BeginTx error
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	db.Close()
 	ctx := context.Background()
-	if _, err := ix.Consume(ctx, "any", time.Now(), nil); err == nil {
-		t.Fatalf("expected error from BeginTx after close")
+	now := time.Now().UTC()
+	if _, err := ix.Claim(ctx, "any", "hash", false, now, now.Add(time.Minute), nil); err == nil {
+		t.Fatalf("expected error from closed DB")
 	}
 }
 
 func TestIndexDeleteExpiredNone(t *testing.T) {
 	db := openTestDB(t)
-	ix, _ := New(db)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	ctx := context.Background()
 	now := time.Now().UTC()
 	recs, err := ix.DeleteExpired(ctx, now)
@@ -362,7 +633,10 @@ func TestIndexDeleteExpiredNone(t *testing.T) {
 
 func TestIndexDeleteExpiredBeginTxError(t *testing.T) {
 	db := openTestDB(t)
-	ix, _ := New(db)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	db.Close()
 	ctx := context.Background()
 	if _, err := ix.DeleteExpired(ctx, time.Now()); err == nil {
@@ -372,7 +646,10 @@ func TestIndexDeleteExpiredBeginTxError(t *testing.T) {
 
 func TestIndexListExternalIDsClosedDB(t *testing.T) {
 	db := openTestDB(t)
-	ix, _ := New(db)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	db.Close()
 	ctx := context.Background()
 	if _, err := ix.ListExternalIDs(ctx); err == nil {

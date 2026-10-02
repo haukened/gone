@@ -40,6 +40,9 @@ func (h *Handler) mapServiceError(ctx context.Context, w http.ResponseWriter, er
 	case errors.Is(err, domain.ErrInvalidID):
 		slog.Warn("service error", "cid", cid, "code", "invalid_id")
 		h.writeError(ctx, w, http.StatusBadRequest, "invalid id")
+	case errors.Is(err, domain.ErrInvalidClaim):
+		slog.Warn("service error", "cid", cid, "code", "invalid_claim")
+		h.writeError(ctx, w, http.StatusBadRequest, "invalid claim")
 	case errors.Is(err, app.ErrSizeExceeded):
 		slog.Warn("service error", "cid", cid, "code", "size_exceeded")
 		h.writeError(ctx, w, http.StatusRequestEntityTooLarge, "size exceeded")

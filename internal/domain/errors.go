@@ -7,4 +7,6 @@ import "errors"
 var (
 	ErrInvalidID  = errors.New("invalid secret id")
 	ErrTTLInvalid = errors.New("ttl invalid")
+	// ErrInvalidClaim indicates a malformed claim token.
+	ErrInvalidClaim = errors.New("invalid claim token")
 )

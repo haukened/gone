@@ -171,7 +171,7 @@ func loadTemplates() (*templates, error) { // retained for existing callers
 
 func buildService(idx store.Index, blobs store.BlobStorage, cfg *config.Config, clock app.Clock) *app.Service {
 	st := store.New(idx, blobs, clock, cfg.InlineMaxBytes)
-	return &app.Service{Store: st, Clock: clock, MaxBytes: cfg.MaxBytes, MinTTL: cfg.MinTTL, MaxTTL: cfg.MaxTTL}
+	return &app.Service{Store: st, Clock: clock, MaxBytes: cfg.MaxBytes, MinTTL: cfg.MinTTL, MaxTTL: cfg.MaxTTL, ClaimLease: cfg.ClaimLease}
 }
 
 func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir string, tmpls *templates) http.Handler {
@@ -199,7 +199,16 @@ func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir stri
 }
 
 func newServer(cfg *config.Config, handler http.Handler) *http.Server {
-	return &http.Server{Addr: cfg.Addr, Handler: handler, ReadTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 120 * time.Second}
+	// Headers must arrive quickly (slowloris defense); body read/write windows
+	// are sized so a full MaxBytes payload succeeds on modest connections.
+	return &http.Server{
+		Addr:              cfg.Addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 }
 
 func run() error {
@@ -227,7 +236,10 @@ func run() error {
 
 	// Optional metrics server (separate listener) if configured.
 	var metricsSrv *http.Server
-	if cfg.MetricsAddr != "" {
+	if cfg.MetricsAddr != "" && cfg.MetricsToken == "" {
+		slog.Warn("metrics disabled: GONE_METRICS_ADDR set but GONE_METRICS_TOKEN is empty")
+	}
+	if cfg.MetricsEnabled() {
 		metricsSrv = &http.Server{Addr: cfg.MetricsAddr, Handler: metrics.Handler(mgr, cfg.MetricsToken), ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
 		go func() {
 			if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -250,7 +262,8 @@ func run() error {
 	}
 	// Start janitor with metrics.
 	janCfg := janitor.Config{Interval: time.Minute, Logger: slog.Default()}
-	jan := janitor.New(store.New(idx, blobs, clock, cfg.InlineMaxBytes), mgr, janCfg) // reuse underlying components
+	janStore := store.New(idx, blobs, clock, cfg.InlineMaxBytes).WithMetrics(mgr) // reuse underlying components
+	jan := janitor.New(janStore, mgr, janCfg)
 	jan.Start(ctx)
 	defer jan.Stop()
 

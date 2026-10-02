@@ -27,16 +27,17 @@ type Config struct {
 	MinTTL         time.Duration      `koanf:"-" validate:"required,ltfield=MaxTTL"`
 	MaxTTL         time.Duration      `koanf:"-" validate:"required,gtfield=MinTTL"`
 	TTLOptions     []domain.TTLOption `koanf:"ttl_options" validate:"required"`
+	ClaimLease     time.Duration      `koanf:"claim_lease" validate:"required,gt=0,lte=15m"`
 	MetricsAddr    string             `koanf:"metrics_addr" validate:"omitempty,ip_port"`
-	MetricsToken   string             `koanf:"metrics_token" validate:"required_with=MetricsAddr"`
+	MetricsToken   string             `koanf:"metrics_token"`
 }
 
 // DefaultAppConfig provides the default app configuration values.
 var DefaultAppConfig = Config{
 	Addr:           ":8080",
 	DataDir:        "/data",
-	InlineMaxBytes: 8192,        // 8 KiB
-	MaxBytes:       1024 * 1024, // 1 MiB
+	InlineMaxBytes: 8192,             // 8 KiB
+	MaxBytes:       10 * 1024 * 1024, // 10 MiB (message + attachments combined)
 	MinTTL:         5 * time.Minute,
 	MaxTTL:         24 * time.Hour,
 	TTLOptions: []domain.TTLOption{
@@ -69,7 +70,8 @@ var DefaultAppConfig = Config{
 			Label:    "24h",
 		},
 	},
-	MetricsAddr: "", // disabled by default
+	ClaimLease:  2 * time.Minute, // window to finish download + decrypt before a claim lapses
+	MetricsAddr: "",              // disabled by default
 }
 
 // defaultLoader loads default configuration values into the provided Koanf instance
@@ -170,6 +172,7 @@ func Load() (*Config, error) {
 			WeaklyTypedInput: true,
 			DecodeHook: mapstructure.ComposeDecodeHookFunc(
 				StringToTTLOptions(),
+				mapstructure.StringToTimeDurationHookFunc(),
 			),
 		},
 	})
@@ -202,6 +205,16 @@ func Load() (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// MetricsEnabled reports whether the metrics listener should be started.
+// Metrics require both a listen address and a bearer token; if either is
+// missing, metrics are disabled so the endpoint is never exposed unauthenticated.
+//
+// Returns:
+//   - bool: true when both MetricsAddr and MetricsToken are non-empty.
+func (c *Config) MetricsEnabled() bool {
+	return c.MetricsAddr != "" && c.MetricsToken != ""
 }
 
 // SQLiteDSN returns a fixed hardened SQLite DSN derived from DataDir.

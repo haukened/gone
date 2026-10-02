@@ -34,15 +34,24 @@
 			<p class="indent">Gone is designed so the server never learns your secret. The critical cryptography happens entirely in your browser before anything is sent over the network.</p>
 			<h3 class="underline">High Level Flow</h3>
 			<ol>
-				<li><strong>You type a secret</strong> into the form. Before it leaves your device, the browser generates a fresh, random encryption key.</li>
-				<li><strong>Client-side encryption</strong> (using modern WebCrypto primitives) transforms the plaintext into an opaque blob.</li>
+				<li><strong>You type a message and/or attach files</strong> in the form. Before anything leaves your device, the browser generates a fresh, random encryption key.</li>
+				<li><strong>Client-side encryption</strong> (using modern WebCrypto primitives) packs the message and files together and transforms them into a single opaque blob. File names and types are encrypted too.</li>
 				<li><strong>Only the encrypted blob</strong> is sent to the Gone server. The key never leaves the browser.</li>
-				<li><strong>The server stores</strong> just that blob plus minimal metadata (TTL & one-time marker).</li>
-				<li><strong>A shareable URL</strong> is produced. The secret key is embedded in the URL fragment (the part after <code>#</code>) or query component so the server still never sees it during retrieval.</li>
-				<li><strong>The recipient loads the URL</strong>; their browser extracts the key locally and fetches the encrypted blob.</li>
-				<li><strong>Decryption happens client-side</strong>; the server remains blind to the plaintext the entire time.</li>
-				<li><strong>One-time consumption</strong>: after first successful retrieval the stored blob is deleted, preventing reuse.</li>
+				<li><strong>The server stores</strong> just that blob plus minimal metadata (expiry time and one-time state).</li>
+				<li><strong>A shareable URL</strong> is produced. The secret key is embedded in the URL fragment (the part after <code>#</code>), which browsers never send to the server.</li>
+				<li><strong>The recipient loads the URL</strong>; their browser extracts the key locally and downloads the encrypted blob. From that moment the secret is reserved for them alone; anyone else who opens the link sees that it is gone.</li>
+				<li><strong>Decryption happens client-side</strong>; the browser verifies every byte arrived intact before showing anything. The server remains blind to the plaintext the entire time.</li>
+				<li><strong>Confirmed deletion</strong>: once the recipient's browser has the complete secret, it tells the server to delete it. If that confirmation never arrives (closed tab, dropped connection), the server deletes it automatically a few minutes later. Either way, it can never be read twice.</li>
 			</ol>
+		</section>
+		<section class="card">
+			<h3 class="underline">File Attachments</h3>
+			<ul>
+				<li>Attach up to 10 files of any type. The message and all files share one size limit, shown on the form.</li>
+				<li>Files are encrypted in your browser exactly like the message; the server cannot see their names, types, or contents.</li>
+				<li>The recipient downloads each file individually or all at once. Gone warns them before leaving the page with files still unsaved, because the secret cannot be opened again.</li>
+				<li>File names are cleaned up (folders and hidden control characters removed), and uncommon file types are saved as generic downloads so they can't run in the browser.</li>
+			</ul>
 		</section>
 		<section class="card">
 			<h3 class="underline">Why This Matters</h3>
@@ -59,6 +68,8 @@
 				<li>Always verify you are on HTTPS (the app warns if not).</li>
 				<li>The secrecy guarantee assumes the sender's and recipient's browsers are not compromised.</li>
 				<li>Anyone who obtains the full share URL (including its key component) can decrypt the secret until first read or expiry.</li>
+				<li>If someone else opens the link first, the intended recipient will see that the secret is gone, a clear sign the link was intercepted.</li>
+				<li>Attachments are only as safe as the device they are saved to; delete downloaded files when you no longer need them.</li>
 			</ul>
 		</section>
 		<section class="card">

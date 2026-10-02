@@ -16,21 +16,33 @@ import (
 )
 
 type consumeService struct { // reuse custom service for consume errors
-	invalid  bool
-	internal bool
+	claimErr error
+	ackErr   error
 }
 
 func (c consumeService) CreateSecret(_ context.Context, _ io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (domain.SecretID, time.Time, error) {
 	return domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), time.Now().Add(time.Hour), nil
 }
-func (c consumeService) Consume(_ context.Context, id string) (app.Meta, io.ReadCloser, int64, error) {
-	if c.invalid {
-		return app.Meta{}, nil, 0, domain.ErrInvalidID
+func (c consumeService) Claim(_ context.Context, _ string, _ string) (app.ClaimResult, error) {
+	if c.claimErr != nil {
+		return app.ClaimResult{}, c.claimErr
 	}
-	if c.internal {
-		return app.Meta{}, nil, 0, errors.New("boom")
+	return app.ClaimResult{
+		Claimed: app.Claimed{
+			Meta:         app.Meta{Version: 1, NonceB64u: "n"},
+			Body:         io.NopCloser(bytes.NewReader([]byte("ok"))),
+			Size:         2,
+			ClaimedUntil: time.Unix(2000, 0).UTC(),
+		},
+		Token: domain.ClaimToken("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+	}, nil
+}
+
+func (c consumeService) Ack(_ context.Context, _ string, _ string) error {
+	if c.ackErr != nil {
+		return c.ackErr
 	}
-	return app.Meta{Version: 1, NonceB64u: "n"}, io.NopCloser(bytes.NewReader([]byte("ok"))), 2, nil
+	return nil
 }
 
 func TestConsumeEndpointErrors(t *testing.T) {
@@ -41,14 +53,20 @@ func TestConsumeEndpointErrors(t *testing.T) {
 		service        httpx.ServicePort
 		expectCode     int
 		expectContains string
+		expectAllow    string
 	}{
-		{name: "method not allowed", method: http.MethodPost, path: "/api/secret/abcd", expectCode: http.StatusMethodNotAllowed, expectContains: "method not allowed"},
+		{name: "method not allowed", method: http.MethodPost, path: "/api/secret/abcd", expectCode: http.StatusMethodNotAllowed, expectContains: "method not allowed", expectAllow: "GET, DELETE"},
 		// GET /api/secret hits the create handler path and fails method guard -> 405
 		{name: "get without id -> 405", method: http.MethodGet, path: "/api/secret", expectCode: http.StatusMethodNotAllowed, expectContains: "method not allowed"},
 		// GET /api/secret/ matches consume handler but missing id -> 404 not found
 		{name: "missing id -> 404", method: http.MethodGet, path: "/api/secret/", expectCode: http.StatusNotFound, expectContains: "not found"},
-		{name: "invalid id", method: http.MethodGet, path: "/api/secret/bad-id-!!!", service: consumeService{invalid: true}, expectCode: http.StatusBadRequest, expectContains: "invalid id"},
-		{name: "internal error", method: http.MethodGet, path: "/api/secret/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", service: consumeService{internal: true}, expectCode: http.StatusInternalServerError, expectContains: "internal"},
+		{name: "claim not found", method: http.MethodGet, path: "/api/secret/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", service: consumeService{claimErr: app.ErrNotFound}, expectCode: http.StatusNotFound, expectContains: "not found"},
+		{name: "claim invalid id", method: http.MethodGet, path: "/api/secret/bad-id-!!!", service: consumeService{claimErr: domain.ErrInvalidID}, expectCode: http.StatusBadRequest, expectContains: "invalid id"},
+		{name: "claim invalid token", method: http.MethodGet, path: "/api/secret/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", service: consumeService{claimErr: domain.ErrInvalidClaim}, expectCode: http.StatusBadRequest, expectContains: "invalid claim"},
+		{name: "claim internal error", method: http.MethodGet, path: "/api/secret/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", service: consumeService{claimErr: errors.New("boom")}, expectCode: http.StatusInternalServerError, expectContains: "internal"},
+		{name: "delete not found", method: http.MethodDelete, path: "/api/secret/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", service: consumeService{ackErr: app.ErrNotFound}, expectCode: http.StatusNotFound, expectContains: "not found"},
+		{name: "delete invalid claim", method: http.MethodDelete, path: "/api/secret/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", service: consumeService{ackErr: domain.ErrInvalidClaim}, expectCode: http.StatusBadRequest, expectContains: "invalid claim"},
+		{name: "delete invalid id", method: http.MethodDelete, path: "/api/secret/bad-id-!!!", service: consumeService{ackErr: domain.ErrInvalidID}, expectCode: http.StatusBadRequest, expectContains: "invalid id"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -65,6 +83,9 @@ func TestConsumeEndpointErrors(t *testing.T) {
 			}
 			if !bytes.Contains(w.Body.Bytes(), []byte(tc.expectContains)) {
 				t.Fatalf("expected body to contain %q got %s", tc.expectContains, w.Body.String())
+			}
+			if tc.expectAllow != "" && w.Header().Get("Allow") != tc.expectAllow {
+				t.Fatalf("Allow = %q, want %q", w.Header().Get("Allow"), tc.expectAllow)
 			}
 		})
 	}

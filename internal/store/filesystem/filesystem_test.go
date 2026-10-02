@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func TestDeletingReadCloser(t *testing.T) {
+func TestBlobStoreOpenDoesNotDeleteOnClose(t *testing.T) {
 	dir := t.TempDir()
 	bs, err := New(dir)
 	if err != nil {
@@ -20,15 +20,15 @@ func TestDeletingReadCloser(t *testing.T) {
 	if err := bs.Write(id, io.NopCloser(bytesReader(data)), int64(len(data))); err != nil {
 		t.Fatalf("Write failed: %v", err)
 	}
-	rc, err := bs.Consume(id)
+	rc, err := bs.Open(id)
 	if err != nil {
-		t.Fatalf("Consume failed: %v", err)
+		t.Fatalf("Open failed: %v", err)
 	}
 	if err := rc.Close(); err != nil {
-		t.Fatalf("Close(delete) failed: %v", err)
+		t.Fatalf("Close failed: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, id+".blob")); !os.IsNotExist(err) {
-		t.Fatalf("expected file removed, got stat err=%v", err)
+	if _, err := os.Stat(filepath.Join(dir, id+".blob")); err != nil {
+		t.Fatalf("expected file to remain after close, got stat err=%v", err)
 	}
 }
 
@@ -73,7 +73,7 @@ func TestDeleteEmptyID(t *testing.T) {
 	}
 }
 
-func TestBlobStoreWriteReadDelete(t *testing.T) {
+func TestBlobStoreWriteOpenDelete(t *testing.T) {
 	dir := t.TempDir()
 	bs, err := New(dir)
 	if err != nil {
@@ -91,7 +91,7 @@ func TestBlobStoreWriteReadDelete(t *testing.T) {
 		t.Fatalf("expected error on duplicate write")
 	}
 
-	rc, err := bs.Consume(id)
+	rc, err := bs.Open(id)
 	if err != nil {
 		t.Fatalf("Open failed: %v", err)
 	}
@@ -99,45 +99,23 @@ func TestBlobStoreWriteReadDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadAll: %v", err)
 	}
+	if err := rc.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
 	if string(got) != string(data) {
 		t.Fatalf("data mismatch got=%q want=%q", got, data)
 	}
-	// Close triggers deletion
-	if err := rc.Close(); err != nil {
-		t.Fatalf("Close(delete) failed: %v", err)
+	if _, err := bs.Open(id); err != nil {
+		t.Fatalf("expected blob to remain after open+close: %v", err)
 	}
-	// File should now be gone; second open should fail.
-	if _, err := bs.Consume(id); err == nil {
-		t.Fatalf("expected error opening consumed (deleted) blob")
+	if err := bs.Delete(id); err != nil {
+		t.Fatalf("Delete failed: %v", err)
 	}
-
-	// After consumption the file is already deleted; Delete should error now.
+	if _, err := bs.Open(id); err == nil {
+		t.Fatalf("expected error opening deleted blob")
+	}
 	if err := bs.Delete(id); err == nil {
-		t.Fatalf("expected error deleting already-consumed blob")
-	}
-}
-
-func TestBlobStoreOpenCloseDeletesWithoutRead(t *testing.T) {
-	dir := t.TempDir()
-	bs, err := New(dir)
-	if err != nil {
-		t.Fatalf("New error: %v", err)
-	}
-	id := "dddddddddddddddddddddddddddddddd"
-	payload := []byte("x")
-	if err := bs.Write(id, bytesReader(payload), int64(len(payload))); err != nil {
-		t.Fatalf("Write: %v", err)
-	}
-	rc, err := bs.Consume(id)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	// Close without reading should still delete.
-	if err := rc.Close(); err != nil {
-		t.Fatalf("Close(delete): %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(dir, id+".blob")); !os.IsNotExist(err) {
-		t.Fatalf("expected file removed, got stat err=%v", err)
+		t.Fatalf("expected error deleting already-deleted blob")
 	}
 }
 
@@ -205,8 +183,8 @@ func TestBlobStoreInvalidIDs(t *testing.T) {
 		if err := bs.Write(id, bytesReader(payload), int64(len(payload))); err == nil {
 			t.Fatalf("expected write error for id=%q", id)
 		}
-		if _, err := bs.Consume(id); err == nil {
-			t.Fatalf("expected consume error for id=%q", id)
+		if _, err := bs.Open(id); err == nil {
+			t.Fatalf("expected open error for id=%q", id)
 		}
 		if err := bs.Delete(id); err == nil {
 			t.Fatalf("expected delete error for id=%q", id)
@@ -251,9 +229,19 @@ func TestListWithNoBlobs(t *testing.T) {
 		t.Fatalf("New error: %v", err)
 	}
 	// Create some directories inside the blob root
-	os.Mkdir(filepath.Join(dir, "subdir1"), 0o700)
-	os.Mkdir(filepath.Join(dir, "subdir2"), 0o700)
-	os.Create(filepath.Join(dir, "file.txt"))
+	if err := os.Mkdir(filepath.Join(dir, "subdir1"), 0o700); err != nil {
+		t.Fatalf("mkdir subdir1: %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "subdir2"), 0o700); err != nil {
+		t.Fatalf("mkdir subdir2: %v", err)
+	}
+	f, err := os.Create(filepath.Join(dir, "file.txt"))
+	if err != nil {
+		t.Fatalf("create file: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close file: %v", err)
+	}
 
 	ids, err := bs.List()
 	if err != nil {

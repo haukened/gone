@@ -23,23 +23,23 @@
 		<section class="card">
 			<form id="create-secret" class="secret-form" data-max-bytes="{{ .MaxBytes }}" novalidate>
 				<span class="card-title">Create a One-Time Secret</span>
-				<div class="mode-toggle" role="radiogroup" aria-label="Secret type">
-					<input type="radio" id="mode-text" name="secret-mode" value="text" checked>
-					<label for="mode-text">Text</label>
-					<input type="radio" id="mode-file" name="secret-mode" value="file">
-					<label for="mode-file">File</label>
-				</div>
 				<div class="field">
 					<label for="secret" class="sr-only">Secret</label>
-					<textarea id="secret" name="secret" rows="10" placeholder="Paste or type your secret here..." spellcheck="false" autofocus></textarea>
-					<div id="file-field" class="file-field" hidden>
-						<label for="secret-file" class="file-picker">
-							<input id="secret-file" name="secret-file" type="file">
-							<span>Select File</span>
+					<textarea id="secret" name="secret" rows="10" placeholder="Paste or type your secret here, and/or attach files below..." spellcheck="false" autofocus></textarea>
+					<div id="drop-zone" class="drop-zone">
+						<label for="secret-files" class="file-picker">
+							<input id="secret-files" name="secret-files" type="file" multiple>
+							<span>Add files</span>
 						</label>
-						<div id="file-summary" class="file-summary" aria-live="polite">No file selected</div>
-						<button type="button" id="clear-file" class="secondary-btn" hidden>Clear File</button>
+						<span class="drop-hint">or drop them here (up to 10)</span>
 					</div>
+					<ul id="file-list" class="file-list" aria-label="Attached files" hidden></ul>
+					<div class="size-row">
+						<progress id="size-meter" class="size-meter" max="1" value="0" aria-labelledby="size-label"></progress>
+						<span id="size-label" class="size-label" aria-live="polite"></span>
+					</div>
+					<div id="size-warning" class="size-warning" role="alert" hidden></div>
+					<progress id="upload-progress" class="upload-progress" max="1" value="0" aria-label="Upload progress" hidden></progress>
 					<div class="hint">
 						<div class="hint-item">
 							<svg xmlns="http://www.w3.org/2000/svg" width="1.5em" height="1.5em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cloud-upload-icon lucide-cloud-upload"><path d="M12 13v8"/><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="m8 17 4-4 4 4"/></svg>
@@ -85,6 +85,7 @@
 	{{ template "footer" . }}
 	<script src="/static/js/theme.js" defer></script>
 	<script src="/static/js/crypto.js" defer></script>
+	<script src="/static/js/envelope.js" defer></script>
 	<script src="/static/js/autoResize.js" defer></script>
 	<script src="/static/js/submit.js" defer></script>
 </body>

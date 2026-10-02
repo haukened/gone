@@ -1,36 +1,40 @@
 'use strict';
 
-// Secret consumption (decrypt) flow extracted from app.js (refactored for lower complexity)
+// Secret consumption flow: claim (streamed GET) -> decrypt -> decode -> ack (DELETE).
+// The secret is only deleted from the server once the full payload has been
+// received and authenticated by AES-GCM, so interrupted downloads can retry.
 (function consumeFlow() {
-  if (!window.goneCrypto) return;
+  if (!window.goneCrypto || !window.goneEnvelope) return;
   const container = document.getElementById('secret-consume');
   if (!container) return;
+  const envelope = window.goneEnvelope;
 
-  // DOM references
-  // Status/heading element: template currently uses id "secret-heading".
-  // Older code referenced an element id "secret-status" that no longer exists,
-  // so runtime updates were not visible. We first try the current id and then
-  // fall back for any cached/legacy template versions.
-  const statusEl = document.getElementById('secret-heading') || document.getElementById('secret-status');
+  const statusEl = document.getElementById('secret-heading');
   const outputTA = document.getElementById('secret-output');
-  const fileOutput = document.getElementById('file-output');
-  const fileOutputName = document.getElementById('file-output-name');
-  const fileOutputMeta = document.getElementById('file-output-meta');
   const copyBtn = document.getElementById('copy-secret');
-  const downloadBtn = document.getElementById('download-file');
-  const FILE_MAGIC = new TextEncoder().encode('GONEFILE1');
-  let downloadURL = '';
+  const downloadAllBtn = document.getElementById('download-all');
+  const progressEl = document.getElementById('download-progress');
+  const fileSection = document.getElementById('file-section');
+  const fileListEl = document.getElementById('file-output-list');
+  const ackBanner = document.getElementById('ack-banner');
+  const ackCard = document.getElementById('ack-card');
+  const ackTitle = document.getElementById('ack-title');
+  const ackText = document.getElementById('ack-text');
+
+  const MAX_FETCH_ATTEMPTS = 3;
+  const MAX_ACK_ATTEMPTS = 3;
+  const state = { plaintext: null, files: [], urls: [], pending: 0 };
 
   function setStatus(msg) {
     if (statusEl) statusEl.textContent = msg;
   }
 
-  const debugTiming = (function(){
+  const debugTiming = (function () {
     try {
       const params = new URLSearchParams(location.search);
       if (params.get('debug') === 'timing') return true;
       return (window.localStorage && localStorage.getItem('goneDebugTiming') === '1');
-    } catch(_) { return false; }
+    } catch (_) { return false; }
   })();
 
   function logTiming(label, start, end) {
@@ -38,59 +42,155 @@
     console.log(`[gone][timing] ${label}: ${(end - start).toFixed(2)}ms`);
   }
 
-  // --- Helpers ------------------------------------------------------------
-  function formatBytes(bytes) {
-    if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
-    const units = ['B', 'KiB', 'MiB', 'GiB'];
-    let value = bytes;
-    let unit = 0;
-    while (value >= 1024 && unit < units.length - 1) {
-      value /= 1024;
-      unit++;
+  function sleep(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  // FetchError carries a user-facing message and whether retrying may help.
+  function FetchError(message, retryable) {
+    const e = new Error(message);
+    e.retryable = retryable;
+    return e;
+  }
+
+  // --- Retrieval -------------------------------------------------------------
+  function statusMessage(status) {
+    if (status === 404 || status === 410) {
+      return 'This secret is gone: it never existed, was already opened, has expired, or was opened elsewhere. If your own download was interrupted, ask the sender to share it again.';
     }
-    const digits = unit === 0 ? 0 : value < 10 ? 1 : 0;
-    return `${value.toFixed(digits)} ${units[unit]}`;
+    if (status === 429) return 'Slow down: too many requests. Please wait and retry.';
+    if (status === 400) return 'Invalid secret link';
+    return 'Server error retrieving secret';
   }
 
-  function sanitizeFileName(name) {
-    const parts = String(name || '').split(/[\\/]+/).filter(Boolean);
-    const base = (parts.length ? parts[parts.length - 1] : '').replace(/[\x00-\x1f\x7f]/g, '').trim();
-    if (!base || base === '.' || base === '..') return 'download.bin';
-    return base;
-  }
-
-  function hasFileMagic(bytes) {
-    if (!bytes || bytes.length < FILE_MAGIC.length) return false;
-    for (let i = 0; i < FILE_MAGIC.length; i++) {
-      if (bytes[i] !== FILE_MAGIC[i]) return false;
+  function setProgress(received, total) {
+    if (!progressEl) return;
+    progressEl.hidden = false;
+    if (total > 0) {
+      progressEl.max = total;
+      progressEl.value = Math.min(received, total);
+      setStatus(`Retrieving\u2026 ${Math.floor((received / total) * 100)}%`);
+    } else {
+      progressEl.removeAttribute('value');
+      setStatus(`Retrieving\u2026 ${envelope.formatBytes(received)}`);
     }
-    return true;
   }
 
-  function parseFileEnvelope(bytes) {
-    if (!hasFileMagic(bytes)) return null;
-    if (bytes.length < FILE_MAGIC.length + 4) throw new Error('truncated file envelope');
-    let offset = FILE_MAGIC.length;
-    const metadataLength = (
-      (bytes[offset] << 24) |
-      (bytes[offset + 1] << 16) |
-      (bytes[offset + 2] << 8) |
-      bytes[offset + 3]
-    ) >>> 0;
-    offset += 4;
-    if (metadataLength > bytes.length - offset) throw new Error('invalid file metadata length');
-    const metadataBytes = bytes.subarray(offset, offset + metadataLength);
-    offset += metadataLength;
-    const metadata = JSON.parse(new TextDecoder().decode(metadataBytes));
-    const content = bytes.subarray(offset);
-    if (!metadata || metadata.kind !== 'file') throw new Error('invalid file metadata');
-    const name = sanitizeFileName(metadata.name);
-    const type = typeof metadata.type === 'string' && metadata.type ? metadata.type : 'application/octet-stream';
-    const size = Number(metadata.size);
-    if (!Number.isFinite(size) || size < 0 || size !== content.length) throw new Error('file size mismatch');
-    return { name, type, size, content };
+  function concatChunks(chunks, length) {
+    const out = new Uint8Array(length);
+    let offset = 0;
+    chunks.forEach(function (c) { out.set(c, offset); offset += c.length; c.fill(0); });
+    return out;
   }
 
+  async function readBody(resp, total) {
+    if (!resp.body || !resp.body.getReader) {
+      return new Uint8Array(await resp.arrayBuffer());
+    }
+    const reader = resp.body.getReader();
+    const chunks = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      setProgress(received, total);
+    }
+    return concatChunks(chunks, received);
+  }
+
+  async function fetchOnce(id, claim) {
+    const headers = claim.token ? { 'X-Gone-Claim': claim.token } : {};
+    let resp;
+    try {
+      resp = await fetch(`/api/secret/${encodeURIComponent(id)}`, { headers: headers, cache: 'no-store' });
+    } catch (_) {
+      throw FetchError('Network error retrieving secret', true);
+    }
+    if (!resp.ok) throw FetchError(statusMessage(resp.status), resp.status >= 500);
+    claim.token = resp.headers.get('X-Gone-Claim') || claim.token;
+    const total = parseInt(resp.headers.get('Content-Length') || '0', 10) || 0;
+    let body;
+    try {
+      body = await readBody(resp, total);
+    } catch (_) {
+      throw FetchError('Network error retrieving secret', true);
+    }
+    if (total && body.length !== total) throw FetchError('Download was incomplete', true);
+    return { resp: resp, body: body };
+  }
+
+  // fetchWithRetry retries network failures/truncation, presenting the claim
+  // token so the server re-serves the same claim instead of reporting it gone.
+  async function fetchWithRetry(id, claim) {
+    let lastErr;
+    for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt++) {
+      try {
+        return await fetchOnce(id, claim);
+      } catch (e) {
+        lastErr = e;
+        if (!e.retryable || (attempt > 1 && !claim.token)) break;
+        console.warn('[gone] retrieval attempt failed, retrying', attempt);
+        await sleep(500 * attempt);
+      }
+    }
+    throw lastErr;
+  }
+
+  // --- Crypto ------------------------------------------------------------------
+  async function decrypt(resp, ciphertext, keyB64) {
+    const version = parseInt(resp.headers.get('X-Gone-Version') || '0', 10);
+    if (version !== window.goneCrypto.version) throw FetchError('Unsupported secret version', false);
+    const nonce = window.goneCrypto.b64urlDecode(resp.headers.get('X-Gone-Nonce') || '');
+    const keyBytes = window.goneCrypto.importKeyB64(keyB64);
+    const aad = new TextEncoder().encode('gone:v1');
+    try {
+      const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
+      const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce, additionalData: aad }, key, ciphertext);
+      return new Uint8Array(pt);
+    } catch (_) {
+      throw FetchError('Couldn\u2019t verify this secret. The link may be incomplete or wrong; ask the sender to resend it.', false);
+    } finally {
+      keyBytes.fill(0);
+      ciphertext.fill(0);
+    }
+  }
+
+  // --- Acknowledge (delete) ---------------------------------------------------
+  async function ackOnce(id, token) {
+    const resp = await fetch(`/api/secret/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'X-Gone-Claim': token },
+      keepalive: true,
+      cache: 'no-store'
+    });
+    return resp.status === 204;
+  }
+
+  async function acknowledge(id, token) {
+    for (let attempt = 1; attempt <= MAX_ACK_ATTEMPTS; attempt++) {
+      try {
+        if (await ackOnce(id, token)) return true;
+      } catch (_) {
+        // retry
+      }
+      await sleep(500 * attempt);
+    }
+    return false;
+  }
+
+  function showAckResult(ok) {
+    if (!ackBanner) return;
+    if (!ok) {
+      if (ackCard) ackCard.classList.add('danger');
+      if (ackTitle) ackTitle.textContent = 'Couldn\u2019t confirm deletion';
+      if (ackText) ackText.textContent = 'The server did not confirm this secret was deleted. It will still be deleted automatically within a few minutes and cannot be opened again. Save what you need now.';
+    }
+    ackBanner.hidden = false;
+  }
+
+  // --- Rendering ----------------------------------------------------------------
   function autoGrow(ta) {
     if (!ta) return;
     const max = 40 * 16;
@@ -110,76 +210,138 @@
       copyBtn.disabled = false;
     }
     copyBtn.addEventListener('click', async () => {
-      let success = true;
       try {
         await navigator.clipboard.writeText(text);
       } catch (_) {
-        success = false;
-      }
-      if (success) {
-        copyBtn.innerHTML = 'Copied! ' + CHECK_ICON;
-        copyBtn.classList.add('copied');
-        copyBtn.disabled = true;
-        setTimeout(revert, 2200);
-      } else {
         alert('Copy failed. Please press \u2318/Ctrl+C to copy manually.');
+        return;
       }
+      copyBtn.innerHTML = 'Copied! ' + CHECK_ICON;
+      copyBtn.classList.add('copied');
+      copyBtn.disabled = true;
+      setTimeout(revert, 2200);
     });
   }
 
-  function showPlaintext(text) {
-    if (outputTA) {
-      outputTA.value = text;
-      outputTA.hidden = false;
-      autoGrow(outputTA);
-    }
-    if (fileOutput) fileOutput.hidden = true;
-    if (downloadBtn) downloadBtn.hidden = true;
-    // Reveal copy button now that plaintext is available
+  function showMessage(text) {
+    if (!text || !outputTA) return;
+    outputTA.value = text;
+    outputTA.hidden = false;
+    autoGrow(outputTA);
     if (copyBtn) copyBtn.hidden = false;
-    setStatus('Decrypted Secret:');
     attachCopyHandler(text);
   }
 
-  function showFile(filePayload) {
-    if (outputTA) {
-      outputTA.value = '';
-      outputTA.hidden = true;
+  function fileURL(entry) {
+    if (!entry.url) {
+      entry.url = URL.createObjectURL(new Blob([entry.file.bytes], { type: entry.file.type }));
+      state.urls.push(entry.url);
     }
-    if (copyBtn) copyBtn.hidden = true;
-    if (fileOutputName) fileOutputName.textContent = filePayload.name;
-    if (fileOutputMeta) fileOutputMeta.textContent = `${formatBytes(filePayload.size)} - ${filePayload.type}`;
-    if (fileOutput) fileOutput.hidden = false;
-    if (downloadURL) URL.revokeObjectURL(downloadURL);
-    const blob = new Blob([filePayload.content], { type: filePayload.type });
-    downloadURL = URL.createObjectURL(blob);
-    if (downloadBtn) {
-      downloadBtn.hidden = false;
-      downloadBtn.onclick = function () {
-        const link = document.createElement('a');
-        link.href = downloadURL;
-        link.download = filePayload.name;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      };
+    return entry.url;
+  }
+
+  function downloadEntry(entry) {
+    const link = document.createElement('a');
+    link.href = fileURL(entry);
+    link.download = entry.file.name;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    if (!entry.done) {
+      entry.done = true;
+      state.pending--;
+      entry.li.classList.add('downloaded');
     }
-    setStatus('Decrypted File:');
+  }
+
+  function renderFileEntry(file) {
+    const entry = { file: file, url: '', done: false, li: document.createElement('li') };
+    entry.li.className = 'file-item';
+    const name = document.createElement('span');
+    name.className = 'file-item-name';
+    name.textContent = file.name;
+    const meta = document.createElement('span');
+    meta.className = 'file-item-meta';
+    meta.textContent = envelope.formatBytes(file.size);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'secondary-btn';
+    btn.textContent = 'Download';
+    btn.setAttribute('aria-label', `Download ${file.name}`);
+    btn.addEventListener('click', function () { downloadEntry(entry); });
+    entry.li.append(name, meta, btn);
+    return entry;
+  }
+
+  async function downloadAll() {
+    for (const entry of state.files) {
+      downloadEntry(entry);
+      // Space out downloads so browsers don't drop or batch-block them.
+      await sleep(400);
+    }
+  }
+
+  function showFiles(files) {
+    if (!files.length || !fileListEl) return;
+    state.files = files.map(renderFileEntry);
+    state.pending = state.files.length;
+    state.files.forEach(function (e) { fileListEl.appendChild(e.li); });
+    if (fileSection) fileSection.hidden = false;
+    if (downloadAllBtn) {
+      downloadAllBtn.hidden = files.length < 2;
+      downloadAllBtn.addEventListener('click', downloadAll);
+    }
+  }
+
+  function headingFor(decoded) {
+    const n = decoded.files.length;
+    const files = n === 1 ? '1 file' : `${n} files`;
+    if (decoded.message && n) return `Decrypted Secret + ${files}:`;
+    if (n) return `Decrypted ${files}:`;
+    return 'Decrypted Secret:';
+  }
+
+  // --- Lifecycle -----------------------------------------------------------------
+  function guardUnload(ev) {
+    if (state.pending <= 0) return;
+    ev.preventDefault();
+    ev.returnValue = '';
+  }
+
+  function cleanup() {
+    state.urls.forEach(function (u) { URL.revokeObjectURL(u); });
+    state.urls = [];
+    if (state.plaintext) state.plaintext.fill(0);
+  }
+
+  async function run(id, keyB64) {
+    const t0 = performance.now();
+    const claim = { token: '' };
+    setStatus('Retrieving\u2026');
+    const fetched = await fetchWithRetry(id, claim);
+    logTiming('consume_fetch', t0, performance.now());
+    setStatus('Decrypting\u2026');
+    state.plaintext = await decrypt(fetched.resp, fetched.body, keyB64);
+    let decoded;
+    try {
+      decoded = envelope.decode(state.plaintext);
+    } catch (e) {
+      console.error('[gone] invalid envelope', e);
+      throw FetchError('This secret\u2019s contents are malformed; ask the sender to resend it.', false);
+    }
+    if (progressEl) progressEl.hidden = true;
+    setStatus(headingFor(decoded));
+    showMessage(decoded.message);
+    showFiles(decoded.files);
+    logTiming('consume_total', t0, performance.now());
+    showAckResult(await acknowledge(id, claim.token));
   }
 
   function handlePreview(params) {
-    const mockPlain = params.get('text') || 'This is a preview of a decrypted secret. Customize via ?text=...';
-    if (outputTA) {
-      outputTA.value = mockPlain;
-      outputTA.hidden = false;
-      autoGrow(outputTA);
-    }
-    if (fileOutput) fileOutput.hidden = true;
-    if (downloadBtn) downloadBtn.hidden = true;
-    // Reveal copy button for preview mode
-    if (copyBtn) copyBtn.hidden = false;
+    const text = params.get('text') || 'This is a preview of a decrypted secret. Customize via ?text=...';
+    showMessage(text);
     setStatus('Decrypted (preview)');
-    attachCopyHandler(mockPlain);
   }
 
   function parseFragment(hash) {
@@ -188,115 +350,26 @@
     return { version: parseInt(m[1], 10), keyB64: m[2] };
   }
 
-  function validateIdFormat(id) {
-    return /^[0-9a-f]{32}$/.test(id);
-  }
-
-  async function fetchSecret(id) {
-    if (!validateIdFormat(id)) {
-      setStatus('Invalid secret id');
-      return null;
+  function start() {
+    const params = new URLSearchParams(location.search);
+    if (params.get('preview') === 'secret') {
+      handlePreview(params);
+      return;
     }
-    const safeId = encodeURIComponent(id);
-    setStatus('Fetching…');
-    const t0 = performance.now();
-    const resp = await fetch(`/api/secret/${safeId}`);
-    const t1 = performance.now();
-    logTiming('consume_fetch', t0, t1);
-    if (!resp.ok) {
-      if (resp.status === 404 || resp.status === 410) {
-        setStatus('That secret either never existed, has already been consumed, or has expired.');
-      } else if (resp.status === 429) {
-        setStatus('Rate limited. Please wait and retry.');
-      } else {
-        setStatus('Fetch error');
-      }
-      return null;
-    }
-    return resp;
+    const frag = parseFragment(location.hash);
+    if (!frag) return setStatus('Missing or invalid key fragment. Cannot decrypt.');
+    if (frag.version !== window.goneCrypto.version) return setStatus('Unsupported version');
+    const parts = location.pathname.split('/');
+    const id = parts[parts.length - 1];
+    if (!/^[0-9a-f]{32}$/.test(id)) return setStatus('Invalid secret id');
+    window.addEventListener('beforeunload', guardUnload);
+    window.addEventListener('pagehide', cleanup);
+    run(id, frag.keyB64).catch(function (e) {
+      console.error('[gone] consume error', e && e.retryable !== undefined ? e.message : e);
+      if (progressEl) progressEl.hidden = true;
+      setStatus(e && e.retryable !== undefined ? e.message : 'Unexpected error');
+    });
   }
 
-  function validateHeaders(resp) {
-    const v = parseInt(resp.headers.get('X-Gone-Version') || '0', 10);
-    if (v !== window.goneCrypto.version) {
-      setStatus('Version mismatch');
-      return null;
-    }
-    return resp.headers.get('X-Gone-Nonce') || '';
-  }
-
-  async function decryptPayload(resp, nonceB64, keyB64) {
-    const nonce = window.goneCrypto.b64urlDecode(nonceB64);
-    const ct = new Uint8Array(await resp.arrayBuffer());
-    const keyBytes = window.goneCrypto.importKeyB64(keyB64);
-    const aad = new TextEncoder().encode('gone:v1');
-    const cryptoKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
-    try {
-      const t0 = performance.now();
-      const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce, additionalData: aad }, cryptoKey, ct);
-      const t1 = performance.now();
-      logTiming('consume_decrypt', t0, t1);
-      return new Uint8Array(pt);
-    } catch (_) {
-      setStatus('Decryption failed');
-      return null;
-    }
-  }
-
-  async function run(id, keyB64) {
-    try {
-      const resp = await fetchSecret(id);
-      if (!resp) return;
-      const nonceB64 = validateHeaders(resp);
-      if (!nonceB64) return;
-      const t0 = performance.now();
-      const plaintextBytes = await decryptPayload(resp, nonceB64, keyB64);
-      if (plaintextBytes === null) return;
-      let filePayload;
-      try {
-        filePayload = parseFileEnvelope(plaintextBytes);
-      } catch (e) {
-        console.error('[gone] invalid file envelope', e);
-        setStatus('Invalid file payload');
-        return;
-      }
-      if (filePayload) {
-        showFile(filePayload);
-      } else {
-        showPlaintext(new TextDecoder().decode(plaintextBytes));
-      }
-      const t1 = performance.now();
-      logTiming('consume_total', t0, t1);
-    } catch (e) {
-      console.error('[gone] consume error', e);
-      setStatus('Unexpected error');
-    }
-  }
-
-  // --- Entry --------------------------------------------------------------
-  const params = new URLSearchParams(location.search);
-  if (params.get('preview') === 'secret') {
-    handlePreview(params);
-    return;
-  }
-
-  const frag = parseFragment(location.hash);
-  if (!frag) {
-    setStatus('Missing or invalid key fragment. Cannot decrypt.');
-    return;
-  }
-  if (frag.version !== window.goneCrypto.version) {
-    setStatus('Unsupported version');
-    return;
-  }
-  const parts = location.pathname.split('/');
-  const id = parts[parts.length - 1];
-  if (!id) {
-    setStatus('Invalid secret id');
-    return;
-  }
-  window.addEventListener('beforeunload', function () {
-    if (downloadURL) URL.revokeObjectURL(downloadURL);
-  });
-  run(id, frag.keyB64);
+  start();
 })();

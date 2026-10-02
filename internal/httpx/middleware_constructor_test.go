@@ -16,8 +16,12 @@ type ctorService struct{}
 func (ctorService) CreateSecret(context.Context, io.Reader, int64, uint8, string, time.Duration) (domain.SecretID, time.Time, error) {
 	return domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), time.Now(), nil
 }
-func (ctorService) Consume(context.Context, string) (app.Meta, io.ReadCloser, int64, error) {
-	return app.Meta{}, io.NopCloser(nil), 0, nil
+func (ctorService) Claim(context.Context, string, string) (app.ClaimResult, error) {
+	return app.ClaimResult{Claimed: app.Claimed{Body: io.NopCloser(nil)}}, nil
+}
+
+func (ctorService) Ack(context.Context, string, string) error {
+	return nil
 }
 
 func TestHandlerConstructor(t *testing.T) {

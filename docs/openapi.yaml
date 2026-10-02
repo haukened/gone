@@ -1,11 +1,14 @@
 openapi: 3.0.3
 info:
   title: Gone Secret Sharing API
-  version: 0.1.1
+  version: 0.2.0
   description: |
     Minimal API for one-time secret creation and consumption.
     Secrets are created with a TTL and may be stored inline or in external blob storage.
-    Retrieval consumes (deletes) the secret exactly once.
+    Retrieval is two-phase: GET claims the secret and returns the ciphertext with a claim
+    token; DELETE with that token acknowledges receipt and deletes it. A claimed secret is
+    only re-served to the token holder and is deleted by the janitor if not acknowledged
+    within the configured claim lease (GONE_CLAIM_LEASE).
     This spec enumerates all HTTP statuses the current implementation may emit.
 servers:
   - url: http://localhost:8080
@@ -109,20 +112,35 @@ paths:
                 $ref: '#/components/schemas/Error'
   /api/secret/{id}:
     get:
-      summary: Consume (retrieve once) a secret by ID
-      operationId: consumeSecret
+      summary: Claim a secret and retrieve its ciphertext
+      operationId: claimSecret
       parameters:
-        - in: path
-          name: id
-          required: true
+        - $ref: '#/components/parameters/SecretID'
+        - in: header
+          name: X-Gone-Claim
+          required: false
           schema:
             type: string
-            pattern: '^[0-9a-f]{32}$'
-          description: Secret ID.
+          description: |
+            Omit to make a fresh claim. Supply the token from a previous response to re-fetch
+            the same ciphertext (e.g. after an interrupted download) before the lease lapses.
       responses:
         '200':
-          description: Ciphertext payload; consuming this removes it permanently.
+          description: Ciphertext payload. The secret is now claimed; acknowledge with DELETE once received.
           headers:
+            X-Gone-Claim:
+              schema:
+                type: string
+              description: Opaque claim token required to re-fetch or acknowledge.
+            X-Gone-Claim-Expires:
+              schema:
+                type: string
+                format: date-time
+              description: When the claim lapses and the secret is deleted if not acknowledged.
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
             X-Gone-Version:
               schema:
                 type: integer
@@ -138,19 +156,57 @@ paths:
                 type: string
                 format: binary
         '400':
-          description: Invalid ID format
+          description: Invalid ID format or malformed claim token
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '404':
-          description: Not found (missing, expired, or already consumed)
+          description: Not found (missing, expired, consumed, or claimed by someone else / wrong claim token)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '405':
-          description: Method not allowed (non-GET on /api/secret/{id})
+          description: Method not allowed (not GET or DELETE on /api/secret/{id})
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Acknowledge receipt and delete a claimed secret
+      operationId: ackSecret
+      parameters:
+        - $ref: '#/components/parameters/SecretID'
+        - in: header
+          name: X-Gone-Claim
+          required: true
+          schema:
+            type: string
+          description: Claim token returned by GET.
+      responses:
+        '204':
+          description: Secret deleted.
+        '400':
+          description: Invalid ID format or missing/malformed claim token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found (missing, expired, lease lapsed, or wrong claim token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method not allowed (not GET or DELETE on /api/secret/{id})
           content:
             application/json:
               schema:
@@ -180,6 +236,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 components:
+  parameters:
+    SecretID:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+        pattern: '^[0-9a-f]{32}$'
+      description: Secret ID.
   schemas:
     Error:
       type: object
