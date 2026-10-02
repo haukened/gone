@@ -121,7 +121,7 @@ components:
 
 Gone is set like civic wayfinding, in the lineage of Otl Aicher's Munich '72 and Lufthansa systems: a navy band, one marigold mark, big numerals, hairlines, and a strict 8-column grid. Trust comes from the system rather than decoration. Nothing glows, floats, or sells. The interface is calm, precise, and literal about what happens to a secret.
 
-The signature is the **open ring**. It is the brand mark and also the secret's lifecycle: sealed, waiting, opened once, gone. Every surface repeats that story with the same four pictograms.
+The signature is the **ring**. It is the brand mark and also the secret's lifecycle: sealed, waiting, opened once, gone. Every surface repeats that story with the same four pictograms: the ring stays whole while the mark inside it changes, and it only breaks at the end. In the wordmark, the ring gains a crossbar and stands in for the "G" of Gone (`#i-wordmark`), set at cap height on the text baseline.
 
 Mode is **Operate** for send and receive, and **Read** for About.
 
@@ -175,7 +175,7 @@ The root is 17px (106.25%) on a 1.2 modular scale, `--step--1` to `--step-5`.
 
 - `.wrap` caps content at 72rem with fluid side padding (`clamp(1rem, 4vw, 2.5rem)`).
 - An **8-column grid** with 1.5rem gutters. Task content spans columns 1 to 6; the "What happens next" rail spans 7 to 8.
-- Each **step** is a 6-column subgrid: the numeral and name take 2 columns, the body takes 4. A hairline separates steps.
+- Each **step** is a two-track row: a fixed 9rem label track for the numeral and name, and the body fills the rest. A hairline separates steps.
 - About uses columns 1 to 2 for a sticky table of contents and columns 3 to 7 for prose.
 - There is one breakpoint, at **52rem**. Below it everything is one column, step heads go inline, the lifecycle becomes a 2×2 grid, action buttons go full width, and the table of contents hides.
 - Spacing follows the 0.25 to 4rem scale (`--space-1` to `--space-8`). Section rhythm comes from steps 6 to 8; spacing inside controls comes from steps 2 to 4.
@@ -193,7 +193,7 @@ The system is flat. There are no box shadows for depth: layering is tonal (paper
 - **Corners:** 4px (`--radius`) on buttons, fields, panels, and alerts; 2px on segments inside their track. Nothing is pill-shaped.
 - **Borders:** 1px solid. Dashed borders are reserved for the file drop zone and the "gone" ring.
 - **Pictograms:** one inline SVG sprite, stroke-only, square caps, 2px stroke (3 to 3.2px for the brand mark and the current lifecycle step). Icons are always `aria-hidden` and paired with visible text.
-- **Lifecycle glyphs:** ring (300° arc, waiting), sealed (circle with a dot), opened (120° arc), gone (dashed circle).
+- **Lifecycle glyphs:** sealed (ring with a seal dot), waiting (ring with clock hands), opened (ring with an eye and pupil), gone (burst: eight rays around an empty center, long on the axes and short on the diagonals, like a balloon popping).
 
 ## Components
 

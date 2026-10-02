@@ -302,3 +302,5 @@ Other ideas:
 Copyright © 2025-2026 The Gone Project Contributors.
 
 GNU Affero General Public License v3.0 – see `LICENSE`.
+
+The "Gone" name, wordmark, and logo are trademarks and are not licensed under the AGPLv3. Forks and modified versions must use a different name and logo – see [`TRADEMARKS.md`](TRADEMARKS.md).

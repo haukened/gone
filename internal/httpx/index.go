@@ -38,11 +38,13 @@ type IndexView struct {
 }
 
 // TTLOptionView is the subset of a domain TTLOption needed by the template.
-// Label is the canonical value submitted to the API, Display is the
-// human-friendly text shown to the user, DurationSeconds is provided for
-// client-side scripting, and Default marks the preselected option.
+// Label is the canonical value submitted to the API, Short is the compact
+// visible text (for example "1d"), Display is the spelled-out text announced
+// to assistive technology, DurationSeconds is provided for client-side
+// scripting, and Default marks the preselected option.
 type TTLOptionView struct {
 	Label           string
+	Short           string
 	Display         string
 	DurationSeconds int
 	Default         bool
@@ -100,11 +102,19 @@ func humanBytes(n int64) string {
 	return fmt.Sprintf("%.1f PB", f/1024)
 }
 
-// humanTTL renders a duration in the largest whole unit among hours, minutes, seconds.
-// Examples: 7200s -> "2h"; 180s -> "3m"; 45s -> "45s".
+// humanTTL renders a duration compactly in the largest whole unit among days,
+// hours, minutes, and seconds.
+//
+// Parameters:
+//   - sec: the duration in seconds; values <= 0 render as "0s".
+//
+// Returns text such as "1d", "2h", "3m", or "45s".
 func humanTTL(sec int) string {
 	if sec <= 0 {
 		return "0s"
+	}
+	if sec%86400 == 0 { // whole days
+		return fmt.Sprintf("%dd", sec/86400)
 	}
 	if sec%3600 == 0 { // whole hours
 		return fmt.Sprintf("%dh", sec/3600)
@@ -156,7 +166,7 @@ func ttlOptionViews(opts []domain.TTLOption) []TTLOptionView {
 	views := make([]TTLOptionView, 0, len(tmp))
 	for _, opt := range tmp {
 		sec := int(opt.Duration.Seconds())
-		views = append(views, TTLOptionView{Label: opt.Label, Display: friendlyTTL(sec), DurationSeconds: sec})
+		views = append(views, TTLOptionView{Label: opt.Label, Short: humanTTL(sec), Display: friendlyTTL(sec), DurationSeconds: sec})
 	}
 	views[len(views)-1].Default = true
 	return views

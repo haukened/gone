@@ -96,7 +96,7 @@ func idSet(t *testing.T, body string) map[string]bool {
 // every referenced static asset is served.
 func TestPages_DOMContract(t *testing.T) {
 	h := pageRouter(t)
-	shared := []string{"main", "theme-toggle", "i-mark"}
+	shared := []string{"main", "theme-toggle", "i-waiting", "i-wordmark"}
 	pages := []struct {
 		path   string
 		status int

@@ -38,6 +38,9 @@ func TestHumanTTL(t *testing.T) {
 		{180, "3m"},
 		{3600, "1h"},
 		{7200, "2h"},
+		{86400, "1d"},
+		{172800, "2d"},
+		{90000, "25h"},
 	}
 	for _, tc := range tests {
 		if got := humanTTL(tc.in); got != tc.expect {

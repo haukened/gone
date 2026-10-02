@@ -28,11 +28,11 @@
   box-shadow: 0 0 0 2px var(--color-band-ink), 0 0 0 5px var(--color-mark);
 }
 
+/* The mark stands in for the "G": sized to cap height and set on the baseline. */
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-height: 2.75rem;
+  display: block;
+  line-height: 2.75rem;
+  white-space: nowrap;
   text-decoration: none;
   font-size: var(--step-2);
   font-weight: 700;
@@ -40,10 +40,13 @@
 }
 
 .brand .ico {
-  width: 1.75rem;
-  height: 1.75rem;
+  display: inline-block;
+  width: 0.84em;
+  height: 0.84em;
+  margin-right: 0.03em;
+  vertical-align: -0.06em;
   stroke: var(--color-mark);
-  stroke-width: 3.2;
+  stroke-width: 3.6;
 }
 
 .nav {
@@ -120,14 +123,14 @@
 
 .step {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: 9rem minmax(0, 1fr);
   column-gap: var(--gap);
   border-top: 1px solid var(--color-line);
   padding-block: var(--space-6) var(--space-7);
 }
 
 .step-head {
-  grid-column: 1 / span 2;
+  grid-column: 1;
 }
 
 .step-num {
@@ -147,7 +150,7 @@
 }
 
 .step-body {
-  grid-column: 3 / span 4;
+  grid-column: 2;
   display: grid;
   gap: var(--space-5);
   min-width: 0;
