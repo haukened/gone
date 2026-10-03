@@ -1,6 +1,6 @@
 # Gone Protocol Specification
 
-Status: **normative** for protocol version 1 and plaintext envelope GONE2.
+Status: **normative** for protocol versions 1 and 2 and plaintext envelope GONE2.
 Reference implementations: the browser client (`web/js/crypto.js`, `envelope.js`, `fileMeta.js`, `consume.js`) and the Go package `internal/envelope`. Both are tested against the shared vectors in [`test/vectors/`](../test/vectors/).
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** are used as described in RFC 2119.
@@ -59,12 +59,13 @@ Which number changes depends on what changes:
 | Plaintext layout or how its fields are interpreted | A new **envelope** magic or `"v"`. The protocol version is unchanged. |
 | Tighter validation of an existing layer (rejecting input that used to be accepted) | Only allowed if no conforming encoder ever produced that input. Otherwise the owning layer needs a new version. |
 
-- Protocol version **2 is reserved** for the passphrase-wrapped key (roadmap Phase 5).
 - Servers **MUST** reject unsupported protocol versions (§8). Clients **MUST** reject an unsupported protocol version in a link *before* making any request (§7.2).
 
-Currently supported: protocol version **1**, envelope **GONE2**.
+Currently supported: protocol versions **1** and **2**, envelope **GONE2**.
 
-## 4. Protocol version 1 cryptography
+## 4. Cryptography
+
+### 4.1 Protocol version 1
 
 | Parameter | Value |
 | --------- | ----- |
@@ -80,6 +81,49 @@ Currently supported: protocol version **1**, envelope **GONE2**.
 - A valid ciphertext body is at least 16 bytes long.
 - Decryption **MUST** report a single generic error for every failure: wrong key length, wrong nonce length, a ciphertext shorter than the tag, or a failed authentication. The error does not reveal which input was at fault. Validating the link (§7.2) happens earlier and is separate from this.
 - Implementations **SHOULD** overwrite key and plaintext buffers once they are no longer needed. They **MUST NOT** log keys, fragments, or plaintext.
+
+### 4.2 Protocol version 2 (passphrase)
+
+Version 2 adds a passphrase that the sender shares separately from the link. Opening the secret needs **both** the link key and the passphrase. The link key, nonce, cipher, and tag are the same as in v1. What changes is how the AEAD key is derived, and a short header in front of the ciphertext.
+
+| Parameter | Value |
+| --------- | ----- |
+| Link key | 32 bytes from a CSPRNG, unique per secret (carried in the fragment, §7.1) |
+| Nonce | 12 bytes from a CSPRNG (the `X-Gone-Nonce` header, as in v1) |
+| KDF ID | `0x01` = PBKDF2-HMAC-SHA-256. No other value is defined. |
+| Iterations | Writers **MUST** use 600,000. Readers **MUST** accept 600,000 to 5,000,000 inclusive and reject anything else. |
+| Salt | 16 bytes from a CSPRNG, unique per secret |
+| Passphrase | Unicode text, normalized to NFC, then encoded as UTF-8: 1 to 1024 bytes |
+| Cipher | AES-256-GCM, 16-byte tag |
+
+**Ciphertext body (blob).**
+
+```
+blob   = header || GCM-Encrypt(K, nonce, plaintext, AAD)
+header = kdf_id (1 byte) || iterations (uint32, big-endian) || salt (16 bytes)   ; 21 bytes
+```
+
+**Key derivation.**
+
+```
+P   = UTF-8(NFC(passphrase))
+pw  = PBKDF2-HMAC-SHA-256(P, salt, iterations, 32 bytes)
+K   = HKDF-SHA-256(IKM = linkKey || pw, salt = empty, info = "gone:v2 aead key", 32 bytes)
+AAD = "gone:v2" || header
+```
+
+- The header is authenticated as part of the AAD, so changing the KDF ID, iteration count, or salt makes decryption fail.
+- The server **never** parses the header. To the server a v2 body is opaque bytes, exactly like v1.
+- A valid v2 body is at least 37 bytes: the 21-byte header plus the 16-byte tag.
+- Readers **MUST** check the header **before** running the KDF. A body shorter than 37 bytes, an unknown KDF ID, or an iteration count outside the accepted range is **malformed**. Malformed is a final error: no passphrase can fix it. The iteration cap bounds the work a hostile sender can force on a recipient.
+- A passphrase that is empty, is not well-formed Unicode, or is longer than 1024 bytes after NFC and UTF-8 encoding is **invalid**. Readers report it the same way as a wrong passphrase.
+- Every other failure, including a wrong passphrase, a wrong link key, or a tampered body, **MUST** produce the single generic decryption error from §4.1. A wrong link key and a wrong passphrase can't be told apart.
+- Recipients **MAY** let the user retry the passphrase against the ciphertext they already downloaded. They **MUST NOT** fetch it again, since the claim (§8.2) has already started its deletion.
+- Implementations **SHOULD** overwrite `P`, `pw`, `K`, the link key, and the plaintext once they are no longer needed.
+
+**Security notes.**
+- Anyone who gets the link can try passphrases offline against a downloaded ciphertext. The iteration count slows this down but does not stop it. A passphrase therefore protects a leaked link only if it is strong, for example the five random words the browser client offers to generate.
+- A passphrase does not stop someone with the link from burning the secret. Claiming it starts deletion whether or not they know the passphrase.
 
 ## 5. Plaintext formats
 
@@ -225,13 +269,13 @@ version  = canonical decimal 1–255 (§2.2)
 payload  = 1*( ALPHA / DIGIT / "-" / "_" )
 ```
 
-For protocol version 1, the payload is the strict base64url encoding of the 32-byte key, which is exactly 43 characters.
+For protocol versions 1 and 2, the payload is the strict base64url encoding of the 32-byte link key, which is exactly 43 characters. A v2 fragment carries the link key only. The passphrase **MUST NOT** appear in the link.
 
 ### 7.2 Parsing
 
 - The fragment is the text **after** the `#` delimiter. Browsers take `location.hash` and remove its single leading `#`. Go uses `url.URL.EscapedFragment()`.
 - Clients **MUST** match the raw, percent-encoded fragment and **MUST NOT** percent-decode it first. A `%`, a second `#`, or any other character outside the grammar makes the fragment invalid.
-- Clients **MUST** reject a malformed fragment, an unsupported version, or a payload that fails that version's validation (for v1: strict base64url decoding to 32 bytes). They must do this **before** sending the claim request, so a bad link never claims a secret.
+- Clients **MUST** reject a malformed fragment, an unsupported version, or a payload that fails that version's validation (for v1 and v2: strict base64url decoding to 32 bytes). They must do this **before** sending the claim request, so a bad link never claims a secret.
 
 ### 7.3 Manage links
 
@@ -257,13 +301,13 @@ The full endpoint reference, including status codes, is in [docs/README.md](READ
 | Header | Rule |
 | ------ | ---- |
 | `X-Gone-Version` | Canonical decimal (§2.2). Must be a supported protocol version. |
-| `X-Gone-Nonce` | Strict base64url (§2.1) that decodes to exactly that version's nonce size: 12 bytes for v1. |
+| `X-Gone-Nonce` | Strict base64url (§2.1) that decodes to exactly that version's nonce size: 12 bytes for v1 and v2. |
 | `X-Gone-TTL` | A Go duration inside the server's configured `[MinTTL, MaxTTL]`. |
 | `Content-Length` | Required. The body is the ciphertext. |
 
 - Each `X-Gone-*` header **MUST** appear exactly once.
 - If the version or nonce header breaks a rule, the server **MUST** respond with `400` and `invalid version` or `invalid nonce`. The application service repeats the same checks, so only valid metadata is ever stored.
-- The server never inspects the body beyond its length. It **MAY** reject bodies shorter than the tag.
+- The server never inspects the body beyond its length, and never parses the v2 header (§4.2). It **MAY** reject bodies shorter than the tag.
 - The `201` body carries `id`, `expires_at`, and `manage_token`. The token is 32 bytes from a CSPRNG, encoded as strict base64url (43 characters). The server stores only its SHA-256 and can never return it again.
 
 ### 8.2 Claim: `GET /api/secret/{id}`
@@ -275,7 +319,7 @@ On success the server returns `200` with the ciphertext and these headers:
 
 The client:
 1. **MUST** check that `X-Gone-Version` is exactly the canonical decimal string of the link's version. Otherwise it reports an unsupported version.
-2. **MUST** decode the nonce strictly. A malformed nonce is reported with the same generic error as a failed decryption (§4).
+2. **MUST** decode the nonce strictly. A malformed nonce is reported with the same generic error as a failed decryption (§4.1). For v2 this error is final: it is checked before asking for a passphrase again.
 3. **MUST** check, when `Content-Length` is present, that it received exactly that many bytes. AES-GCM detects truncation even when `Content-Length` is absent (for example, when a proxy re-chunks the response).
 4. **SHOULD** stop reading once it has received more than its own ciphertext limit. Non-browser clients **MUST** enforce such a limit.
 5. Then decrypts.
@@ -309,9 +353,11 @@ The request carries `X-Gone-Manage`. Its status codes match §8.4, with `204` on
 
 | File | Covers |
 | ---- | ------ |
-| `aead_v1.json` | §4: encryption with a fixed nonce, plus decryption failures |
+| `aead_v1.json` | §4.1: encryption with a fixed nonce, plus decryption failures |
+| `aead_v2.json` | §4.2: NFC, PBKDF2, HKDF and encryption with a fixed salt and nonce, plus malformed, invalid-passphrase and decryption failures |
 | `envelope_gone2.json` | §5: canonical encoding, decoding, rejection cases |
 | `fragment_v1.json` | §2, §7: fragment parsing |
+| `fragment_v2.json` | §7: v2 fragment parsing |
 | `sanitize.json` | §6: file names and MIME types |
 | `server_headers.json` | §8.1: version and nonce header acceptance |
 
@@ -323,3 +369,4 @@ Binary fields are lowercase hex. All key material in the vectors is synthetic. G
 2. Add or update vectors.
 3. Change the Go and JS implementations together in the same pull request, until both pass every vector.
 4. Use the versioning matrix in §3 to decide whether the change needs a new protocol version, a new envelope version, or neither.
+5. **KDF IDs.** v2 defines only `0x01` (PBKDF2-HMAC-SHA-256). A new KDF, such as Argon2id, may take the next unused ID within v2. Each ID fixes its own parameter layout and limits, and must be specified here, with vectors, before any writer uses it. Readers that predate an ID reject it as malformed, so they fail closed; writers must not use a new ID until the readers they serve support it. Changing what an existing ID means requires a new protocol version.

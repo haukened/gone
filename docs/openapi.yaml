@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Gone Secret Sharing API
-  version: 0.3.0
+  version: 0.4.0
   description: |
     Minimal API for one-time secret creation and consumption.
     Secrets are created with a TTL and may be stored inline or in external blob storage.
@@ -45,8 +45,8 @@ paths:
             example: '1'
           description: >-
             Protocol version in canonical decimal (no sign, no leading zeros).
-            Must be a supported version; currently only 1. Must appear exactly
-            once. See docs/protocol.md §3 and §8.
+            Must be a supported version: 1, or 2 for a passphrase-protected
+            secret. Must appear exactly once. See docs/protocol.md §3 and §8.
         - in: header
           name: X-Gone-Nonce
           required: true
@@ -55,8 +55,8 @@ paths:
             pattern: '^[A-Za-z0-9_-]{16}$'
           description: >-
             Strict, canonical, unpadded base64url of the 12-byte AES-GCM nonce
-            (protocol v1). Must appear exactly once. See docs/protocol.md §2.1
-            and §4.
+            (protocols v1 and v2). Must appear exactly once. See
+            docs/protocol.md §2.1 and §4.
         - in: header
           name: X-Gone-TTL
           required: true

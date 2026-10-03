@@ -18,6 +18,11 @@ function page(env, skip) {
   const views = [
     n('view-open', 'div', {}, [
       n('open-heading', 'h1'),
+      n('open-pass-field', 'div', { hidden: true }, [
+        n('open-passphrase', 'input', { type: 'password' }),
+        n('open-pass-toggle', 'button', {}, [h('span', { textContent: 'Show' })])
+      ]),
+      n('open-pass-warn', 'p', { hidden: true }),
       n('open-secret', 'button', {}, [h('svg'), openLabel]),
       n('download-progress', 'progress', { hidden: true }),
       n('consume-status', 'span'),
@@ -114,6 +119,102 @@ test('errors, opening state and the Open button', (t) => {
   assert.equal($('consume-error').hidden, true);
   view.disableOpen();
   assert.equal(btn.getAttribute('aria-disabled'), 'true');
+});
+
+test('the passphrase field gates Open, toggles visibility and submits on Enter', (t) => {
+  const { $, view, openLabel } = setup(t);
+  const btn = $('open-secret');
+  const pass = $('open-passphrase');
+  const toggle = $('open-pass-toggle');
+  let presses = 0;
+  view.onOpen(() => presses++);
+  assert.equal(view.passphraseMissing(), false);
+  assert.equal(view.showPassphrase(), true);
+  assert.equal($('open-pass-field').hidden, false);
+  assert.equal($('open-pass-warn').hidden, false);
+  assert.equal(btn.getAttribute('aria-describedby'), 'open-pass-warn open-hint');
+  assert.equal(btn.getAttribute('aria-disabled'), 'true');
+  assert.equal(view.passphraseMissing(), true);
+
+  pass.value = 'Correct horse';
+  pass.setAttribute('aria-invalid', 'true');
+  pass.dispatch('input');
+  assert.equal(pass.getAttribute('aria-invalid'), 'false');
+  assert.equal(btn.getAttribute('aria-disabled'), 'false');
+  assert.equal(view.passphrase(), 'Correct horse');
+
+  toggle.click();
+  assert.equal(pass.type, 'text');
+  assert.equal(toggle.textContent, 'Hide');
+  toggle.click();
+  assert.equal(pass.type, 'password');
+  assert.equal(toggle.textContent, 'Show');
+
+  assert.equal(pass.dispatch('keydown', { key: 'a' }).defaultPrevented, false);
+  assert.equal(presses, 0);
+  assert.equal(pass.dispatch('keydown', { key: 'Enter' }).defaultPrevented, true);
+  assert.equal(presses, 1);
+
+  view.setOpening(true);
+  assert.equal(pass.readOnly, true);
+  view.setOpening(false);
+  assert.equal(pass.readOnly, false);
+  view.passphraseFailed();
+  assert.equal(openLabel.textContent, 'Try again');
+  assert.equal(pass.getAttribute('aria-invalid'), 'true');
+  assert.equal(globalThis.document.activeElement, pass);
+  assert.equal(pass.selected, true);
+  view.setOpening(true);
+  assert.equal(openLabel.textContent, 'Opening\u2026');
+  view.setOpening(false);
+  assert.equal(openLabel.textContent, 'Try again');
+
+  globalThis.document.activeElement = null;
+  view.focusPassphrase();
+  assert.equal(globalThis.document.activeElement, pass);
+
+  view.disableOpen();
+  assert.equal(pass.readOnly, true);
+  pass.dispatch('input');
+  assert.equal(btn.getAttribute('aria-disabled'), 'true');
+  view.setOpening(false);
+  assert.equal(pass.readOnly, true);
+
+  toggle.click();
+  view.cleanup();
+  assert.equal(pass.value, '');
+  assert.equal(pass.type, 'password');
+  assert.equal(toggle.textContent, 'Show');
+});
+
+test('showDecoded clears the passphrase', (t) => {
+  const { $, view } = setup(t);
+  view.showPassphrase();
+  $('open-passphrase').value = 'secret words';
+  view.showDecoded({ message: 'm', files: [] });
+  assert.equal($('open-passphrase').value, '');
+});
+
+test('passphrase helpers tolerate missing optional elements', (t) => {
+  const a = setup(t, ['open-pass-field', 'open-pass-toggle', 'open-pass-warn', 'open-secret']);
+  assert.equal(a.view.showPassphrase(), true);
+  assert.equal(a.$('open-secret'), null);
+  a.$('open-passphrase').value = 'x';
+  a.$('open-passphrase').dispatch('input');
+  assert.equal(a.$('open-passphrase').dispatch('keydown', { key: 'Enter' }).defaultPrevented, true);
+  a.view.clearPassphrase();
+
+  const b = setup(t, ['open-pass-warn']);
+  b.view.showPassphrase();
+  assert.equal(b.$('open-secret').hasAttribute('aria-describedby'), false);
+
+  const c = setup(t, ['open-passphrase']);
+  assert.equal(c.view.showPassphrase(), false);
+  assert.equal(c.$('open-pass-field').hidden, true);
+  assert.equal(c.view.passphrase(), '');
+  assert.equal(c.view.passphraseMissing(), false);
+  assert.doesNotThrow(() => { c.view.focusPassphrase(); c.view.passphraseFailed(); c.view.clearPassphrase(); });
+  assert.equal(c.openLabel.textContent, 'Try again');
 });
 
 test('every helper tolerates a page with no elements', (t) => {

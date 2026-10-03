@@ -59,6 +59,21 @@
 				<section class="step" aria-labelledby="step-share">
 					<div class="step-head"><span class="step-num" aria-hidden="true">3</span><h2 class="step-name" id="step-share">Share</h2></div>
 					<div class="step-body">
+						<details id="pass-disclosure" class="disclosure">
+							<summary>Add a passphrase <span class="opt">(optional)</span></summary>
+							<div class="disclosure-body">
+								<div class="field">
+									<label class="label" for="passphrase">Passphrase</label>
+									<div class="passbox">
+										<input id="passphrase" class="input" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" aria-describedby="pass-strength pass-hint" />
+										<button id="pass-toggle" class="btn btn-secondary btn-small" type="button" aria-controls="passphrase"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-eye" /></svg><span>Show</span></button>
+										<button id="pass-generate" class="btn btn-secondary btn-small" type="button" aria-controls="passphrase">Generate</button>
+									</div>
+									<span id="pass-strength" class="hint strength" role="status"></span>
+									<span class="hint" id="pass-hint">The recipient types this before the secret opens. Send it separately (for example by phone or a different app), never alongside the link.</span>
+								</div>
+							</div>
+						</details>
 						<div class="field">
 							<div class="actions">
 								<button class="btn btn-primary" type="submit" aria-describedby="submit-hint"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span>Create one-time link</span></button>
@@ -100,6 +115,7 @@
 							</div>
 							<span id="copy-status" class="status" role="status"></span>
 						</div>
+						<p id="result-pass-note" class="note pass-note" hidden><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span><strong>Passphrase protected.</strong> The recipient will need the passphrase you set, and Gone can't recover it. Send it to them separately.</span></p>
 						<ol class="life life-h" aria-label="Secret status">
 							<li class="is-done"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-sealed" /></svg><span class="t">Sealed</span><span class="s">Just now</span></li>
 							<li class="is-now" aria-current="step"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-waiting" /></svg><span class="t">Waiting</span><span class="s">Until <time id="result-expiry"></time></span></li>
@@ -138,6 +154,9 @@
 	<script src="/static/js/submitMeter.js" defer></script>
 	<script src="/static/js/submitUpload.js" defer></script>
 	<script src="/static/js/submitResult.js" defer></script>
+	<script src="/static/js/wordlist.js" defer></script>
+	<script src="/static/js/passgen.js" defer></script>
+	<script src="/static/js/submitPassphrase.js" defer></script>
 	<script src="/static/js/submit.js" defer></script>
 </body>
 </html>

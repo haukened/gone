@@ -59,8 +59,8 @@
 
   // show fills and reveals the result view, hiding the compose view.
   //
-  // opts: {shareURL, manageURL = '', expiresAt, focus = true}. Returns the
-  // result view, or null when the page lacks it.
+  // opts: {shareURL, manageURL = '', expiresAt, passphrase = false, focus = true}.
+  // Returns the result view, or null when the page lacks it.
   function show(opts) {
     const view = byId('result');
     const input = byId('share-link');
@@ -70,6 +70,8 @@
     setExpiry(byId('result-expiry'), opts.expiresAt);
     wireOnce(btn, input, byId('copy-status'), 'Link copied to clipboard.');
     showManage(opts.manageURL || '');
+    const passNote = byId('result-pass-note');
+    if (passNote) passNote.hidden = !opts.passphrase;
     const compose = byId('compose');
     if (compose) compose.hidden = true;
     view.hidden = false;

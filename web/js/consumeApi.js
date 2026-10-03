@@ -227,6 +227,61 @@
     return plaintext;
   }
 
+  // readNonce checks X-Gone-Version against the link's version and returns
+  // the decoded X-Gone-Nonce. Throws a final FetchError when either is wrong.
+  function readNonce(resp, frag) {
+    const NONCE_BYTES = 12;
+    const gc = window.goneCrypto;
+    if (resp.headers.get('X-Gone-Version') !== String(frag.version)) {
+      throw FetchError('Unsupported secret version', false);
+    }
+    let nonce;
+    try {
+      nonce = gc.b64urlDecode(resp.headers.get('X-Gone-Nonce') || '');
+    } catch {
+      nonce = null;
+    }
+    if (!nonce || nonce.length !== NONCE_BYTES) throw FetchError(VERIFY_ERROR, false);
+    return nonce;
+  }
+
+  // v2Failure maps a decryptV2 error. A wrong passphrase (or one that
+  // can't be encoded) becomes a retryable FetchError with .passphrase set,
+  // so the recipient can retry locally; anything else is final.
+  function v2Failure(e) {
+    const PASSPHRASE_ERROR = 'That passphrase didn\u2019t work. Check it and try again.';
+    const DAMAGED_ERROR = 'This secret\u2019s contents are damaged. Ask the sender to share it again.';
+    if (e.code === 'decrypt' || e.code === 'invalid_passphrase') {
+      const err = FetchError(PASSPHRASE_ERROR, true);
+      err.passphrase = true;
+      return err;
+    }
+    if (isFetchError(e)) return e;
+    return FetchError(e.code === 'malformed' ? DAMAGED_ERROR : VERIFY_ERROR, false);
+  }
+
+  // decryptV2 derives the key from the link key and passphrase, then
+  // authenticates and decrypts a v2 ciphertext. On success the key and
+  // ciphertext are zeroed. A wrong passphrase throws a retryable FetchError
+  // (with .passphrase set) and leaves both buffers intact so the caller can
+  // retry without the network; any other failure zeroes them and is final.
+  async function decryptV2(resp, ciphertext, frag, passphrase) {
+    try {
+      const nonce = readNonce(resp, frag);
+      const plaintext = await window.goneCrypto.decryptV2(ciphertext, nonce, frag.key, passphrase);
+      frag.key.fill(0);
+      ciphertext.fill(0);
+      return plaintext;
+    } catch (e) {
+      const err = v2Failure(e);
+      if (!err.passphrase) {
+        frag.key.fill(0);
+        ciphertext.fill(0);
+      }
+      throw err;
+    }
+  }
+
   // --- Acknowledge (delete) ---------------------------------------------------
   async function ackOnce(claim) {
     try {
@@ -248,6 +303,6 @@
   }
 
   window.goneConsumeApi = Object.freeze({
-    FetchError, isFetchError, isGone, registerEndpoint, fetchWithRetry, decrypt, acknowledge
+    FetchError, isFetchError, isGone, registerEndpoint, fetchWithRetry, decrypt, decryptV2, acknowledge
   });
 })();

@@ -50,12 +50,14 @@ curl -H 'Authorization: Bearer tok' http://localhost:9090/
 5. You send that full URL (including everything after the `#`) to someone.
 6. When they open it, the server hands their browser the encrypted blob, the browser decrypts it locally using the part after `#`, then tells the server to delete it.
 7. A refresh or second visit won’t work—the secret is already gone.
-8. Changed your mind? Before you leave the result page, open **Manage this secret** to get a private manage link. Keep it for yourself: it shows whether the secret is still waiting and lets you delete it before anyone opens it.
+8. Want a second lock? Open **Add a passphrase** on the form, type one or press **Generate** for five random words, and send the passphrase to the recipient separately from the link. They need both to open the secret.
+9. Changed your mind? Before you leave the result page, open **Manage this secret** to get a private manage link. Keep it for yourself: it shows whether the secret is still waiting and lets you delete it before anyone opens it.
 
 Guarantees (simple terms):
 * Server never learns the plaintext.
 * Link works only one time.
 * Expired or used links are dead.
+* With a passphrase, a leaked link alone can't open the secret.
 * Your manage link can never reveal the secret, and once the secret is opened, deleted, or expired, the server keeps no record that it existed.
 
 ---
@@ -236,21 +238,34 @@ Properties:
 * Manage tokens: 256 random bits, carried only in the URL fragment and the `X-Gone-Manage` header (never in a path, query, or log), stored only as a SHA‑256 hash, and compared in constant time. The custom header forces a CORS preflight that the server never grants, so other sites cannot revoke your secrets.
 * No tombstones: status and revoke answer `404` alike for opened, revoked, expired, unknown, and wrong‑token secrets, so the server's answers reveal nothing beyond "still pending".
 
+### Optional Passphrase (Protocol v2)
+A sender can add a passphrase. The link keeps the same shape with a `v2:` prefix (`#v2:<base64url-key>`), but the AES‑GCM key also depends on the passphrase. Full details are in [docs/protocol.md §4.2](docs/protocol.md#42-protocol-version-2-passphrase).
+
+1. Browser picks a random 32‑byte link key, 16‑byte salt, and 12‑byte nonce.
+2. It stretches the passphrase (NFC‑normalized UTF‑8) with PBKDF2‑SHA‑256 at 600,000 iterations, then combines the result with the link key using HKDF‑SHA‑256 to get the AES‑GCM key.
+3. The upload body is a 21‑byte header (KDF ID, iteration count, salt) followed by the ciphertext. The header is bound into the AAD (`gone:v2` + header), so it can't be altered. The server stores the body as opaque bytes and never sees the passphrase.
+4. The recipient's page asks for the passphrase before fetching. A wrong passphrase can be retried against the downloaded ciphertext as often as needed, with no second request. The secret is acknowledged and deleted only after it decrypts.
+
+Generated passphrases are five words from the [EFF short wordlist](https://www.eff.org/dice) (about 51 bits of entropy), © Electronic Frontier Foundation, used under [CC BY 3.0 US](https://creativecommons.org/licenses/by/3.0/us/).
+
 ### Threat Model Snapshot
 Defended:
 * TLS transport assumed.
 * No server knowledge of keys / plaintext.
 * Atomic single claim; deletion after confirmed receipt or lease expiry.
 * Sender revoke of a pending secret, authorised by a token only the sender holds.
+* A link that leaks before the recipient opens it, when the sender added a strong passphrase.
 * Timely expiry deletion.
 
 Partially Defended:
 * Brute force ID enumeration: IDs are 128-bit random and reads are rate limited per client.
 * DoS floods: per-client create and read budgets blunt single-source floods; distributed floods need upstream protection.
+* Offline passphrase guessing: anyone with the link can download the ciphertext once and guess the passphrase offline. PBKDF2 slows each guess, but only a strong passphrase (such as the generated five words) keeps a leaked secret safe.
 
 Out of Scope (current):
 * Malicious browser extensions.
 * Sophisticated timing side channels.
+* Burning a secret: a passphrase can't stop someone with the link from opening it, which uses it up even if they never learn the passphrase. The real recipient then finds it gone, a sign the link leaked.
 * URL hygiene / accidental fragment leakage (this includes the manage link: anyone holding it can revoke that secret, though never read it).
 * Revoking after the recipient has downloaded the ciphertext: revoke wins over an unacknowledged claim, but cannot recall bytes already delivered.
 * Large scale distributed DoS.
@@ -293,7 +308,7 @@ Disable by removing parameter & clearing the key.
 ## 11. Roadmap (Excerpt)
 The full plan for Gone v3 is in [docs/ROADMAP.md](docs/ROADMAP.md). Highlights:
 * Rate limiting / abuse guard (done)
-* Optional passphrase (second factor alongside the link)
+* Optional passphrase, a second factor alongside the link (done)
 * Sender status & revoke via a private management link (done)
 * Command-line client (`gone-cli`)
 * Web UI revamp

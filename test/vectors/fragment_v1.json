@@ -67,7 +67,7 @@
     "error": "invalid_fragment"
   },
   {
-    "input": "v2:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "input": "v3:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
     "error": "unsupported_version"
   },
   {

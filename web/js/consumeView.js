@@ -36,13 +36,17 @@
       copyStatus: byId('copy-status'),
       fileSection: byId('file-section'),
       fileList: byId('file-output-list'),
-      downloadAll: byId('download-all')
+      downloadAll: byId('download-all'),
+      passField: byId('open-pass-field'),
+      pass: byId('open-passphrase'),
+      passToggle: byId('open-pass-toggle'),
+      passWarn: byId('open-pass-warn')
     };
   }
 
   const dom = lookupDom();
-  const idleOpenLabel = dom.openLabel ? dom.openLabel.textContent : '';
-  const state = { plaintext: null, files: [], urls: [], pending: 0 };
+  const state = { plaintext: null, files: [], urls: [], pending: 0, busy: false, locked: false };
+  state.openLabel = dom.openLabel ? dom.openLabel.textContent : '';
 
   function setStatus(msg) {
     util.setText(dom.status, msg);
@@ -80,21 +84,113 @@
     if (dom.errorBox) dom.errorBox.hidden = true;
   }
 
+  // syncOpen sets aria-disabled on Open: unavailable while busy, after it
+  // has been locked, or while a required passphrase is empty.
+  function syncOpen() {
+    if (!dom.open) return;
+    dom.open.setAttribute('aria-disabled', String(state.busy || state.locked || pass.missing()));
+  }
+
   // setOpening reflects whether an open attempt is running. The button stays
   // focusable; aria-disabled tells assistive tech it won't act.
   function setOpening(busy) {
+    state.busy = busy;
+    if (dom.pass) dom.pass.readOnly = busy || state.locked;
     if (!dom.open) return;
-    dom.open.setAttribute('aria-disabled', String(busy));
+    syncOpen();
     // aria-busy must be the string "true"; an empty value means false.
     if (busy) dom.open.setAttribute('aria-busy', 'true');
     else dom.open.removeAttribute('aria-busy');
-    util.setText(dom.openLabel, busy ? 'Opening\u2026' : idleOpenLabel);
+    util.setText(dom.openLabel, busy ? 'Opening\u2026' : state.openLabel);
   }
 
-  // disableOpen marks the Open button permanently unavailable.
+  // disableOpen marks the Open button (and any passphrase field) permanently unavailable.
   function disableOpen() {
-    if (dom.open) dom.open.setAttribute('aria-disabled', 'true');
+    state.locked = true;
+    if (dom.pass) dom.pass.readOnly = true;
+    syncOpen();
   }
+
+  // passphraseControls owns the recipient passphrase field for v2 links.
+  // Every method is a no-op (or returns '' / false) when the page has none.
+  function passphraseControls() {
+    let needsPass = false;
+
+    // passphraseMissing reports whether Open needs a passphrase that is still empty.
+    function passphraseMissing() {
+      return needsPass && !dom.pass.value;
+    }
+
+    // setPassShown shows the passphrase as text (shown true) or masks it,
+    // and relabels the toggle to match.
+    function setPassShown(shown) {
+      dom.pass.type = shown ? 'text' : 'password';
+      util.setText(dom.passToggle ? dom.passToggle.querySelector('span') : null, shown ? 'Hide' : 'Show');
+    }
+
+    // onPassKey makes Enter in the passphrase field press Open.
+    function onPassKey(ev) {
+      if (ev.key !== 'Enter') return;
+      ev.preventDefault();
+      if (dom.open) dom.open.click();
+    }
+
+    // showPassphrase reveals the passphrase field for a v2 link, wires its
+    // show toggle and Enter key, and keeps Open unavailable until it has a
+    // value. Returns false when the page has no passphrase field.
+    function showPassphrase() {
+      if (!dom.pass) return false;
+      needsPass = true;
+      if (dom.passField) dom.passField.hidden = false;
+      if (dom.passWarn) {
+        dom.passWarn.hidden = false;
+        if (dom.open) dom.open.setAttribute('aria-describedby', 'open-pass-warn open-hint');
+      }
+      dom.pass.addEventListener('input', function () {
+        dom.pass.setAttribute('aria-invalid', 'false');
+        syncOpen();
+      });
+      dom.pass.addEventListener('keydown', onPassKey);
+      if (dom.passToggle) dom.passToggle.addEventListener('click', function () { setPassShown(dom.pass.type === 'password'); });
+      syncOpen();
+      return true;
+    }
+
+    // passphrase returns the typed passphrase ('' when there is no field).
+    function passphrase() {
+      return dom.pass ? dom.pass.value : '';
+    }
+
+    // focusPassphrase moves focus to the passphrase field.
+    function focusPassphrase() {
+      if (dom.pass) dom.pass.focus();
+    }
+
+    // passphraseFailed marks the field invalid, relabels Open "Try again" and
+    // focuses and selects the field so the recipient can retype it.
+    function passphraseFailed() {
+      state.openLabel = 'Try again';
+      util.setText(dom.openLabel, state.openLabel);
+      if (!dom.pass) return;
+      dom.pass.setAttribute('aria-invalid', 'true');
+      dom.pass.focus();
+      dom.pass.select();
+    }
+
+    // clearPassphrase empties the passphrase field and hides its text.
+    function clearPassphrase() {
+      if (!dom.pass) return;
+      dom.pass.value = '';
+      setPassShown(false);
+    }
+
+    return {
+      show: showPassphrase, value: passphrase, missing: passphraseMissing,
+      focus: focusPassphrase, failed: passphraseFailed, clear: clearPassphrase
+    };
+  }
+
+  const pass = passphraseControls();
 
   // onOpen registers handler for Open button presses.
   function onOpen(handler) {
@@ -216,6 +312,7 @@
   // envelope ({message, files}).
   function showDecoded(decoded) {
     hideProgress();
+    pass.clear();
     util.setText(dom.revealedHeading, headingFor(decoded));
     showMessage(decoded.message);
     showFiles(decoded.files);
@@ -245,8 +342,10 @@
     state.plaintext = bytes;
   }
 
-  // cleanup revokes object URLs and zeroes the decrypted buffer.
+  // cleanup revokes object URLs, zeroes the decrypted buffer and empties
+  // the passphrase field.
   function cleanup() {
+    pass.clear();
     state.urls.forEach(function (u) { URL.revokeObjectURL(u); });
     state.urls = [];
     if (state.plaintext) state.plaintext.fill(0);
@@ -255,6 +354,8 @@
   window.goneConsumeView = Object.freeze({
     present: Boolean(byId('view-open')),
     setStatus, setProgress, hideProgress, showError, clearError, setOpening, disableOpen, onOpen,
+    showPassphrase: pass.show, passphrase: pass.value, passphraseMissing: pass.missing,
+    focusPassphrase: pass.focus, passphraseFailed: pass.failed, clearPassphrase: pass.clear,
     showMessage, showDecoded, showGone, showAckResult, guardUnload, keepPlaintext, cleanup, headingFor
   });
 })();

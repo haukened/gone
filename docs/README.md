@@ -28,7 +28,7 @@ Metrics are **not** served on the public listener. When both `GONE_METRICS_ADDR`
 ## Creation Workflow
 1. The client builds the plaintext (see [Payload Format](#payload-format)) and encrypts it locally with AES-256-GCM, producing ciphertext, a version, and a nonce.
 2. The client sends the ciphertext body with these headers:
-   - `X-Gone-Version` (canonical decimal, no sign or leading zeros; currently only `1`)
+   - `X-Gone-Version` (canonical decimal, no sign or leading zeros; `1`, or `2` for a passphrase-protected secret)
    - `X-Gone-Nonce` (exactly 16 unpadded base64url characters encoding the 12-byte GCM IV)
    - `X-Gone-TTL` (Go duration, e.g. `15m`)
 
@@ -36,7 +36,7 @@ Metrics are **not** served on the public listener. When both `GONE_METRICS_ADDR`
    - `Content-Length` (required; chunked uploads are rejected)
 3. The server validates size and TTL, issues an ID, and stores the ciphertext inline in SQLite (≤ `GONE_INLINE_MAX_BYTES`) or as a filesystem blob.
 4. Response: `201` with JSON `{ "id": "<32-hex>", "expires_at": "RFC3339", "manage_token": "<43-char base64url>" }`. The server keeps only a SHA-256 hash of the manage token.
-5. The client builds the share link `/secret/{id}#v1:<base64url-key>`. The key lives only in the URL fragment, which browsers never send to the server.
+5. The client builds the share link `/secret/{id}#v1:<base64url-key>` (or `#v2:` with a passphrase). The key lives only in the URL fragment, which browsers never send to the server. The passphrase never appears in the link.
 6. The client also builds the sender's private manage link `/manage/{id}#<manage_token>`. It cannot decrypt anything; it can only check on or revoke the secret.
 
 ## Sender Workflow (Status + Revoke)
@@ -64,7 +64,7 @@ The server treats the body as opaque ciphertext. Inside the encryption:
 - **Text only:** the plaintext is the raw UTF-8 message.
 - **With attachments (envelope v2):** `"GONE2\0\0\0"` magic (8 bytes), a big-endian `u32` header length, a JSON header `{ "v": 2, "msg": <message byte length>, "files": [{ "name", "type", "size" }] }`, then the message bytes, then each file's bytes in order.
 
-File names, types, and sizes are therefore encrypted along with the contents. Decoders sanitize file names and map MIME types onto an allowlist (see [protocol.md §6](protocol.md#6-sanitization)). The web client allows up to 10 files of any type. The message and all files share the `MaxBytes` limit, which includes the 16-byte GCM tag. Encryption uses AES-256-GCM with AAD `gone:v1`.
+File names, types, and sizes are therefore encrypted along with the contents. Decoders sanitize file names and map MIME types onto an allowlist (see [protocol.md §6](protocol.md#6-sanitization)). The web client allows up to 10 files of any type. The message and all files share the `MaxBytes` limit, which includes the 16-byte GCM tag. Encryption uses AES-256-GCM with AAD `gone:v1`. With a passphrase (protocol v2), the AES key also depends on the passphrase through PBKDF2-SHA-256 and HKDF, and the body starts with a 21-byte authenticated header that the server stores without parsing (see [protocol.md §4.2](protocol.md#42-protocol-version-2-passphrase)).
 
 ## Error Mapping
 All errors are JSON `{ "error": "<message>" }`.

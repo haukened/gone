@@ -17,6 +17,7 @@
 				<li><a href="#encryption">Encryption</a></li>
 				<li><a href="#flow">How Gone keeps secrets</a></li>
 				<li><a href="#files">File attachments</a></li>
+				<li><a href="#passphrase">Optional passphrase</a></li>
 				<li><a href="#why">Why this matters</a></li>
 				<li><a href="#threats">Threat model notes</a></li>
 				<li><a href="#license">License</a></li>
@@ -57,6 +58,17 @@
 					<li>File names are cleaned up (folders and hidden control characters removed), and uncommon file types are saved as generic downloads so they can't run in the browser.</li>
 				</ul>
 			</section>
+			<section aria-labelledby="passphrase">
+				<h2 id="passphrase">Optional passphrase</h2>
+				<ul>
+					<li>The sender can add a passphrase. Opening the secret then takes both the link and the passphrase, so a leaked link alone is not enough.</li>
+					<li>Send the passphrase separately from the link, for example the link by email and the passphrase by phone. Gone never stores the passphrase and cannot recover it.</li>
+					<li>Your browser stretches the passphrase with PBKDF2 (600,000 rounds) and mixes it with the link's key. Every wrong guess costs real time, but a short or common passphrase can still be guessed by someone who has the link. Use <strong>Generate</strong> for five random words.</li>
+					<li>If the passphrase is wrong, the recipient can try again as many times as they need without downloading the secret again.</li>
+					<li>Opening the link uses up the secret even if the passphrase is wrong. A passphrase keeps a leaked secret unreadable, but cannot stop someone with the link from destroying it.</li>
+					<li>Generated passphrases use the <a href="https://www.eff.org/dice">EFF short wordlist</a> by the Electronic Frontier Foundation, licensed under <a href="https://creativecommons.org/licenses/by/3.0/us/">CC BY 3.0 US</a>.</li>
+				</ul>
+			</section>
 			<section aria-labelledby="why">
 				<h2 id="why">Why this matters</h2>
 				<ul>
@@ -71,7 +83,7 @@
 				<ul>
 					<li>Always verify you are on HTTPS (the app warns if not).</li>
 					<li>The secrecy guarantee assumes the sender's and recipient's browsers are not compromised.</li>
-					<li>Anyone who obtains the full share URL (including its key component) can decrypt the secret until first read or expiry.</li>
+					<li>Anyone who obtains the full share URL (including its key component) can decrypt the secret until first read or expiry, unless the sender added a passphrase.</li>
 					<li>If someone else opens the link first, the intended recipient will see that the secret is gone, a clear sign the link was intercepted.</li>
 					<li>Attachments are only as safe as the device they are saved to; delete downloaded files when you no longer need them.</li>
 				</ul>

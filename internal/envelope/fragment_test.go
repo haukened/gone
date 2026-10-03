@@ -21,8 +21,11 @@ func TestNewFragment(t *testing.T) {
 	if f.Key()[0] != 0xab {
 		t.Fatal("Key must return a copy")
 	}
-	if _, err := NewFragment(2, testKey); !errors.Is(err, domain.ErrInvalidVersion) {
+	if f, err := NewFragment(2, testKey); err != nil || f.Version() != 2 {
 		t.Fatalf("v2: %v", err)
+	}
+	if _, err := NewFragment(3, testKey); !errors.Is(err, domain.ErrInvalidVersion) {
+		t.Fatalf("v3: %v", err)
 	}
 	if _, err := NewFragment(1, testKey[:31]); !errors.Is(err, ErrInvalidKey) {
 		t.Fatalf("short key: %v", err)
@@ -68,7 +71,7 @@ func TestParseFragmentErrors(t *testing.T) {
 		{"v1:" + key[:42] + "B", ErrInvalidFragment},
 		{"v1:" + domain.EncodeB64URL(testKey[:31]), ErrInvalidFragment},
 		{"v1:" + strings.Repeat("A", 600), ErrInvalidFragment},
-		{"v2:" + key, domain.ErrInvalidVersion},
+		{"v3:" + key, domain.ErrInvalidVersion},
 		{"v255:" + key, domain.ErrInvalidVersion},
 		{"v2:%%", ErrInvalidFragment},
 	}
@@ -136,7 +139,7 @@ func TestParseLink(t *testing.T) {
 		{"https://gone.example/secret/" + id + "#", ErrInvalidFragment},
 		{"https://gone.example/secret/" + id + "#v1%3A" + frag[3:], ErrInvalidFragment},
 		{"https://gone.example/secret/" + id + "#" + frag + "#x", ErrInvalidFragment},
-		{"https://gone.example/secret/" + id + "#v2:" + frag[3:], domain.ErrInvalidVersion},
+		{"https://gone.example/secret/" + id + "#v3:" + frag[3:], domain.ErrInvalidVersion},
 		{"https://gone.example/secret/" + id + "#" + frag + "%zz", ErrInvalidLink},
 		{"https://gone.example/secret/" + strings.ToUpper(id) + "#" + frag, ErrInvalidLink},
 		{"https://gone.example/secret/" + id + "/#" + frag, ErrInvalidLink},

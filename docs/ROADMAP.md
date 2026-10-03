@@ -151,22 +151,23 @@ The sender can check whether a secret is still waiting and delete it before it i
 ---
 
 ## Phase 5: Optional passphrase
+**Status: implemented** on `feat/passphrase`. The byte-level format is [`docs/protocol.md`](protocol.md) §4.2.
+
 A second factor: opening the secret needs both the link and a passphrase that the sender shares separately.
 
-**Scope (proposed design)**
-* **Key derivation.** The browser derives a key from the passphrase with PBKDF2-SHA-256 (built into WebCrypto). It uses a random 16-byte salt and at least 600,000 iterations, the current OWASP guidance. This derived key is combined with the fragment key using HKDF to produce the AES-GCM key, so the link alone and the passphrase alone are each useless.
-* **New format version, v2.** The salt, iteration count, and KDF ID are stored in a small authenticated header in front of the ciphertext, and the AAD changes to `gone:v2`. The server stores v2 blobs as opaque bytes, just like v1. Clients still read v1, so existing links keep working.
-* **Recipient flow.** The page detects a v2 link, asks for the passphrase, then claims and decrypts. If the passphrase is wrong, the recipient can retry while the claim lease lasts. The ciphertext never goes to anyone else.
-* **Sender flow.** An optional passphrase field, with a strength hint and a reminder to send the passphrase through a different channel than the link.
+**Scope (as built)**
+* **Key derivation.** The browser derives a key from the passphrase with PBKDF2-SHA-256 (built into WebCrypto), using a random 16-byte salt and 600,000 iterations, the current OWASP guidance. HKDF combines it with the link key to make the AES-GCM key, so the link alone and the passphrase alone are each useless. Passphrases are normalized to NFC before hashing, so the same words typed on different devices give the same key.
+* **Protocol v2.** A 21-byte authenticated header (KDF ID, iteration count, salt) sits in front of the ciphertext, and the AAD becomes `gone:v2` plus that header. Readers accept 600,000 to 5,000,000 iterations, which caps the work a hostile link can force on a recipient. The server stores v2 bodies as opaque bytes and never parses the header. v1 links keep working.
+* **Shared test data.** `aead_v2.json` and `fragment_v2.json` cover NFC, the KDF chain, a wrong passphrase, a wrong link key, tampered headers, out-of-range iterations, and invalid passphrases. Go (`SealV2`/`OpenV2`) and JS both pass them.
+* **Sender flow.** "Add a passphrase" is an optional disclosure on the send form. It requires at least 8 characters, shows a strength hint, and offers a **Generate** button that makes five random words from the EFF short wordlist (about 51 bits). The result page reminds the sender to share the passphrase through a different channel than the link and never shows the passphrase again.
+* **Recipient flow.** A v2 link shows a passphrase field before anything is fetched. Opening claims and downloads the ciphertext once; a wrong passphrase can be retried against that download as many times as needed, with no second request. The secret is acknowledged (and deleted) only after a successful decrypt. Leaving the page erases the download.
 
-**Threat model note.** The passphrase protects against a link that leaks *before* the real recipient opens it. Someone who claims the secret with a leaked link can still guess the passphrase offline, limited only by the passphrase's strength and PBKDF2's cost. The real recipient will then find the secret already opened, which is itself a warning. The README will say this plainly.
+**Decisions**
+* **PBKDF2, not Argon2id.** Argon2id resists guessing better, but would need WASM and a CSP exception. KDF ID `0x01` is PBKDF2-SHA-256; a later ID can add Argon2id within v2 (see protocol.md §10).
+* **No retry limit.** Anyone holding the downloaded ciphertext can guess offline anyway, so a client-side cap would add friction without adding security.
+* **One error for both factors.** A wrong link key and a wrong passphrase look the same; the format cannot tell them apart.
 
-**Open questions**
-* PBKDF2 now, or Argon2id from the start? Argon2id resists guessing much better, but it needs WASM loaded only on passphrase pages, plus a CSP exception. The recommendation is PBKDF2 for v3, with the KDF ID in the header leaving room to add Argon2id later.
-
-**Done when**
-* The shared test data covers v2, including a wrong-passphrase case.
-* `docs/protocol.md`, the README security section, and the threat model are updated.
+**Threat model note.** The passphrase protects against a link that leaks *before* the real recipient opens it. Someone who claims the secret with a leaked link can still guess the passphrase offline, limited only by its strength and PBKDF2's cost. They also burn the secret, so the real recipient finds it already opened, which is itself a warning. The README says this plainly.
 
 ---
 
@@ -208,5 +209,5 @@ A single static binary that can send and receive secrets.
 | 2. Protocol spec + Go envelope | Done |
 | 3. Web UI revamp | Implemented |
 | 4. Sender status + revoke | Implemented |
-| 5. Optional passphrase | Planned |
+| 5. Optional passphrase | Implemented |
 | 6. CLI | Planned |

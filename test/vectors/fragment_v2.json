@@ -1,0 +1,40 @@
+[
+  {
+    "input": "v2:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "version": 2,
+    "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  {
+    "input": "v2:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "version": 2,
+    "key": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+    "input": "v2:",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v02:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "V2:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v2:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v2:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v2:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8g",
+    "error": "invalid_fragment"
+  },
+  {
+    "input": "v3:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "error": "unsupported_version"
+  }
+]

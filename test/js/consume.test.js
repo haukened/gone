@@ -8,6 +8,9 @@ const { fakeResponse, installFetch } = require('./fakes');
 const ID = '0123456789abcdef0123456789abcdef';
 const VALID_FRAG = '#v1:' + 'A'.repeat(43);
 const BASE = 'https://gone.test/secret/';
+// KDF_WAIT bounds waits that include a 600k-iteration PBKDF2 under a loaded runner.
+const KDF_WAIT = 15000;
+const PASS = 'Correct horse';
 
 // boot builds the consume page at url, loads every module and runs consume.js.
 function boot(t, url, opts) {
@@ -17,6 +20,9 @@ function boot(t, url, opts) {
     'revealed-heading', 'ack-warning', 'copy-secret', 'secret-output', 'copy-status', 'file-output-list',
     'download-all', 'gone-heading'];
   const open = h('div', { id: o.noPage ? 'other' : 'view-open' }, [
+    h('div', { id: 'open-pass-field', hidden: true }, [h('input', { id: 'open-passphrase', type: 'password' }),
+      h('button', { id: 'open-pass-toggle' }, [h('span', { textContent: 'Show' })])]),
+    h('p', { id: 'open-pass-warn', hidden: true }),
     h('button', { id: 'open-secret' }, [h('span', { textContent: 'Open secret' })]),
     h('div', { id: 'consume-error', hidden: true })
   ]);
@@ -49,6 +55,31 @@ async function sealed(plaintext) {
     get: () => fakeResponse({ headers: headers(enc.ciphertext.length), chunks: [enc.ciphertext.slice()] }),
     short: () => fakeResponse({ headers: headers(enc.ciphertext.length + 1), chunks: [enc.ciphertext.slice()] })
   };
+}
+
+// sealedV2 encrypts plaintext under a new link key and PASS and returns
+// fetch handlers; corrupt damages the KDF header.
+async function sealedV2(plaintext, corrupt) {
+  reset();
+  load('crypto');
+  const gc = window.goneCrypto;
+  const key = gc.generateKey();
+  const enc = await gc.encryptV2(plaintext, key, PASS);
+  if (corrupt) enc.ciphertext[0] = 9;
+  const headers = {
+    'Content-Length': String(enc.ciphertext.length), 'X-Gone-Claim': 'claim-1',
+    'X-Gone-Version': '2', 'X-Gone-Nonce': gc.b64urlEncode(enc.nonce)
+  };
+  return {
+    frag: `#v2:${gc.exportKeyB64(key)}`,
+    get: () => fakeResponse({ headers, chunks: [enc.ciphertext.slice()] })
+  };
+}
+
+// typePass enters a passphrase the way a user would.
+function typePass($, value) {
+  $('open-passphrase').value = value;
+  $('open-passphrase').dispatch('input');
 }
 
 const disabled = ($) => $('open-secret').getAttribute('aria-disabled') === 'true';
@@ -85,7 +116,7 @@ test('fragment and id problems are reported and lock Open without fetching', (t)
     [BASE + ID + '#v1:bad+chars/xx', BAD],
     [BASE + ID + '#v1:' + 'A'.repeat(42) + 'B', BAD],
     [BASE + ID + '#v01:' + 'A'.repeat(43), BAD],
-    [BASE + ID + '#v2:' + 'A'.repeat(43), /newer version of Gone/],
+    [BASE + ID + '#v3:' + 'A'.repeat(43), /newer version of Gone/],
     [BASE + 'not-an-id' + VALID_FRAG, /isn\u2019t valid/]
   ];
   for (const [url, want] of cases) {
@@ -201,5 +232,87 @@ test('a malformed envelope is reported and not acknowledged', async (t) => {
   assert.match(logs.error[0], /invalid envelope/);
   assert.equal($('consume-error-text').textContent, 'This secret\u2019s contents are damaged. Ask the sender to share it again.');
   assert.ok(disabled($));
+  assert.equal(calls.length, 1);
+});
+
+test('a v2 link asks for the passphrase and retries a wrong one without fetching again', async (t) => {
+  const s = await sealedV2('v2 secret');
+  const calls = installFetch([s.get, () => fakeResponse({ status: 204 })]);
+  const { $, env, logs, open } = boot(t, BASE + ID + s.frag);
+  assert.equal($('open-pass-field').hidden, false);
+  assert.equal($('open-pass-warn').hidden, false);
+  assert.ok(disabled($));
+  open();
+  assert.equal(env.document.activeElement, $('open-passphrase'));
+  assert.equal(calls.length, 0);
+
+  typePass($, 'wrong horse');
+  assert.equal(disabled($), false);
+  open();
+  await waitFor(() => logs.error.length > 0, KDF_WAIT);
+  assert.equal($('consume-error-text').textContent, 'That passphrase didn\u2019t work. Check it and try again.');
+  assert.equal($('open-passphrase').getAttribute('aria-invalid'), 'true');
+  assert.equal($('open-secret').textContent, 'Try again');
+  assert.equal(disabled($), false);
+  assert.equal(calls.length, 1);
+
+  typePass($, PASS);
+  assert.equal($('open-passphrase').getAttribute('aria-invalid'), 'false');
+  open();
+  assert.equal($('consume-status').textContent, 'Unlocking\u2026');
+  await waitFor(() => calls.length === 2, KDF_WAIT);
+  assert.equal(calls[1].init.method, 'DELETE');
+  assert.equal($('secret-output').textContent, 'v2 secret');
+  assert.equal($('open-passphrase').value, '');
+  env.windowListeners.pagehide();
+  assert.equal($('view-revealed').hidden, false);
+});
+
+test('a damaged v2 header is final and erases the download', async (t) => {
+  const s = await sealedV2('x', true);
+  const calls = installFetch([s.get]);
+  const { $, logs, open } = boot(t, BASE + ID + s.frag);
+  typePass($, PASS);
+  open();
+  await waitFor(() => logs.error.length > 0, KDF_WAIT);
+  assert.match($('consume-error-text').textContent, /contents are damaged/);
+  assert.ok(disabled($));
+  assert.equal($('open-passphrase').readOnly, true);
+  open();
+  assert.equal(calls.length, 1);
+});
+
+test('leaving the page erases a download held for a passphrase retry', async (t) => {
+  const s = await sealedV2('x');
+  const calls = installFetch([s.get]);
+  const { $, env, logs, open } = boot(t, BASE + ID + s.frag);
+  typePass($, 'wrong horse');
+  open();
+  await waitFor(() => logs.error.length > 0, KDF_WAIT);
+  env.windowListeners.pagehide();
+  assert.match($('consume-error-text').textContent, /You left this page/);
+  assert.ok(disabled($));
+  assert.equal($('open-passphrase').value, '');
+  typePass($, PASS);
+  open();
+  assert.equal(calls.length, 1);
+  env.windowListeners.pagehide();
+});
+
+test('leaving the page mid-retry erases the download and ignores the outcome', async (t) => {
+  const s = await sealedV2('x');
+  const calls = installFetch([s.get]);
+  const { $, env, logs, open } = boot(t, BASE + ID + s.frag);
+  typePass($, 'wrong horse');
+  open();
+  await waitFor(() => logs.error.length > 0, KDF_WAIT);
+  typePass($, PASS);
+  open();
+  env.windowListeners.pagehide();
+  await waitFor(() => !$('open-secret').hasAttribute('aria-busy'), KDF_WAIT);
+  assert.match($('consume-error-text').textContent, /You left this page/);
+  assert.equal(logs.error.length, 1);
+  assert.ok(disabled($));
+  assert.equal($('view-revealed').hidden, true);
   assert.equal(calls.length, 1);
 });

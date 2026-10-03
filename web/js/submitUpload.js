@@ -32,17 +32,24 @@
     return plaintext;
   }
 
-  // encryptSelection encrypts message and files under a fresh key.
+  // seal encrypts plaintext under keyBytes: protocol v2 when a passphrase is
+  // given, v1 otherwise. Returns {nonce, ciphertext}.
+  function seal(plaintext, keyBytes, passphrase) {
+    return passphrase ? gc.encryptV2(plaintext, keyBytes, passphrase) : gc.encrypt(plaintext, keyBytes);
+  }
+
+  // encryptSelection encrypts message and files under a fresh key, adding the
+  // optional passphrase (protocol v2) when it is non-empty.
   //
-  // Returns {keyBytes, encResult}; the caller must zero keyBytes when done.
-  async function encryptSelection(message, files) {
+  // Returns {keyBytes, encResult, version}; the caller must zero keyBytes when done.
+  async function encryptSelection(message, files, passphrase) {
     const t0 = performance.now();
     const plaintext = await buildPlaintext(message, files);
     const keyBytes = gc.generateKey();
     try {
-      const encResult = await gc.encrypt(plaintext, keyBytes);
+      const encResult = await seal(plaintext, keyBytes, passphrase);
       util.logTiming('encrypt', t0, performance.now());
-      return { keyBytes: keyBytes, encResult: encResult };
+      return { keyBytes: keyBytes, encResult: encResult, version: passphrase ? gc.versionV2 : gc.version };
     } finally {
       plaintext.fill(0);
     }
@@ -78,13 +85,14 @@
     return UPLOAD_ERRORS.get(status) || 'Server error creating secret';
   }
 
-  // upload sends the encrypted secret with the given TTL.
+  // upload sends the encrypted secret with the given TTL under protocol
+  // version (default v1).
   //
   // Returns the server's JSON ({id, expires_at, manage_token}); rejects with a user-facing
   // message on a non-success status or malformed response.
-  async function upload(encResult, ttl, onProgress) {
+  async function upload(encResult, ttl, onProgress, version) {
     const headers = {
-      'X-Gone-Version': String(gc.version),
+      'X-Gone-Version': String(version || gc.version),
       'X-Gone-Nonce': gc.b64urlEncode(encResult.nonce),
       'X-Gone-TTL': ttl,
       'Content-Type': 'application/octet-stream'
@@ -109,10 +117,11 @@
     return msg;
   }
 
-  // buildShareURL returns the link the recipient opens; the key travels only
-  // in the fragment, which browsers never send to the server.
-  function buildShareURL(id, keyBytes) {
-    return `${location.origin}/secret/${id}#v${gc.version}:${gc.exportKeyB64(keyBytes)}`;
+  // buildShareURL returns the link the recipient opens for protocol version
+  // (default v1); the key travels only in the fragment, which browsers never
+  // send to the server.
+  function buildShareURL(id, keyBytes, version) {
+    return `${location.origin}/secret/${id}#v${version || gc.version}:${gc.exportKeyB64(keyBytes)}`;
   }
 
   // buildManageURL returns the sender's private manage link, with the manage

@@ -83,7 +83,8 @@ func Test_parseSecretHeaders(t *testing.T) {
 		{"dup ttl", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}, {"X-Gone-TTL", "1h"}}, "missing required headers"},
 		{"version too big", [][2]string{{"X-Gone-Version", "9999"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, "invalid version"},
 		{"version leading zero", [][2]string{{"X-Gone-Version", "01"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, "invalid version"},
-		{"version unsupported", [][2]string{{"X-Gone-Version", "2"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, "invalid version"},
+		{"ok v2", [][2]string{{"X-Gone-Version", "2"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, ""},
+		{"version unsupported", [][2]string{{"X-Gone-Version", "3"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, "invalid version"},
 		{"version signed", [][2]string{{"X-Gone-Version", "+1"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, "invalid version"},
 		{"nonce short", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", "n"}, {"X-Gone-TTL", "5m"}}, "invalid nonce"},
 		{"nonce padded", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", nonce + "=="}, {"X-Gone-TTL", "5m"}}, "invalid nonce"},
@@ -98,7 +99,8 @@ func Test_parseSecretHeaders(t *testing.T) {
 			}
 			ver, n, ttl, err := parseSecretHeaders(req)
 			if c.wantErr == "" {
-				if err != nil || ver != 1 || n != nonce || ttl != 5*time.Minute {
+				want, _ := strconv.Atoi(c.headers[0][1])
+				if err != nil || int(ver) != want || n != nonce || ttl != 5*time.Minute {
 					t.Fatalf("unexpected parse: %v %d %s %v", err, ver, n, ttl)
 				}
 				return
