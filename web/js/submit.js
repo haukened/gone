@@ -35,26 +35,51 @@
       errorBox: byId('submit-error'),
       errorContent: byId('submit-error-content'),
       primaryBtn: btn,
-      primaryLabel: btn ? btn.querySelector('span') : null
+      primaryLabel: btn ? btn.querySelector('span') : null,
+      meterEls: {
+        box: byId('size-box'),
+        meter: byId('size-meter'),
+        label: byId('size-label'),
+        warning: byId('size-warning'),
+        warningText: byId('size-warning-text')
+      }
     };
   }
 
-  const { textarea, uploadProgress, errorBox, errorContent, primaryBtn, primaryLabel } = lookupElements();
+  const { textarea, uploadProgress, errorBox, errorContent, primaryBtn, primaryLabel, meterEls } = lookupElements();
   if (!util.allPresent([textarea, primaryBtn])) return;
 
-  const meterEls = {
-    box: byId('size-box'),
-    meter: byId('size-meter'),
-    label: byId('size-label'),
-    warning: byId('size-warning'),
-    warningText: byId('size-warning-text')
-  };
   const maxBytes = parsePositiveInt(form.dataset.maxBytes);
   const idleLabel = labelText(primaryLabel, 'Encrypt');
   const fileInput = byId('secret-files');
   let busy = false;
 
   const selection = createSelection();
+  const passphrase = createPassphrase();
+
+  // createPassphrase wires the optional passphrase field; null on pages without it.
+  function createPassphrase() {
+    if (!window.gonePassphraseField) return null;
+    return window.gonePassphraseField.create({
+      disclosure: byId('pass-disclosure'),
+      input: byId('passphrase'),
+      toggle: byId('pass-toggle'),
+      generate: byId('pass-generate'),
+      strength: byId('pass-strength')
+    }, function () { clearError(); updateMeter(); });
+  }
+
+  function passValue() {
+    return passphrase ? passphrase.value() : '';
+  }
+
+  function passOverhead() {
+    return passphrase ? passphrase.overhead() : 0;
+  }
+
+  function passProblem() {
+    return passphrase ? passphrase.problem() : '';
+  }
 
   function createSelection() {
     return window.goneFileSelection.create({
@@ -108,13 +133,18 @@
     return sizeMeter.selectionProblem(selection.count(), size, envelope.MAX_FILES, maxBytes);
   }
 
+  function currentSize() {
+    return envelope.encryptedSize(textarea.value, selection.metas(), passOverhead());
+  }
+
   function updateMeter() {
     const empty = isEmpty();
-    const size = empty ? 0 : envelope.encryptedSize(textarea.value, selection.metas());
+    const size = empty ? 0 : currentSize();
     const problem = currentProblem(size);
     sizeMeter.render(meterEls, size, maxBytes, problem);
     // aria-disabled keeps the button focusable; pressing it explains what's missing.
-    primaryBtn.setAttribute('aria-disabled', String(busy || empty || Boolean(problem)));
+    const blocked = busy || empty || Boolean(problem || passProblem());
+    primaryBtn.setAttribute('aria-disabled', String(blocked));
   }
 
   function setUploadProgress(loaded, total) {
@@ -134,6 +164,7 @@
     else primaryBtn.removeAttribute('aria-busy');
     textarea.readOnly = state;
     if (fileInput) fileInput.disabled = state;
+    if (passphrase) passphrase.setBusy(state);
     if (!state) {
       setButtonLabel(idleLabel);
       if (uploadProgress) uploadProgress.hidden = true;
@@ -147,10 +178,10 @@
     setBusy(false);
   }
 
-  async function encryptCurrent(message) {
+  async function encryptCurrent(message, pass) {
     setButtonLabel('Encrypting\u2026');
     try {
-      return await uploader.encryptSelection(message, selection.files());
+      return await uploader.encryptSelection(message, selection.files(), pass);
     } catch (e) {
       failSubmission('[gone] encryption failed', e, 'Encryption failed: a file could not be read.');
       return null;
@@ -159,11 +190,12 @@
 
   // showResult reveals the share link and, when the server issued one, the
   // sender's manage link built from json.manage_token.
-  function showResult(json, keyBytes) {
+  function showResult(json, enc) {
     window.goneResultPanel.show({
-      shareURL: uploader.buildShareURL(json.id, keyBytes),
+      shareURL: uploader.buildShareURL(json.id, enc.keyBytes, enc.version),
       manageURL: uploader.buildManageURL(json.id, json.manage_token),
-      expiresAt: json.expires_at
+      expiresAt: json.expires_at,
+      passphrase: enc.version !== window.goneCrypto.version
     });
   }
 
@@ -171,14 +203,15 @@
     const t0 = performance.now();
     const message = textarea.value;
     const ttl = selectedTTL();
-    const enc = await encryptCurrent(message);
+    const enc = await encryptCurrent(message, passValue());
     if (!enc) return;
     try {
-      const json = await uploader.upload(enc.encResult, ttl, setUploadProgress);
+      const json = await uploader.upload(enc.encResult, ttl, setUploadProgress, enc.version);
       secureWipe(message);
       selection.clear();
+      if (passphrase) passphrase.clear();
       util.logTiming('total_submit_cycle', t0, performance.now());
-      showResult(json, enc.keyBytes);
+      showResult(json, enc);
     } catch (e) {
       failSubmission('[gone] upload failed', e, uploader.friendlyError(e));
     } finally {
@@ -188,7 +221,7 @@
 
   function submitProblem() {
     if (isEmpty()) return 'Add a message or at least one file.';
-    return currentProblem(envelope.encryptedSize(textarea.value, selection.metas()));
+    return currentProblem(currentSize());
   }
 
   function handleSubmit(ev) {
@@ -197,6 +230,12 @@
     const problem = submitProblem();
     if (problem) {
       showError(problem);
+      return;
+    }
+    const pass = passProblem();
+    if (pass) {
+      showError(pass);
+      passphrase.reveal();
       return;
     }
     clearError();
@@ -208,10 +247,12 @@
     if (new URLSearchParams(location.search).get('preview') !== 'result') return;
     const mockID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     const mockKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-    const mockURL = `${location.origin}/secret/${mockID}#v${window.goneCrypto.version}:${mockKey}`;
+    const v2 = new URLSearchParams(location.search).has('passphrase');
+    const version = v2 ? window.goneCrypto.versionV2 : window.goneCrypto.version;
+    const mockURL = `${location.origin}/secret/${mockID}#v${version}:${mockKey}`;
     const manageURL = uploader.buildManageURL(mockID, 'B'.repeat(43));
     const future = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-    window.goneResultPanel.show({ shareURL: mockURL, manageURL: manageURL, expiresAt: future, focus: false });
+    window.goneResultPanel.show({ shareURL: mockURL, manageURL: manageURL, expiresAt: future, passphrase: v2, focus: false });
   }
 
   form.addEventListener('submit', handleSubmit);

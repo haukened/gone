@@ -16,14 +16,42 @@ const (
 	AADv1 = "gone:v1"
 )
 
+// Protocol version 2 parameters (docs/protocol.md §4.2). v2 keeps the v1
+// link key, nonce and AEAD, and adds a passphrase factor whose KDF
+// parameters travel in an authenticated header prefixed to the ciphertext.
+// The server never parses that header.
+const (
+	// ProtocolV2 is the link key + passphrase protocol version.
+	ProtocolV2 uint8 = 2
+	// AADv2 is the AAD prefix for v2; the full AAD is AADv2 || header.
+	AADv2 = "gone:v2"
+	// V2HKDFInfo is the HKDF info string that derives the v2 AEAD key.
+	V2HKDFInfo = "gone:v2 aead key"
+	// KDFPBKDF2SHA256 is the v2 KDF ID for PBKDF2-HMAC-SHA-256.
+	KDFPBKDF2SHA256 byte = 0x01
+	// V2SaltSize is the v2 KDF salt length in bytes.
+	V2SaltSize = 16
+	// V2HeaderSize is the v2 header length: kdf_id (1) || iterations (4) || salt.
+	V2HeaderSize = 1 + 4 + V2SaltSize
+	// V2Iterations is the PBKDF2 iteration count writers MUST use.
+	V2Iterations = 600_000
+	// V2MinIterations is the lowest iteration count readers accept.
+	V2MinIterations = 600_000
+	// V2MaxIterations is the highest iteration count readers accept; it
+	// bounds the work a hostile sender can impose on a recipient.
+	V2MaxIterations = 5_000_000
+	// V2MaxPassphraseBytes caps the NFC-normalized UTF-8 passphrase length.
+	V2MaxPassphraseBytes = 1024
+)
+
 // Supported reports whether v is a protocol version this build implements.
 //
 // Parameters:
 //   - v: protocol version.
 //
-// Returns true only for ProtocolV1.
+// Returns true for ProtocolV1 and ProtocolV2.
 func Supported(v uint8) bool {
-	return v == ProtocolV1
+	return v == ProtocolV1 || v == ProtocolV2
 }
 
 // ParseVersion parses a protocol version written as canonical ASCII decimal
@@ -66,7 +94,7 @@ func parseCanonicalDecimal(s string, maxDigits int) (int, bool) {
 
 // ValidateProtocol checks stored protocol metadata: the version must be
 // supported and the nonce must be strict base64url of that version's nonce
-// size.
+// size. Every supported version uses a NonceSize-byte nonce.
 //
 // Parameters:
 //   - v: protocol version.

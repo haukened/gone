@@ -12,6 +12,7 @@ func TestParseVersion(t *testing.T) {
 		err  error
 	}{
 		{"1", 1, nil},
+		{"2", 2, nil},
 		{"", 0, ErrInvalidVersion},
 		{"0", 0, ErrInvalidVersion},
 		{"01", 0, ErrInvalidVersion},
@@ -19,7 +20,8 @@ func TestParseVersion(t *testing.T) {
 		{"-1", 0, ErrInvalidVersion},
 		{" 1", 0, ErrInvalidVersion},
 		{"1 ", 0, ErrInvalidVersion},
-		{"2", 0, ErrInvalidVersion},
+		{"3", 0, ErrInvalidVersion},
+		{"02", 0, ErrInvalidVersion},
 		{"255", 0, ErrInvalidVersion},
 		{"256", 0, ErrInvalidVersion},
 		{"1000", 0, ErrInvalidVersion},
@@ -36,7 +38,7 @@ func TestParseVersion(t *testing.T) {
 
 func TestSupported(t *testing.T) {
 	for v := 0; v <= 255; v++ {
-		if got := Supported(uint8(v)); got != (v == 1) { // #nosec G115 -- bounded loop
+		if got := Supported(uint8(v)); got != (v == 1 || v == 2) { // #nosec G115 -- bounded loop
 			t.Fatalf("Supported(%d) = %v", v, got)
 		}
 	}
@@ -51,7 +53,9 @@ func TestValidateProtocol(t *testing.T) {
 		err   error
 	}{
 		{"ok", 1, good, nil},
-		{"bad version", 2, good, ErrInvalidVersion},
+		{"ok v2", 2, good, nil},
+		{"bad version", 3, good, ErrInvalidVersion},
+		{"short nonce v2", 2, EncodeB64URL(make([]byte, 11)), ErrInvalidNonce},
 		{"zero version", 0, good, ErrInvalidVersion},
 		{"empty nonce", 1, "", ErrInvalidNonce},
 		{"short nonce", 1, EncodeB64URL(make([]byte, 11)), ErrInvalidNonce},

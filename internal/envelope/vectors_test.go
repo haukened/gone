@@ -31,6 +31,8 @@ func errCode(err error) string {
 		{ErrInvalidEnvelope, "invalid_envelope"},
 		{domain.ErrInvalidVersion, "unsupported_version"},
 		{ErrInvalidFragment, "invalid_fragment"},
+		{ErrMalformed, "malformed"},
+		{ErrInvalidPassphrase, "invalid_passphrase"},
 		{ErrDecrypt, "decrypt"},
 	}
 	for _, c := range codes {
@@ -277,15 +279,14 @@ func fragmentInputs() []string {
 		"v1:" + k, "v1:" + zeros, "v1:" + strings.Repeat("_", 42) + "w",
 		"", "v1:", "v1" + k, "#v1:" + k, "V1:" + k, "x1:" + k, "v:" + k,
 		"v0:" + k, "v01:" + k, "v+1:" + k, "v1.0:" + k, "v256:" + k, "v1000:" + k,
-		"v2:" + k, "v255:" + k,
+		"v3:" + k, "v255:" + k,
 		"v1:" + k + "=", "v1:" + strings.Repeat("A", 42) + "B", "v1:" + zeros[:42], "v1:" + zeros + "A",
 		"v1:" + zeros[:41] + "+/", "v1:" + zeros[:42] + "%", "v1%3A" + k, "%761:" + k, "v1:" + k + "#", "v1:" + k + " ",
 		"v1:" + domain.EncodeB64URL(seq(0, 31)), "v1:" + domain.EncodeB64URL(seq(0, 33)),
 	}
 }
 
-func buildFragments() []fragmentCase {
-	ins := fragmentInputs()
+func buildFragments(ins []string) []fragmentCase {
 	out := make([]fragmentCase, len(ins))
 	for i, s := range ins {
 		c := fragmentCase{Input: s}
@@ -344,7 +345,7 @@ type serverVectors struct {
 }
 
 func buildServer() serverVectors {
-	versions := []string{"1", "2", "0", "01", "+1", "-1", " 1", "1 ", "1.0", "256", "1000", "", "a", "１"}
+	versions := []string{"1", "2", "3", "0", "01", "+1", "-1", " 1", "1 ", "1.0", "256", "1000", "", "a", "１"}
 	nonces := []string{
 		"AAAAAAAAAAAAAAAA", "oKGio6Slpqeoqaqr", "____________----", "AAAAAAAAAAAAAAA", "AAAAAAAAAAAAAAAAA",
 		"AAAAAAAAAAAAAAA=", "AAAAAAAAAAAAAAA+", "AAAAAAAAAAAAAAA/", "AAAAAAAAAAAAAAA ", "", "AAAAAAAAAAAAAAAAAAAA",
@@ -377,8 +378,10 @@ func marshalVector(t *testing.T, v any) []byte {
 func TestVectors(t *testing.T) {
 	files := map[string]any{
 		"aead_v1.json":        buildAEAD(t),
+		"aead_v2.json":        buildAEADV2(t),
 		"envelope_gone2.json": envelopeVectors{Description: "GONE2 plaintext; binary fields are hex", Pack: buildPack(t), Unpack: buildUnpack()},
-		"fragment_v1.json":    buildFragments(),
+		"fragment_v1.json":    buildFragments(fragmentInputs()),
+		"fragment_v2.json":    buildFragments(fragmentV2Inputs()),
 		"sanitize.json":       buildSanitize(),
 		"server_headers.json": buildServer(),
 	}

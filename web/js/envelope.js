@@ -47,13 +47,15 @@
   }
 
   // encryptedSize returns the ciphertext size (including the GCM tag) the
-  // server will see for the given message and file metadata.
-  function encryptedSize(message, fileMetas) {
+  // server will see for the given message and file metadata. overhead is any
+  // protocol prefix on the blob, such as the 21-byte v2 header (default 0).
+  function encryptedSize(message, fileMetas, overhead) {
     const msgBytes = utf8(message);
+    const fixed = GCM_TAG_BYTES + (overhead || 0);
     const msgLen = msgBytes.length;
-    if (!needsEnvelope(msgBytes, fileMetas.length)) return msgLen + GCM_TAG_BYTES;
+    if (!needsEnvelope(msgBytes, fileMetas.length)) return msgLen + fixed;
     const header = headerBytes(msgLen, fileMetas);
-    return sumSizes(fileMetas, PREFIX_BYTES + header.length + msgLen + GCM_TAG_BYTES);
+    return sumSizes(fileMetas, PREFIX_BYTES + header.length + msgLen + fixed);
   }
 
   // Big-endian u32 helpers (DataView defaults to big-endian).

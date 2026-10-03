@@ -231,6 +231,48 @@ test('decrypt verifies version, nonce and key, then zeroes buffers', async (t) =
   await assert.rejects(api.decrypt(headers('1', nonce), enc.ciphertext.slice(), { version: 1, key: gc.generateKey() }), verify);
 });
 
+test('decryptV2 retries a wrong passphrase in place and maps other failures', async (t) => {
+  const { api } = setup(t);
+  const gc = window.goneCrypto;
+  const key = gc.generateKey();
+  const enc = await gc.encryptV2('hello', key, 'Right horse');
+  const nonce = gc.b64urlEncode(enc.nonce);
+  const resp = (v, n) => fakeResponse({ headers: { 'X-Gone-Version': v, 'X-Gone-Nonce': n } });
+  const zero = (b) => b.every((x) => x === 0);
+  const intact = (b) => !zero(b);
+  const retry = (e) => e.passphrase === true && e.retryable === true && /passphrase didn.t work/.test(e.message);
+  const final = (re) => (e) => re.test(e.message) && e.retryable === false && !e.passphrase;
+
+  // A wrong (or unencodable) passphrase keeps both buffers for a local retry.
+  const ct = enc.ciphertext.slice();
+  const f = { version: 2, key: key.slice() };
+  await assert.rejects(api.decryptV2(resp('2', nonce), ct, f, 'wrong horse'), retry);
+  await assert.rejects(api.decryptV2(resp('2', nonce), ct, f, ''), retry);
+  assert.ok(intact(ct) && intact(f.key));
+  const pt = await api.decryptV2(resp('2', nonce), ct, f, 'Right horse');
+  assert.equal(new TextDecoder().decode(pt), 'hello');
+  assert.ok(zero(ct) && zero(f.key));
+
+  // Everything else is final and zeroes the buffers.
+  const damaged = enc.ciphertext.slice();
+  damaged[0] = 9;
+  const boom = fakeResponse({});
+  boom.headers.get = () => { throw new Error('boom'); };
+  const cases = [
+    ['v1 header', resp('1', nonce), enc.ciphertext.slice(), final(/^Unsupported secret version$/)],
+    ['no nonce', fakeResponse({ headers: { 'X-Gone-Version': '2' } }), enc.ciphertext.slice(), final(/Couldn.t verify/)],
+    ['bad nonce', resp('2', '!!'), enc.ciphertext.slice(), final(/Couldn.t verify/)],
+    ['short nonce', resp('2', 'AAAA'), enc.ciphertext.slice(), final(/Couldn.t verify/)],
+    ['bad header', resp('2', nonce), damaged, final(/contents are damaged/)],
+    ['unexpected', boom, enc.ciphertext.slice(), final(/Couldn.t verify/)]
+  ];
+  for (const [name, r, body, check] of cases) {
+    const g = { version: 2, key: key.slice() };
+    await assert.rejects(api.decryptV2(r, body, g, 'Right horse'), check, name);
+    assert.ok(zero(body) && zero(g.key), name);
+  }
+});
+
 test('acknowledge sends a keepalive DELETE with the claim', async (t) => {
   const { api, delays } = setup(t);
   const calls = installFetch([() => fakeResponse({ status: 204 })]);

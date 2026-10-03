@@ -9,7 +9,8 @@ import (
 	"github.com/haukened/gone/internal/domain"
 )
 
-// maxFragmentLen bounds fragment parsing work; a v1 fragment is 46 bytes.
+// maxFragmentLen bounds fragment parsing work; v1 and v2 fragments are 46
+// bytes.
 const maxFragmentLen = 512
 
 // Fragment is a validated link fragment: a supported protocol version and
@@ -23,7 +24,7 @@ type Fragment struct {
 //
 // Parameters:
 //   - version: protocol version; must be supported.
-//   - key: raw key; for v1 exactly KeySize bytes.
+//   - key: raw link key; exactly KeySize bytes for v1 and v2.
 //
 // Returns the fragment, domain.ErrInvalidVersion, or ErrInvalidKey.
 func NewFragment(version uint8, key []byte) (Fragment, error) {

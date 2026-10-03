@@ -6,10 +6,14 @@ const { reset, load, h, captureConsole, waitFor } = require('./harness');
 const { FakeXHR } = require('./fakes');
 
 const MODULES = ['util', 'crypto', 'fileMeta', 'envelope', 'icons', 'submitFiles', 'submitMeter', 'submitUpload', 'submitResult'];
+// KDF_WAIT bounds waits that include a 600k-iteration PBKDF2 under a loaded runner.
+const KDF_WAIT = 15000;
+const PASS_MODULES = [...MODULES, 'wordlist', 'passgen', 'submitPassphrase'];
 
 // page builds the compose form and result view. opts.skip omits ids;
 // opts.maxBytes sets data-max-bytes (null omits it); opts.noLabel drops the
-// button's <span>; opts.ttl is the checked TTL value (null: no ttl control).
+// button's <span>; opts.ttl is the checked TTL value (null: no ttl control);
+// opts.pass adds the passphrase field and the result's passphrase note.
 function page(env, opts) {
   const o = opts || {};
   const skip = new Set(o.skip || []);
@@ -25,6 +29,7 @@ function page(env, opts) {
     ...add('size-meter', h('progress', { id: 'size-meter' })),
     ...add('size-label', h('span', { id: 'size-label' })),
     ...add('size-warning', h('div', { id: 'size-warning', hidden: true }, add('size-warning-text', h('p', { id: 'size-warning-text' })))),
+    ...(o.pass ? passFields() : []),
     ...add('button', h('button', { type: 'submit' }, label)),
     ...add('upload-progress', h('progress', { id: 'upload-progress', hidden: true })),
     ...add('submit-error', h('div', { id: 'submit-error', hidden: true }, add('submit-error-content', h('p', { id: 'submit-error-content' }))))
@@ -40,9 +45,20 @@ function page(env, opts) {
       h('input', { id: 'manage-link' }),
       h('button', { id: 'copy-manage' }, [h('span', { textContent: 'Copy manage link' })]),
       h('span', { id: 'manage-copy-status' })
-    ])
+    ]),
+    h('p', { id: 'result-pass-note', hidden: true })
   ]);
   env.document.body.append(compose, result);
+}
+
+// passFields returns the optional passphrase disclosure and its controls.
+function passFields() {
+  return [h('details', { id: 'pass-disclosure', open: false }, [
+    h('input', { id: 'passphrase', type: 'password', value: '' }),
+    h('button', { id: 'pass-toggle' }, [h('span', { textContent: 'Show' })]),
+    h('button', { id: 'pass-generate' }),
+    h('span', { id: 'pass-strength' })
+  ])];
 }
 
 // boot builds the page, loads every module plus submit.js, and returns helpers.
@@ -62,6 +78,7 @@ function boot(t, opts) {
 
 const submit = (b) => b.$('create-secret').dispatch('submit');
 const type = (b, text) => { b.$('secret').value = text; b.$('secret').dispatch('input'); };
+const typePass = (b, text) => { b.$('passphrase').value = text; b.$('passphrase').dispatch('input'); };
 const addFiles = (b, files) => { b.$('secret-files').files = files; b.$('secret-files').dispatch('change'); };
 
 test('does nothing when dependencies or required elements are missing', (t) => {
@@ -255,4 +272,62 @@ test('preview=result renders a mock share panel without focus', (t) => {
   assert.equal(b.$('manage-disclosure').hidden, false);
   const c = boot(t, { url: 'https://gone.test/?preview=other' });
   assert.equal(c.$('result').hidden, true);
+});
+
+test('a passphrase seals protocol v2 and marks the result', async (t) => {
+  const b = boot(t, { pass: true, modules: PASS_MODULES });
+  type(b, 'my secret');
+  assert.equal(b.$('size-label').textContent, '25 B of 1000 B');
+  typePass(b, 'abc');
+  assert.equal(b.$('size-label').textContent, '46 B of 1000 B');
+  assert.equal(b.blocked(), true);
+  b.$('pass-disclosure').open = false;
+  submit(b);
+  assert.match(b.$('submit-error-content').textContent, /at least 8 characters, or leave it empty/);
+  assert.equal(b.$('pass-disclosure').open, true);
+  assert.equal(b.env.document.activeElement, b.$('passphrase'));
+  assert.equal(FakeXHR.instances.length, 0);
+  typePass(b, 'correct horse battery');
+  assert.equal(b.$('submit-error').hidden, true);
+  assert.equal(b.blocked(), false);
+
+  let sent;
+  FakeXHR.onSend = (x) => { sent = x; };
+  submit(b);
+  assert.equal(b.$('passphrase').readOnly, true);
+  await waitFor(() => sent, KDF_WAIT);
+  assert.equal(sent.headers['X-Gone-Version'], '2');
+  const blob = sent.body.slice();
+  const nonce = sent.headers['X-Gone-Nonce'];
+  sent.respond(201, { id: 'i'.repeat(32), expires_at: '2030-01-01T00:00:00Z' });
+  await waitFor(() => !b.$('result').hidden);
+  assert.equal(b.$('result-pass-note').hidden, false);
+  assert.equal(b.$('passphrase').value, '');
+
+  const gc = window.goneCrypto;
+  const hash = new URL(b.$('share-link').value).hash;
+  assert.match(hash, /^#v2:/);
+  const key = gc.importKeyB64(hash.replace('#v2:', ''));
+  const pt = await gc.decryptV2(blob, gc.b64urlDecode(nonce), key, 'correct horse battery');
+  assert.equal(window.goneEnvelope.decode(pt).message, 'my secret');
+});
+
+test('a failed v2 upload keeps the passphrase for retry', async (t) => {
+  const b = boot(t, { pass: true, modules: PASS_MODULES });
+  type(b, 'secret');
+  typePass(b, 'correct horse battery');
+  FakeXHR.onSend = (x) => x.respond(500);
+  submit(b);
+  await waitFor(() => !b.$('submit-error').hidden, KDF_WAIT);
+  assert.equal(b.$('passphrase').value, 'correct horse battery');
+  assert.equal(b.$('passphrase').readOnly, false);
+  assert.equal(b.$('result-pass-note').hidden, true);
+});
+
+test('preview=result&passphrase shows a v2 link and the passphrase note', (t) => {
+  const b = boot(t, { url: 'https://gone.test/?preview=result&passphrase', pass: true, modules: PASS_MODULES });
+  assert.match(b.$('share-link').value, /#v2:A{43}$/);
+  assert.equal(b.$('result-pass-note').hidden, false);
+  const c = boot(t, { url: 'https://gone.test/?preview=result' });
+  assert.equal(c.$('result-pass-note').hidden, true);
 });

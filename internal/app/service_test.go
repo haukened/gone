@@ -202,7 +202,7 @@ func TestServiceCreateSecretProtocolValidation(t *testing.T) {
 		nonce   string
 		want    error
 	}{
-		{"unsupported version", 2, "AAAAAAAAAAAAAAAA", domain.ErrInvalidVersion},
+		{"unsupported version", 3, "AAAAAAAAAAAAAAAA", domain.ErrInvalidVersion},
 		{"zero version", 0, "AAAAAAAAAAAAAAAA", domain.ErrInvalidVersion},
 		{"short nonce", 1, "n", domain.ErrInvalidNonce},
 		{"non-canonical nonce", 1, "AAAAAAAAAAAAAAA=", domain.ErrInvalidNonce},

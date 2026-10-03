@@ -234,6 +234,12 @@ A `<dl>` of up to three equal columns between two hairlines: a small bold ink-3 
 ### Disclosure
 A native `<details>` between two hairlines. The summary is a bold, 3rem-tall row with a CSS chevron that rotates when the disclosure opens; it underlines on hover and draws no browser marker. The body stacks its children on a `space-4` gap. It holds secondary material, such as the sender's manage link on the result card, so the primary action stays alone.
 
+### Passphrase
+- **Sender:** an "Add a passphrase (optional)" disclosure in the Write step, closed by default. Inside, a `.passbox` grid holds a password field in system mono at 1rem (so iOS doesn't zoom), a Show/Hide toggle, and Generate. Both buttons are small secondary buttons stretched to the field's 3rem height. Below 52rem the field takes its own row and the two buttons share the next.
+- **Strength hint:** a `role="status"` line under the field with a 4rem by 0.3rem meter in front of the words. The meter is a `line` track filled from the left in `signal` (a coloured left border, not a gradient), with 2px corners. Its fill steps through short, weak, fair, and strong, and the words always state the level, so colour is never the only cue. "Too short" also sets `aria-invalid` on the field.
+- **Result note:** a `.pass-note` with a signal lock icon and a bold lead, telling the sender to send the passphrase separately. It appears only for v2 secrets.
+- **Recipient:** `.passbox-solo` keeps the field and Show/Hide on one row at every width. A hint under Open warns that opening starts deletion even with a wrong passphrase. On a wrong passphrase, an alert says so, Open becomes "Try again", and the field gets `aria-invalid` and is focused with its text selected.
+
 ### Confirm
 An inline confirmation for destructive actions, never a modal. It uses the alert's warning tint and hairline border at 4px corners, with a bold lead line and an actions row: the destructive choice as the primary button, and the safe choice as a secondary button. It is a `role="group"` labelled by its lead line. When it opens, focus moves to the lead line, so screen readers hear the consequence first. When it is dismissed, focus returns to the trigger.
 

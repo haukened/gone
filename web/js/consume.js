@@ -4,8 +4,10 @@
 // Nothing is fetched until the recipient presses Open, so link-preview bots
 // can't burn the secret. The secret is only deleted from the server once the
 // full payload has been received and authenticated by AES-GCM, so interrupted
-// downloads can retry. Network/crypto live in consumeApi.js; DOM rendering in
-// consumeView.js.
+// downloads can retry. A v2 (passphrase) link downloads once and keeps the
+// ciphertext in memory, so a mistyped passphrase can be retried locally with
+// no further network request. Network/crypto live in consumeApi.js; DOM
+// rendering in consumeView.js.
 (function consumeFlow() {
   const util = window.goneUtil;
   const api = window.goneConsumeApi;
@@ -18,6 +20,7 @@
   const UNEXPECTED = 'Something went wrong opening this secret. Try again.';
   const FRAGMENT_PROBLEMS = new Map([['unsupported_version', 'This link was made by a newer version of Gone and can\u2019t be opened here.']]);
   const PREVIEW_TEXT = 'This is a preview of a decrypted secret. Customize via ?text=...';
+  const ERASED = 'You left this page, so the downloaded secret was erased from it. Ask the sender to share it again.';
 
   function decodeEnvelope(plaintext) {
     try {
@@ -28,15 +31,33 @@
     }
   }
 
-  // run claims, decrypts and renders the secret, then acknowledges deletion.
-  // claim persists across attempts so a retry presents the same claim token.
-  async function run(frag, claim) {
-    const t0 = performance.now();
-    view.setStatus('Retrieving\u2026');
-    const fetched = await api.fetchWithRetry(claim, view.setProgress);
-    util.logTiming('consume_fetch', t0, performance.now());
+  // decryptHeld decrypts the downloaded secret: v1 with the link key alone,
+  // v2 with the link key and the typed passphrase.
+  function decryptHeld(frag, fetched) {
+    if (frag.version === window.goneCrypto.versionV2) {
+      view.setStatus('Unlocking\u2026');
+      return api.decryptV2(fetched.resp, fetched.body, frag, view.passphrase());
+    }
     view.setStatus('Decrypting\u2026');
-    const plaintext = await api.decrypt(fetched.resp, fetched.body, frag);
+    return api.decrypt(fetched.resp, fetched.body, frag);
+  }
+
+  // run claims, decrypts and renders the secret, then acknowledges deletion.
+  // claim persists across attempts so a retry presents the same claim token;
+  // held.fetched keeps a download whose passphrase was wrong, so the retry
+  // only decrypts again.
+  async function run(frag, claim, held) {
+    const t0 = performance.now();
+    if (!held.fetched) {
+      view.setStatus('Retrieving\u2026');
+      held.fetched = await api.fetchWithRetry(claim, view.setProgress);
+      util.logTiming('consume_fetch', t0, performance.now());
+    }
+    const plaintext = await decryptHeld(frag, held.fetched).catch(function (e) {
+      if (!e.passphrase) held.fetched = null;
+      throw e;
+    });
+    held.fetched = null;
     view.keepPlaintext(plaintext);
     view.showDecoded(decodeEnvelope(plaintext));
     util.logTiming('consume_total', t0, performance.now());
@@ -78,9 +99,27 @@
   // button usable; anything else locks it.
   function makeOpener(frag) {
     const claim = { token: '' };
+    const held = { fetched: null };
     const flags = { busy: false, done: false, guarded: false };
 
+    // onPageHide clears the page and zeroes a download kept for a
+    // passphrase retry, locking Open since the secret can't be fetched again.
+    function onPageHide() {
+      view.cleanup();
+      if (!held.fetched) return;
+      held.fetched.body.fill(0);
+      frag.key.fill(0);
+      held.fetched = null;
+      flags.done = true;
+      view.showError(ERASED);
+      view.disableOpen();
+    }
+
     function fail(e) {
+      if (flags.done) { // wiped by pagehide mid-attempt
+        view.setOpening(false);
+        return;
+      }
       const known = api.isFetchError(e);
       flags.busy = false;
       flags.done = !(known && e.retryable);
@@ -91,20 +130,25 @@
       }
       console.error('[gone] consume error', known ? e.message : e);
       view.showError(known ? e.message : UNEXPECTED);
+      if (e.passphrase) view.passphraseFailed();
       if (flags.done) view.disableOpen();
     }
 
     return function open() {
       if (flags.busy || flags.done) return;
+      if (view.passphraseMissing()) {
+        view.focusPassphrase();
+        return;
+      }
       flags.busy = true;
       view.clearError();
       view.setOpening(true);
       if (!flags.guarded) {
         flags.guarded = true;
         window.addEventListener('beforeunload', view.guardUnload);
-        window.addEventListener('pagehide', view.cleanup);
+        window.addEventListener('pagehide', onPageHide);
       }
-      run(frag, claim).then(function () { flags.done = true; }, fail);
+      run(frag, claim, held).then(function () { flags.done = true; }, fail);
     };
   }
 
@@ -120,6 +164,7 @@
       view.disableOpen();
       return;
     }
+    if (checked.frag.version === window.goneCrypto.versionV2) view.showPassphrase();
     view.onOpen(makeOpener(checked.frag));
   }
 

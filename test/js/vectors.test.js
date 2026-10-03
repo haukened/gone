@@ -46,6 +46,34 @@ test('AEAD vectors', async (t) => {
   }
 });
 
+// randomFeed mocks crypto.getRandomValues to return the given byte arrays
+// in order: encryptV2 draws the salt first, then the nonce.
+function randomFeed(st, ...chunks) {
+  st.mock.method(globalThis.crypto, 'getRandomValues', (arr) => { arr.set(chunks.shift()); return arr; });
+}
+
+test('AEAD v2 vectors', async (t) => {
+  const { gc } = modules();
+  const v = readVectors('aead_v2');
+  assert.equal(v.aad, 'gone:v2');
+  assert.equal(v.hkdf_info, 'gone:v2 aead key');
+  for (const c of v.cases) {
+    await t.test(c.name, async (st) => {
+      const pass = text(c.passphrase);
+      if (c.error) {
+        await assert.rejects(gc.decryptV2(hex(c.blob), hex(c.nonce), hex(c.key), pass), (e) => e.code === c.error);
+        return;
+      }
+      const pt = await gc.decryptV2(hex(c.blob), hex(c.nonce), hex(c.key), pass);
+      assert.equal(toHex(pt), c.plaintext || '');
+      randomFeed(st, hex(c.salt), hex(c.nonce));
+      const enc = await gc.encryptV2(hex(c.plaintext), hex(c.key), pass);
+      assert.equal(toHex(enc.nonce), c.nonce);
+      assert.equal(toHex(enc.ciphertext), c.blob);
+    });
+  }
+});
+
 test('GONE2 pack vectors', async (t) => {
   const { env } = modules();
   for (const c of readVectors('envelope_gone2').pack) {
@@ -81,7 +109,7 @@ test('GONE2 unpack vectors', async (t) => {
 
 test('fragment vectors', () => {
   const { gc } = modules();
-  for (const c of readVectors('fragment_v1')) {
+  for (const c of readVectors('fragment_v1').concat(readVectors('fragment_v2'))) {
     if (c.error) {
       assert.throws(() => gc.parseFragment(c.input), (e) => e.code === c.error, c.input);
       continue;
@@ -102,7 +130,7 @@ test('sanitize vectors', () => {
 test('server header vectors match the client checks', () => {
   const { gc } = modules();
   const v = readVectors('server_headers');
-  v.versions.forEach((c) => assert.equal(c.in === String(gc.version), c.ok, JSON.stringify(c.in)));
+  v.versions.forEach((c) => assert.equal(gc.versions.map(String).includes(c.in), c.ok, JSON.stringify(c.in)));
   const nonceOK = (s) => {
     try {
       return gc.b64urlDecode(s).length === 12;
