@@ -19,12 +19,19 @@ type failingService struct { // implements ServicePort for error injection
 	fail bool
 }
 
-func (f failingService) CreateSecret(_ context.Context, _ io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (domain.SecretID, time.Time, error) {
+func (f failingService) CreateSecret(_ context.Context, _ io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (app.Created, error) {
 	if f.fail {
-		return "", time.Time{}, errors.New("boom")
+		return app.Created{}, errors.New("boom")
 	}
-	return domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), time.Now().Add(time.Hour), nil
+	return app.Created{ID: domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), ExpiresAt: time.Now().Add(time.Hour)}, nil
 }
+
+func (failingService) Status(context.Context, string, string) (app.SecretStatus, error) {
+	return app.SecretStatus{}, app.ErrNotFound
+}
+
+func (failingService) Revoke(context.Context, string, string) error { return app.ErrNotFound }
+
 func (f failingService) Claim(_ context.Context, _ string, _ string) (app.ClaimResult, error) {
 	return app.ClaimResult{}, errors.New("unused")
 }

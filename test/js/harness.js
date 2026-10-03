@@ -176,7 +176,8 @@ function define(name, value) {
 }
 
 const GONE_GLOBALS = ['goneUtil', 'goneCrypto', 'goneFileMeta', 'goneEnvelope', 'goneConsumeApi', 'goneConsumeView',
-  'goneFileSelection', 'goneSizeMeter', 'goneUpload', 'goneResultPanel', 'goneIcons', 'goneTheme'];
+  'goneFileSelection', 'goneSizeMeter', 'goneUpload', 'goneResultPanel', 'goneIcons', 'goneTheme',
+  'goneManageApi', 'goneManageView'];
 
 // reset installs a fresh fake browser at url and removes loaded gone modules.
 // opts: {storage, storageThrows, readyState}.

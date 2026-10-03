@@ -18,6 +18,9 @@ import (
 	"github.com/haukened/gone/internal/store/sqlite"
 )
 
+// testManageHash is the manage hash used for every saved secret.
+const testManageHash = "4d616e6167652d68617368"
+
 // fixedClock implements app.Clock for deterministic tests.
 type fixedClock struct{ now time.Time }
 
@@ -67,7 +70,7 @@ func TestStoreSaveInlineClaimAndAck(t *testing.T) {
 	data := []byte("hello-inline")
 	expires := now.Add(5 * time.Minute)
 	lease := now.Add(time.Minute)
-	if err := st.Save(ctx, id, meta, io.NopCloser(bytesReader(data)), int64(len(data)), expires); err != nil {
+	if err := st.Save(ctx, id, meta, testManageHash, io.NopCloser(bytesReader(data)), int64(len(data)), expires); err != nil {
 		t.Fatalf("Save inline: %v", err)
 	}
 	claimed, err := st.Claim(ctx, id, "claim-hash-a", false, lease)
@@ -125,7 +128,7 @@ func TestStoreSaveExternalClaimAndAckDeletesBlob(t *testing.T) {
 	data := []byte("this-is-external-data")
 	expires := now.Add(10 * time.Minute)
 	lease := now.Add(time.Minute)
-	if err := st.Save(ctx, id, meta, io.NopCloser(bytesReader(data)), int64(len(data)), expires); err != nil {
+	if err := st.Save(ctx, id, meta, testManageHash, io.NopCloser(bytesReader(data)), int64(len(data)), expires); err != nil {
 		t.Fatalf("Save external: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(blobDir, id+".blob")); err != nil {
@@ -177,7 +180,7 @@ func TestStoreClaimExternalOpenFailureIsRetryable(t *testing.T) {
 	id := "22222222222222222222222222222223"
 	data := []byte("this-is-external-data")
 	lease := now.Add(time.Minute)
-	if err := st.Save(ctx, id, app.Meta{Version: 2, NonceB64u: "nonceB"}, io.NopCloser(bytesReader(data)), int64(len(data)), now.Add(10*time.Minute)); err != nil {
+	if err := st.Save(ctx, id, app.Meta{Version: 2, NonceB64u: "nonceB"}, testManageHash, io.NopCloser(bytesReader(data)), int64(len(data)), now.Add(10*time.Minute)); err != nil {
 		t.Fatalf("Save external: %v", err)
 	}
 	if _, err := st.Claim(ctx, id, "claim-hash-c", false, lease); !errors.Is(err, errBlobOpen) {
@@ -241,7 +244,7 @@ func TestStoreClaimExpired(t *testing.T) {
 	id := "33333333333333333333333333333333"
 	data := []byte("x")
 	expires := now.Add(-1 * time.Minute)
-	if err := st.Save(ctx, id, app.Meta{Version: 1, NonceB64u: "nC"}, io.NopCloser(bytesReader(data)), int64(len(data)), expires); err != nil {
+	if err := st.Save(ctx, id, app.Meta{Version: 1, NonceB64u: "nC"}, testManageHash, io.NopCloser(bytesReader(data)), int64(len(data)), expires); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	if _, err := st.Claim(ctx, id, "claim-hash-d", false, now.Add(time.Minute)); !errors.Is(err, app.ErrNotFound) {
@@ -281,6 +284,96 @@ func TestStoreAckPropagatesIndexError(t *testing.T) {
 	}
 }
 
+func TestStoreRevokeDeletesExternalBlobOnly(t *testing.T) {
+	cases := []struct {
+		name       string
+		external   bool
+		wantDelete int
+	}{
+		{name: "inline", external: false, wantDelete: 0},
+		{name: "external", external: true, wantDelete: 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			blobs := &mockBlobStore{}
+			st := store.New(mockIndex{revokeExternal: tc.external}, blobs, fixedClock{now: time.Now()}, 4)
+			if err := st.Revoke(context.Background(), "id", "hash"); err != nil {
+				t.Fatalf("Revoke: %v", err)
+			}
+			if got := len(blobs.deleteIDs); got != tc.wantDelete {
+				t.Fatalf("delete count got=%d want=%d", got, tc.wantDelete)
+			}
+		})
+	}
+}
+
+func TestStoreRevokePropagatesIndexError(t *testing.T) {
+	blobs := &mockBlobStore{}
+	st := store.New(mockIndex{revokeErr: app.ErrNotFound, revokeExternal: true}, blobs, fixedClock{now: time.Now()}, 4)
+	if err := st.Revoke(context.Background(), "id", "hash"); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("expected not found, got %v", err)
+	}
+	if len(blobs.deleteIDs) != 0 {
+		t.Fatalf("blob deleted on failed revoke")
+	}
+}
+
+func TestStoreStatusPassesThrough(t *testing.T) {
+	want := app.SecretStatus{CreatedAt: time.Unix(1, 0), ExpiresAt: time.Unix(2, 0)}
+	st := store.New(mockIndex{status: want}, &mockBlobStore{}, fixedClock{now: time.Now()}, 4)
+	got, err := st.Status(context.Background(), "id", "hash")
+	if err != nil || got != want {
+		t.Fatalf("Status = %+v, %v", got, err)
+	}
+}
+
+func TestStoreRevokeExternalRemovesBlobFile(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now().UTC()
+	db := openTestDB(t)
+	ix, err := sqlite.New(db)
+	if err != nil {
+		t.Fatalf("sqlite.New: %v", err)
+	}
+	dir := t.TempDir()
+	bs, err := filesystem.New(dir)
+	if err != nil {
+		t.Fatalf("filesystem.New: %v", err)
+	}
+	st := store.New(ix, bs, fixedClock{now: now}, 4)
+	id := "77777777777777777777777777777777"
+	data := []byte("external-payload")
+	if err = st.Save(ctx, id, app.Meta{Version: 1, NonceB64u: "n"}, testManageHash, bytesReader(data), int64(len(data)), now.Add(time.Hour)); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if _, err = st.Status(ctx, id, testManageHash); err != nil {
+		t.Fatalf("Status: %v", err)
+	}
+	if err = st.Revoke(ctx, id, testManageHash); err != nil {
+		t.Fatalf("Revoke: %v", err)
+	}
+	ids, err := bs.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(ids) != 0 {
+		t.Fatalf("blob files remain after revoke: %v", ids)
+	}
+	if _, err = st.Status(ctx, id, testManageHash); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("Status after revoke = %v", err)
+	}
+}
+
+func TestStoreManageNilReceiver(t *testing.T) {
+	var s *store.Store
+	if _, err := s.Status(context.Background(), "id", "hash"); err == nil {
+		t.Fatalf("expected error on nil store Status")
+	}
+	if err := s.Revoke(context.Background(), "id", "hash"); err == nil {
+		t.Fatalf("expected error on nil store Revoke")
+	}
+}
+
 func TestStoreDeleteExpired(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -297,13 +390,13 @@ func TestStoreDeleteExpired(t *testing.T) {
 	}
 	st := store.New(ix, bs, clk, 4)
 
-	if err := st.Save(ctx, "44444444444444444444444444444444", app.Meta{Version: 1, NonceB64u: "a"}, io.NopCloser(bytesReader([]byte("external-data"))), int64(len("external-data")), now.Add(-5*time.Minute)); err != nil {
+	if err := st.Save(ctx, "44444444444444444444444444444444", app.Meta{Version: 1, NonceB64u: "a"}, testManageHash, io.NopCloser(bytesReader([]byte("external-data"))), int64(len("external-data")), now.Add(-5*time.Minute)); err != nil {
 		t.Fatalf("save ext: %v", err)
 	}
-	if err := st.Save(ctx, "55555555555555555555555555555555", app.Meta{Version: 1, NonceB64u: "b"}, io.NopCloser(bytesReader([]byte("inl"))), 3, now.Add(-5*time.Minute)); err != nil {
+	if err := st.Save(ctx, "55555555555555555555555555555555", app.Meta{Version: 1, NonceB64u: "b"}, testManageHash, io.NopCloser(bytesReader([]byte("inl"))), 3, now.Add(-5*time.Minute)); err != nil {
 		t.Fatalf("save inl: %v", err)
 	}
-	if err := st.Save(ctx, "66666666666666666666666666666666", app.Meta{Version: 1, NonceB64u: "c"}, io.NopCloser(bytesReader([]byte("f"))), 1, now.Add(5*time.Minute)); err != nil {
+	if err := st.Save(ctx, "66666666666666666666666666666666", app.Meta{Version: 1, NonceB64u: "c"}, testManageHash, io.NopCloser(bytesReader([]byte("f"))), 1, now.Add(5*time.Minute)); err != nil {
 		t.Fatalf("save future: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(blobDir, "44444444444444444444444444444444.blob")); err != nil {
@@ -452,17 +545,29 @@ func (m *mockBlobStore) List() ([]string, error) {
 
 // mockIndex is a configurable Index implementation for store tests.
 type mockIndex struct {
-	claimResult *store.IndexResult
-	claimErr    error
-	ackExternal bool
-	ackErr      error
-	expired     []store.ExpiredRecord
-	listIDs     []string
-	listErr     error
+	status         app.SecretStatus
+	statusErr      error
+	revokeExternal bool
+	revokeErr      error
+	claimResult    *store.IndexResult
+	claimErr       error
+	ackExternal    bool
+	ackErr         error
+	expired        []store.ExpiredRecord
+	listIDs        []string
+	listErr        error
 }
 
-func (m mockIndex) Insert(_ context.Context, _ string, _ app.Meta, _ []byte, _ bool, _ int64, _ time.Time, _ time.Time) error {
+func (m mockIndex) Insert(_ context.Context, _ store.NewRow) error {
 	return nil
+}
+
+func (m mockIndex) Status(_ context.Context, _, _ string, _ time.Time) (app.SecretStatus, error) {
+	return m.status, m.statusErr
+}
+
+func (m mockIndex) Revoke(_ context.Context, _, _ string, _ time.Time) (bool, error) {
+	return m.revokeExternal, m.revokeErr
 }
 
 func (m mockIndex) Claim(_ context.Context, _ string, _ string, _ bool, _ time.Time, _ time.Time, _ store.ExternalOpener) (*store.IndexResult, error) {
@@ -514,7 +619,7 @@ func TestStoreNilReceiverAck(t *testing.T) {
 
 func TestStoreNilReceiverSave(t *testing.T) {
 	var s *store.Store
-	if err := s.Save(context.Background(), "id", app.Meta{}, bytesReader([]byte("a")), 1, time.Now()); err == nil {
+	if err := s.Save(context.Background(), "id", app.Meta{}, testManageHash, bytesReader([]byte("a")), 1, time.Now()); err == nil {
 		t.Fatalf("expected error on nil store Save")
 	}
 }
@@ -547,7 +652,7 @@ func TestStoreNilClock(t *testing.T) {
 	ix := mockIndex{}
 	bs := &mockBlobStore{}
 	s := store.New(ix, bs, nil, 10)
-	if err := s.Save(context.Background(), "x", app.Meta{}, bytesReader([]byte("a")), 1, time.Now()); err == nil {
+	if err := s.Save(context.Background(), "x", app.Meta{}, testManageHash, bytesReader([]byte("a")), 1, time.Now()); err == nil {
 		t.Fatalf("expected error with nil clock in Save")
 	}
 	if _, err := s.Claim(context.Background(), "x", "hash", false, time.Now()); err == nil {
@@ -560,7 +665,7 @@ func TestStoreSaveNegativeSize(t *testing.T) {
 	bs := &mockBlobStore{}
 	clk := fixedClock{now: time.Now()}
 	s := store.New(ix, bs, clk, 10)
-	if err := s.Save(context.Background(), "x", app.Meta{}, bytesReader([]byte("a")), -1, time.Now()); err == nil {
+	if err := s.Save(context.Background(), "x", app.Meta{}, testManageHash, bytesReader([]byte("a")), -1, time.Now()); err == nil {
 		t.Fatalf("expected error for negative size")
 	}
 }

@@ -3,6 +3,7 @@ package httpx_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"html/template"
 	"io"
 	"net/http"
@@ -16,16 +17,32 @@ import (
 )
 
 type mockService struct {
-	createFn func(ctx context.Context, ct io.Reader, size int64, _ uint8, _ string, _ time.Duration) (domain.SecretID, time.Time, error)
+	createFn func(ctx context.Context, ct io.Reader, size int64, _ uint8, _ string, _ time.Duration) (app.Created, error)
 	claimFn  func(ctx context.Context, id, token string) (app.ClaimResult, error)
 	ackFn    func(ctx context.Context, id, token string) error
+	statusFn func(ctx context.Context, id, token string) (app.SecretStatus, error)
+	revokeFn func(ctx context.Context, id, token string) error
 }
 
-func (m mockService) CreateSecret(ctx context.Context, ct io.Reader, size int64, version uint8, nonce string, ttl time.Duration) (domain.SecretID, time.Time, error) {
+func (m mockService) CreateSecret(ctx context.Context, ct io.Reader, size int64, version uint8, nonce string, ttl time.Duration) (app.Created, error) {
 	if m.createFn == nil {
-		return "", time.Time{}, nil
+		return app.Created{}, nil
 	}
 	return m.createFn(ctx, ct, size, version, nonce, ttl)
+}
+
+func (m mockService) Status(ctx context.Context, idStr, token string) (app.SecretStatus, error) {
+	if m.statusFn == nil {
+		return app.SecretStatus{}, app.ErrNotFound
+	}
+	return m.statusFn(ctx, idStr, token)
+}
+
+func (m mockService) Revoke(ctx context.Context, idStr, token string) error {
+	if m.revokeFn == nil {
+		return app.ErrNotFound
+	}
+	return m.revokeFn(ctx, idStr, token)
 }
 
 func (m mockService) Claim(ctx context.Context, idStr, token string) (app.ClaimResult, error) {
@@ -43,7 +60,7 @@ func (m mockService) Ack(ctx context.Context, idStr, token string) error {
 }
 
 func TestHandleCreateSecretSuccess(t *testing.T) {
-	m := mockService{createFn: func(_ context.Context, ct io.Reader, size int64, _ uint8, _ string, _ time.Duration) (domain.SecretID, time.Time, error) {
+	m := mockService{createFn: func(_ context.Context, ct io.Reader, size int64, _ uint8, _ string, _ time.Duration) (app.Created, error) {
 		b, _ := io.ReadAll(ct)
 		if string(b) != "cipher" {
 			t.Fatalf("unexpected body")
@@ -51,7 +68,7 @@ func TestHandleCreateSecretSuccess(t *testing.T) {
 		if size != int64(len(b)) {
 			t.Fatalf("size mismatch")
 		}
-		return domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), time.Unix(1000, 0).UTC(), nil
+		return app.Created{ID: domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), ExpiresAt: time.Unix(1000, 0).UTC(), ManageToken: mustManage(t)}, nil
 	}}
 	h := httpx.New(m, 1024, nil)
 	req := httptest.NewRequest(http.MethodPost, "/api/secret", bytes.NewReader([]byte("cipher")))
@@ -67,16 +84,30 @@ func TestHandleCreateSecretSuccess(t *testing.T) {
 	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
 		t.Fatalf("content-type %s", ct)
 	}
-	if !bytes.Contains(w.Body.Bytes(), []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")) {
-		t.Fatalf("missing id")
+	var got struct {
+		ID          string    `json:"id"`
+		ExpiresAt   time.Time `json:"expires_at"`
+		ManageToken string    `json:"manage_token"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.ID != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" || !got.ExpiresAt.Equal(time.Unix(1000, 0)) {
+		t.Fatalf("unexpected body %+v", got)
+	}
+	if _, err := domain.ParseManageToken(got.ManageToken); err != nil {
+		t.Fatalf("manage_token %q invalid: %v", got.ManageToken, err)
+	}
+	if cc := w.Header().Get("Cache-Control"); cc != "no-store" {
+		t.Fatalf("cache-control %q", cc)
 	}
 }
 
 func TestHandleCreateSecretValidationErrors(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/secret", bytes.NewReader([]byte("cipher")))
 	// Intentionally omit Content-Length
-	h := httpx.New(mockService{createFn: func(_ context.Context, _ io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (domain.SecretID, time.Time, error) {
-		return "", time.Time{}, nil
+	h := httpx.New(mockService{createFn: func(_ context.Context, _ io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (app.Created, error) {
+		return app.Created{}, nil
 	}}, 10, nil)
 	w := httptest.NewRecorder()
 	h.Router().ServeHTTP(w, req)

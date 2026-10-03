@@ -17,7 +17,8 @@ import (
 // It stores secret metadata, inlined small ciphertext, and references to blob
 // files for larger payloads.
 type Index interface {
-	Insert(ctx context.Context, id string, meta app.Meta, inline []byte, external bool, size int64, createdAt, expiresAt time.Time) error
+	// Insert stores a new row described by row.
+	Insert(ctx context.Context, row NewRow) error
 	// Claim reserves a live secret for a single client and returns its data
 	// without deleting it. A fresh claim (retry=false) requires the row to be
 	// unclaimed and records claimHash with a lease ending at claimedUntil. A retry
@@ -29,6 +30,13 @@ type Index interface {
 	// Ack deletes a claimed row when claimHash matches the stored claim and
 	// reports whether its payload was external. Returns app.ErrNotFound otherwise.
 	Ack(ctx context.Context, id, claimHash string) (external bool, err error)
+	// Status returns a live row's creation and expiry times when manageHash
+	// matches. Dead rows are deleted lazily. Returns app.ErrNotFound otherwise.
+	Status(ctx context.Context, id, manageHash string, now time.Time) (app.SecretStatus, error)
+	// Revoke deletes a live row when manageHash matches, regardless of any
+	// claim lease, and reports whether its payload was external. Dead rows are
+	// deleted lazily. Returns app.ErrNotFound otherwise.
+	Revoke(ctx context.Context, id, manageHash string, now time.Time) (external bool, err error)
 	DeleteExpired(ctx context.Context, t time.Time) (expired []ExpiredRecord, err error)
 	// ListExternalIDs returns IDs of secrets whose payloads are stored externally.
 	ListExternalIDs(ctx context.Context) ([]string, error)
@@ -36,6 +44,18 @@ type Index interface {
 
 // ExternalOpener opens an external payload without consuming or deleting it.
 type ExternalOpener func(id string) (io.ReadCloser, error)
+
+// NewRow describes a secret row for Index.Insert.
+type NewRow struct {
+	ID         string
+	Meta       app.Meta
+	Inline     []byte // ciphertext stored in the row; nil for external payloads
+	External   bool   // whether the ciphertext lives in blob storage
+	Size       int64  // ciphertext size in bytes
+	ManageHash string // hex SHA-256 of the sender's manage token
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
+}
 
 // IndexResult bundles the data returned by Index.Claim.
 type IndexResult struct {

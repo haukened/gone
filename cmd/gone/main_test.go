@@ -26,7 +26,7 @@ import (
 // stubIndex implements store.Index minimally for buildService test.
 type stubIndex struct{}
 
-func (stubIndex) Insert(context.Context, string, app.Meta, []byte, bool, int64, time.Time, time.Time) error {
+func (stubIndex) Insert(context.Context, store.NewRow) error {
 	return nil
 }
 func (stubIndex) Claim(context.Context, string, string, bool, time.Time, time.Time, store.ExternalOpener) (*store.IndexResult, error) {
@@ -37,6 +37,12 @@ func (stubIndex) DeleteExpired(context.Context, time.Time) ([]store.ExpiredRecor
 	return nil, nil
 }
 func (stubIndex) ListExternalIDs(context.Context) ([]string, error) { return nil, nil }
+func (stubIndex) Status(context.Context, string, string, time.Time) (app.SecretStatus, error) {
+	return app.SecretStatus{}, app.ErrNotFound
+}
+func (stubIndex) Revoke(context.Context, string, string, time.Time) (bool, error) {
+	return false, app.ErrNotFound
+}
 
 // stubBlobStorage implements store.BlobStorage.
 type stubBlobStorage struct{}
@@ -51,9 +57,9 @@ type recordingIndex struct {
 	external bool
 }
 
-func (r *recordingIndex) Insert(_ context.Context, _ string, _ app.Meta, inline []byte, external bool, _ int64, _, _ time.Time) error {
-	r.inline = inline
-	r.external = external
+func (r *recordingIndex) Insert(_ context.Context, row store.NewRow) error {
+	r.inline = row.Inline
+	r.external = row.External
 	return nil
 }
 func (r *recordingIndex) Claim(context.Context, string, string, bool, time.Time, time.Time, store.ExternalOpener) (*store.IndexResult, error) {
@@ -66,6 +72,12 @@ func (r *recordingIndex) DeleteExpired(context.Context, time.Time) ([]store.Expi
 	return nil, nil
 }
 func (r *recordingIndex) ListExternalIDs(context.Context) ([]string, error) { return nil, nil }
+func (r *recordingIndex) Status(context.Context, string, string, time.Time) (app.SecretStatus, error) {
+	return app.SecretStatus{}, app.ErrNotFound
+}
+func (r *recordingIndex) Revoke(context.Context, string, string, time.Time) (bool, error) {
+	return false, app.ErrNotFound
+}
 
 type recordingBlobStorage struct {
 	wrote bool
@@ -113,7 +125,7 @@ func TestLoadTemplates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadTemplatesFrom error: %v", err)
 	}
-	if tmpls.index == nil || tmpls.about == nil || tmpls.secret == nil || tmpls.errorPage == nil {
+	if tmpls.index == nil || tmpls.about == nil || tmpls.secret == nil || tmpls.manage == nil || tmpls.errorPage == nil {
 		t.Fatalf("expected all templates non-nil")
 	}
 }
@@ -140,7 +152,7 @@ func TestBuildServiceUsesConfiguredInlineThreshold(t *testing.T) {
 	cfg := &config.Config{InlineMaxBytes: 4, MaxBytes: 32, MinTTL: time.Minute, MaxTTL: 2 * time.Minute}
 	s := buildService(idx, blobs, cfg, realClock{})
 
-	if _, _, err := s.CreateSecret(context.Background(), strings.NewReader("external"), int64(len("external")), 1, "AAAAAAAAAAAAAAAA", time.Minute); err != nil {
+	if _, err := s.CreateSecret(context.Background(), strings.NewReader("external"), int64(len("external")), 1, "AAAAAAAAAAAAAAAA", time.Minute); err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
 	if !blobs.wrote {
@@ -192,6 +204,7 @@ func TestBuildHandler_IndexRoute(t *testing.T) {
 		index:     template.Must(template.New("index").Parse("<html>index</html>")),
 		about:     template.Must(template.New("about").Parse("about")),
 		secret:    template.Must(template.New("secret").Parse("secret")),
+		manage:    template.Must(template.New("manage").Parse("manage")),
 		errorPage: template.Must(template.New("error").Parse("error")),
 	}
 	cfg := &config.Config{MaxBytes: 2048, MinTTL: time.Minute, MaxTTL: 2 * time.Minute, TTLOptions: []domain.TTLOption{{Duration: time.Minute, Label: "1m"}}}

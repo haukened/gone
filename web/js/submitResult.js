@@ -25,17 +25,42 @@
     node.setAttribute('datetime', when.toISOString());
   }
 
-  function wireCopy(btn, input, status) {
+  function wireCopy(btn, input, status, message) {
     btn.addEventListener('click', async function () {
       const ok = await util.copyText(input.value, function () { selectAll(input); }, status);
-      if (ok) util.flashCopied(btn, status, 'Link copied to clipboard.');
+      if (ok) util.flashCopied(btn, status, message);
     });
+  }
+
+  // wireOnce attaches the copy handler the first time a button is shown.
+  function wireOnce(btn, input, status, message) {
+    if (btn.dataset.wired) return;
+    btn.dataset.wired = '1';
+    wireCopy(btn, input, status, message);
+  }
+
+  // showManage fills the collapsed "Manage this secret" section, or hides it
+  // when there is no manage link (for example an older server).
+  function showManage(url) {
+    const section = byId('manage-disclosure');
+    const input = byId('manage-link');
+    const btn = byId('copy-manage');
+    if (!util.allPresent([section, input, btn])) return;
+    section.open = false;
+    if (!url) {
+      section.hidden = true;
+      input.value = '';
+      return;
+    }
+    input.value = url;
+    wireOnce(btn, input, byId('manage-copy-status'), 'Manage link copied to clipboard.');
+    section.hidden = false;
   }
 
   // show fills and reveals the result view, hiding the compose view.
   //
-  // opts: {shareURL, expiresAt, focus = true}. Returns the result view, or
-  // null when the page lacks it.
+  // opts: {shareURL, manageURL = '', expiresAt, focus = true}. Returns the
+  // result view, or null when the page lacks it.
   function show(opts) {
     const view = byId('result');
     const input = byId('share-link');
@@ -43,10 +68,8 @@
     if (!util.allPresent([view, input, btn])) return null;
     input.value = opts.shareURL;
     setExpiry(byId('result-expiry'), opts.expiresAt);
-    if (!btn.dataset.wired) {
-      btn.dataset.wired = '1';
-      wireCopy(btn, input, byId('copy-status'));
-    }
+    wireOnce(btn, input, byId('copy-status'), 'Link copied to clipboard.');
+    showManage(opts.manageURL || '');
     const compose = byId('compose');
     if (compose) compose.hidden = true;
     view.hidden = false;

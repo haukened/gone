@@ -74,6 +74,7 @@ func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir stri
 	h.IndexTmpl = httpx.TemplateRenderer{T: tmpls.index}
 	h.AboutTmpl = httpx.AboutTemplateRenderer{T: tmpls.about}
 	h.SecretTmpl = httpx.TemplateRenderer{T: tmpls.secret}
+	h.ManageTmpl = httpx.TemplateRenderer{T: tmpls.manage}
 	if tmpls.errorPage != nil {
 		h.ErrorTmpl = httpx.TemplateRenderer{T: tmpls.errorPage}
 	}

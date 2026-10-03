@@ -34,81 +34,34 @@ func New(db *sql.DB) (*Index, error) {
 	return ix, nil
 }
 
-// init creates the secrets table if absent and applies idempotent column
-// migrations for databases created by earlier versions.
+// init creates the base secrets table if absent and then applies any pending
+// schema migrations (see migrate.go).
 //
-// Returns an error if any DDL statement fails.
+// Returns an error if DDL fails or the database schema is newer than this
+// binary supports (ErrSchemaTooNew).
 func (i *Index) init() error {
-	schema := `CREATE TABLE IF NOT EXISTS secrets (
-id TEXT PRIMARY KEY,
-version INTEGER NOT NULL,
-nonce_b64u TEXT NOT NULL,
-inline BLOB,
-external INTEGER NOT NULL DEFAULT 0,
-size INTEGER NOT NULL,
-created_at INTEGER NOT NULL,
-expires_at INTEGER NOT NULL,
-claim_hash TEXT,
-claimed_until INTEGER
-);`
-	if _, err := i.db.Exec(schema); err != nil {
+	ctx := context.Background()
+	if _, err := i.db.ExecContext(ctx, baseSchema); err != nil {
 		return err
 	}
-	return i.migrateClaimColumns()
-}
-
-// migrateClaimColumns adds the claim_hash and claimed_until columns to a
-// pre-existing secrets table that lacks them. It is safe to call repeatedly.
-//
-// Returns an error if introspection or ALTER TABLE fails.
-func (i *Index) migrateClaimColumns() error {
-	cols, err := i.columnNames()
-	if err != nil {
-		return err
-	}
-	adds := []struct{ name, ddl string }{
-		{"claim_hash", `ALTER TABLE secrets ADD COLUMN claim_hash TEXT`},
-		{"claimed_until", `ALTER TABLE secrets ADD COLUMN claimed_until INTEGER`},
-	}
-	for _, a := range adds {
-		if _, ok := cols[a.name]; ok {
-			continue
-		}
-		if _, err := i.db.Exec(a.ddl); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// columnNames returns the set of column names present on the secrets table.
-//
-// Returns the set or an error if PRAGMA table_info fails.
-func (i *Index) columnNames() (map[string]struct{}, error) {
-	rows, err := i.db.Query(`SELECT name FROM pragma_table_info('secrets')`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	cols := make(map[string]struct{})
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return nil, err
-		}
-		cols[name] = struct{}{}
-	}
-	return cols, rows.Err()
+	return i.migrate(ctx)
 }
 
 // Insert stores a new secret row.
-func (i *Index) Insert(ctx context.Context, id string, meta app.Meta, inline []byte, external bool, size int64, createdAt, expiresAt time.Time) error {
-	const q = `INSERT INTO secrets (id, version, nonce_b64u, inline, external, size, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?)`
+//
+// Parameters:
+//   - ctx: request context.
+//   - row: the row to store; see store.NewRow for field meanings.
+//
+// Returns an error if the insert fails (e.g. duplicate id).
+func (i *Index) Insert(ctx context.Context, row store.NewRow) error {
+	const q = `INSERT INTO secrets (id, version, nonce_b64u, inline, external, size, created_at, expires_at, manage_hash) VALUES (?,?,?,?,?,?,?,?,?)`
 	ext := 0
-	if external {
+	if row.External {
 		ext = 1
 	}
-	_, err := i.db.ExecContext(ctx, q, id, meta.Version, meta.NonceB64u, inline, ext, size, createdAt.Unix(), expiresAt.Unix())
+	_, err := i.db.ExecContext(ctx, q, row.ID, row.Meta.Version, row.Meta.NonceB64u, row.Inline, ext, row.Size,
+		row.CreatedAt.Unix(), row.ExpiresAt.Unix(), row.ManageHash)
 	return err
 }
 

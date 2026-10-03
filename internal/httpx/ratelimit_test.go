@@ -61,15 +61,16 @@ type recordingService struct {
 	mu     sync.Mutex
 	create int
 	claim  int
+	manage int
 }
 
 // CreateSecret implements ServicePort.
-func (s *recordingService) CreateSecret(_ context.Context, ct io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (domain.SecretID, time.Time, error) {
+func (s *recordingService) CreateSecret(_ context.Context, ct io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (app.Created, error) {
 	s.mu.Lock()
 	s.create++
 	s.mu.Unlock()
 	_, _ = io.Copy(io.Discard, ct)
-	return domain.SecretID(strings.Repeat("a", 32)), time.Unix(1000, 0), nil
+	return app.Created{ID: domain.SecretID(strings.Repeat("a", 32)), ExpiresAt: time.Unix(1000, 0)}, nil
 }
 
 // Claim implements ServicePort.
@@ -82,6 +83,22 @@ func (s *recordingService) Claim(context.Context, string, string) (app.ClaimResu
 
 // Ack implements ServicePort.
 func (s *recordingService) Ack(context.Context, string, string) error { return nil }
+
+// Status implements ServicePort.
+func (s *recordingService) Status(context.Context, string, string) (app.SecretStatus, error) {
+	s.mu.Lock()
+	s.manage++
+	s.mu.Unlock()
+	return app.SecretStatus{}, app.ErrNotFound
+}
+
+// Revoke implements ServicePort.
+func (s *recordingService) Revoke(context.Context, string, string) error {
+	s.mu.Lock()
+	s.manage++
+	s.mu.Unlock()
+	return app.ErrNotFound
+}
 
 // trackingBody reports whether it was read.
 type trackingBody struct {
@@ -196,6 +213,33 @@ func TestReadRateLimited(t *testing.T) {
 	}
 	if m.counts[metrics.CounterRateLimitedRead] != 2 {
 		t.Fatalf("metrics = %v", m.counts)
+	}
+}
+
+func TestManageRoutesReadRateLimited(t *testing.T) {
+	svc := &recordingService{}
+	lim := &stubLimiter{n: 0}
+	m := &countingMetrics{}
+	h := &Handler{Service: svc, ReadLimiter: lim, Metrics: m}
+	router := h.Router()
+	id := strings.Repeat("a", 32)
+	for _, rt := range []struct{ method, path string }{
+		{http.MethodGet, "/api/secret/" + id + "/status"},
+		{http.MethodPost, "/api/secret/" + id + "/revoke"},
+	} {
+		req := httptest.NewRequest(rt.method, rt.path, nil)
+		req.Header.Set(HeaderManage, "token")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusTooManyRequests {
+			t.Fatalf("%s %s status = %d, want 429", rt.method, rt.path, w.Code)
+		}
+	}
+	if svc.manage != 0 {
+		t.Fatalf("service reached %d times", svc.manage)
+	}
+	if lim.calls != 2 || m.counts[metrics.CounterRateLimitedRead] != 2 {
+		t.Fatalf("limiter calls = %d, metrics = %v", lim.calls, m.counts)
 	}
 }
 

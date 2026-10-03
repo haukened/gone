@@ -20,9 +20,16 @@ type consumeService struct { // reuse custom service for consume errors
 	ackErr   error
 }
 
-func (c consumeService) CreateSecret(_ context.Context, _ io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (domain.SecretID, time.Time, error) {
-	return domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), time.Now().Add(time.Hour), nil
+func (c consumeService) CreateSecret(_ context.Context, _ io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (app.Created, error) {
+	return app.Created{ID: domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), ExpiresAt: time.Now().Add(time.Hour)}, nil
 }
+
+func (consumeService) Status(context.Context, string, string) (app.SecretStatus, error) {
+	return app.SecretStatus{}, app.ErrNotFound
+}
+
+func (consumeService) Revoke(context.Context, string, string) error { return app.ErrNotFound }
+
 func (c consumeService) Claim(_ context.Context, _ string, _ string) (app.ClaimResult, error) {
 	if c.claimErr != nil {
 		return app.ClaimResult{}, c.claimErr

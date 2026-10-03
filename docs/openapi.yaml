@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Gone Secret Sharing API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     Minimal API for one-time secret creation and consumption.
     Secrets are created with a TTL and may be stored inline or in external blob storage.
@@ -9,14 +9,32 @@ info:
     token; DELETE with that token acknowledges receipt and deletes it. A claimed secret is
     only re-served to the token holder and is deleted by the janitor if not acknowledged
     within the configured claim lease (GONE_CLAIM_LEASE).
+    Create also returns a manage token. Sending it in the X-Gone-Manage header lets the
+    sender check whether the secret is still pending, or revoke it before it is opened.
+    There are no tombstones: opened, revoked, expired, unknown, and wrong-token secrets
+    all return the same 404.
     This spec enumerates all HTTP statuses the current implementation may emit.
 servers:
-  - url: http://localhost:8080
+  - url: /
+    description: >-
+      The Gone instance serving this spec. Production deployments must use
+      HTTPS; the manage token is a bearer credential.
+tags:
+  - name: secrets
+    description: Create, claim, and acknowledge one-time secrets. Anonymous.
+  - name: manage
+    description: Sender-only status and revoke, authorized by the manage token.
+  - name: health
+    description: Liveness and readiness probes.
 paths:
   /api/secret:
     post:
       summary: Create a new secret
       operationId: createSecret
+      description: |
+        Stores client-side encrypted ciphertext with a TTL. The server never sees
+        the key. Returns the secret ID, its expiry, and a one-time manage token.
+      tags: [secrets]
       parameters:
         - in: header
           name: X-Gone-Version
@@ -70,7 +88,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [id, expires_at]
+                required: [id, expires_at, manage_token]
                 properties:
                   id:
                     type: string
@@ -79,6 +97,14 @@ paths:
                   expires_at:
                     type: string
                     format: date-time
+                  manage_token:
+                    type: string
+                    pattern: '^[A-Za-z0-9_-]{43}$'
+                    description: >-
+                      Sender's manage token: 32 random bytes as unpadded
+                      base64url. Only its SHA-256 is stored, so it cannot be
+                      recovered later. The web client puts it in the manage
+                      link fragment, /manage/{id}#{manage_token}.
         '400':
           description: >-
             Validation error. `error` is one of `invalid content length`,
@@ -125,6 +151,10 @@ paths:
     get:
       summary: Claim a secret and retrieve its ciphertext
       operationId: claimSecret
+      description: |
+        Phase one of retrieval. Reserves the secret for the caller under a claim
+        lease and streams the ciphertext with a claim token.
+      tags: [secrets]
       parameters:
         - $ref: '#/components/parameters/SecretID'
         - in: header
@@ -197,6 +227,10 @@ paths:
     delete:
       summary: Acknowledge receipt and delete a claimed secret
       operationId: ackSecret
+      description: |
+        Phase two of retrieval. Deletes the secret once the claim token holder
+        confirms receipt.
+      tags: [secrets]
       parameters:
         - $ref: '#/components/parameters/SecretID'
         - in: header
@@ -234,15 +268,97 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/secret/{id}/status:
+    get:
+      summary: Check whether a secret is still waiting to be opened
+      operationId: secretStatus
+      tags: [manage]
+      security:
+        - manageToken: []
+      description: |
+        Sender-only. A claim with an active lease still reports pending. Read-only:
+        checking status never claims, extends, or deletes the secret.
+      parameters:
+        - $ref: '#/components/parameters/SecretID'
+      responses:
+        '200':
+          description: The secret is pending.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+        '400':
+          $ref: '#/components/responses/ManageBadRequest'
+        '404':
+          $ref: '#/components/responses/ManageNotFound'
+        '405':
+          description: Method not allowed (not GET). The Allow header lists GET.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/secret/{id}/revoke:
+    post:
+      summary: Delete a secret before it is opened
+      operationId: revokeSecret
+      tags: [manage]
+      security:
+        - manageToken: []
+      description: |
+        Sender-only. Revoke always wins: it deletes the secret even during an active
+        claim lease, and the recipient's re-fetch or acknowledgement then gets 404.
+        A second revoke returns 404.
+      parameters:
+        - $ref: '#/components/parameters/SecretID'
+      responses:
+        '204':
+          description: Secret deleted.
+        '400':
+          $ref: '#/components/responses/ManageBadRequest'
+        '404':
+          $ref: '#/components/responses/ManageNotFound'
+        '405':
+          description: Method not allowed (not POST). The Allow header lists POST.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /healthz:
     get:
       summary: Liveness probe
+      operationId: healthz
+      description: Returns 200 while the process is running.
+      tags: [health]
       responses:
         '200':
           description: Process is alive
   /readyz:
     get:
       summary: Readiness probe
+      operationId: readyz
+      description: Returns 200 when the readiness probe passes, 503 otherwise.
+      tags: [health]
       responses:
         '200':
           description: Service ready
@@ -254,10 +370,31 @@ paths:
                 $ref: '#/components/schemas/Error'
 components:
   responses:
+    ManageBadRequest:
+      description: >-
+        `invalid id` for a malformed ID, or `invalid manage token` when
+        X-Gone-Manage is missing, repeated, or not 43 base64url characters.
+        The token format check does not depend on the ID.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ManageNotFound:
+      description: >-
+        Not pending. The secret was opened, revoked, or expired, never existed,
+        or the manage token is wrong. These cases are deliberately
+        indistinguishable.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: not found
     TooManyRequests:
       description: |
         Rate limited. The client exceeded its per-address budget (GONE_RATE_CREATE for
-        POST, GONE_RATE_READ for GET and DELETE). Retry after the indicated delay.
+        POST /api/secret, GONE_RATE_READ for every /api/secret/{id} route, including
+        status and revoke). Retry after the indicated delay.
       headers:
         Retry-After:
           schema:
@@ -280,11 +417,35 @@ components:
         pattern: '^[0-9a-f]{32}$'
       description: Secret ID.
   schemas:
+    Status:
+      type: object
+      required: [state, created_at, expires_at]
+      properties:
+        state:
+          type: string
+          enum: [pending]
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
     Error:
       type: object
       required: [error]
       properties:
         error:
           type: string
-  securitySchemes: {}
+  securitySchemes:
+    manageToken:
+      type: apiKey
+      in: header
+      name: X-Gone-Manage
+      description: >-
+        The manage_token returned at creation: 43 base64url characters
+        (^[A-Za-z0-9_-]{43}$). Must appear exactly once. It is never logged.
+        Because it is a custom header, cross-origin requests need a CORS
+        preflight, which the server never grants.
+# Secret creation, claim, and acknowledgement are anonymous by design; only the
+# manage operations declare a security requirement.
 security: []

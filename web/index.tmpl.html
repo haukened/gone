@@ -107,6 +107,20 @@
 							<li class="is-next"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-gone" /></svg><span class="t">Gone</span><span class="s">Deleted for good</span></li>
 						</ol>
 						<p class="note">The key is the part after <strong>#</strong>. It stays in the link and is never sent to the server, so anyone holding the full link can open it. Don't post it anywhere public.</p>
+						<details id="manage-disclosure" class="disclosure">
+							<summary>Manage this secret</summary>
+							<div class="disclosure-body">
+								<p class="note" id="manage-hint">A private link for you to check whether the secret has been opened, or to delete it early. Keep it to yourself; it isn't shown again, and anyone holding it can delete the secret.</p>
+								<div class="field">
+									<label class="label" for="manage-link">Manage link</label>
+									<div class="linkbox">
+										<input id="manage-link" class="input" type="text" readonly spellcheck="false" autocomplete="off" aria-describedby="manage-hint" />
+										<button id="copy-manage" class="btn btn-secondary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy manage link</span></button>
+									</div>
+									<span id="manage-copy-status" class="status" role="status"></span>
+								</div>
+							</div>
+						</details>
 						<div class="actions"><a class="btn btn-secondary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Send another secret</a></div>
 					</div>
 				</section>

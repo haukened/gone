@@ -9,6 +9,8 @@ var (
 	ErrTTLInvalid = errors.New("ttl invalid")
 	// ErrInvalidClaim indicates a malformed claim token.
 	ErrInvalidClaim = errors.New("invalid claim token")
+	// ErrInvalidManage indicates a malformed sender manage token.
+	ErrInvalidManage = errors.New("invalid manage token")
 	// ErrInvalidVersion indicates a malformed or unsupported protocol version.
 	ErrInvalidVersion = errors.New("invalid version")
 	// ErrInvalidNonce indicates a nonce that is not strict base64url of the

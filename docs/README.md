@@ -3,7 +3,7 @@
 This directory contains the OpenAPI specification (`openapi.yaml`) for the Gone one-time secret sharing service. This page summarizes the same API in prose. The encryption format, link fragment, and client rules are specified in [protocol.md](protocol.md).
 
 ## Design Goals
-- **Minimal surface**: Three secret operations (create, claim, acknowledge) plus health probes.
+- **Minimal surface**: Three secret operations (create, claim, acknowledge), two sender operations (status, revoke), and health probes.
 - **Zero knowledge**: The server only ever sees ciphertext. Encryption, decryption, and the key stay in the browser.
 - **Streaming-friendly**: Ciphertext is sent and returned as raw `application/octet-stream`, not wrapped in JSON.
 - **Deterministic deletion**: Retrieval is two-phase. `GET` claims the secret and `DELETE` acknowledges receipt, so a secret is deleted only after the recipient has it, or when the claim lease lapses. It is never served to a second party.
@@ -13,13 +13,15 @@ This directory contains the OpenAPI specification (`openapi.yaml`) for the Gone 
 ## Endpoints Overview
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
-| POST | `/api/secret` | Create a secret (returns ID & expiry) |
+| POST | `/api/secret` | Create a secret (returns ID, expiry & manage token) |
 | GET | `/api/secret/{id}` | Claim a secret, or re-fetch an existing claim (returns ciphertext + claim token) |
 | DELETE | `/api/secret/{id}` | Acknowledge receipt; permanently deletes the secret |
+| GET | `/api/secret/{id}/status` | Sender: is the secret still waiting? (`X-Gone-Manage`) |
+| POST | `/api/secret/{id}/revoke` | Sender: delete the secret before it is opened (`X-Gone-Manage`) |
 | GET | `/healthz` | Liveness check |
 | GET | `/readyz` | Readiness check (DB ping) |
 
-Other methods on `/api/secret/{id}` return `405` with `Allow: GET, DELETE`. Unknown `/api/` paths return a JSON `404`.
+Other methods on `/api/secret/{id}` return `405` with `Allow: GET, DELETE`. The same applies to `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`). Unknown `/api/` paths return a JSON `404`.
 
 Metrics are **not** served on the public listener. When both `GONE_METRICS_ADDR` and `GONE_METRICS_TOKEN` are set, a separate listener serves a JSON snapshot that requires `Authorization: Bearer <token>`. If either is missing, metrics are disabled.
 
@@ -33,8 +35,16 @@ Metrics are **not** served on the public listener. When both `GONE_METRICS_ADDR`
    Each header must appear exactly once.
    - `Content-Length` (required; chunked uploads are rejected)
 3. The server validates size and TTL, issues an ID, and stores the ciphertext inline in SQLite (≤ `GONE_INLINE_MAX_BYTES`) or as a filesystem blob.
-4. Response: `201` with JSON `{ "id": "<32-hex>", "expires_at": "RFC3339" }`.
+4. Response: `201` with JSON `{ "id": "<32-hex>", "expires_at": "RFC3339", "manage_token": "<43-char base64url>" }`. The server keeps only a SHA-256 hash of the manage token.
 5. The client builds the share link `/secret/{id}#v1:<base64url-key>`. The key lives only in the URL fragment, which browsers never send to the server.
+6. The client also builds the sender's private manage link `/manage/{id}#<manage_token>`. It cannot decrypt anything; it can only check on or revoke the secret.
+
+## Sender Workflow (Status + Revoke)
+The manage page reads the token from the URL fragment and sends it only in the `X-Gone-Manage` header.
+
+1. **Status.** `GET /api/secret/{id}/status` returns `200` with `{ "state": "pending", "created_at", "expires_at" }` while the secret is waiting, including while a recipient's claim lease is active. Checking status never claims or deletes anything.
+2. **Revoke.** `POST /api/secret/{id}/revoke` deletes the secret and returns `204`. Revoke wins over an active claim: the recipient's acknowledgement then fails. A recipient who already downloaded the ciphertext still holds it, so revoke is only reliable before the link is opened.
+3. **No tombstones.** Once a secret is opened, revoked, or expired, nothing about it remains. Status and revoke return the same `404` for all of these cases, for unknown IDs, and for a wrong token. The sender cannot tell "opened" from "expired" or "revoked", and nobody else can learn anything.
 
 ## Consumption Workflow (Claim + Acknowledge)
 1. **Claim.** The client sends `GET /api/secret/{id}` without an `X-Gone-Claim` header. If the secret exists, is unexpired, and is unclaimed, the server atomically marks it claimed and generates a random claim token. Only a SHA-256 hash of the token is stored.
@@ -63,13 +73,14 @@ All errors are JSON `{ "error": "<message>" }`.
 | --------- | ------ | ------------ |
 | Invalid ID format | 400 | `invalid id` |
 | Malformed claim token (DELETE without/with bad `X-Gone-Claim`, or bad token on GET retry) | 400 | `invalid claim` |
+| Missing, repeated, or malformed `X-Gone-Manage` on status/revoke | 400 | `invalid manage token` |
 | Missing, empty, or repeated `X-Gone-Version` / `X-Gone-Nonce` / `X-Gone-TTL` | 400 | `missing required headers` |
 | Non-canonical or unsupported version | 400 | `invalid version` |
 | Nonce not 16 base64url characters (12 bytes) | 400 | `invalid nonce` |
 | Unparseable TTL | 400 | `invalid ttl` |
 | TTL outside `[MinTTL, MaxTTL]` | 400 | `ttl invalid` |
 | Unparseable `Content-Length` | 400 | `invalid content length` |
-| Not found / expired / claimed by someone else / wrong token / lease lapsed | 404 | `not found` |
+| Not found / expired / claimed by someone else / wrong token / lease lapsed / opened or revoked (status, revoke) | 404 | `not found` |
 | Method not allowed | 405 | `method not allowed` |
 | Missing `Content-Length` on create | 411 | `content length required` |
 | Size > `MaxBytes` | 413 | `size exceeded` |
@@ -77,7 +88,7 @@ All errors are JSON `{ "error": "<message>" }`.
 | Internal failure | 500 | `internal` |
 
 ## Rate Limiting
-Each client address has two token buckets: one for creating secrets (`POST /api/secret`, `GONE_RATE_CREATE`) and one for reading them (`GET` and `DELETE /api/secret/{id}`, `GONE_RATE_READ`). Both buckets hold up to `GONE_RATE_BURST` tokens and refill steadily at the configured rate. Health probes, pages, and static assets are not limited.
+Each client address has two token buckets: one for creating secrets (`POST /api/secret`, `GONE_RATE_CREATE`) and one for reading them (`GET` and `DELETE /api/secret/{id}`, plus `/status` and `/revoke`, `GONE_RATE_READ`). Both buckets hold up to `GONE_RATE_BURST` tokens and refill steadily at the configured rate. Health probes, pages, and static assets are not limited.
 
 - Over budget: `429` with `Retry-After: <seconds>` and `{ "error": "rate limited" }`. The request body is never read.
 - Clients are keyed by IPv4 `/32` or IPv6 `/64`.

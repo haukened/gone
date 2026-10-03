@@ -22,7 +22,7 @@ func TestLoadTemplatesFrom_Success(t *testing.T) {
 		t.Fatalf("loadTemplatesFrom: %v", err)
 	}
 	for name, tm := range map[string]interface{ Name() string }{
-		"index": tmpls.index, "about": tmpls.about, "secret": tmpls.secret, "error": tmpls.errorPage,
+		"index": tmpls.index, "about": tmpls.about, "secret": tmpls.secret, "manage": tmpls.manage, "error": tmpls.errorPage,
 	} {
 		if tm.Name() != name {
 			t.Fatalf("template %s has name %q", name, tm.Name())

@@ -45,41 +45,117 @@ type Metrics interface {
 	Inc(name string, delta int64)
 }
 
-// CreateSecret validates inputs, assigns a new ID, determines expiry, and persists the secret.
-// Returns the generated ID and its expiration timestamp, or
+// Created is returned by Service.CreateSecret.
+type Created struct {
+	ID          domain.SecretID    // new secret identifier
+	ExpiresAt   time.Time          // TTL deadline
+	ManageToken domain.ManageToken // sender's bearer token for Status and Revoke
+}
+
+// CreateSecret validates inputs, assigns a new ID and manage token, determines
+// expiry, and persists the secret. Only the SHA-256 of the manage token is
+// stored.
+//
+// Parameters:
+//   - ctx: request context for cancellation and deadlines.
+//   - ct: ciphertext reader.
+//   - size: ciphertext size in bytes.
+//   - version: protocol version.
+//   - nonce: base64url nonce used for encryption.
+//   - ttl: time-to-live for the secret.
+//
+// Returns the new secret's ID, expiry, and manage token, or
 // domain.ErrTTLInvalid, ErrSizeExceeded, domain.ErrInvalidVersion,
 // domain.ErrInvalidNonce, or a storage error.
-// ctx - the http request context for cancellation and deadlines
-// ct - the ciphertext reader
-// size - the size of the ciphertext
-// version - the version of the secret
-// nonce - the nonce used for encryption
-// ttl - the time-to-live for the secret
-func (s *Service) CreateSecret(ctx context.Context, ct io.Reader, size int64, version uint8, nonce string, ttl time.Duration) (id domain.SecretID, expiresAt time.Time, err error) {
+func (s *Service) CreateSecret(ctx context.Context, ct io.Reader, size int64, version uint8, nonce string, ttl time.Duration) (Created, error) {
 	if err := validateTTL(ttl, s.MinTTL, s.MaxTTL); err != nil {
-		return "", time.Time{}, domain.ErrTTLInvalid
+		return Created{}, domain.ErrTTLInvalid
 	}
 	if size <= 0 || size > s.MaxBytes {
-		return "", time.Time{}, ErrSizeExceeded
+		return Created{}, ErrSizeExceeded
 	}
 	if err := domain.ValidateProtocol(version, nonce); err != nil {
-		return "", time.Time{}, err
+		return Created{}, err
 	}
-	id, genErr := domain.NewID()
-	if genErr != nil { // extremely unlikely, but propagate
-		return "", time.Time{}, genErr
+	id, err := domain.NewID()
+	if err != nil { // extremely unlikely, but propagate
+		return Created{}, err
 	}
-	now := s.Clock.Now()
-	expiresAt = now.Add(ttl)
+	tok, err := domain.NewManageToken()
+	if err != nil {
+		return Created{}, err
+	}
+	expiresAt := s.Clock.Now().Add(ttl)
 	meta := Meta{Version: version, NonceB64u: nonce}
-	if err = s.Store.Save(ctx, id.String(), meta, ct, size, expiresAt); err != nil {
-		return id, expiresAt, err
+	if err = s.Store.Save(ctx, id.String(), meta, tok.Hash(), ct, size, expiresAt); err != nil {
+		return Created{}, err
 	}
+	s.inc("secrets_created_total")
+	return Created{ID: id, ExpiresAt: expiresAt, ManageToken: tok}, nil
+}
+
+// Status reports a pending secret to the sender holding its manage token.
+//
+// Parameters:
+//   - ctx: request context.
+//   - idStr: secret ID.
+//   - tokenStr: manage token issued by CreateSecret.
+//
+// Returns the secret's timestamps, or domain.ErrInvalidID,
+// domain.ErrInvalidManage, ErrNotFound, or a storage error.
+func (s *Service) Status(ctx context.Context, idStr, tokenStr string) (SecretStatus, error) {
+	tok, err := parseManage(idStr, tokenStr)
+	if err != nil {
+		return SecretStatus{}, err
+	}
+	return s.Store.Status(ctx, idStr, tok.Hash())
+}
+
+// Revoke permanently deletes a pending secret on behalf of its sender, even if
+// a recipient holds an active claim lease.
+//
+// Parameters:
+//   - ctx: request context.
+//   - idStr: secret ID.
+//   - tokenStr: manage token issued by CreateSecret.
+//
+// Returns nil on deletion, or domain.ErrInvalidID, domain.ErrInvalidManage,
+// ErrNotFound, or a storage error.
+func (s *Service) Revoke(ctx context.Context, idStr, tokenStr string) error {
+	tok, err := parseManage(idStr, tokenStr)
+	if err != nil {
+		return err
+	}
+	if err = s.Store.Revoke(ctx, idStr, tok.Hash()); err != nil {
+		return err
+	}
+	s.inc("secrets_revoked_total")
+	return nil
+}
+
+// parseManage validates a secret ID and manage token pair.
+//
+// Parameters:
+//   - idStr: secret ID.
+//   - tokenStr: manage token.
+//
+// Returns the parsed token, or domain.ErrInvalidID / domain.ErrInvalidManage.
+func parseManage(idStr, tokenStr string) (domain.ManageToken, error) {
+	if _, err := domain.ParseID(idStr); err != nil {
+		return "", domain.ErrInvalidID
+	}
+	return domain.ParseManageToken(tokenStr)
+}
+
+// inc increments a named counter when metrics are configured. Names are
+// hard-coded to avoid importing the metrics package (dependency cycle).
+//
+// Parameters:
+//   - name: counter name.
+func (s *Service) inc(name string) {
 	if s.Metrics != nil {
-		// Assumes metric name constant defined in metrics package; hard-code string to avoid import.
-		s.Metrics.Inc("secrets_created_total", 1)
+		s.Metrics.Inc(name, 1)
 	}
-	return id, expiresAt, nil
 }
 
 // Claim validates the ID and reserves the secret for the caller.
@@ -143,9 +219,7 @@ func (s *Service) Ack(ctx context.Context, idStr, tokenStr string) error {
 	if err = s.Store.Ack(ctx, idStr, tok.Hash()); err != nil {
 		return err
 	}
-	if s.Metrics != nil {
-		s.Metrics.Inc("secrets_consumed_total", 1)
-	}
+	s.inc("secrets_consumed_total")
 	return nil
 }
 
