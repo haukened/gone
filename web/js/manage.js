@@ -114,7 +114,7 @@
       ['error', function () { view.showCheckError(api.INVALID_LINK, false); }]
     ]);
     const render = modes.get(mode);
-    if (!render) return false;
+    if (typeof render !== 'function') return false;
     render();
     return true;
   }
