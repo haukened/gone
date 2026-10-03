@@ -50,11 +50,13 @@ curl -H 'Authorization: Bearer tok' http://localhost:9090/
 5. You send that full URL (including everything after the `#`) to someone.
 6. When they open it, the server hands their browser the encrypted blob, the browser decrypts it locally using the part after `#`, then tells the server to delete it.
 7. A refresh or second visit won’t work—the secret is already gone.
+8. Changed your mind? Before you leave the result page, open **Manage this secret** to get a private manage link. Keep it for yourself: it shows whether the secret is still waiting and lets you delete it before anyone opens it.
 
 Guarantees (simple terms):
 * Server never learns the plaintext.
 * Link works only one time.
 * Expired or used links are dead.
+* Your manage link can never reveal the secret, and once the secret is opened, deleted, or expired, the server keeps no record that it existed.
 
 ---
 
@@ -72,7 +74,7 @@ Environment variables only (no flags, no config files):
 | `GONE_METRICS_ADDR` | Optional metrics listener address. | (empty) |
 | `GONE_METRICS_TOKEN` | Bearer token for the metrics endpoint. Metrics stay disabled unless both this and `GONE_METRICS_ADDR` are set. | (empty) |
 | `GONE_RATE_CREATE` | Per-client budget for creating secrets, as `N/s`, `N/m`, or `N/h`. `0` disables it. | `10/m` |
-| `GONE_RATE_READ` | Per-client budget for opening and acknowledging secrets (`GET`/`DELETE`). `0` disables it. | `30/m` |
+| `GONE_RATE_READ` | Per-client budget for opening and acknowledging secrets (`GET`/`DELETE`) and for the sender's status and revoke calls. `0` disables it. | `30/m` |
 | `GONE_RATE_BURST` | Requests a client may make back to back before the rate applies (1–1000). | `10` |
 | `GONE_TRUSTED_PROXIES` | Comma list of proxy IPs/CIDRs whose `X-Forwarded-For` header is trusted. | (empty) |
 
@@ -218,24 +220,28 @@ The normative byte-level specification, including the envelope format, sanitizat
 2. Encrypts plaintext with AAD `gone:v1`. A text‑only secret is raw UTF‑8; a secret with files is a `GONE2` envelope (magic, JSON header listing the message length and each file's name/type/size, then message bytes, then file bytes) so file names and types are encrypted too.
 3. Sends ciphertext + nonce (`X-Gone-Nonce`) + version (`X-Gone-Version`). Key never leaves browser.
 4. Server stores ciphertext + metadata only.
-5. Response returns secret ID + expiry.
-6. Share link: `https://host/secret/{id}#v1:<base64url-key>`.
+5. Response returns secret ID + expiry + a random manage token. The server keeps only the token's SHA‑256.
+6. Share link: `https://host/secret/{id}#v1:<base64url-key>`. Manage link (sender only): `https://host/manage/{id}#<manage-token>`.
 7. First `GET /api/secret/{id}` atomically *claims* the secret and streams the ciphertext with a random claim token (`X-Gone-Claim`) and lease expiry (`X-Gone-Claim-Expires`). Any other GET without that token gets `404`, exactly as if the secret were gone.
 8. If the download is interrupted, the browser retries the GET with `X-Gone-Claim` to receive the same ciphertext again (until the lease lapses).
 9. Browser checks the byte count, decrypts locally (AES‑GCM authenticates every byte), then sends `DELETE /api/secret/{id}` with `X-Gone-Claim`; the server deletes the record and blob (`204`).
 10. If no acknowledgement arrives before `GONE_CLAIM_LEASE` lapses, the janitor deletes the secret anyway. It is never served to a second party.
+11. The sender's manage page sends the token in `X-Gone-Manage` to `GET /api/secret/{id}/status` (still pending?) or `POST /api/secret/{id}/revoke` (delete now).
 
 Properties:
 * Compromise yields only ciphertext & nonces.
 * Must possess both path ID and fragment key.
 * Atomic claim (only the token holder can re-fetch) prevents replay; only a SHA‑256 hash of the claim token is stored.
 * AES‑GCM integrity + fixed AAD protect against tamper.
+* Manage tokens: 256 random bits, carried only in the URL fragment and the `X-Gone-Manage` header (never in a path, query, or log), stored only as a SHA‑256 hash, and compared in constant time. The custom header forces a CORS preflight that the server never grants, so other sites cannot revoke your secrets.
+* No tombstones: status and revoke answer `404` alike for opened, revoked, expired, unknown, and wrong‑token secrets, so the server's answers reveal nothing beyond "still pending".
 
 ### Threat Model Snapshot
 Defended:
 * TLS transport assumed.
 * No server knowledge of keys / plaintext.
 * Atomic single claim; deletion after confirmed receipt or lease expiry.
+* Sender revoke of a pending secret, authorised by a token only the sender holds.
 * Timely expiry deletion.
 
 Partially Defended:
@@ -245,7 +251,8 @@ Partially Defended:
 Out of Scope (current):
 * Malicious browser extensions.
 * Sophisticated timing side channels.
-* URL hygiene / accidental fragment leakage.
+* URL hygiene / accidental fragment leakage (this includes the manage link: anyone holding it can revoke that secret, though never read it).
+* Revoking after the recipient has downloaded the ciphertext: revoke wins over an unacknowledged claim, but cannot recall bytes already delivered.
 * Large scale distributed DoS.
 
 Operational Tips:
@@ -287,7 +294,7 @@ Disable by removing parameter & clearing the key.
 The full plan for Gone v3 is in [docs/ROADMAP.md](docs/ROADMAP.md). Highlights:
 * Rate limiting / abuse guard (done)
 * Optional passphrase (second factor alongside the link)
-* Sender status & revoke via a private management link
+* Sender status & revoke via a private management link (done)
 * Command-line client (`gone-cli`)
 * Web UI revamp
 

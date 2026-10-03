@@ -13,8 +13,8 @@ func TestNewClaimTokenRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewClaimToken: %v", err)
 		}
-		if len(tok) != claimTokenLen {
-			t.Fatalf("len=%d want %d", len(tok), claimTokenLen)
+		if len(tok) != bearerTokenLen {
+			t.Fatalf("len=%d want %d", len(tok), bearerTokenLen)
 		}
 		if _, err := ParseClaimToken(tok.String()); err != nil {
 			t.Fatalf("ParseClaimToken(%q): %v", tok, err)
@@ -40,7 +40,7 @@ func TestParseClaimTokenInvalid(t *testing.T) {
 		{"long", valid.String() + "A"},
 		{"bad char", "!" + valid.String()[1:]},
 		{"padding", valid.String()[:42] + "="},
-		{"std alphabet", strings.Repeat("+", claimTokenLen)},
+		{"std alphabet", strings.Repeat("+", bearerTokenLen)},
 		// Last char must have zero trailing bits for 32 bytes; '_' (63) sets them.
 		{"non-canonical", valid.String()[:42] + "_"},
 	}
@@ -54,7 +54,7 @@ func TestParseClaimTokenInvalid(t *testing.T) {
 }
 
 func TestClaimTokenHash(t *testing.T) {
-	tok := ClaimToken(strings.Repeat("A", claimTokenLen))
+	tok := ClaimToken(strings.Repeat("A", bearerTokenLen))
 	h := tok.Hash()
 	if len(h) != 64 {
 		t.Fatalf("hash len=%d want 64", len(h))
@@ -62,7 +62,7 @@ func TestClaimTokenHash(t *testing.T) {
 	if h != tok.Hash() {
 		t.Fatalf("hash not deterministic")
 	}
-	other := ClaimToken(strings.Repeat("B", claimTokenLen))
+	other := ClaimToken(strings.Repeat("B", bearerTokenLen))
 	if other.Hash() == h {
 		t.Fatalf("distinct tokens produced same hash")
 	}

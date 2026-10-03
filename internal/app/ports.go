@@ -33,15 +33,23 @@ type Claimed struct {
 	ClaimedUntil time.Time     // lease deadline for retry and acknowledgement
 }
 
+// SecretStatus describes a pending secret as reported to its sender. There is
+// deliberately no "opened" or "revoked" state: a secret is pending or gone.
+type SecretStatus struct {
+	CreatedAt time.Time // when the secret was stored
+	ExpiresAt time.Time // TTL deadline
+}
+
 // SecretStore is the storage port for secrets. Implementations must provide
 // durability and the single-consume invariant. They typically coordinate an
 // index (e.g. SQLite) with blob storage (filesystem) but those details are
 // outside this interface.
 type SecretStore interface {
 	// Save persists a new secret blob with metadata and an absolute expiry.
-	// 'r' streams exactly 'size' bytes of ciphertext. The call MUST return
-	// only after the data and metadata are crash-safe (fsync / committed).
-	Save(ctx context.Context, id string, meta Meta, r io.Reader, size int64, expiresAt time.Time) error
+	// 'r' streams exactly 'size' bytes of ciphertext. manageHash is the hex
+	// SHA-256 of the sender's manage token. The call MUST return only after
+	// the data and metadata are crash-safe (fsync / committed).
+	Save(ctx context.Context, id string, meta Meta, manageHash string, r io.Reader, size int64, expiresAt time.Time) error
 
 	// Claim reserves a secret for a single client and returns its ciphertext
 	// without deleting it, enabling retry of an interrupted download.
@@ -56,6 +64,17 @@ type SecretStore interface {
 	// client confirms full receipt. claimHash must match the active claim;
 	// otherwise ErrNotFound is returned.
 	Ack(ctx context.Context, id, claimHash string) error
+
+	// Status returns the creation and expiry times of a pending secret whose
+	// manage hash matches. It returns ErrNotFound for absent, expired,
+	// lapsed-claim, unmanaged, or mismatched secrets, without distinction.
+	// A secret under an active claim lease is still pending.
+	Status(ctx context.Context, id, manageHash string) (SecretStatus, error)
+
+	// Revoke permanently deletes a pending secret (metadata and payload) whose
+	// manage hash matches, even during an active claim lease. It returns
+	// ErrNotFound under the same conditions as Status.
+	Revoke(ctx context.Context, id, manageHash string) error
 
 	// DeleteExpired removes (or tombstones) secrets whose expiry is <= t and
 	// returns the count of secrets affected. Best-effort cleanup of blob files

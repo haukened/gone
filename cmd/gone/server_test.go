@@ -138,6 +138,7 @@ func TestBuildHandler_NilErrorPage(t *testing.T) {
 		index:  template.Must(template.New("index").Parse("i")),
 		about:  template.Must(template.New("about").Parse("a")),
 		secret: template.Must(template.New("secret").Parse("s")),
+		manage: template.Must(template.New("manage").Parse("m")),
 	}
 	h := buildHandler(cfg, buildService(idx, stubBlobStorage{}, cfg, realClock{}), db, blobDir, tmpls, wembed.Assets).Router()
 	rr := httptest.NewRecorder()

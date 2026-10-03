@@ -131,9 +131,13 @@ func classifyCreateError(err error) (int, string) {
 	return http.StatusBadRequest, "bad request"
 }
 
-// handleCreateSecret implements POST /api/secret.
-// handleCreateSecret implements POST /api/secret.
-// It delegates validation to parseAndValidateCreate to reduce complexity.
+// handleCreateSecret implements POST /api/secret. It delegates validation to
+// parseAndValidateCreate and responds 201 with the secret ID, expiry, and the
+// sender's manage token. The manage token is never logged.
+//
+// Parameters:
+//   - w: response writer.
+//   - r: incoming request.
 func (h *Handler) handleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	cid, _ := GetCorrelationID(r.Context())
 	clog := slog.With("domain", "secret", "cid", cid)
@@ -147,17 +151,19 @@ func (h *Handler) handleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	}
 	body := http.MaxBytesReader(w, r.Body, meta.contentLength)
 	defer body.Close()
-	id, expires, svcErr := h.Service.CreateSecret(r.Context(), body, meta.contentLength, meta.version, meta.nonce, meta.ttl)
+	created, svcErr := h.Service.CreateSecret(r.Context(), body, meta.contentLength, meta.version, meta.nonce, meta.ttl)
 	if svcErr != nil {
 		h.mapServiceError(r.Context(), w, svcErr)
 		clog.Error("create", "action", "error", "kind", "service")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(struct {
-		ID        string    `json:"id"`
-		ExpiresAt time.Time `json:"expires_at"`
-	}{ID: id.String(), ExpiresAt: expires})
+		ID          string    `json:"id"`
+		ExpiresAt   time.Time `json:"expires_at"`
+		ManageToken string    `json:"manage_token"`
+	}{ID: created.ID.String(), ExpiresAt: created.ExpiresAt, ManageToken: created.ManageToken.String()})
 	clog.Info("create", "action", "success", "ttl_secs", int(meta.ttl.Seconds()))
 }

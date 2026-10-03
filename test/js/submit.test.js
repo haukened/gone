@@ -35,7 +35,12 @@ function page(env, opts) {
     h('input', { id: 'share-link' }),
     h('button', { id: 'copy-link' }, [h('span', { textContent: 'Copy link' })]),
     h('span', { id: 'copy-status' }),
-    h('time', { id: 'result-expiry' })
+    h('time', { id: 'result-expiry' }),
+    h('details', { id: 'manage-disclosure', hidden: true }, [
+      h('input', { id: 'manage-link' }),
+      h('button', { id: 'copy-manage' }, [h('span', { textContent: 'Copy manage link' })]),
+      h('span', { id: 'manage-copy-status' })
+    ])
   ]);
   env.document.body.append(compose, result);
 }
@@ -141,14 +146,17 @@ test('successful submission encrypts, uploads and shows the share link', async (
   assert.equal(b.$('upload-progress').textContent, '50%');
   const ciphertext = sent.body.slice();
   const nonce = sent.headers['X-Gone-Nonce'];
-  sent.respond(201, { id: 'abc123', expires_at: '2030-01-01T00:00:00Z' });
+  const ID = '0123456789abcdef0123456789abcdef';
+  sent.respond(201, { id: ID, expires_at: '2030-01-01T00:00:00Z', manage_token: 'M'.repeat(43) });
 
   await waitFor(() => !b.$('result').hidden);
+  assert.equal(b.$('manage-disclosure').hidden, false);
+  assert.equal(b.$('manage-link').value, `https://gone.test/manage/${ID}#${'M'.repeat(43)}`);
   assert.equal(b.$('compose').hidden, true);
   assert.equal(b.env.document.activeElement, b.$('result-heading'));
   assert.equal(textarea.value, '');
   const share = new URL(b.$('share-link').value);
-  assert.equal(share.pathname, '/secret/abc123');
+  assert.equal(share.pathname, '/secret/' + ID);
 
   const gc = window.goneCrypto;
   const key = gc.importKeyB64(share.hash.replace('#v1:', ''));
@@ -234,6 +242,7 @@ test('secure wipe failure is ignored', async (t) => {
   submit(b);
   await waitFor(() => !b.$('result').hidden);
   assert.equal(wipes, 1);
+  assert.equal(b.$('manage-disclosure').hidden, true, 'no manage_token hides the manage section');
 });
 
 test('preview=result renders a mock share panel without focus', (t) => {
@@ -242,6 +251,8 @@ test('preview=result renders a mock share panel without focus', (t) => {
   assert.equal(b.$('result').hidden, false);
   assert.equal(b.env.document.activeElement, null);
   assert.ok(new Date(b.$('result-expiry').getAttribute('datetime')) > new Date());
+  assert.equal(b.$('manage-link').value, 'https://gone.test/manage/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#' + 'B'.repeat(43));
+  assert.equal(b.$('manage-disclosure').hidden, false);
   const c = boot(t, { url: 'https://gone.test/?preview=other' });
   assert.equal(c.$('result').hidden, true);
 });

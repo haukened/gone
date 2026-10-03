@@ -55,7 +55,7 @@ Server-side only; the browser already shows a message on `429`.
 
 **Scope**
 * Per-client token buckets in `internal/httpx` middleware, written with the standard library.
-* Separate budgets for creating secrets, claiming secrets, and (once Phase 4 lands) management calls. Health probes and static assets are not limited.
+* Separate budgets for creating secrets and for reading them. Reads include claims, acknowledgements, and Phase 4's status and revoke calls. Health probes and static assets are not limited.
 * Requests over the limit get `429 Too Many Requests` with a `Retry-After` header and the usual JSON error body.
 * The client address comes from the connection by default. `X-Forwarded-For` is trusted only when the request arrives from an address listed in `GONE_TRUSTED_PROXIES`.
 * Idle buckets are removed on a timer, so memory stays bounded under address churn.
@@ -65,7 +65,7 @@ Server-side only; the browser already shows a message on `429`.
 | Variable | Purpose |
 | -------- | ------- |
 | `GONE_RATE_CREATE` | Create budget (default `10/m`) |
-| `GONE_RATE_READ` | Claim and acknowledge budget (default `30/m`) |
+| `GONE_RATE_READ` | Claim, acknowledge, status, and revoke budget (default `30/m`) |
 | `GONE_RATE_BURST` | Burst allowance per bucket (default `10`) |
 | `GONE_TRUSTED_PROXIES` | CIDRs whose `X-Forwarded-For` header is trusted |
 
@@ -121,29 +121,32 @@ A full redesign that keeps today's constraints: vanilla JS, no `innerHTML`, stri
 ---
 
 ## Phase 4: Sender status and revoke
-The sender can see a secret's state and destroy it before it is opened.
+**Status: implemented** on `feat/sender-manage`.
+
+The sender can check whether a secret is still waiting and delete it before it is opened.
 
 **Scope**
-* **Management token.** Creating a secret now also returns a random 256-bit `manage_token`. The server stores only its SHA-256 hash, the same way it handles claim tokens.
-* **Management link:** `/manage/{id}#<manage_token>`. The token lives in the URL fragment, so it never reaches server logs or `Referer` headers.
-* **API (proposed).** Both calls send the token in an `X-Gone-Manage` header. A wrong token gets the same `404` as an unknown ID.
+* **Manage token.** Creating a secret also returns a random 256-bit `manage_token` (43-character base64url). The server stores only its SHA-256 hash in a new `manage_hash` column and compares it in constant time.
+* **Manage link:** `/manage/{id}#<manage_token>`. The token lives in the URL fragment, so it never reaches server logs or `Referer` headers. The page validates the link before making any request.
+* **API.** Both calls send the token in an `X-Gone-Manage` header and share the `GONE_RATE_READ` budget.
 
   | Method | Path | Purpose |
   | ------ | ---- | ------- |
-  | GET | `/api/secret/{id}/status` | Returns `pending`, `claimed`, `opened`, `revoked`, or `expired`, with timestamps |
-  | POST | `/api/secret/{id}/revoke` | Deletes the ciphertext right away |
+  | GET | `/api/secret/{id}/status` | `200 {state: "pending", created_at, expires_at}` while the secret is waiting |
+  | POST | `/api/secret/{id}/revoke` | `204`; deletes the secret right away |
 
-* **Tombstones.** When a secret is opened or revoked, the ciphertext is deleted at once. A small row (ID, management hash, state, timestamps) stays until the original expiry so the sender can still check its status. The janitor removes expired tombstones.
-* **Schema migrations.** Add a small `PRAGMA user_version` migration step to the SQLite store, since the current schema can only be created, not altered. This phase adds the first migration: the management-hash column, the state, and the tombstone timestamps.
-* **UI.** A management page using the Phase 3 components, and the management link shown on the result card.
+* **No tombstones.** Opened, revoked, expired, unknown, and wrong-token secrets all return the same `404`. Nothing about a secret is kept once it is gone, so status can only ever say "still waiting" or "gone".
+* **Claim leases.** A secret under an active claim lease still reports pending. Revoke always wins: it deletes the secret mid-lease, and the recipient's acknowledgement then fails with `404`.
+* **Schema migrations.** A `PRAGMA user_version` migration runner. Each step runs in a `BEGIN IMMEDIATE` transaction with its version bump. Version 2 adds `manage_hash`. Rows created before it have no hash, so status and revoke on them return `404`.
+* **UI.** A "Manage this secret" disclosure on the result card holds the manage link. The `/manage/{id}` page checks status once on load, offers "Check again", and asks for confirmation before deleting.
 
-**Open questions**
-* Is it acceptable to keep a tombstone (no ciphertext) until the original expiry? The alternative is "unknown" once a secret is gone, which makes status much less useful.
-* Should status show whether the recipient's claim lease is still active, or only whether the secret has been opened?
+**Decisions** (formerly open questions)
+* Tombstones were rejected. Keeping a row after a secret is gone would leak "this ID existed" and when it was opened. A uniform `404` is simpler and leaks nothing.
+* Status does not expose the claim lease. "Pending" means not yet acknowledged.
 
 **Done when**
 * Store, service, and handler tests cover each state change, including a revoke that races with a claim.
-* `docs/openapi.yaml` and `docs/README.md` are updated, and rate limits apply to the new endpoints.
+* `docs/openapi.yaml`, `docs/protocol.md`, and `docs/README.md` are updated, and rate limits apply to the new endpoints.
 
 ---
 
@@ -204,6 +207,6 @@ A single static binary that can send and receive secrets.
 | 1. Rate limiting | Done |
 | 2. Protocol spec + Go envelope | Done |
 | 3. Web UI revamp | Implemented |
-| 4. Sender status + revoke | Planned |
+| 4. Sender status + revoke | Implemented |
 | 5. Optional passphrase | Planned |
 | 6. CLI | Planned |

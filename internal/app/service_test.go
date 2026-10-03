@@ -27,12 +27,17 @@ type mockStore struct {
 
 	ackErr error
 
+	status    SecretStatus
+	statusErr error
+	revokeErr error
+
 	// captured on Save
-	savedID      string
-	savedMeta    Meta
-	savedSize    int64
-	savedExpires time.Time
-	saveCalled   bool
+	savedManageHash string
+	savedID         string
+	savedMeta       Meta
+	savedSize       int64
+	savedExpires    time.Time
+	saveCalled      bool
 
 	claimCalled       bool
 	claimID           string
@@ -43,12 +48,18 @@ type mockStore struct {
 	ackCalled bool
 	ackID     string
 	ackHash   string
+
+	statusID, statusHash string
+
+	revokeCalled         bool
+	revokeID, revokeHash string
 }
 
-func (m *mockStore) Save(ctx context.Context, id string, meta Meta, r io.Reader, size int64, expiresAt time.Time) error {
+func (m *mockStore) Save(ctx context.Context, id string, meta Meta, manageHash string, r io.Reader, size int64, expiresAt time.Time) error {
 	_ = ctx
 	_ = r
 	m.saveCalled = true
+	m.savedManageHash = manageHash
 	m.savedID = id
 	m.savedMeta = meta
 	m.savedSize = size
@@ -72,6 +83,17 @@ func (m *mockStore) Claim(ctx context.Context, id, claimHash string, retry bool,
 		Size:         m.claimSize,
 		ClaimedUntil: claimedUntil,
 	}, nil
+}
+
+func (m *mockStore) Status(_ context.Context, id, manageHash string) (SecretStatus, error) {
+	m.statusID, m.statusHash = id, manageHash
+	return m.status, m.statusErr
+}
+
+func (m *mockStore) Revoke(_ context.Context, id, manageHash string) error {
+	m.revokeCalled = true
+	m.revokeID, m.revokeHash = id, manageHash
+	return m.revokeErr
 }
 
 func (m *mockStore) Ack(ctx context.Context, id, claimHash string) error {
@@ -126,9 +148,16 @@ func TestServiceCreateSecretSuccess(t *testing.T) {
 	svc := &Service{Store: ms, Clock: fixedClock{now: now}, MaxBytes: 1024, MinTTL: time.Minute, MaxTTL: 10 * time.Minute}
 	data := "ciphertext"
 	ttl := 2 * time.Minute
-	id, exp, err := svc.CreateSecret(context.Background(), strings.NewReader(data), int64(len(data)), 1, "AAAAAAAAAAAAAAAA", ttl)
+	created, err := svc.CreateSecret(context.Background(), strings.NewReader(data), int64(len(data)), 1, "AAAAAAAAAAAAAAAA", ttl)
 	if err != nil {
 		t.Fatalf("CreateSecret error: %v", err)
+	}
+	id, exp := created.ID, created.ExpiresAt
+	if _, err = domain.ParseManageToken(created.ManageToken.String()); err != nil {
+		t.Fatalf("manage token invalid: %v", err)
+	}
+	if ms.savedManageHash != created.ManageToken.Hash() {
+		t.Fatalf("saved manage hash mismatch")
 	}
 	if !id.Valid() {
 		t.Fatalf("returned id invalid: %s", id)
@@ -157,11 +186,11 @@ func TestServiceCreateSecretTTLInvalid(t *testing.T) {
 	ms := &mockStore{}
 	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 1024, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
 	// below min
-	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, 1, "AAAAAAAAAAAAAAAA", 30*time.Second); err != domain.ErrTTLInvalid {
+	if _, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, 1, "AAAAAAAAAAAAAAAA", 30*time.Second); err != domain.ErrTTLInvalid {
 		t.Fatalf("expected ErrTTLInvalid for below min, got %v", err)
 	}
 	// above max
-	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, 1, "AAAAAAAAAAAAAAAA", 10*time.Minute); err != domain.ErrTTLInvalid {
+	if _, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, 1, "AAAAAAAAAAAAAAAA", 10*time.Minute); err != domain.ErrTTLInvalid {
 		t.Fatalf("expected ErrTTLInvalid for above max, got %v", err)
 	}
 }
@@ -181,7 +210,7 @@ func TestServiceCreateSecretProtocolValidation(t *testing.T) {
 	for _, c := range cases {
 		ms := &mockStore{}
 		svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 10, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
-		_, _, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, c.version, c.nonce, time.Minute)
+		_, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, c.version, c.nonce, time.Minute)
 		if !errors.Is(err, c.want) {
 			t.Errorf("%s: err = %v, want %v", c.name, err, c.want)
 		}
@@ -194,10 +223,10 @@ func TestServiceCreateSecretProtocolValidation(t *testing.T) {
 func TestServiceCreateSecretSizeValidation(t *testing.T) {
 	ms := &mockStore{}
 	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 10, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
-	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader(""), 0, 1, "AAAAAAAAAAAAAAAA", time.Minute); err != ErrSizeExceeded {
+	if _, err := svc.CreateSecret(context.Background(), strings.NewReader(""), 0, 1, "AAAAAAAAAAAAAAAA", time.Minute); err != ErrSizeExceeded {
 		t.Fatalf("expected ErrSizeExceeded for size 0, got %v", err)
 	}
-	if _, _, err := svc.CreateSecret(context.Background(), strings.NewReader("01234567890"), 11, 1, "AAAAAAAAAAAAAAAA", time.Minute); err != ErrSizeExceeded {
+	if _, err := svc.CreateSecret(context.Background(), strings.NewReader("01234567890"), 11, 1, "AAAAAAAAAAAAAAAA", time.Minute); err != ErrSizeExceeded {
 		t.Fatalf("expected ErrSizeExceeded for oversize, got %v", err)
 	}
 }
@@ -206,7 +235,7 @@ func TestServiceCreateSecretStoreError(t *testing.T) {
 	boom := errors.New("boom")
 	ms := &mockStore{saveErr: boom}
 	svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, MaxBytes: 100, MinTTL: time.Minute, MaxTTL: 5 * time.Minute}
-	_, _, err := svc.CreateSecret(context.Background(), strings.NewReader("abc"), 3, 1, "AAAAAAAAAAAAAAAA", 2*time.Minute)
+	_, err := svc.CreateSecret(context.Background(), strings.NewReader("abc"), 3, 1, "AAAAAAAAAAAAAAAA", 2*time.Minute)
 	if err != boom {
 		t.Fatalf("expected store error propagation, got %v", err)
 	}
@@ -371,5 +400,101 @@ func TestServiceAck(t *testing.T) {
 				t.Fatalf("consumed metric = %d, want %d", got, tc.wantMetric)
 			}
 		})
+	}
+}
+
+// mustManageToken returns a valid manage token for tests.
+func mustManageToken(t *testing.T) domain.ManageToken {
+	t.Helper()
+	tok, err := domain.NewManageToken()
+	if err != nil {
+		t.Fatalf("NewManageToken: %v", err)
+	}
+	return tok
+}
+
+func TestServiceStatus(t *testing.T) {
+	validID := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	tok := mustManageToken(t)
+	now := time.Unix(1700000000, 0)
+	want := SecretStatus{CreatedAt: now, ExpiresAt: now.Add(time.Hour)}
+
+	tests := []struct {
+		name     string
+		id       string
+		token    string
+		storeErr error
+		wantErr  error
+		wantHash string
+	}{
+		{name: "success", id: validID, token: tok.String(), wantHash: tok.Hash()},
+		{name: "not found propagates", id: validID, token: tok.String(), storeErr: ErrNotFound, wantErr: ErrNotFound, wantHash: tok.Hash()},
+		{name: "invalid id", id: "bad-id", token: tok.String(), wantErr: domain.ErrInvalidID},
+		{name: "invalid token", id: validID, token: "bad", wantErr: domain.ErrInvalidManage},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ms := &mockStore{status: want, statusErr: tc.storeErr}
+			svc := &Service{Store: ms, Clock: fixedClock{now: now}}
+			got, err := svc.Status(context.Background(), tc.id, tc.token)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("Status error = %v, want %v", err, tc.wantErr)
+			}
+			if ms.statusHash != tc.wantHash {
+				t.Fatalf("status hash = %q, want %q", ms.statusHash, tc.wantHash)
+			}
+			if tc.wantErr == nil && got != want {
+				t.Fatalf("Status = %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
+func TestServiceRevoke(t *testing.T) {
+	validID := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	tok := mustManageToken(t)
+	storeErr := errors.New("revoke failed")
+
+	tests := []struct {
+		name       string
+		id         string
+		token      string
+		storeErr   error
+		wantErr    error
+		wantCalled bool
+		wantMetric int64
+	}{
+		{name: "success increments revoked metric", id: validID, token: tok.String(), wantCalled: true, wantMetric: 1},
+		{name: "store error propagates without metric", id: validID, token: tok.String(), storeErr: storeErr, wantErr: storeErr, wantCalled: true},
+		{name: "not found propagates", id: validID, token: tok.String(), storeErr: ErrNotFound, wantErr: ErrNotFound, wantCalled: true},
+		{name: "invalid id", id: "bad-id", token: tok.String(), wantErr: domain.ErrInvalidID},
+		{name: "invalid token", id: validID, token: "bad", wantErr: domain.ErrInvalidManage},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ms := &mockStore{revokeErr: tc.storeErr}
+			metrics := &metricsRecorder{}
+			svc := &Service{Store: ms, Clock: fixedClock{now: time.Now()}, Metrics: metrics}
+			err := svc.Revoke(context.Background(), tc.id, tc.token)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("Revoke error = %v, want %v", err, tc.wantErr)
+			}
+			if ms.revokeCalled != tc.wantCalled {
+				t.Fatalf("revokeCalled = %v, want %v", ms.revokeCalled, tc.wantCalled)
+			}
+			if tc.wantCalled && (ms.revokeID != tc.id || ms.revokeHash != tok.Hash()) {
+				t.Fatalf("revoke args = %q/%q", ms.revokeID, ms.revokeHash)
+			}
+			if got := metrics.count("secrets_revoked_total"); got != tc.wantMetric {
+				t.Fatalf("revoked metric = %d, want %d", got, tc.wantMetric)
+			}
+		})
+	}
+}
+
+func TestServiceRevokeNilMetrics(t *testing.T) {
+	svc := &Service{Store: &mockStore{}, Clock: fixedClock{now: time.Now()}}
+	if err := svc.Revoke(context.Background(), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", mustManageToken(t).String()); err != nil {
+		t.Fatalf("Revoke: %v", err)
 	}
 }

@@ -131,3 +131,19 @@ test('buildShareURL puts the key only in the fragment', (t) => {
   assert.equal(url.search, '');
   assert.equal(url.hash, '#v1:' + gc.exportKeyB64(key));
 });
+
+test('buildManageURL puts the token only in the fragment and rejects bad input', (t) => {
+  const { up } = setup(t);
+  const id = '0123456789abcdef0123456789abcdef';
+  const token = 'aZ09_-'.repeat(7) + 'x';
+  const url = new URL(up.buildManageURL(id, token));
+  assert.equal(url.origin, 'https://gone.test');
+  assert.equal(url.pathname, '/manage/' + id);
+  assert.equal(url.search, '');
+  assert.equal(url.hash, '#' + token);
+  const cases = [
+    [id.toUpperCase(), token], [id + '0', token], ['../x', token], [undefined, token],
+    [id, token + 'a'], [id, token.slice(1)], [id, 'A'.repeat(42) + '='], [id, undefined], [id, '']
+  ];
+  for (const [i, tok] of cases) assert.equal(up.buildManageURL(i, tok), '', `${i} ${tok}`);
+});

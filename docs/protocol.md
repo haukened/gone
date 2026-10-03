@@ -14,7 +14,8 @@ sender                          server                       recipient
   | key, nonce <- CSPRNG          |                               |
   | ct = AES-256-GCM(key, pt)     |                               |
   |-- POST ct + version + nonce ->| store                         |
-  |<- 201 {id, expires_at} -------|                               |
+  |<- 201 {id, expires_at, -------|                               |
+  |        manage_token}          | keep SHA-256(manage_token)    |
   | link = /secret/{id}#v1:<key> ---------- out of band --------->|
   |                               |<- GET (claim) ----------------|
   |                               |-- ct + nonce + claim token -->|
@@ -232,6 +233,21 @@ For protocol version 1, the payload is the strict base64url encoding of the 32-b
 - Clients **MUST** match the raw, percent-encoded fragment and **MUST NOT** percent-decode it first. A `%`, a second `#`, or any other character outside the grammar makes the fragment invalid.
 - Clients **MUST** reject a malformed fragment, an unsupported version, or a payload that fails that version's validation (for v1: strict base64url decoding to 32 bytes). They must do this **before** sending the claim request, so a bad link never claims a secret.
 
+### 7.3 Manage links
+
+The sender's private link for checking or revoking a secret:
+
+```
+manage-link = base "/manage/" id "#" token
+id          = 32 lowercase hex characters
+token       = 43( ALPHA / DIGIT / "-" / "_" )
+```
+
+- The token is the `manage_token` returned by create (§8.1). It is unrelated to the decryption key, and a manage link cannot decrypt the secret.
+- The parsing rules of §7.2 apply. The fragment carries no version prefix.
+- Clients **MUST** validate both the id and the token **before** sending any request. A malformed manage link makes no request at all.
+- Clients **MUST** send the token only in the `X-Gone-Manage` header, never in a URL or a request body.
+
 ## 8. HTTP exchange
 
 The full endpoint reference, including status codes, is in [docs/README.md](README.md) and [openapi.yaml](openapi.yaml). This section lists only what is protocol-relevant.
@@ -248,6 +264,7 @@ The full endpoint reference, including status codes, is in [docs/README.md](READ
 - Each `X-Gone-*` header **MUST** appear exactly once.
 - If the version or nonce header breaks a rule, the server **MUST** respond with `400` and `invalid version` or `invalid nonce`. The application service repeats the same checks, so only valid metadata is ever stored.
 - The server never inspects the body beyond its length. It **MAY** reject bodies shorter than the tag.
+- The `201` body carries `id`, `expires_at`, and `manage_token`. The token is 32 bytes from a CSPRNG, encoded as strict base64url (43 characters). The server stores only its SHA-256 and can never return it again.
 
 ### 8.2 Claim: `GET /api/secret/{id}`
 
@@ -266,6 +283,25 @@ The client:
 ### 8.3 Acknowledge: `DELETE /api/secret/{id}`
 
 The request carries `X-Gone-Claim`. Clients **SHOULD** acknowledge only after decryption and decoding both succeed. Otherwise the lease expires and the janitor removes the secret.
+
+### 8.4 Status: `GET /api/secret/{id}/status`
+
+The request carries `X-Gone-Manage`, exactly once.
+
+- `200` with `{"state":"pending","created_at":…,"expires_at":…}` while the secret is waiting. A secret under an active claim lease is still pending: it only stops being pending when the acknowledgement deletes it.
+- `404` in every other case: opened, revoked, expired, never existed, or wrong token. The server **MUST NOT** distinguish these cases, and keeps no tombstones.
+- `400` `invalid manage token` when the header is missing, repeated, or not 43 base64url characters.
+- Status is read-only. It **MUST NOT** claim the secret, extend its lease, or delete it.
+
+The server compares SHA-256 digests in constant time. Rows created before manage tokens existed have no digest and always return `404`.
+
+### 8.5 Revoke: `POST /api/secret/{id}/revoke`
+
+The request carries `X-Gone-Manage`. Its status codes match §8.4, with `204` on success.
+
+- Revoke deletes the secret's row in one transaction, then removes any blob file (orphans are swept by the janitor). It **wins over an active claim**: if the recipient has fetched the ciphertext but not yet acknowledged it, the acknowledgement then fails with `404`. The recipient may still hold the ciphertext they downloaded, so revoke is reliable only before a claim.
+- A repeated revoke returns `404`.
+- Claim and acknowledge never read or change the manage digest.
 
 ## 9. Test vectors
 

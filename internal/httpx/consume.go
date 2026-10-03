@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -18,20 +19,48 @@ const (
 	HeaderClaimExpires = "X-Gone-Claim-Expires"
 )
 
-// handleConsumeSecret dispatches /api/secret/{id} by method:
-//   - GET claims (or re-fetches with an existing claim) the ciphertext.
-//   - DELETE acknowledges receipt and permanently deletes the secret.
+// handleConsumeSecret dispatches /api/secret/{id}[/{action}] by action and
+// method:
+//   - GET /api/secret/{id} claims (or re-fetches with an existing claim) the ciphertext.
+//   - DELETE /api/secret/{id} acknowledges receipt and permanently deletes the secret.
+//   - GET /api/secret/{id}/status reports a pending secret to its sender.
+//   - POST /api/secret/{id}/revoke deletes a pending secret for its sender.
+//
+// Any other action segment is 404; a known action with the wrong method is 405.
 //
 // Parameters:
 //   - w: response writer.
 //   - r: incoming request.
 func (h *Handler) handleConsumeSecret(w http.ResponseWriter, r *http.Request) {
-	const prefix = "/api/secret/"
-	if len(r.URL.Path) <= len(prefix) || r.URL.Path[:len(prefix)] != prefix {
+	rest, ok := strings.CutPrefix(r.URL.Path, "/api/secret/")
+	if !ok || rest == "" {
 		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
 		return
 	}
-	id := r.URL.Path[len(prefix):]
+	id, action, _ := strings.Cut(rest, "/")
+	switch action {
+	case "":
+		h.dispatchSecret(w, r, id)
+	case "status":
+		if h.allowMethod(w, r, http.MethodGet) {
+			h.handleStatusSecret(w, r, id)
+		}
+	case "revoke":
+		if h.allowMethod(w, r, http.MethodPost) {
+			h.handleRevokeSecret(w, r, id)
+		}
+	default:
+		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
+	}
+}
+
+// dispatchSecret routes /api/secret/{id} by method: GET claims, DELETE acks.
+//
+// Parameters:
+//   - w: response writer.
+//   - r: incoming request.
+//   - id: secret ID extracted from the path.
+func (h *Handler) dispatchSecret(w http.ResponseWriter, r *http.Request, id string) {
 	switch r.Method {
 	case http.MethodGet:
 		h.handleClaimSecret(w, r, id)
@@ -41,6 +70,24 @@ func (h *Handler) handleConsumeSecret(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET, DELETE")
 		h.writeError(r.Context(), w, http.StatusMethodNotAllowed, "method not allowed")
 	}
+}
+
+// allowMethod reports whether r uses method, writing 405 with an Allow header
+// when it does not.
+//
+// Parameters:
+//   - w: response writer.
+//   - r: incoming request.
+//   - method: the only permitted HTTP method.
+//
+// Returns true if the request may proceed.
+func (h *Handler) allowMethod(w http.ResponseWriter, r *http.Request, method string) bool {
+	if r.Method == method {
+		return true
+	}
+	w.Header().Set("Allow", method)
+	h.writeError(r.Context(), w, http.StatusMethodNotAllowed, "method not allowed")
+	return false
 }
 
 // handleClaimSecret implements GET /api/secret/{id}. Without an X-Gone-Claim

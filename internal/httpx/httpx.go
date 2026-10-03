@@ -19,9 +19,11 @@ import (
 // ServicePort abstracts the subset of app.Service used by the HTTP layer.
 // It is satisfied by *app.Service in production and mocked in tests.
 type ServicePort interface {
-	CreateSecret(ctx context.Context, ct io.Reader, size int64, version uint8, nonce string, ttl time.Duration) (id domain.SecretID, expiresAt time.Time, err error)
+	CreateSecret(ctx context.Context, ct io.Reader, size int64, version uint8, nonce string, ttl time.Duration) (app.Created, error)
 	Claim(ctx context.Context, idStr, token string) (app.ClaimResult, error)
 	Ack(ctx context.Context, idStr, token string) error
+	Status(ctx context.Context, idStr, token string) (app.SecretStatus, error)
+	Revoke(ctx context.Context, idStr, token string) error
 }
 
 // Handler wires HTTP endpoints to the application service.
@@ -33,6 +35,7 @@ type Handler struct {
 	IndexTmpl  IndexRenderer               // optional renderer for index page
 	AboutTmpl  AboutRenderer               // optional renderer for about page
 	SecretTmpl SecretRenderer              // optional renderer for secret consumption page
+	ManageTmpl SecretRenderer              // optional renderer for the sender manage page
 	ErrorTmpl  IndexRenderer               // optional renderer for generic error pages (404, 500, etc.)
 	Assets     http.FileSystem             // static assets filesystem (optional)
 	MinTTL     time.Duration               // lower TTL bound (from config)
@@ -40,7 +43,7 @@ type Handler struct {
 	TTLOptions []domain.TTLOption          // explicit configured TTL options
 
 	CreateLimiter  RateLimiter    // optional limiter for POST /api/secret (nil disables)
-	ReadLimiter    RateLimiter    // optional limiter for /api/secret/{id} (nil disables)
+	ReadLimiter    RateLimiter    // optional limiter for /api/secret/{id}[/status|/revoke] (nil disables)
 	TrustedProxies []netip.Prefix // peers whose X-Forwarded-For is honored
 	Metrics        Metrics        // optional counter sink for rate-limit rejections
 }
@@ -62,8 +65,9 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("/", h.handleIndex)
 	mux.HandleFunc("/about", h.handleAbout)
 	mux.HandleFunc("/secret/", h.handleSecret) // expect /secret/{id}
+	mux.HandleFunc("/manage/", h.handleManage) // expect /manage/{id}
 	mux.HandleFunc("/api/secret", h.limit(h.CreateLimiter, scopeCreate, &xffWarn, h.handleCreateSecret))
-	mux.HandleFunc("/api/secret/", h.limit(h.ReadLimiter, scopeRead, &xffWarn, h.handleConsumeSecret)) // expect GET|DELETE /api/secret/{id}
+	mux.HandleFunc("/api/secret/", h.limit(h.ReadLimiter, scopeRead, &xffWarn, h.handleConsumeSecret)) // /api/secret/{id}[/status|/revoke]
 	mux.HandleFunc("/healthz", h.handleHealth)
 	mux.HandleFunc("/readyz", h.handleReady)
 	if h.Assets != nil {

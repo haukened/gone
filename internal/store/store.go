@@ -49,7 +49,19 @@ func (s *Store) WithMetrics(m app.Metrics) *Store {
 
 // Save persists a secret. Data <= inlineMax is stored inline; larger data
 // is written to blob storage and only the reference is kept in the index.
-func (s *Store) Save(ctx context.Context, id string, meta app.Meta, r io.Reader, size int64, expiresAt time.Time) error {
+//
+// Parameters:
+//   - ctx: request context.
+//   - id: secret identifier.
+//   - meta: protocol metadata.
+//   - manageHash: hex SHA-256 of the sender's manage token.
+//   - r: ciphertext stream of exactly size bytes.
+//   - size: ciphertext length.
+//   - expiresAt: TTL deadline.
+//
+// Returns an error if the store is uninitialized, size is negative, or a
+// write fails.
+func (s *Store) Save(ctx context.Context, id string, meta app.Meta, manageHash string, r io.Reader, size int64, expiresAt time.Time) error {
 	if s == nil || s.index == nil || s.clock == nil {
 		return errors.New("store not properly initialized")
 	}
@@ -71,7 +83,10 @@ func (s *Store) Save(ctx context.Context, id string, meta app.Meta, r io.Reader,
 		}
 		external = true
 	}
-	return s.index.Insert(ctx, id, meta, inline, external, size, createdAt, expiresAt)
+	return s.index.Insert(ctx, NewRow{
+		ID: id, Meta: meta, Inline: inline, External: external, Size: size,
+		ManageHash: manageHash, CreatedAt: createdAt, ExpiresAt: expiresAt,
+	})
 }
 
 // Claim reserves a secret for one client and returns its ciphertext without
@@ -133,6 +148,46 @@ func (s *Store) Ack(ctx context.Context, id, claimHash string) error {
 		return errors.New("store not properly initialized")
 	}
 	external, err := s.index.Ack(ctx, id, claimHash)
+	if err != nil {
+		return err
+	}
+	if external {
+		_ = s.blobs.Delete(id) // best-effort; Reconcile cleans orphans
+	}
+	return nil
+}
+
+// Status reports a pending secret to the sender holding its manage token.
+//
+// Parameters:
+//   - ctx: request context.
+//   - id: secret identifier.
+//   - manageHash: hex SHA-256 of the manage token.
+//
+// Returns the secret's timestamps, app.ErrNotFound, or a storage error.
+func (s *Store) Status(ctx context.Context, id, manageHash string) (app.SecretStatus, error) {
+	if s == nil || s.index == nil || s.clock == nil {
+		return app.SecretStatus{}, errors.New("store not properly initialized")
+	}
+	return s.index.Status(ctx, id, manageHash, s.clock.Now())
+}
+
+// Revoke deletes a pending secret on behalf of its sender. The index row is
+// removed first; blob deletion is best-effort because Reconcile removes any
+// orphan left by a failure here.
+//
+// Parameters:
+//   - ctx: request context.
+//   - id: secret identifier.
+//   - manageHash: hex SHA-256 of the manage token.
+//
+// Returns app.ErrNotFound if no matching pending secret exists, or a storage
+// error.
+func (s *Store) Revoke(ctx context.Context, id, manageHash string) error {
+	if s == nil || s.index == nil || s.blobs == nil || s.clock == nil {
+		return errors.New("store not properly initialized")
+	}
+	external, err := s.index.Revoke(ctx, id, manageHash, s.clock.Now())
 	if err != nil {
 		return err
 	}

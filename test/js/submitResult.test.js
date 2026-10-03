@@ -16,10 +16,16 @@ function page(omit) {
     input: make('share-link', 'input'),
     label: h('span', { textContent: 'Copy link' }),
     status: make('copy-status', 'span'),
-    expiry: make('result-expiry', 'time')
+    expiry: make('result-expiry', 'time'),
+    manageInput: make('manage-link', 'input'),
+    manageLabel: h('span', { textContent: 'Copy manage link' }),
+    manageStatus: make('manage-copy-status', 'span')
   };
   nodes.btn = make('copy-link', 'button', {}, [h('svg'), nodes.label]);
-  const kids = [nodes.heading, nodes.input, nodes.btn, nodes.status, nodes.expiry].filter(Boolean);
+  nodes.manageBtn = make('copy-manage', 'button', {}, [nodes.manageLabel]);
+  nodes.manage = make('manage-disclosure', 'details', { hidden: true, open: true },
+    [nodes.manageInput, nodes.manageBtn, nodes.manageStatus].filter(Boolean));
+  const kids = [nodes.heading, nodes.input, nodes.btn, nodes.status, nodes.expiry, nodes.manage].filter(Boolean);
   if (nodes.view) nodes.view.append(...kids);
   env.document.body.append(...[nodes.compose, nodes.view].filter(Boolean));
   load('util', 'submitResult');
@@ -82,4 +88,37 @@ test('copy button copies and announces, or selects the link on failure', async (
   assert.equal(p.env.document.activeElement, p.input);
   assert.match(p.status.textContent, /press Ctrl\+C/);
   assert.equal(p.label.textContent, 'Copy link');
+});
+
+test('manage section shows a collapsed manage link with its own copy button', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const p = page();
+  const url = 'https://gone.test/manage/x#t';
+  p.panel.show({ shareURL: 'u', manageURL: url, expiresAt: 0 });
+  p.panel.show({ shareURL: 'u', manageURL: url + '2', expiresAt: 0 });
+  assert.equal(p.manage.hidden, false);
+  assert.equal(p.manage.open, false);
+  assert.equal(p.manageInput.value, url + '2');
+  await p.manageBtn.click().settled;
+  assert.equal(p.env.clipboard.text, url + '2');
+  assert.equal(p.manageLabel.textContent, 'Copied');
+  assert.equal(p.manageStatus.textContent, 'Manage link copied to clipboard.');
+  assert.equal(p.status.textContent, '');
+  t.mock.timers.tick(2200);
+  p.env.clipboard.fail = true;
+  await p.manageBtn.click().settled;
+  assert.equal(p.manageInput.selected, true);
+  assert.match(p.manageStatus.textContent, /press Ctrl\+C/);
+});
+
+test('manage section hides without a manage link and tolerates missing nodes', () => {
+  const p = page();
+  p.panel.show({ shareURL: 'u', manageURL: 'https://gone.test/manage/x#t', expiresAt: 0 });
+  p.panel.show({ shareURL: 'u', expiresAt: 0 });
+  assert.equal(p.manage.hidden, true);
+  assert.equal(p.manageInput.value, '');
+  for (const id of ['manage-disclosure', 'manage-link', 'copy-manage', 'manage-copy-status']) {
+    const q = page([id]);
+    assert.equal(q.panel.show({ shareURL: 'u', manageURL: 'https://gone.test/manage/x#t', expiresAt: 0 }), q.view, id);
+  }
 });

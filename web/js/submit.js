@@ -157,9 +157,12 @@
     }
   }
 
+  // showResult reveals the share link and, when the server issued one, the
+  // sender's manage link built from json.manage_token.
   function showResult(json, keyBytes) {
     window.goneResultPanel.show({
       shareURL: uploader.buildShareURL(json.id, keyBytes),
+      manageURL: uploader.buildManageURL(json.id, json.manage_token),
       expiresAt: json.expires_at
     });
   }
@@ -206,8 +209,9 @@
     const mockID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     const mockKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
     const mockURL = `${location.origin}/secret/${mockID}#v${window.goneCrypto.version}:${mockKey}`;
+    const manageURL = uploader.buildManageURL(mockID, 'B'.repeat(43));
     const future = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-    window.goneResultPanel.show({ shareURL: mockURL, expiresAt: future, focus: false });
+    window.goneResultPanel.show({ shareURL: mockURL, manageURL: manageURL, expiresAt: future, focus: false });
   }
 
   form.addEventListener('submit', handleSubmit);

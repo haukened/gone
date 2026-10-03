@@ -228,6 +228,22 @@ A tinted warning background with a hairline warning border, 4px corners, a signa
 - **Link box:** a read-only monospace field with ellipsis overflow next to Copy link. It stacks on narrow screens.
 - **Secret panel:** a surface card with a header row (label and Copy message), and the copy status announced inside the header. The message is title size, `pre-wrap`, scrolls at 60vh, and breaks anywhere.
 
+### Facts
+A `<dl>` of up to three equal columns between two hairlines: a small bold ink-3 term above a bold tabular-numeral value. Columns are at least 12rem, so a value never breaks mid-date; on a phone the facts stack in one column. The manage page uses it for Created, Expires, and Checked.
+
+### Disclosure
+A native `<details>` between two hairlines. The summary is a bold, 3rem-tall row with a CSS chevron that rotates when the disclosure opens; it underlines on hover and draws no browser marker. The body stacks its children on a `space-4` gap. It holds secondary material, such as the sender's manage link on the result card, so the primary action stays alone.
+
+### Confirm
+An inline confirmation for destructive actions, never a modal. It uses the alert's warning tint and hairline border at 4px corners, with a bold lead line and an actions row: the destructive choice as the primary button, and the safe choice as a secondary button. It is a `role="group"` labelled by its lead line. When it opens, focus moves to the lead line, so screen readers hear the consequence first. When it is dismissed, focus returns to the trigger.
+
+### Manage page
+The sender's page reuses the send screen's grammar: an intro, then numbered steps.
+- **Pending:** a Status step (facts, the horizontal lifecycle with Waiting current, and Check again) and a Delete step (a note, Delete now, then the confirm).
+- **Deleted and Gone:** each is a single-step terminal view with the gone glyph in the step's head column and one way home.
+- **Checking:** the first view, with a live status line. A malformed link or a failed check shows an alert here and the heading changes to "Couldn't check your secret."; Try again appears only when retrying could help.
+- Every view's `h1` receives focus when it appears, and live status lines announce results.
+
 ### Navigation
 - The band holds the brand on the left and the nav on the right. Nav items are 2.75rem targets at label size.
 - The theme toggle is outlined at 28% white. When pressed (`aria-pressed="true"`) it gets a marigold border, a 10% white fill, and a marigold icon.

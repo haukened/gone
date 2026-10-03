@@ -12,6 +12,8 @@
   const UPLOAD_PATH = '/api/secret';
   const NETWORK_ERROR = 'Network error uploading secret';
   const TRANSPORT_ERROR_RE = /network|abort|timed/;
+  const SECRET_ID_RE = /^[0-9a-f]{32}$/;
+  const MANAGE_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
   const UPLOAD_ERRORS = new Map([
     [400, 'The server rejected the secret'],
     [413, 'Secret too large for this server'],
@@ -78,7 +80,7 @@
 
   // upload sends the encrypted secret with the given TTL.
   //
-  // Returns the server's JSON ({id, expires_at}); rejects with a user-facing
+  // Returns the server's JSON ({id, expires_at, manage_token}); rejects with a user-facing
   // message on a non-success status or malformed response.
   async function upload(encResult, ttl, onProgress) {
     const headers = {
@@ -113,12 +115,24 @@
     return `${location.origin}/secret/${id}#v${gc.version}:${gc.exportKeyB64(keyBytes)}`;
   }
 
+  // buildManageURL returns the sender's private manage link, with the manage
+  // token in the fragment so it never reaches server logs via the path.
+  //
+  // Returns '' when id or token is malformed, so the result view can omit
+  // the manage section rather than show a broken link.
+  function buildManageURL(id, token) {
+    // Both patterns are anchored fixed-length character classes, so they run in linear time.
+    if (!SECRET_ID_RE.test(String(id)) || !MANAGE_TOKEN_RE.test(String(token))) return ''; // nosemgrep
+    return `${location.origin}/manage/${id}#${token}`;
+  }
+
   window.goneUpload = Object.freeze({
     buildPlaintext: buildPlaintext,
     encryptSelection: encryptSelection,
     upload: upload,
     uploadErrorMessage: uploadErrorMessage,
     friendlyError: friendlyError,
-    buildShareURL: buildShareURL
+    buildShareURL: buildShareURL,
+    buildManageURL: buildManageURL
   });
 })();

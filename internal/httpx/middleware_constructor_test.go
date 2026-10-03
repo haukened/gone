@@ -13,9 +13,16 @@ import (
 
 type ctorService struct{}
 
-func (ctorService) CreateSecret(context.Context, io.Reader, int64, uint8, string, time.Duration) (domain.SecretID, time.Time, error) {
-	return domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), time.Now(), nil
+func (ctorService) CreateSecret(context.Context, io.Reader, int64, uint8, string, time.Duration) (app.Created, error) {
+	return app.Created{ID: domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), ExpiresAt: time.Now()}, nil
 }
+
+func (ctorService) Status(context.Context, string, string) (app.SecretStatus, error) {
+	return app.SecretStatus{}, app.ErrNotFound
+}
+
+func (ctorService) Revoke(context.Context, string, string) error { return app.ErrNotFound }
+
 func (ctorService) Claim(context.Context, string, string) (app.ClaimResult, error) {
 	return app.ClaimResult{Claimed: app.Claimed{Body: io.NopCloser(nil)}}, nil
 }

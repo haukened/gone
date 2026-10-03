@@ -20,9 +20,16 @@ import (
 
 type noopService struct{}
 
-func (noopService) CreateSecret(_ context.Context, _ io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (domain.SecretID, time.Time, error) {
-	return domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), time.Now().Add(time.Hour), nil
+func (noopService) CreateSecret(_ context.Context, _ io.Reader, _ int64, _ uint8, _ string, _ time.Duration) (app.Created, error) {
+	return app.Created{ID: domain.SecretID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), ExpiresAt: time.Now().Add(time.Hour)}, nil
 }
+
+func (noopService) Status(context.Context, string, string) (app.SecretStatus, error) {
+	return app.SecretStatus{}, app.ErrNotFound
+}
+
+func (noopService) Revoke(context.Context, string, string) error { return app.ErrNotFound }
+
 func (noopService) Claim(_ context.Context, _ string, _ string) (app.ClaimResult, error) {
 	return app.ClaimResult{
 		Claimed: app.Claimed{

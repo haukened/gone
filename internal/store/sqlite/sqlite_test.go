@@ -36,7 +36,7 @@ func openTestDB(t *testing.T) *sql.DB {
 // insertInlineSecret inserts an inline row using the public index API.
 func insertInlineSecret(t *testing.T, ctx context.Context, ix *Index, id string, data []byte, now, expires time.Time) {
 	t.Helper()
-	if err := ix.Insert(ctx, id, app.Meta{Version: 1, NonceB64u: "nonce-" + id}, data, false, int64(len(data)), now, expires); err != nil {
+	if err := ix.Insert(ctx, store.NewRow{ID: id, Meta: app.Meta{Version: 1, NonceB64u: "nonce-" + id}, Inline: data, Size: int64(len(data)), ManageHash: testManageHash, CreatedAt: now, ExpiresAt: expires}); err != nil {
 		t.Fatalf("insert inline %q: %v", id, err)
 	}
 }
@@ -44,7 +44,7 @@ func insertInlineSecret(t *testing.T, ctx context.Context, ix *Index, id string,
 // insertExternalSecret inserts an external row using the public index API.
 func insertExternalSecret(t *testing.T, ctx context.Context, ix *Index, id string, size int64, now, expires time.Time) {
 	t.Helper()
-	if err := ix.Insert(ctx, id, app.Meta{Version: 2, NonceB64u: "nonce-" + id}, nil, true, size, now, expires); err != nil {
+	if err := ix.Insert(ctx, store.NewRow{ID: id, Meta: app.Meta{Version: 2, NonceB64u: "nonce-" + id}, External: true, Size: size, ManageHash: testManageHash, CreatedAt: now, ExpiresAt: expires}); err != nil {
 		t.Fatalf("insert external %q: %v", id, err)
 	}
 }
@@ -579,10 +579,10 @@ func TestIndexInsertDuplicate(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	meta := app.Meta{Version: 1, NonceB64u: "dup"}
-	if err := ix.Insert(ctx, "dup1", meta, []byte("a"), false, 1, now, now.Add(time.Minute)); err != nil {
+	if err := ix.Insert(ctx, store.NewRow{ID: "dup1", Meta: meta, Inline: []byte("a"), Size: 1, ManageHash: testManageHash, CreatedAt: now, ExpiresAt: now.Add(time.Minute)}); err != nil {
 		t.Fatalf("first insert: %v", err)
 	}
-	if err := ix.Insert(ctx, "dup1", meta, []byte("b"), false, 1, now, now.Add(time.Minute)); err == nil {
+	if err := ix.Insert(ctx, store.NewRow{ID: "dup1", Meta: meta, Inline: []byte("b"), Size: 1, ManageHash: testManageHash, CreatedAt: now, ExpiresAt: now.Add(time.Minute)}); err == nil {
 		t.Fatalf("expected duplicate insert error")
 	}
 }
