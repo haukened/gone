@@ -1,0 +1,30 @@
+name: Feature request
+description: Suggest an improvement or a new feature.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before asking, please check the [roadmap's non-goals](https://github.com/haukened/gone/blob/main/docs/ROADMAP.md#non-goals). Gone deliberately has no accounts, no push notifications, no secrets that open more than once, and no front-end frameworks.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation you're in, not just the feature.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security impact
+      description: Would this change what the server can see or learn, or how many times a secret can be opened?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
