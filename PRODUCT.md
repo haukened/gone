@@ -4,7 +4,7 @@
 
 ## Platform
 
-web
+web (primary), plus the `gone` command-line client for terminals and scripts
 
 ## Users
 
@@ -26,12 +26,12 @@ Zero-knowledge, one-time, self-hostable, tiny. Gone's honesty is structural — 
 
 ## Capabilities and Constraints
 
-- Create: text secret and/or up to 10 file attachments, server-configured max size, expiry (TTL) chosen from server-configured bounds.
-- Result: one shareable link containing the decryption key in the fragment.
-- Receive: confirm-to-reveal, decrypt locally, show text, download attachments; states for expired, already opened/not found, and decryption failure.
-- Planned (slots only, not shipped): optional passphrase (receive-side prompt, wrong-passphrase state) and a sender management/revoke link.
+- Create: text secret and/or up to 10 file attachments, server-configured max size, expiry (TTL) chosen from server-configured bounds, optional passphrase (typed or five generated words).
+- Result: a shareable link containing the decryption key in the fragment, plus a private manage link for the sender. With a passphrase, a reminder to send it through a different channel.
+- Receive: confirm-to-reveal, passphrase prompt for v2 links (retries against one download), decrypt locally, show text, download attachments; states for expired, already opened/not found, wrong passphrase, and decryption failure.
+- Manage: the sender's manage link shows whether the secret is still waiting and can delete it before it is opened. It can never reveal the secret.
 - Technical: Go html/template pages, vanilla JS with WebCrypto, strict CSP (self-only scripts/styles/fonts, no inline), no third-party assets or CDNs, no innerHTML, works over HTTPS; warns when served insecurely.
-- Pages: send (home), result, receive, about, error.
+- Pages: send (home), result, receive, manage, about, error.
 
 ## Brand Commitments
 

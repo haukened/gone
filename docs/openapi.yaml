@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Gone Secret Sharing API
-  version: 0.4.0
+  version: 3.0.0
   description: |
     Minimal API for one-time secret creation and consumption.
     Secrets are created with a TTL and may be stored inline or in external blob storage.
@@ -14,6 +14,8 @@ info:
     There are no tombstones: opened, revoked, expired, unknown, and wrong-token secrets
     all return the same 404.
     This spec enumerates all HTTP statuses the current implementation may emit.
+    Every route also returns 400 `invalid correlation id` when an X-Correlation-ID request
+    header is present but is not a UUID.
 servers:
   - url: /
     description: >-
@@ -111,12 +113,6 @@ paths:
             `missing required headers` (absent, empty, or repeated X-Gone-*
             header), `invalid version`, `invalid nonce`, `invalid ttl`,
             `ttl invalid`, or `bad request`.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Path not found (incorrect URL such as /api/secret/extra)
           content:
             application/json:
               schema:

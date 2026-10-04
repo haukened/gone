@@ -81,24 +81,24 @@ Environment variables only (no flags, no config files):
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GONE_ADDR` | Listen address (`host:port` or `:port`). | `:8080` |
+| `GONE_ADDR` | Listen address: an IP literal and port (`127.0.0.1:8080`, `[::1]:8080`) or `:port`. Hostnames such as `localhost` are rejected. | `:8080` |
 | `GONE_DATA_DIR` | Data directory (SQLite DB + blobs). | `/data` |
 | `GONE_INLINE_MAX_BYTES` | Max ciphertext size stored inline in SQLite. | `8192` |
 | `GONE_MAX_BYTES` | Absolute max secret size in bytes (message + attachments combined). | `10485760` (10 MiB) |
-| `GONE_TTL_OPTIONS` | Comma list of selectable TTLs. | `5m,30m,1h,2h,4h,8h,24h` |
+| `GONE_TTL_OPTIONS` | Comma list of selectable TTLs. Needs at least two distinct values. | `5m,30m,1h,2h,4h,8h,24h` |
 | `GONE_CLAIM_LEASE` | How long an opened secret is reserved for the recipient's browser to finish downloading and confirm deletion. If it never confirms (closed tab, network drop), the secret is deleted when the lease lapses. Max `15m`. | `2m` |
 | `GONE_METRICS_ADDR` | Optional metrics listener address. | (empty) |
 | `GONE_METRICS_TOKEN` | Bearer token for the metrics endpoint. Metrics stay disabled unless both this and `GONE_METRICS_ADDR` are set. | (empty) |
-| `GONE_RATE_CREATE` | Per-client budget for creating secrets, as `N/s`, `N/m`, or `N/h`. `0` disables it. | `10/m` |
+| `GONE_RATE_CREATE` | Per-client budget for creating secrets, as `N/s`, `N/m`, or `N/h` (`N` up to 1,000,000). `0` disables it. | `10/m` |
 | `GONE_RATE_READ` | Per-client budget for opening and acknowledging secrets (`GET`/`DELETE`) and for the sender's status and revoke calls. `0` disables it. | `30/m` |
 | `GONE_RATE_BURST` | Requests a client may make back to back before the rate applies (1–1000). | `10` |
-| `GONE_TRUSTED_PROXIES` | Comma list of proxy IPs/CIDRs whose `X-Forwarded-For` header is trusted. | (empty) |
+| `GONE_TRUSTED_PROXIES` | Comma list of proxy IPs/CIDRs whose `X-Forwarded-For` header is trusted. Prefixes broader than `/8` (IPv4) or `/32` (IPv6) and IPv4-mapped IPv6 addresses are rejected. | (empty) |
 
 Derived automatically:
 * MinTTL / MaxTTL = smallest / largest in `GONE_TTL_OPTIONS` (accepted range is any duration inside that span, not just the listed ones).
 * SQLite DSN → `<GONE_DATA_DIR>/gone.db` (WAL mode, FULL sync enforced).
 
-TTL Format: comma‑separated Go durations using `s`, `m`, `h` (e.g. `30s,5m,90m,2h`).
+TTL Format: comma‑separated Go durations using `s`, `m`, `h` (e.g. `30s,5m,90m,2h`). Day and week units (`d`, `w`) are not accepted; write `24h` or `168h`.
 
 ### Behind a reverse proxy
 Rate limits key on the client address (IPv4 `/32`, IPv6 `/64`). Behind a load balancer or reverse proxy every request appears to come from the proxy, so all users share one budget. Set `GONE_TRUSTED_PROXIES` to the proxy's address (e.g. `10.0.0.0/8` or `172.18.0.2`) so gone reads the real client from `X-Forwarded-For`. Only list proxies you control: a trusted proxy can make any request look like it came from any address. If `X-Forwarded-For` arrives from an untrusted peer, gone ignores it and logs a one-time warning.
@@ -129,10 +129,11 @@ Definitions:
 |------|------|---------|
 | `secrets_created_total` | counter | Secrets stored |
 | `secrets_consumed_total` | counter | Secrets consumed & deleted |
-| `secrets_expired_deleted_total` | counter | Expired secrets janitor removed |
-| `secrets_claims_expired_total` | counter | Opened secrets deleted because the recipient never confirmed receipt within the claim lease |
+| `secrets_expired_deleted_total` | counter | Secrets the janitor removed: expired ones and opened ones whose claim lease lapsed |
+| `secrets_claims_expired_total` | counter | Opened secrets deleted because the recipient never confirmed receipt within the claim lease (a subset of `secrets_expired_deleted_total`) |
+| `secrets_revoked_total` | counter | Secrets the sender deleted with the manage link before they were opened |
 | `rate_limited_create_total` | counter | Create requests rejected with `429` by the per-client create budget |
-| `rate_limited_read_total` | counter | Read/acknowledge requests (`GET`/`DELETE /api/secret/{id}`) rejected with `429` |
+| `rate_limited_read_total` | counter | Read, acknowledge, status, and revoke requests (`/api/secret/{id}` and its `/status` and `/revoke`) rejected with `429` |
 | `janitor_deleted_per_cycle` | summary | Distribution of expirations per janitor run |
 
 Persistence notes:
@@ -171,10 +172,11 @@ Core tasks:
 | `task dev` | Clean + build development binaries (`bin/goned` server and `bin/gone` CLI; no minified assets, no `-tags=prod`). |
 | `task prod` | Full production build: clean, minify assets into `web/dist`, build `bin/goned` with `-tags=prod` and `bin/gone`. |
 | `task release -- vX.Y.Z` | Cross-build the release archives, `SHA256SUMS`, and release notes into `dist/` (what the tag workflow publishes). |
-| `task run` | Convenience: rebuild dev binary and run with a temporary data dir. |
+| `task run` | Convenience: rebuild dev binary and run with a temporary data dir. It sets `GONE_METRICS_ADDR=:9090`, but metrics stay off (with a warning) unless you also set `GONE_METRICS_TOKEN`. |
 | `task cover` | Run Go tests with coverage output. |
 | `task test` | Run Go and JavaScript unit tests. |
 | `task lint` | Run Go linters with golangci-lint for default and `dev` build tags. |
+| `task lint-web` | Lint JavaScript (ESLint) and CSS (stylelint) via `npx`, matching CI. |
 | `task test-js` | Run JavaScript unit tests (`node --test`, Node 20+, no npm install). |
 | `task cover-js` | Run JavaScript unit tests with coverage output. |
 | `task perf` | Check the latency target (p95 under 50ms at 100 req/s) against the real stack. Set `TMPDIR` to measure a specific disk. |
@@ -209,7 +211,7 @@ task run
 
 Gone is pure Go (SQLite via [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite)), so it builds with `CGO_ENABLED=0` into a fully static binary; `task prod` does this by default. Requires Go 1.27+.
 
-Go linting is configured by `.golangci.yml` and the shared revive rules in `.codacy/tools-configs/revive.toml`. Run `task lint` before opening a PR; Codacy uses the same revive ruleset.
+Go linting is configured by `.golangci.yml`, including the revive rules. Run `task lint` and `task lint-web` before opening a PR; CI runs both.
 
 ### Container image
 The `Dockerfile` uses [Docker Hardened Images](https://dhi.io): `dhi.io/golang` (builder) and the distroless `dhi.io/static` runtime (no shell or package manager; runs as UID `65532`). Both are pinned by digest and kept current by Dependabot.
@@ -330,7 +332,9 @@ The full plan for Gone v3 is in [docs/ROADMAP.md](docs/ROADMAP.md). Highlights:
 * Optional passphrase, a second factor alongside the link (done)
 * Sender status & revoke via a private management link (done)
 * Command-line client, `gone` (done; see [docs/cli.md](docs/cli.md))
-* Web UI revamp
+* Web UI revamp (done)
+
+All six phases shipped in v3.0.0.
 
 Other ideas:
 * Optional Prometheus exposition

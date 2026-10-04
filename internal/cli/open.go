@@ -36,15 +36,31 @@ func (a *app) decrypt(version uint8, key, pass []byte, c client.Claimed) ([]byte
 	}
 	for i := range attempts {
 		pt, err := a.tryPassphrase(key, pass, c)
-		if !errors.Is(err, envelope.ErrDecrypt) {
+		retry := "Wrong passphrase, try again.\n"
+		var bad *invalidEntryError
+		switch {
+		case errors.As(err, &bad):
+			retry = "Invalid passphrase: " + bad.msg + ", try again.\n"
+		case !errors.Is(err, envelope.ErrDecrypt):
 			return pt, err
 		}
 		if i < attempts-1 {
-			_, _ = io.WriteString(a.env.Stderr, "Wrong passphrase, try again.\n")
+			_, _ = io.WriteString(a.env.Stderr, retry)
 		}
 	}
 	return nil, errWrongPassphrase
 }
+
+// invalidEntryError reports a prompted passphrase that could never be right
+// (empty, too long, or not UTF-8). The secret is already claimed when the
+// prompt runs, so this counts as a failed attempt instead of ending the
+// command, which would abandon the claim and lose the secret.
+type invalidEntryError struct{ msg string }
+
+// Error returns the reason the entry was rejected.
+//
+// Returns the message.
+func (e *invalidEntryError) Error() string { return e.msg }
 
 // tryPassphrase makes one v2 decryption attempt, prompting when pass is nil.
 //
@@ -53,15 +69,19 @@ func (a *app) decrypt(version uint8, key, pass []byte, c client.Claimed) ([]byte
 //   - pass: passphrase, or nil to prompt.
 //   - c: claimed ciphertext.
 //
-// Returns the plaintext or an error (envelope.ErrDecrypt on a wrong passphrase).
+// Returns the plaintext or an error (envelope.ErrDecrypt on a wrong passphrase,
+// *invalidEntryError on an entry that fails checkPassphrase).
 func (a *app) tryPassphrase(key, pass []byte, c client.Claimed) ([]byte, error) {
 	p := pass
 	if p == nil {
 		var err error
-		if p, err = a.promptPassword(passphraseLabel); err != nil {
+		if p, err = a.readPassword(passphraseLabel); err != nil {
 			return nil, err
 		}
 		defer clear(p)
+		if err := checkPassphrase(p); err != nil {
+			return nil, &invalidEntryError{msg: err.Error()}
+		}
 	}
 	return envelope.OpenV2(key, string(p), c.Nonce, c.Body)
 }
