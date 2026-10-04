@@ -343,7 +343,15 @@ Other ideas:
 
 ---
 
-## 12. License
+## 12. Contributing & Support
+* **Get it:** the container image `ghcr.io/haukened/gone` (see [Quick Start](#1-quick-start-90second-demo)), or the `gone` CLI and `goned` server from the [releases page](https://github.com/haukened/gone/releases).
+* **Report a bug or request a feature:** [open an issue](https://github.com/haukened/gone/issues/new/choose). Issues are public and searchable.
+* **Report a vulnerability:** privately, as described in [SECURITY.md](SECURITY.md). Never in a public issue.
+* **Contribute:** read [CONTRIBUTING.md](CONTRIBUTING.md) for the pull request process and the coding, testing, and documentation requirements.
+
+---
+
+## 13. License
 Copyright © 2025-2026 The Gone Project Contributors.
 
 GNU Affero General Public License v3.0 – see `LICENSE`.

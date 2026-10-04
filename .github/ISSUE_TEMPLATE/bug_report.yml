@@ -1,0 +1,56 @@
+name: Bug report
+description: Something in Gone doesn't work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. **If this is a security vulnerability, stop and report it privately instead** (see SECURITY.md).
+
+        Never paste a real secret link, manage link, passphrase, or secret content here.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Where does it happen?
+      options:
+        - Web interface
+        - gone CLI
+        - Server (goned) or HTTP API
+        - Container image or deployment
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The image tag (for example `v3.0.0`), or the output of `gone version`.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Include error messages, exit codes, or server logs (with any IDs or tokens removed).
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser and OS, or how the server is deployed (reverse proxy, settings you changed).

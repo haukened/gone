@@ -1,0 +1,5 @@
+# Known-answer test vectors: these keys are public by design (see docs/protocol.md §9).
+a366c23750499c6d2c7df992c2c63dc1465002ec:test/vectors/aead_v2.json:generic-api-key:15
+a366c23750499c6d2c7df992c2c63dc1465002ec:test/vectors/aead_v2.json:generic-api-key:27
+a366c23750499c6d2c7df992c2c63dc1465002ec:test/vectors/aead_v2.json:generic-api-key:39
+a366c23750499c6d2c7df992c2c63dc1465002ec:test/vectors/aead_v2.json:generic-api-key:51
