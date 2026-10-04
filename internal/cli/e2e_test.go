@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/haukened/gone/internal/domain"
 )
 
 // TestMain silences the server's request logs.
@@ -184,6 +186,43 @@ func TestGetWrongPassphraseExhaustsAttempts(t *testing.T) {
 	bad := writeTemp(t, "bad", "nope")
 	if code := te.run("get", link, "--passphrase-file", bad, "-o", t.TempDir()); code != exitPassphrase {
 		t.Fatalf("file exit %d: %s", code, te.stderr)
+	}
+}
+
+// TestGetInvalidPromptEntryRetries checks that an empty, oversized, or
+// non-UTF-8 entry at the get prompt uses up an attempt instead of ending the
+// command: the secret is already claimed, so exiting would lose it.
+//
+// Parameters:
+//   - t: the test.
+func TestGetInvalidPromptEntryRetries(t *testing.T) {
+	te := newTestEnv(t)
+	srv := newGoneServer(t, te)
+	pf := writeTemp(t, "p", "longenough")
+	link, _ := sendText(t, te, "kept", "-s", srv.URL, "--passphrase-file", pf)
+
+	te.reset()
+	te.StdinTTY = true
+	te.passwords = []string{"", "longenough"}
+	if code := te.run("get", link, "-o", t.TempDir()); code != exitOK {
+		t.Fatalf("get exit %d: %s", code, te.stderr)
+	}
+	if !strings.Contains(te.stderr.String(), "Invalid passphrase: ") || !strings.Contains(te.stderr.String(), ", try again.") {
+		t.Fatalf("stderr %q", te.stderr)
+	}
+	if te.stdout.String() != "kept" {
+		t.Fatalf("stdout %q", te.stdout)
+	}
+
+	link, _ = sendText(t, te, "x", "-s", srv.URL, "--passphrase-file", pf)
+	te.reset()
+	te.StdinTTY = true
+	te.passwords = []string{"", strings.Repeat("a", domain.V2MaxPassphraseBytes+1), "\xff"}
+	if code := te.run("get", link, "-o", t.TempDir()); code != exitPassphrase {
+		t.Fatalf("exit %d, want %d: %s", code, exitPassphrase, te.stderr)
+	}
+	if n := strings.Count(te.stderr.String(), "Invalid passphrase: "); n != 2 {
+		t.Fatalf("retries = %d: %q", n, te.stderr)
 	}
 }
 

@@ -135,6 +135,25 @@ func (a *app) promptNewPassphrase() ([]byte, error) {
 //
 // Returns the passphrase or a usage/I/O error.
 func (a *app) promptPassword(label string) ([]byte, error) {
+	p, err := a.readPassword(label)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkPassphrase(p); err != nil {
+		clear(p)
+		return nil, err
+	}
+	return p, nil
+}
+
+// readPassword reads one line from the terminal without echo and without
+// validating it.
+//
+// Parameters:
+//   - label: prompt written to stderr.
+//
+// Returns the raw input or a usage/I/O error.
+func (a *app) readPassword(label string) ([]byte, error) {
 	if !a.env.StdinTTY {
 		return nil, usagef("a passphrase prompt needs an interactive terminal; use --passphrase-file")
 	}
@@ -143,10 +162,6 @@ func (a *app) promptPassword(label string) ([]byte, error) {
 	_, _ = io.WriteString(a.env.Stderr, "\n")
 	if err != nil {
 		return nil, ioErr("read passphrase", err)
-	}
-	if err := checkPassphrase(p); err != nil {
-		clear(p)
-		return nil, err
 	}
 	return p, nil
 }
