@@ -2,15 +2,10 @@
 package config
 
 import (
-	"net"
 	"net/netip"
-	"os"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/haukened/gone/internal/domain"
 	"github.com/haukened/gone/internal/ratelimit"
@@ -21,22 +16,22 @@ import (
 
 // Config holds the configuration settings for the application.
 type Config struct {
-	Addr           string             `koanf:"addr" validate:"required,ip_port"`
-	DataDir        string             `koanf:"data_dir" validate:"required,custom_path"`
-	InlineMaxBytes int64              `koanf:"inline_max_bytes" validate:"required,gt=0"`
-	MaxBytes       int64              `koanf:"max_bytes" validate:"required,gt=0"`
-	MinTTL         time.Duration      `koanf:"-" validate:"required,ltfield=MaxTTL"`
-	MaxTTL         time.Duration      `koanf:"-" validate:"required,gtfield=MinTTL"`
-	TTLOptions     []domain.TTLOption `koanf:"ttl_options" validate:"required"`
-	ClaimLease     time.Duration      `koanf:"claim_lease" validate:"required,gt=0,lte=15m"`
-	MetricsAddr    string             `koanf:"metrics_addr" validate:"omitempty,ip_port"`
+	Addr           string             `koanf:"addr"`
+	DataDir        string             `koanf:"data_dir"`
+	InlineMaxBytes int64              `koanf:"inline_max_bytes"`
+	MaxBytes       int64              `koanf:"max_bytes"`
+	MinTTL         time.Duration      `koanf:"-"`
+	MaxTTL         time.Duration      `koanf:"-"`
+	TTLOptions     []domain.TTLOption `koanf:"ttl_options"`
+	ClaimLease     time.Duration      `koanf:"claim_lease"`
+	MetricsAddr    string             `koanf:"metrics_addr"`
 	MetricsToken   string             `koanf:"metrics_token"`
 
 	// Rate limiting: raw settings loaded from GONE_RATE_* and
 	// GONE_TRUSTED_PROXIES, and the typed values derived from them.
 	RateCreate      string         `koanf:"rate_create"`
 	RateRead        string         `koanf:"rate_read"`
-	RateBurst       int            `koanf:"rate_burst" validate:"gte=1,lte=1000"`
+	RateBurst       int            `koanf:"rate_burst"`
 	TrustedProxies  []string       `koanf:"trusted_proxies"`
 	CreateRate      ratelimit.Rate `koanf:"-"`
 	ReadRate        ratelimit.Rate `koanf:"-"`
@@ -115,51 +110,6 @@ var envLoader = func(k *koanf.Koanf) error {
 	}}), nil)
 }
 
-// validIPPort validates whether the provided field value is a valid IP address and port combination.
-// It expects the value to be parseable by net.Listen()
-// Examples: ":8080", "127.0.0.1:8080"
-func validIPPort(fl validator.FieldLevel) bool {
-	addr := fl.Field().String()
-	ip, port, err := net.SplitHostPort(addr)
-	if err != nil || port == "" {
-		return false
-	}
-	if ip != "" && net.ParseIP(ip) == nil {
-		return false
-	}
-	portNum, err := strconv.ParseUint(port, 10, 16)
-	return err == nil && portNum > 0 && portNum < 65536
-}
-
-// validDirNotExists checks that the provided value is a directory path, but does not ensure it exists.
-// It disallows empty paths, ".", the root directory, and paths that traverse upwards (contain "..").
-func validDirNotExists(fl validator.FieldLevel) bool {
-	raw := fl.Field().String()
-	if raw == "" {
-		return false
-	}
-	cleaned := filepath.Clean(raw)
-	if cleaned == "." || cleaned == string(os.PathSeparator) {
-		return false
-	}
-	// Split into components and reject explicit parent traversals.
-	for _, part := range strings.Split(cleaned, string(os.PathSeparator)) {
-		if part == ".." {
-			return false
-		}
-	}
-	return true
-}
-
-// registerValidators registers custom validation functions with the provided validator instance.
-var registerValidators = func(v *validator.Validate) error {
-	err := v.RegisterValidation("ip_port", validIPPort)
-	if err != nil {
-		return err
-	}
-	return v.RegisterValidation("custom_path", validDirNotExists)
-}
-
 // Load loads the configuration by applying default values and overriding them
 // with environment variables. It validates the final configuration and returns
 // a Config instance or an error if validation fails.
@@ -196,14 +146,6 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	// Create a new validator instance
-	validate := validator.New(validator.WithRequiredStructEnabled())
-
-	// Register custom validators
-	if err = registerValidators(validate); err != nil {
-		return nil, err
-	}
-
 	// Calculate the MinTTL and MaxTTL from TTLOptions
 	// koanf ensures TTLOptions is always non-nil
 	for _, opt := range cfg.TTLOptions {
@@ -219,8 +161,7 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	// Validate the config
-	if err = validate.Struct(&cfg); err != nil {
+	if err = validate(&cfg); err != nil {
 		return nil, err
 	}
 

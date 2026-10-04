@@ -1,29 +1,65 @@
 package config
 
 import (
+	"strings"
 	"testing"
-
-	"github.com/go-playground/validator/v10"
+	"time"
 )
 
 func TestValidIPPort(t *testing.T) {
-	cleanGoneEnvForTest(t)
-	v := validator.New()
-	if err := v.RegisterValidation("ip_port", validIPPort); err != nil {
-		t.Fatalf("register validation: %v", err)
-	}
 	for _, tc := range ipPortValidationCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			err := v.Struct(&struct {
-				Addr string `validate:"ip_port"`
-			}{Addr: tc.addr})
-			if tc.valid && err != nil {
-				t.Fatalf("expected valid, got error: %v", err)
-			}
-			if !tc.valid && err == nil {
-				t.Fatalf("expected error, got nil")
+			if got := validIPPort(tc.addr); got != tc.valid {
+				t.Fatalf("validIPPort(%q) = %v, want %v", tc.addr, got, tc.valid)
 			}
 		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	for _, tc := range validateCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := DefaultAppConfig
+			tc.mutate(&cfg)
+			err := validate(&cfg)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("validate() error: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("validate() err = %v, want mention of %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+type validateCase struct {
+	name    string
+	mutate  func(*Config)
+	wantErr string
+}
+
+// validateCases returns one passing fixture and one failing fixture per rule.
+func validateCases() []validateCase {
+	return []validateCase{
+		{name: "defaults", mutate: func(*Config) {}},
+		{name: "metrics addr", mutate: func(c *Config) { c.MetricsAddr = "127.0.0.1:9090" }},
+		{name: "lease at max", mutate: func(c *Config) { c.ClaimLease = maxClaimLease }},
+		{name: "bad addr", mutate: func(c *Config) { c.Addr = "localhost:8080" }, wantErr: "GONE_ADDR"},
+		{name: "empty addr", mutate: func(c *Config) { c.Addr = "" }, wantErr: "GONE_ADDR"},
+		{name: "bad metrics addr", mutate: func(c *Config) { c.MetricsAddr = "9090" }, wantErr: "GONE_METRICS_ADDR"},
+		{name: "bad data dir", mutate: func(c *Config) { c.DataDir = "../data" }, wantErr: "GONE_DATA_DIR"},
+		{name: "zero inline max", mutate: func(c *Config) { c.InlineMaxBytes = 0 }, wantErr: "GONE_INLINE_MAX_BYTES"},
+		{name: "negative max", mutate: func(c *Config) { c.MaxBytes = -1 }, wantErr: "GONE_MAX_BYTES"},
+		{name: "no ttl options", mutate: func(c *Config) { c.TTLOptions = nil }, wantErr: "GONE_TTL_OPTIONS"},
+		{name: "single ttl", mutate: func(c *Config) { c.MinTTL, c.MaxTTL = time.Hour, time.Hour }, wantErr: "GONE_TTL_OPTIONS"},
+		{name: "zero min ttl", mutate: func(c *Config) { c.MinTTL = 0 }, wantErr: "GONE_TTL_OPTIONS"},
+		{name: "zero lease", mutate: func(c *Config) { c.ClaimLease = 0 }, wantErr: "GONE_CLAIM_LEASE"},
+		{name: "long lease", mutate: func(c *Config) { c.ClaimLease = maxClaimLease + time.Second }, wantErr: "GONE_CLAIM_LEASE"},
+		{name: "burst zero", mutate: func(c *Config) { c.RateBurst = 0 }, wantErr: "GONE_RATE_BURST"},
+		{name: "burst too large", mutate: func(c *Config) { c.RateBurst = 1001 }, wantErr: "GONE_RATE_BURST"},
 	}
 }
 

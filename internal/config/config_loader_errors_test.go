@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/knadh/koanf/v2"
 )
 
@@ -30,19 +29,6 @@ func TestLoadEnvError(t *testing.T) {
 	envLoader = func(k *koanf.Koanf) error {
 		if k == nil {
 			t.Fatal("koanf must not be nil")
-		}
-		return errConfigTestLoader
-	}
-	assertLoadErrorIs(t, errConfigTestLoader)
-}
-
-func TestRegisterValidationFails(t *testing.T) {
-	cleanGoneEnvForTest(t)
-	orig := registerValidators
-	t.Cleanup(func() { registerValidators = orig })
-	registerValidators = func(v *validator.Validate) error {
-		if v == nil {
-			t.Fatal("validator must not be nil")
 		}
 		return errConfigTestLoader
 	}

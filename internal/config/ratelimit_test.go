@@ -41,8 +41,8 @@ func rateLimitEnvCases() []rateLimitEnvCase {
 		{name: "bad create", env: map[string]string{"GONE_RATE_CREATE": "fast"}, wantErr: "GONE_RATE_CREATE"},
 		{name: "bad read", env: map[string]string{"GONE_RATE_READ": "-1/m"}, wantErr: "GONE_RATE_READ"},
 		{name: "bad proxy", env: map[string]string{"GONE_TRUSTED_PROXIES": "0.0.0.0/0"}, wantErr: "GONE_TRUSTED_PROXIES"},
-		{name: "burst zero", env: map[string]string{"GONE_RATE_BURST": "0"}, wantErr: "RateBurst"},
-		{name: "burst too large", env: map[string]string{"GONE_RATE_BURST": "1001"}, wantErr: "RateBurst"},
+		{name: "burst zero", env: map[string]string{"GONE_RATE_BURST": "0"}, wantErr: "GONE_RATE_BURST"},
+		{name: "burst too large", env: map[string]string{"GONE_RATE_BURST": "1001"}, wantErr: "GONE_RATE_BURST"},
 		{name: "burst garbage", env: map[string]string{"GONE_RATE_BURST": "many"}, wantErr: "rate_burst"},
 	}
 }
