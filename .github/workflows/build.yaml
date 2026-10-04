@@ -220,11 +220,15 @@ jobs:
           subject-path: 'dist/*.tar.gz, dist/*.zip'
 
       # Attach the signed provenance to the release too, so it can be checked
-      # offline (gh attestation verify --bundle) and is visible to Scorecard.
-      - name: Add provenance bundle to release files
+      # offline (gh attestation verify --bundle) and is visible to Scorecard:
+      # the full Sigstore bundle, plus its signed in-toto envelope (DSSE) as
+      # .intoto.jsonl, the name Scorecard looks for.
+      - name: Add provenance to release files
         env:
           BUNDLE: ${{ steps.attest.outputs.bundle-path }}
-        run: cp "$BUNDLE" "dist/gone_${GITHUB_REF_NAME}.sigstore.json"
+        run: |
+          cp "$BUNDLE" "dist/gone_${GITHUB_REF_NAME}.sigstore.json"
+          jq -c '.dsseEnvelope' "$BUNDLE" > "dist/gone_${GITHUB_REF_NAME}.intoto.jsonl"
 
       - name: Create Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
@@ -238,3 +242,4 @@ jobs:
             dist/*.zip
             dist/SHA256SUMS
             dist/*.sigstore.json
+            dist/*.intoto.jsonl
