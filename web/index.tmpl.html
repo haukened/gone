@@ -54,9 +54,11 @@
 							<div class="field">
 								<label class="label" for="passphrase">Passphrase</label>
 								<div class="passbox">
-									<input id="passphrase" class="input" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" aria-describedby="pass-strength pass-hint" />
-									<button id="pass-toggle" class="btn btn-secondary btn-small" type="button" aria-controls="passphrase"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-eye" /></svg><span>Show</span></button>
-									<button id="pass-generate" class="btn btn-secondary btn-small" type="button" aria-controls="passphrase">Generate</button>
+									<div class="input-wrap">
+										<input id="passphrase" class="input" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" aria-describedby="pass-strength pass-hint" />
+										<button id="pass-toggle" class="reveal" type="button" aria-controls="passphrase"><svg class="ico when-masked" aria-hidden="true" focusable="false"><use href="#i-eye" /></svg><svg class="ico when-shown" aria-hidden="true" focusable="false"><use href="#i-eye-off" /></svg><span class="sr-only">Show</span></button>
+									</div>
+									<button id="pass-generate" class="btn btn-secondary" type="button" aria-controls="passphrase"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-dice" /></svg>Generate</button>
 								</div>
 								<span id="pass-strength" class="hint strength" role="status"></span>
 								<span class="hint" id="pass-hint">The recipient types this before the secret opens. Send it separately (for example by phone or a different app), never alongside the link.</span>
