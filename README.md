@@ -179,6 +179,7 @@ Core tasks:
 | `task lint-web` | Lint JavaScript (ESLint) and CSS (stylelint) via `npx`, matching CI. |
 | `task test-js` | Run JavaScript unit tests (`node --test`, Node 20+, no npm install). |
 | `task cover-js` | Run JavaScript unit tests with coverage output. |
+| `task perf` | Check the latency target (p95 under 50ms at 100 req/s) against the real stack. Set `TMPDIR` to measure a specific disk. |
 
 Development build:
 ```sh

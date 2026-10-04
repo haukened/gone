@@ -159,6 +159,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # Latency target (p95 under 50ms at 100 req/s) against the real stack.
+  # Runners use SSDs; see test/perf_test.go for running it on other disks.
+  perf:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - name: Run latency target test
+        env:
+          GONE_PERF: '1'
+        run: go test ./test -run TestPerfLatencyTarget -count=1 -v
+
   # Tagged releases: test, cross-build the gone CLI and goned server,
   # attest build provenance, and publish archives with SHA256SUMS.
   # Runs its own tests because verify is skipped on tags.
