@@ -2,17 +2,17 @@
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
 	<meta name="color-scheme" content="light dark" />
-	<link rel="icon" href="/static/img/favicon.ico" sizes="16x16 32x32" />
-	<link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml" />
-	<link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png" />
-	<link rel="preload" href="/static/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin />
-	<link rel="stylesheet" href="/static/css/tokens.css" />
-	<link rel="stylesheet" href="/static/css/base.css" />
-	<link rel="stylesheet" href="/static/css/layout.css" />
-	<link rel="stylesheet" href="/static/css/components.css" />
-	<link rel="stylesheet" href="/static/css/passphrase.css" />
-	<link rel="stylesheet" href="/static/css/pages.css" />
-	<script src="/static/js/theme.js"></script>
+	<link rel="icon" href="{{ asset "img/favicon.ico" }}" sizes="16x16 32x32" />
+	<link rel="icon" href="{{ asset "img/favicon.svg" }}" type="image/svg+xml" />
+	<link rel="apple-touch-icon" href="{{ asset "img/apple-touch-icon.png" }}" />
+	<link rel="preload" href="{{ asset "fonts/geist-latin.woff2" }}" as="font" type="font/woff2" crossorigin />
+	<link rel="stylesheet" href="{{ asset "css/tokens.css" }}" />
+	<link rel="stylesheet" href="{{ asset "css/base.css" }}" />
+	<link rel="stylesheet" href="{{ asset "css/layout.css" }}" />
+	<link rel="stylesheet" href="{{ asset "css/components.css" }}" />
+	<link rel="stylesheet" href="{{ asset "css/passphrase.css" }}" />
+	<link rel="stylesheet" href="{{ asset "css/pages.css" }}" />
+	<script src="{{ asset "js/theme.js" }}"></script>
 {{ end }}
 
 {{ define "sprite" }}
@@ -63,6 +63,7 @@
 			<a href="https://github.com/haukened/gone/issues/new/choose" rel="noopener noreferrer">Report a problem</a>
 			<a href="https://github.com/haukened/gone/blob/main/CONTRIBUTING.md" rel="noopener noreferrer">Contribute</a>
 			<a href="https://github.com/haukened/gone/graphs/contributors" rel="noopener noreferrer">&copy; 2025&ndash;2026 The Gone Project Contributors</a>
+			{{ with version }}{{ if eq . "dev" }}<span class="ver">Development build</span>{{ else }}<a class="ver" href="https://github.com/haukened/gone/releases/tag/{{ . }}" rel="noopener noreferrer">Gone {{ . }}</a>{{ end }}{{ end }}
 		</nav>
 	</div>
 </footer>

@@ -55,7 +55,7 @@ for goos in linux darwin windows; do
   done
 done
 for goarch in amd64 arm64; do
-  package goned linux "$goarch" ./cmd/goned -tags=prod -ldflags "$ldflags"
+  package goned linux "$goarch" ./cmd/goned -tags=prod -ldflags "$ldflags -X main.version=$tag"
 done
 
 cd "$dist"
