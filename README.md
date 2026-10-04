@@ -11,6 +11,8 @@
 
 # gone
 
+*Because security shouldn't live behind paywalls.*
+
 Go + One = Gone — a tiny service for sharing a secret exactly once.
 
 Gone lets you paste a sensitive value (password, token, wifi key), generate a one‑time link, and send that link. The first person to open it sees the secret; after that it’s gone for good.
