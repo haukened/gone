@@ -23,6 +23,22 @@ const maxClaimLease = 15 * time.Minute
 // Returns:
 //   - error: the first invalid setting, named by its environment variable.
 func validate(cfg *Config) error {
+	for _, check := range []func(*Config) error{validatePaths, validateSizes, validateTTLs, validateRateBurst} {
+		if err := check(cfg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validatePaths checks the listen addresses and the data directory.
+//
+// Parameters:
+//   - cfg: the configuration to check.
+//
+// Returns:
+//   - error: naming GONE_ADDR, GONE_METRICS_ADDR, or GONE_DATA_DIR when invalid.
+func validatePaths(cfg *Config) error {
 	switch {
 	case !validIPPort(cfg.Addr):
 		return fmt.Errorf("GONE_ADDR: %q is not [ip]:port with a port from 1 to 65535", cfg.Addr)
@@ -30,17 +46,55 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("GONE_METRICS_ADDR: %q is not [ip]:port with a port from 1 to 65535", cfg.MetricsAddr)
 	case !validDataDir(cfg.DataDir):
 		return fmt.Errorf("GONE_DATA_DIR: %q is not allowed; use a directory other than \".\" or \"/\" with no \"..\" part", cfg.DataDir)
-	case cfg.InlineMaxBytes <= 0:
+	}
+	return nil
+}
+
+// validateSizes checks the size limits.
+//
+// Parameters:
+//   - cfg: the configuration to check.
+//
+// Returns:
+//   - error: naming GONE_INLINE_MAX_BYTES or GONE_MAX_BYTES when not positive.
+func validateSizes(cfg *Config) error {
+	if cfg.InlineMaxBytes <= 0 {
 		return fmt.Errorf("GONE_INLINE_MAX_BYTES: must be greater than 0, got %d", cfg.InlineMaxBytes)
-	case cfg.MaxBytes <= 0:
+	}
+	if cfg.MaxBytes <= 0 {
 		return fmt.Errorf("GONE_MAX_BYTES: must be greater than 0, got %d", cfg.MaxBytes)
+	}
+	return nil
+}
+
+// validateTTLs checks the TTL choices and the claim lease.
+//
+// Parameters:
+//   - cfg: the configuration to check.
+//
+// Returns:
+//   - error: naming GONE_TTL_OPTIONS or GONE_CLAIM_LEASE when invalid.
+func validateTTLs(cfg *Config) error {
+	switch {
 	case len(cfg.TTLOptions) == 0:
 		return errors.New("GONE_TTL_OPTIONS: at least one TTL is required")
 	case cfg.MinTTL <= 0 || cfg.MinTTL >= cfg.MaxTTL:
 		return fmt.Errorf("GONE_TTL_OPTIONS: need at least two different positive TTLs, got %s to %s", cfg.MinTTL, cfg.MaxTTL)
 	case cfg.ClaimLease <= 0 || cfg.ClaimLease > maxClaimLease:
 		return fmt.Errorf("GONE_CLAIM_LEASE: must be greater than 0 and at most %s, got %s", maxClaimLease, cfg.ClaimLease)
-	case cfg.RateBurst < 1 || cfg.RateBurst > 1000:
+	}
+	return nil
+}
+
+// validateRateBurst checks the rate limiter burst size.
+//
+// Parameters:
+//   - cfg: the configuration to check.
+//
+// Returns:
+//   - error: naming GONE_RATE_BURST when outside 1-1000.
+func validateRateBurst(cfg *Config) error {
+	if cfg.RateBurst < 1 || cfg.RateBurst > 1000 {
 		return fmt.Errorf("GONE_RATE_BURST: must be from 1 to 1000, got %d", cfg.RateBurst)
 	}
 	return nil
