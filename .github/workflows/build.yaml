@@ -221,9 +221,17 @@ jobs:
         run: scripts/release.sh "$GITHUB_REF_NAME"
 
       - name: Attest build provenance
+        id: attest
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: 'dist/*.tar.gz, dist/*.zip'
+
+      # Attach the signed provenance to the release too, so it can be checked
+      # offline (gh attestation verify --bundle) and is visible to Scorecard.
+      - name: Add provenance bundle to release files
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: cp "$BUNDLE" "dist/gone_${GITHUB_REF_NAME}.sigstore.json"
 
       - name: Create Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
@@ -236,3 +244,4 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
             dist/SHA256SUMS
+            dist/*.sigstore.json
