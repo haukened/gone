@@ -6,139 +6,125 @@
 </head>
 <body>
 	{{ template "header" . }}
-	<main id="main" tabindex="-1">
-		<div id="compose" class="wrap grid">
-			<div class="intro">
-				<h1>Send a secret that opens once.</h1>
-				<p class="lead">Your message and files are encrypted in this browser. The link works one time, then everything is deleted.</p>
+	<main id="main" tabindex="-1" class="main">
+		<div id="compose" class="view">
+			<div class="alert banner security-warning" role="alert" hidden>
+				<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+				<div><strong>This connection isn't secure.</strong>Gone needs HTTPS to encrypt safely. Ask whoever runs this server to enable it before you send anything private.</div>
 			</div>
-			<form id="create-secret" class="steps" aria-label="Create a secret" data-max-bytes="{{ .MaxBytes }}" novalidate>
-				<div class="alert security-warning" role="alert" hidden>
-					<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
-					<div><strong>This connection isn't secure.</strong>Gone needs HTTPS to encrypt safely. Ask whoever runs this server to enable it before you send anything private.</div>
-				</div>
-				<section class="step" aria-labelledby="step-write">
-					<div class="step-head"><span class="step-num" aria-hidden="true">1</span><h2 class="step-name" id="step-write">Write</h2></div>
-					<div class="step-body">
-						<div class="field">
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg>Encrypted in this browser</p>
+				<h1>Send a secret that opens <span class="accent">once.</span></h1>
+				<p class="lead">Your message and files are encrypted in this browser before they're sent. The server only ever stores an encrypted copy it can't read. The link works one time, then everything is deleted.</p>
+				<form id="create-secret" class="form" aria-label="Create a secret" data-max-bytes="{{ .MaxBytes }}" novalidate>
+					<div class="field">
+						<div class="label-row">
 							<label class="label" for="secret">Message</label>
-							<textarea id="secret" name="secret" rows="6" placeholder="Paste a password, a note, or anything private." aria-describedby="secret-hint" spellcheck="false" autocomplete="off"></textarea>
 							<span class="hint" id="secret-hint">Encrypted on this device before it's sent.</span>
 						</div>
-						<div class="field">
-							<span class="label" id="files-label">Files <span class="opt">(optional, up to 10)</span></span>
-							<div id="drop-zone" class="drop">
-								<input id="secret-files" name="secret-files" type="file" class="sr-only" multiple aria-describedby="files-label" />
-								<label for="secret-files" class="btn btn-secondary btn-small"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-clip" /></svg>Add files</label>
-								<span>or drop them here</span>
-							</div>
-							<ul id="file-list" class="files" aria-label="Attached files" hidden></ul>
-							<div id="size-box" class="meter">
-								<div class="meter-row"><span id="size-label">0 B of {{ .MaxBytesHuman }}</span></div>
-								<progress id="size-meter" class="bar" max="1" value="0" aria-labelledby="size-label"></progress>
-							</div>
-							<div id="size-warning" class="alert" hidden>
-								<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
-								<p id="size-warning-text" role="status"></p>
-							</div>
-						</div>
+						<textarea id="secret" name="secret" rows="6" placeholder="Paste a password, a note, or anything private." aria-describedby="secret-hint" spellcheck="false" autocomplete="off"></textarea>
 					</div>
-				</section>
-				<section class="step" aria-labelledby="step-expiry">
-					<div class="step-head"><span class="step-num" aria-hidden="true">2</span><h2 class="step-name" id="step-expiry">Set expiry</h2></div>
-					<div class="step-body">
-						<fieldset class="seg field" aria-describedby="ttl-hint">
-							<legend>Delete unopened after</legend>
-							<div class="seg-track">
-								{{ range .TTLOptions }}<input type="radio" class="sr-only" name="ttl" id="ttl-{{ .Label }}" value="{{ .Label }}" data-seconds="{{ .DurationSeconds }}"{{ if .Default }} checked{{ end }} /><label for="ttl-{{ .Label }}">{{ .Short }}<span class="sr-only"> ({{ .Display }})</span></label>{{ end }}
-							</div>
-							<span class="hint" id="ttl-hint">If nobody opens it by then, it's deleted unread. Allowed range: {{ .MinTTLHuman }} to {{ .MaxTTLHuman }}.</span>
-						</fieldset>
-					</div>
-				</section>
-				<section class="step" aria-labelledby="step-share">
-					<div class="step-head"><span class="step-num" aria-hidden="true">3</span><h2 class="step-name" id="step-share">Share</h2></div>
-					<div class="step-body">
-						<details id="pass-disclosure" class="disclosure">
-							<summary>Add a passphrase <span class="opt">(optional)</span></summary>
-							<div class="disclosure-body">
-								<div class="field">
-									<label class="label" for="passphrase">Passphrase</label>
-									<div class="passbox">
-										<input id="passphrase" class="input" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" aria-describedby="pass-strength pass-hint" />
-										<button id="pass-toggle" class="btn btn-secondary btn-small" type="button" aria-controls="passphrase"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-eye" /></svg><span>Show</span></button>
-										<button id="pass-generate" class="btn btn-secondary btn-small" type="button" aria-controls="passphrase">Generate</button>
-									</div>
-									<span id="pass-strength" class="hint strength" role="status"></span>
-									<span class="hint" id="pass-hint">The recipient types this before the secret opens. Send it separately (for example by phone or a different app), never alongside the link.</span>
-								</div>
-							</div>
-						</details>
-						<div class="field">
-							<div class="actions">
-								<button class="btn btn-primary" type="submit" aria-describedby="submit-hint"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span>Create one-time link</span></button>
-							</div>
-							<progress id="upload-progress" class="bar" max="1" value="0" aria-label="Upload progress" hidden></progress>
-							<span class="hint" id="submit-hint">Nothing leaves this device until you press the button.</span>
+					<div class="field">
+						<span class="label" id="files-label">Files <span class="opt">(optional, up to 10)</span></span>
+						<div id="drop-zone" class="drop">
+							<input id="secret-files" name="secret-files" type="file" class="sr-only" multiple aria-describedby="files-label" />
+							<label for="secret-files" class="btn btn-secondary btn-small"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-clip" /></svg>Add files</label>
+							<span>or drop them here</span>
 						</div>
-						<div id="submit-error" class="alert" hidden>
+						<ul id="file-list" class="files" aria-label="Attached files" hidden></ul>
+						<div id="size-box" class="meter">
+							<div class="meter-row"><span id="size-label">0 B of {{ .MaxBytesHuman }}</span></div>
+							<progress id="size-meter" class="bar" max="1" value="0" aria-labelledby="size-label"></progress>
+						</div>
+						<div id="size-warning" class="alert" hidden>
 							<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
-							<p id="submit-error-content" role="alert"></p>
+							<p id="size-warning-text" role="status"></p>
 						</div>
 					</div>
-				</section>
-			</form>
-			<aside class="aside" aria-labelledby="next-heading">
-				<h2 id="next-heading">What happens next</h2>
-				<ol class="life life-v">
-					<li><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-sealed" /></svg><div><span class="t">Sealed</span><p>Encrypted here. The server never gets the key.</p></div></li>
-					<li><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-waiting" /></svg><div><span class="t">Waiting</span><p>The link waits until it's opened or it expires.</p></div></li>
-					<li><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-opened" /></svg><div><span class="t">Opened once</span><p>The first person with the link sees it.</p></div></li>
-					<li><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-gone" /></svg><div><span class="t">Gone</span><p>Deleted from the server for good.</p></div></li>
-				</ol>
-			</aside>
-		</div>
-		<div id="result" class="wrap grid" hidden>
-			<div class="intro">
-				<h1 id="result-heading" tabindex="-1">Your link is ready.</h1>
-				<p class="lead">Send it through any channel you trust. It opens once.</p>
-			</div>
-			<div class="steps">
-				<section class="step" aria-labelledby="step-result">
-					<div class="step-head"><span class="step-num" aria-hidden="true">3</span><h2 class="step-name" id="step-result">Share</h2></div>
-					<div class="step-body">
-						<div class="field">
-							<label class="label" for="share-link">One-time link</label>
-							<div class="linkbox">
-								<input id="share-link" class="input" type="text" readonly spellcheck="false" autocomplete="off" />
-								<button id="copy-link" class="btn btn-primary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy link</span></button>
-							</div>
-							<span id="copy-status" class="status" role="status"></span>
+					<fieldset class="seg field" aria-describedby="ttl-hint">
+						<legend>Delete unopened after</legend>
+						<div class="seg-track">
+							{{ range .TTLOptions }}<input type="radio" class="sr-only" name="ttl" id="ttl-{{ .Label }}" value="{{ .Label }}" data-seconds="{{ .DurationSeconds }}"{{ if .Default }} checked{{ end }} /><label for="ttl-{{ .Label }}">{{ .Short }}<span class="sr-only"> ({{ .Display }})</span></label>{{ end }}
 						</div>
-						<p id="result-pass-note" class="note pass-note" hidden><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span><strong>Passphrase protected.</strong> The recipient will need the passphrase you set, and Gone can't recover it. Send it to them separately.</span></p>
-						<ol class="life life-h" aria-label="Secret status">
-							<li class="is-done"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-sealed" /></svg><span class="t">Sealed</span><span class="s">Just now</span></li>
-							<li class="is-now" aria-current="step"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-waiting" /></svg><span class="t">Waiting</span><span class="s">Until <time id="result-expiry"></time></span></li>
-							<li class="is-next"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-opened" /></svg><span class="t">Opened once</span><span class="s">By whoever opens it first</span></li>
-							<li class="is-next"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-gone" /></svg><span class="t">Gone</span><span class="s">Deleted for good</span></li>
-						</ol>
-						<p class="note">The key is the part after <strong>#</strong>. It stays in the link and is never sent to the server, so anyone holding the full link can open it. Don't post it anywhere public.</p>
-						<details id="manage-disclosure" class="disclosure">
-							<summary>Manage this secret</summary>
-							<div class="disclosure-body">
-								<p class="note" id="manage-hint">A private link for you to check whether the secret has been opened, or to delete it early. Keep it to yourself; it isn't shown again, and anyone holding it can delete the secret.</p>
-								<div class="field">
-									<label class="label" for="manage-link">Manage link</label>
-									<div class="linkbox">
-										<input id="manage-link" class="input" type="text" readonly spellcheck="false" autocomplete="off" aria-describedby="manage-hint" />
-										<button id="copy-manage" class="btn btn-secondary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy manage link</span></button>
+						<span class="hint" id="ttl-hint">If nobody opens it by then, it's deleted unread. Allowed range: {{ .MinTTLHuman }} to {{ .MaxTTLHuman }}.</span>
+					</fieldset>
+					<details id="pass-disclosure" class="disclosure">
+						<summary>Add a passphrase <span class="opt">(optional)</span></summary>
+						<div class="disclosure-body">
+							<div class="field">
+								<label class="label" for="passphrase">Passphrase</label>
+								<div class="passbox">
+									<div class="input-wrap">
+										<input id="passphrase" class="input" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" aria-describedby="pass-strength pass-hint" />
+										<button id="pass-toggle" class="reveal" type="button" aria-controls="passphrase"><svg class="ico when-masked" aria-hidden="true" focusable="false"><use href="#i-eye" /></svg><svg class="ico when-shown" aria-hidden="true" focusable="false"><use href="#i-eye-off" /></svg><span class="sr-only">Show</span></button>
 									</div>
-									<span id="manage-copy-status" class="status" role="status"></span>
+									<button id="pass-generate" class="btn btn-secondary" type="button" aria-controls="passphrase"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-dice" /></svg>Generate</button>
 								</div>
+								<span id="pass-strength" class="hint strength" role="status"></span>
+								<span class="hint" id="pass-hint">The recipient types this before the secret opens. Send it separately (for example by phone or a different app), never alongside the link.</span>
 							</div>
-						</details>
-						<div class="actions"><a class="btn btn-secondary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Send another secret</a></div>
+						</div>
+					</details>
+					<div class="field">
+						<button class="btn btn-primary btn-block" type="submit" aria-describedby="submit-hint"><span>Create one-time link</span><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg></button>
+						<progress id="upload-progress" class="bar" max="1" value="0" aria-label="Upload progress" hidden></progress>
+						<span class="hint fine" id="submit-hint">Nothing leaves this device until you press the button.</span>
 					</div>
+					<div id="submit-error" class="alert" hidden>
+						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+						<p id="submit-error-content" role="alert"></p>
+					</div>
+				</form>
+				<section class="rail" aria-labelledby="next-heading">
+					<h2 id="next-heading">What happens next</h2>
+					<ol class="life">
+						<li><span class="t">Sealed</span>Encrypted here. The server never gets the key.</li>
+						<li><span class="t">Waiting</span>Until it's opened or it expires.</li>
+						<li><span class="t">Opened once</span>The first person with the link sees it.</li>
+						<li><span class="t">Gone</span>Deleted from the server for good.</li>
+					</ol>
+				</section>
+			</div>
+		</div>
+		<div id="result" class="view" hidden>
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg>Sealed in this browser</p>
+				<h1 id="result-heading" tabindex="-1">Your link is <span class="accent">ready.</span></h1>
+				<p class="lead">Send it through any channel you trust. It opens once.</p>
+				<div class="form">
+					<div class="field">
+						<label class="label" for="share-link">One-time link</label>
+						<div class="linkbox">
+							<input id="share-link" class="input" type="text" readonly spellcheck="false" autocomplete="off" />
+							<button id="copy-link" class="btn btn-primary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy link</span></button>
+						</div>
+						<span id="copy-status" class="status" role="status"></span>
+						<p class="hint">The key is the part after <strong>#</strong>. It stays in the link and is never sent to the server, so anyone holding the full link can open it. Don't post it anywhere public.</p>
+					</div>
+					<p id="result-pass-note" class="callout" hidden><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span><strong>Passphrase protected.</strong> The recipient will need the passphrase you set, and Gone can't recover it. Send it to them separately.</span></p>
+					<details id="manage-disclosure" class="disclosure">
+						<summary>Manage this secret <span class="opt">(for you only)</span></summary>
+						<div class="disclosure-body">
+							<p class="note" id="manage-hint">A private link for you to check whether the secret has been opened, or to delete it early. Keep it to yourself; it isn't shown again, and anyone holding it can delete the secret.</p>
+							<div class="field">
+								<label class="label" for="manage-link">Manage link</label>
+								<div class="linkbox">
+									<input id="manage-link" class="input" type="text" readonly spellcheck="false" autocomplete="off" aria-describedby="manage-hint" />
+									<button id="copy-manage" class="btn btn-secondary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy manage link</span></button>
+								</div>
+								<span id="manage-copy-status" class="status" role="status"></span>
+							</div>
+						</div>
+					</details>
+					<a class="btn btn-secondary btn-block" href="/">Send another secret</a>
+				</div>
+				<section class="rail" aria-label="Secret status">
+					<ol class="life">
+						<li class="is-done"><span class="t">Sealed</span>Just now</li>
+						<li class="is-now" aria-current="step"><span class="t">Waiting</span><span>Until <time id="result-expiry"></time></span></li>
+						<li><span class="t">Opened once</span>By whoever opens it first</li>
+						<li><span class="t">Gone</span>Deleted for good</li>
+					</ol>
 				</section>
 			</div>
 		</div>

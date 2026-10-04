@@ -12,7 +12,13 @@
     return ttl ? ttl.value : '';
   }
 
+  const NO_CRYPTO = 'This browser only encrypts on secure (HTTPS) pages, so Gone can\u2019t encrypt here. Ask whoever runs this server to enable HTTPS.';
+
   async function encryptCurrent(message, pass) {
+    if (!window.goneUtil.cryptoAvailable()) {
+      ui.failSubmission('[gone] WebCrypto unavailable (insecure context)', new Error('crypto.subtle missing'), NO_CRYPTO);
+      return null;
+    }
     ui.setButtonLabel('Encrypting\u2026');
     try {
       return await ctx.uploader.encryptSelection(message, state.selection.files(), pass);

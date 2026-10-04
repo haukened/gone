@@ -1,65 +1,66 @@
 ---
 name: Gone
-description: One-time secret sharing, set like public-service signage.
+description: One-time secret sharing behind frosted glass. Moonstone: calm, private, premium.
 colors:
-  navy-12: "#14213d"
-  navy-11: "#3d4a63"
-  navy-10: "#5b6780"
-  navy-7: "#b8c3d1"
-  navy-6: "#d7dee7"
-  navy-2: "#f6f8fa"
-  white: "#ffffff"
-  marigold-9: "#f2a900"
-  marigold-11: "#b07800"
-  amber-2: "#fff8e6"
-  amber-7: "#e9c46a"
-  night-2: "#0b1324"
-  night-3: "#111b30"
-  night-6: "#22304a"
-  night-7: "#34445f"
-  mist-12: "#e9eef6"
-  mist-11: "#b9c4d6"
-  mist-10: "#8d99af"
-  umber-2: "#2a2210"
-  umber-7: "#6b5214"
+  pearl: "#eeecf1"
+  dusk: "#121019"
+  ink-12: "#1c1a26"
+  ink-11: "#4a4658"
+  ink-10: "#625e73"
+  moon-12: "#efedf6"
+  moon-11: "#c3bed4"
+  moon-10: "#a7a2ba"
+  plum-12: "#211e30"
+  plum-11: "#36324c"
+  moonlight: "#dcd6f4"
+  violet-11: "#4b3f8a"
+  violet-4: "#cfc6f7"
+  light-lilac: "#beb2e8"
+  light-peach: "#fac8b2"
+  light-aqua: "#aad6d6"
+  danger-light: "#a1283b"
+  danger-dark: "#ff9eac"
+  warn-light: "#7d5200"
+  warn-dark: "#f2c46e"
 typography:
   display:
-    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
-    fontSize: "2.488rem"
-    fontWeight: 700
-    lineHeight: 1.1
-    letterSpacing: "-0.02em"
-  numeral:
-    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
-    fontSize: "4.3rem"
-    fontWeight: 700
-    lineHeight: 0.85
-    letterSpacing: "-0.04em"
-    fontFeature: "tnum"
-  headline:
-    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
-    fontSize: "1.44rem"
-    fontWeight: 700
-  title:
-    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
-    fontSize: "1.2rem"
-    fontWeight: 700
+    fontFamily: "Geist, system-ui, sans-serif"
+    fontSize: "clamp(1.875rem, 1.4rem + 2vw, 2.5rem)"
+    fontWeight: 400
+    lineHeight: 1.08
+    letterSpacing: "-0.035em"
+  wordmark:
+    fontFamily: "Geist, system-ui, sans-serif"
+    fontSize: "1.75rem"
+    fontWeight: 500
+    letterSpacing: "-0.045em"
+  lead:
+    fontFamily: "Geist, system-ui, sans-serif"
+    fontSize: "1.0625rem"
+    fontWeight: 400
+    lineHeight: 1.55
   body:
-    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
+    fontFamily: "Geist, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.55
   label:
-    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
-    fontSize: "0.833rem"
-    fontWeight: 700
-  data:
-    fontFamily: "ui-monospace, SF Mono, Cascadia Mono, Menlo, Consolas, monospace"
-    fontSize: "0.9rem"
+    fontFamily: "Geist, system-ui, sans-serif"
+    fontSize: "0.875rem"
+    fontWeight: 500
+  hint:
+    fontFamily: "Geist, system-ui, sans-serif"
+    fontSize: "0.8125rem"
     fontWeight: 400
+  data:
+    fontFamily: "Geist Mono, ui-monospace, monospace"
+    fontSize: "0.9375rem"
+    fontWeight: 400
+    lineHeight: 1.6
 rounded:
-  sm: "2px"
-  md: "4px"
+  pane: "22px"
+  well: "13px"
+  pill: "999px"
 spacing:
   "1": "0.25rem"
   "2": "0.5rem"
@@ -68,210 +69,143 @@ spacing:
   "5": "1.5rem"
   "6": "2rem"
   "7": "3rem"
-  "8": "4rem"
 components:
+  pane:
+    backgroundColor: "linear-gradient(160deg, rgb(255 255 255 / 68%), rgb(255 255 255 / 42%))"
+    rounded: "{rounded.pane}"
+    padding: "clamp(1.375rem, 5vw, 2.5rem)"
+  well:
+    backgroundColor: "rgb(250 249 252 / 66%)"
+    rounded: "{rounded.well}"
+    padding: "0.8rem 0.95rem"
   button-primary:
-    backgroundColor: "{colors.navy-12}"
-    textColor: "{colors.white}"
-    rounded: "{rounded.md}"
-    padding: "0 1.35rem"
+    backgroundColor: "{colors.plum-12}"
+    textColor: "#f6f4fb"
+    rounded: "{rounded.pill}"
     height: "3rem"
-  button-primary-hover:
-    backgroundColor: "{colors.navy-11}"
+    padding: "0 1.25rem"
+  button-primary-dark:
+    backgroundColor: "{colors.moonlight}"
+    textColor: "#17142a"
   button-secondary:
-    backgroundColor: "{colors.white}"
-    textColor: "{colors.navy-12}"
-    rounded: "{rounded.md}"
-    padding: "0 1.35rem"
+    backgroundColor: "rgb(250 249 252 / 66%)"
+    textColor: "{colors.ink-12}"
+    rounded: "{rounded.pill}"
     height: "3rem"
   button-small:
-    rounded: "{rounded.md}"
+    rounded: "{rounded.pill}"
+    height: "2.5rem"
     padding: "0 0.9rem"
-    height: "2.75rem"
-    typography: "{typography.label}"
-  input:
-    backgroundColor: "{colors.white}"
-    textColor: "{colors.navy-12}"
-    rounded: "{rounded.md}"
-    padding: "0.85rem 1rem"
-  segment:
-    textColor: "{colors.navy-11}"
-    rounded: "{rounded.sm}"
-    height: "2.75rem"
-    padding: "0 0.75rem"
   segment-selected:
-    backgroundColor: "{colors.navy-12}"
-    textColor: "{colors.white}"
-  band:
-    backgroundColor: "{colors.navy-12}"
-    textColor: "{colors.white}"
-    height: "4rem"
-  alert:
-    backgroundColor: "{colors.amber-2}"
-    textColor: "{colors.navy-12}"
-    rounded: "{rounded.md}"
-    padding: "1rem"
+    backgroundColor: "#ffffff"
+    textColor: "{colors.ink-12}"
+    rounded: "{rounded.pill}"
+    height: "2.625rem"
 ---
 
 # Design System: Gone
 
 ## Overview
 
-**Creative North Star: "The Public-Service Instrument"**
+**Creative North Star: "Moonstone"**
 
-Gone is set like civic wayfinding, in the lineage of Otl Aicher's Munich '72 and Lufthansa systems: a navy band, one marigold mark, big numerals, hairlines, and a strict 8-column grid. Trust comes from the system rather than decoration. Nothing glows, floats, or sells. The interface is calm, precise, and literal about what happens to a secret.
+Pearl daylight, or dusk, seen through frosted glass. Gone should feel calm, private, and quietly expensive: the opposite of a security dashboard. Trust comes from clarity and restraint. Nothing is hidden except the secret, and the secret is the only thing behind frost.
 
-The signature is the **ring**. It is the brand mark and also the secret's lifecycle: sealed, waiting, opened once, gone. Every surface repeats that story with the same four pictograms: the ring stays whole while the mark inside it changes, and it only breaks at the end. In the wordmark, the ring gains a crossbar and stands in for the "G" of Gone (`#i-wordmark`), set at cap height on the text baseline.
+Each view is **one sheet of glass** floating over a soft light field. Inputs are recessed wells cut into that sheet, never cards stacked on cards. The header and footer sit directly on the backdrop.
 
-Mode is **Operate** for send and receive, and **Read** for About.
+The signature is the **frosted reveal**. On the receive page the secret sits behind frosted glass (a decorative, aria-hidden vault). When it opens, the message panel defrosts from blur to sharp. When it is gone, the eroding **G** of the brand mark stands alone on the pane.
 
-**Key Characteristics:**
-- Navy band header in both themes, with the marigold ring mark.
-- Numbered steps (1 Write, 2 Set expiry, 3 Share) with large tabular numerals.
-- Flat surfaces separated by 1px hairlines; no shadows.
-- One accent (marigold), rationed to the mark, the current step, focus, and status icons.
-- A single hyperlegible typeface; monospace only for data (the link).
+Mode is **Operate** for send, receive and manage, and **Read** for About.
+
+**Key characteristics:**
+- Frosted panes (36px backdrop blur, 130% saturation) with a bright top edge and a deep, soft shadow.
+- A backdrop of three low-saturation light fields (lilac, peach, aqua) plus fine film grain. It drifts slowly on wide screens only.
+- One dark (light mode) or moonlight (dark mode) primary button per view. Everything else is glass.
+- One accent, moonstone violet, rationed to the accent word in headings, focus, progress, and the current lifecycle step.
+- Geist for the interface, Geist Mono for anything a person might retype: messages, links, passphrases.
 
 ## Colors
 
-The palette is borrowed from Radix-style 12-step scales and aliased into semantic tokens (`--color-*` in `web/css/tokens.css`). Components consume semantic tokens only; each one resolves per theme through `light-dark()`.
+Semantic tokens (`--color-*`, `--pane-*`, `--well*`, `--primary*`, `--danger*`, `--warn*` in `web/css/tokens.css`) resolve per theme through `light-dark()`. Components use only the semantic names.
 
-### Primary
-- **Signage Navy** (navy-12): the band, primary buttons, the selected segment, and body ink in light theme. In dark theme ink flips to Mist (mist-12), but the band stays navy.
+### Backdrop
+- **Pearl** `#eeecf1` (light) and **Dusk** `#121019` (dark) are the base.
+- Light fields: lilac, peach and aqua radial gradients at 46 to 68% (light) or 26 to 46% (dark) alpha.
 
-### Secondary
-- **Marigold** (marigold-9): the mark colour. Used for the ring logo, focus rings, the current-step underline, and the pressed theme toggle. Never used for text on light surfaces.
-- **Deep Marigold** (marigold-11): the light-theme signal colour for status and alert icons. It reaches 3:1, so it is for icons and large UI only, never body text.
+### Text
+- **Ink** `#1c1a26` / **Moon** `#efedf6` for headings and body.
+- **Ink 2** `#4a4658` / `#c3bed4` for leads and secondary text.
+- **Ink 3** `#625e73` / `#a7a2ba` for hints and labels. Both pass 4.5:1 on the pane.
 
-### Neutral
-- **Paper / Night** (navy-2 / night-2): the page background.
-- **Surface** (white / night-3): fields, panels, and secondary buttons.
-- **Ink ramp** (navy-12, 11, 10 / mist-12, 11, 10): primary, secondary, and tertiary text. All three meet 4.5:1 on paper and surface in both themes.
-- **Hairlines** (navy-6, 7 / night-6, 7): `line` for section rules, `line-strong` for control borders.
-- **Warning** (amber-2 with amber-7 / umber-2 with umber-7): alert background and border.
+### Accent
+- **Violet** `#4b3f8a` (light) / `#cfc6f7` (dark). The accent word in each `h1` (`.accent`), focus rings, progress fills, the current lifecycle step.
 
-**The One Mark Rule.** Marigold marks *where you are* or *what has focus*. If it appears in more than three places on one screen, one of them is wrong.
-
-**The Band Holds Rule.** The band is navy in both themes. Theme switching changes the paper beneath it, never the identity above it.
+### Actions and status
+- **Primary:** plum `#211e30` gradient in light mode, moonlight `#dcd6f4` in dark.
+- **Danger:** muted rose `#a1283b` / `#ff9eac`. Only for deleting.
+- **Warn:** amber `#7d5200` / `#f2c46e`, on a 10% tint. For the insecure-connection banner and all `.alert` callouts.
 
 ## Typography
 
-**Atkinson Hyperlegible Next** is self-hosted as one Latin variable woff2 (weights 200 to 800, OFL). It is used for everything except the share link. It was chosen because it separates I, l, 1, O, and 0, which matters when the content is a password.
+**Geist** and **Geist Mono** are self-hosted as Latin variable woff2 files (weights 100 to 900, OFL) because the CSP allows fonts only from this origin.
 
-The root is 17px (106.25%) on a 1.2 modular scale, `--step--1` to `--step-5`.
-
-### Hierarchy
-- **Display** (step-5, 700, 1.1, -0.02em): one h1 per view, balanced wrapping. 2rem on narrow screens.
-- **Numeral** (4.3rem, 700, tabular figures): step numbers only. 2.6rem on narrow screens, inline with the step name.
-- **Headline** (step-2, 700): About section headings.
-- **Title** (step-1, 700): step names, view subheadings, and the revealed secret text.
-- **Body** (1rem, 1.55): running text, at most 40ch for leads and 66ch for prose.
-- **Label** (step--1, 700): field labels, nav, status lines, and small buttons.
-- **Data** (system mono, 0.9rem): the share link only.
-
-**The Numerals Lead Rule.** On task screens the step numeral is the largest thing after the h1. Never put decorative type above it.
+- **Display (`h1`):** Geist 400, `clamp(1.875rem → 2.5rem)`, tracking -0.035em, balanced wrapping. The last word is set in the accent colour (`<span class="accent">`), never italic. Geist has no italic, and a synthesised one looks cheap.
+- **Wordmark:** the eroding G (`web/img/gone-g-32.svg`, applied as a CSS mask so it follows the text colour) stands in for the capital. It is cap-height tall, sits on the baseline with the same 0.016em overshoot as the "o", and is followed by "one" in Geist 500 at -0.045em.
+- **Data:** Geist Mono for the message textarea, the revealed secret, links and passphrases. It separates I, l, 1, O and 0, which matters when the content is a password.
 
 ## Layout
 
-- `.wrap` caps content at 72rem with fluid side padding (`clamp(1rem, 4vw, 2.5rem)`).
-- An **8-column grid** with 1.5rem gutters. Task content spans columns 1 to 6; the "What happens next" rail spans 7 to 8.
-- Each **step** is a two-track row: a fixed 9rem label track for the numeral and name, and the body fills the rest. A hairline separates steps.
-- About uses columns 1 to 2 for a sticky table of contents and columns 3 to 7 for prose.
-- There is one breakpoint, at **52rem**. Below it everything is one column, step heads go inline, the lifecycle becomes a 2×2 grid, action buttons go full width, and the table of contents hides.
-- Spacing follows the 0.25 to 4rem scale (`--space-1` to `--space-8`). Section rhythm comes from steps 6 to 8; spacing inside controls comes from steps 2 to 4.
-
-**The Grid Is The Brand Rule.** Align to the 8 columns. A one-off offset breaks the signage feel faster than a wrong colour.
+- The header and footer use `.wrap` (72rem max). Content is one centred `.view` (36.25rem; About is 47.5rem) holding one `.pane`.
+- Inside a pane: eyebrow chip, `h1`, lead, then a `.form` grid with 1.25rem gaps, then the lifecycle `.rail`.
+- Mobile (≤40rem): the lifecycle rail becomes 2×2, passphrase buttons drop below the input, and action buttons stretch.
 
 ## Elevation & Depth
 
-The system is flat. There are no box shadows for depth: layering is tonal (paper, then surface) and edges are hairlines. The only `box-shadow` in the system is the focus ring.
+Depth comes from glass only:
+- **Pane:** blur, a 1px light edge, an inset top highlight, and two soft shadows.
+- **Wells:** recessed, with an inset shadow.
+- **Lens:** the chosen segment is raised, with a top highlight and a small shadow.
 
-**The No-Lift Rule.** Hover changes border or fill colour; it never lifts, scales, or casts a shadow.
+`prefers-reduced-transparency` swaps every pane for a solid `--pane-solid`. Forced-colors mode draws pane borders and the mark in system colours.
 
 ## Shapes
 
-- **Corners:** 4px (`--radius`) on buttons, fields, panels, and alerts; 2px on segments inside their track. Nothing is pill-shaped.
-- **Borders:** 1px solid. Dashed borders are reserved for the file drop zone and the "gone" ring.
-- **Pictograms:** one inline SVG sprite, stroke-only, square caps, 2px stroke (3 to 3.2px for the brand mark and the current lifecycle step). Icons are always `aria-hidden` and paired with visible text.
-- **Lifecycle glyphs:** sealed (ring with a seal dot), waiting (ring with clock hands), opened (ring with an eye and pupil), gone (burst: eight rays around an empty center, long on the axes and short on the diagonals, like a balloon popping).
+- **Panes:** 22px corners (20px on phones).
+- **Wells and callouts:** 13px.
+- **Buttons, segmented tracks, link boxes and chips:** fully round (pills).
 
 ## Components
 
-### Buttons
-- **Primary:** an ink fill (navy, or mist in dark) with on-ink text, 3rem tall, weight 700. Hover steps down to ink-2. One per view.
-- **Secondary:** a surface fill with a `line-strong` border; on hover the border becomes ink.
-- **Small:** 2.75rem tall, label size. Used for Copy, Download, and Remove inside panels and rows.
-- **Disabled and busy:** `aria-disabled="true"` at 55% opacity. The button stays focusable and its label says what is happening ("Opening…").
-- Icon buttons always have a text label; accessible names include the file name where relevant.
-
-### Inputs / Fields
-- Flat surface, 1px `line-strong` border, 4px corners, 0.85rem by 1rem padding. On hover the border darkens to ink-3.
-- The textarea auto-resizes from 11rem. Placeholders use ink-3 and never stand in for labels.
-- Each field has a bold label above it and an optional hint below in ink-3. Errors use `aria-invalid` plus `aria-describedby`, and are never shown by colour alone.
-
-### Segmented control (expiry)
-Native radio inputs in a fieldset with a legend. The track is a grid that auto-fits columns of at least 6.5rem. The selected segment fills with ink; the focused segment gets an inset marigold ring.
-
-### Steps
-A large tabular numeral and a step name in the left two columns, with the content in the right four. A hairline sits above each step. This is the backbone of the send screen.
-
-### Lifecycle (signature)
-An ordered list of the four lifecycle glyphs.
-- **Vertical** in the send rail, with short explanations.
-- **Horizontal** on the result and revealed views, with connecting hairlines. Done segments thicken to a 2px ink line.
-- The current step carries `aria-current="step"`, a marigold glyph, and a 3px marigold underline. Future steps drop to ink-3.
-
-### Alerts
-A tinted warning background with a hairline warning border, 4px corners, a signal-coloured icon, and a bold lead line. Never a thick left stripe. Errors use `role="alert"`.
-
-### Link box and secret panel
-- **Link box:** a read-only monospace field with ellipsis overflow next to Copy link. It stacks on narrow screens.
-- **Secret panel:** a surface card with a header row (label and Copy message), and the copy status announced inside the header. The message is title size, `pre-wrap`, scrolls at 60vh, and breaks anywhere.
-
-### Facts
-A `<dl>` of up to three equal columns between two hairlines: a small bold ink-3 term above a bold tabular-numeral value. Columns are at least 12rem, so a value never breaks mid-date; on a phone the facts stack in one column. The manage page uses it for Created, Expires, and Checked.
-
-### Disclosure
-A native `<details>` between two hairlines. The summary is a bold, 3rem-tall row with a CSS chevron that rotates when the disclosure opens; it underlines on hover and draws no browser marker. The body stacks its children on a `space-4` gap. It holds secondary material, such as the sender's manage link on the result card, so the primary action stays alone.
-
-### Passphrase
-- **Sender:** an "Add a passphrase (optional)" disclosure in the Write step, closed by default. Inside, a `.passbox` grid holds a password field in system mono at 1rem (so iOS doesn't zoom), a Show/Hide toggle, and Generate. Both buttons are small secondary buttons stretched to the field's 3rem height. Below 52rem the field takes its own row and the two buttons share the next.
-- **Strength hint:** a `role="status"` line under the field with a 4rem by 0.3rem meter in front of the words. The meter is a `line` track filled from the left in `signal` (a coloured left border, not a gradient), with 2px corners. Its fill steps through short, weak, fair, and strong, and the words always state the level, so colour is never the only cue. "Too short" also sets `aria-invalid` on the field.
-- **Result note:** a `.pass-note` with a signal lock icon and a bold lead, telling the sender to send the passphrase separately. It appears only for v2 secrets.
-- **Recipient:** `.passbox-solo` keeps the field and Show/Hide on one row at every width. A hint under Open warns that opening starts deletion even with a wrong passphrase. On a wrong passphrase, an alert says so, Open becomes "Try again", and the field gets `aria-invalid` and is focused with its text selected.
-
-### Confirm
-An inline confirmation for destructive actions, never a modal. It uses the alert's warning tint and hairline border at 4px corners, with a bold lead line and an actions row: the destructive choice as the primary button, and the safe choice as a secondary button. It is a `role="group"` labelled by its lead line. When it opens, focus moves to the lead line, so screen readers hear the consequence first. When it is dismissed, focus returns to the trigger.
-
-### Manage page
-The sender's page reuses the send screen's grammar: an intro, then numbered steps.
-- **Pending:** a Status step (facts, the horizontal lifecycle with Waiting current, and Check again) and a Delete step (a note, Delete now, then the confirm).
-- **Deleted and Gone:** each is a single-step terminal view with the gone glyph in the step's head column and one way home.
-- **Checking:** the first view, with a live status line. A malformed link or a failed check shows an alert here and the heading changes to "Couldn't check your secret."; Try again appears only when retrying could help.
-- Every view's `h1` receives focus when it appears, and live status lines announce results.
-
-### Navigation
-- The band holds the brand on the left and the nav on the right. Nav items are 2.75rem targets at label size.
-- The theme toggle is outlined at 28% white. When pressed (`aria-pressed="true"`) it gets a marigold border, a 10% white fill, and a marigold icon.
-- A skip link appears on focus.
-
-### Focus
-A double ring, 2px ink and then 5px marigold (inside the band, 2px white and then 5px marigold). It is never removed. In forced-colors mode it becomes a 3px `CanvasText` outline.
+- **Buttons:**
+  - `.btn-primary` is the one strong action per view.
+  - `.btn-secondary` is glass.
+  - `.btn-quiet` is text on hover tint.
+  - `.btn-danger-ghost` starts a delete; `.btn-danger` confirms it.
+  - `.btn-block` is the full-width main action. `.btn-small` is 2.5rem tall.
+- **Wells:** `textarea`, `.input`, `.drop`, `.files li`, `.secret-panel` and `.linkbox` share the recessed well treatment. Focus turns the edge violet and adds a 4px soft ring.
+- **Segmented control (expiry):** a pill track. The checked radio's label becomes a raised lens.
+- **Link box:** the read-only link in a recessed pill, with its copy button inside the right end.
+- **Lifecycle rail:** four steps (Sealed, Waiting, Opened once, Gone) in a row along the foot of the pane.
+  - Each step has a 2px top rule: hairline when upcoming, faint violet when done (`.is-done`), solid violet when current (`.is-now`).
+- **Callouts:** `.alert` is amber, for warnings and errors; `.banner` is an alert floating above the pane. `.callout` is violet, for notes like "Passphrase protected".
+- **Vault:** decorative frosted placeholder lines with a lock, shown before opening.
+- **Gone hero:** the 64px drawing of the mark (`gone-g-64.svg`, masked), `h1`, lead, a `.next` well with what to do, one button.
+- **Manage:**
+  - Status details: a `.pill-status`, a `.facts` key/value list, and Check again.
+  - Deleting: a `.zone` with Delete now, which expands into an inline rose `.confirm`.
+- **Navigation:** About link and an icon-only theme toggle (moon in light mode, sun in dark) with an sr-only "Dark mode" label and `aria-pressed`.
 
 ## Do's and Don'ts
 
-### Do:
-- Do use semantic `--color-*` tokens in components; primitives belong only in `tokens.css`.
-- Do pair every icon with visible text and keep icons `aria-hidden`.
-- Do keep targets at 44px (2.75rem) or larger and keep the double focus ring visible.
-- Do move focus to the new view's heading after swapping views, and announce status in a live region that stays rendered.
-- Do respect `prefers-reduced-motion`, `prefers-color-scheme`, and `forced-colors`.
-- Do keep all CSS and JS external; the CSP forbids inline styles and scripts.
+### Do
+- Put each view on exactly one pane. Use wells for anything inside it.
+- Keep the accent to one word per heading plus focus and progress.
+- Use Geist Mono for anything a person might copy or retype.
+- Keep the backdrop soft and low-saturation. It is light behind glass, not decoration.
 
-### Don't:
-- Don't add shadows, gradients, glass effects, or pill shapes.
-- Don't use marigold for body text, or deep marigold below large or UI sizes.
-- Don't add a second accent colour or recolour the band per theme.
-- Don't use placeholders as labels or build icon-only controls.
-- Don't load fonts, icons, or scripts from a CDN.
-- Don't use `innerHTML` to render secret content; use `textContent` only.
+### Don't
+- Don't nest cards or add extra panes for grouping. Use hairlines, wells, or spacing.
+- Don't use neon, purple-to-pink gradients, or glows on text.
+- Don't italicise Geist.
+- Don't add inline styles or scripts; the CSP forbids them.
+- Don't scale the master mark down to header size. Use the 32px drawing (header) or 64px drawing (hero).

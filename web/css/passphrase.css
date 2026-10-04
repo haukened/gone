@@ -1,22 +1,58 @@
-/* Optional passphrase: input row, strength meter, recipient note. */
+/* Optional passphrase: input row and strength meter. */
 .passbox {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: var(--space-2);
-}
-
-.passbox .input {
-  min-height: 3rem;
-  font-family: var(--font-mono);
-  font-size: 1rem;
-}
-
-.passbox .btn {
-  min-height: 3rem;
-}
-
-.passbox.passbox-solo {
   grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.375rem;
+}
+
+.passbox > .btn {
+  min-height: 3rem;
+}
+
+/* A password field with its show/hide control set inside the well. */
+.input-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.input-wrap .input {
+  min-height: 3rem;
+  padding-right: 3.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+}
+
+.reveal {
+  position: absolute;
+  top: 50%;
+  right: 0.3rem;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  color: var(--color-ink-3);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  translate: 0 -50%;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.reveal:hover {
+  color: var(--color-ink);
+  background: var(--color-accent-soft);
+}
+
+.reveal:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.input-wrap:has(input[type="password"]) .when-shown,
+.input-wrap:has(input[type="text"]) .when-masked {
+  display: none;
 }
 
 .strength {
@@ -32,10 +68,10 @@
   flex: none;
   box-sizing: border-box;
   width: 4rem;
-  height: 0.3rem;
-  border-left: calc(4rem * var(--fill)) solid var(--color-signal);
+  height: 0.25rem;
+  border-left: calc(4rem * var(--fill)) solid var(--color-accent);
   border-radius: 2px;
-  background: var(--color-line);
+  background: var(--hair);
 }
 
 .strength:empty::before {
@@ -58,36 +94,12 @@
   --fill: 1;
 }
 
-.pass-note {
-  display: flex;
-  gap: var(--space-2);
-  align-items: flex-start;
-}
-
-.pass-note[hidden] {
-  display: none;
-}
-
-.pass-note .ico {
-  flex: none;
-  margin-top: 0.2rem;
-  color: var(--color-signal);
-}
-
-@media (max-width: 52rem) {
+@media (max-width: 40rem) {
   .passbox {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .passbox .input {
-    grid-column: 1 / -1;
-  }
-
-  .passbox.passbox-solo {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .passbox.passbox-solo .input {
-    grid-column: auto;
+  .passbox > .btn {
+    justify-self: start;
   }
 }

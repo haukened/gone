@@ -52,9 +52,24 @@ test('strength rates by length, character pool, and repeats', () => {
   const cases = [
     ['', 'empty'], [null, 'empty'], ['abc', 'short'], ['\u00e9t\u00e9', 'short'],
     ['aaaaaaaaaaaa', 'weak'], ['password', 'weak'], ['Password', 'weak'],
-    ['lowercaseonly', 'fair'], ['Abcdefg1', 'fair'],
+    ['Abcdefg1', 'fair'], ['lowercaseonly', 'strong'],
     ['correct horse battery staple', 'strong'], ['FrostCanalBloomTrickRuby', 'strong'],
     ['\u00fcberstra\u00dfe!', 'strong']
   ];
   cases.forEach(([p, want]) => assert.equal(pg.strength(p), want, JSON.stringify(p)));
+  assert.equal(pg.strength('FrostCanalBloomTrickRuby', 30), 'weak');
+});
+
+test('bits caps multi-word phrases per word; crackSeconds averages half the space', () => {
+  const pg = boot();
+  const near = (a, b) => assert.ok(Math.abs(a - b) < 0.05, `${a} != ${b}`);
+  assert.equal(pg.bits(''), 0);
+  assert.equal(pg.bits(null), 0);
+  near(pg.bits('password'), 7 * Math.log2(26));
+  near(pg.bits('correct horse battery staple'), 4 * Math.log2(7776));
+  near(pg.bits('FrostCanalBloom'), 3 * Math.log2(7776));
+  near(pg.bits('two-words'), Math.min(9 * Math.log2(59), 2 * Math.log2(7776)));
+  near(pg.generatedBits, 5 * Math.log2(1296));
+  assert.equal(pg.crackSeconds(21), Math.pow(2, 20) / pg.guessesPerSecond);
+  assert.equal(pg.crackSeconds(-3), 0.5 / pg.guessesPerSecond);
 });

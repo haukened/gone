@@ -41,6 +41,12 @@
   }
 
   // setText sets an optional element's text content.
+  // cryptoAvailable reports whether WebCrypto can run here. Browsers only
+  // expose crypto.subtle on secure (HTTPS or localhost) pages.
+  function cryptoAvailable() {
+    return typeof crypto !== 'undefined' && Boolean(crypto.subtle);
+  }
+
   function setText(node, text) {
     if (node) node.textContent = text;
   }
@@ -91,6 +97,7 @@
     logTiming: logTiming,
     sleep: sleep,
     allPresent: allPresent,
+    cryptoAvailable: cryptoAvailable,
     setText: setText,
     el: el,
     flashCopied: flashCopied,

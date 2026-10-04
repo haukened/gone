@@ -1,46 +1,94 @@
-/* Page-specific pieces: gone state, about prose and table of contents. */
-.gone-mark {
+/* Page-specific pieces: the gone state, about prose and its contents. */
+.gone-hero {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.gone-hero .lead {
+  margin-inline: auto;
+}
+
+.gone-g {
+  display: block;
+  width: 4.56rem;
+  height: 4rem;
+  margin: var(--space-2) 0 1.25rem;
+  background: var(--color-ink);
+  mask: url("../img/gone-g-64.svg") center / contain no-repeat;
+  opacity: 0.92;
+}
+
+.next {
+  width: 100%;
   margin-bottom: var(--space-5);
+  padding: var(--space-4) 1.1rem;
+  text-align: left;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-well);
 }
 
-.gone-mark .ico {
-  width: 5.5rem;
-  height: 5.5rem;
-  stroke-width: 1.6;
-  color: var(--color-ink-3);
+.next h2 {
+  margin-bottom: 0.3rem;
+  font-size: 0.875rem;
 }
 
-.step-body h2 {
-  font-size: var(--step-1);
+.toc ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toc a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 0.8rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink-2);
+  text-decoration: none;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-pill);
+}
+
+.toc a:hover {
+  color: var(--color-ink);
+  border-color: var(--color-accent-line);
 }
 
 .prose {
-  grid-column: 3 / span 5;
-  padding-bottom: var(--space-8);
+  font-size: var(--step-0);
+  line-height: 1.7;
+  color: var(--color-ink-2);
 }
 
 .prose h2 {
-  margin: var(--space-7) 0 var(--space-3);
+  margin: 2.5rem 0 0.6rem;
   font-size: var(--step-2);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
   scroll-margin-top: var(--space-5);
 }
 
 .prose h3 {
   margin: var(--space-5) 0 var(--space-2);
   font-size: var(--step-1);
-}
-
-.prose section:first-child h2 {
-  margin-top: var(--space-6);
+  font-weight: 600;
+  color: var(--color-ink);
 }
 
 .prose p,
 .prose ul,
 .prose ol {
-  max-width: 66ch;
+  max-width: 64ch;
   margin: 0 0 var(--space-4);
-  color: var(--color-ink-2);
-  font-size: 1.05rem;
 }
 
 .prose ul,
@@ -53,49 +101,36 @@
 }
 
 .prose li::marker {
-  color: var(--color-ink-3);
+  color: var(--color-accent);
 }
 
 .prose strong {
   color: var(--color-ink);
+  font-weight: 600;
+}
+
+.prose a {
+  color: var(--color-accent);
+}
+
+.prose code {
+  padding: 0.05rem 0.35rem;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: 6px;
+}
+
+@media (forced-colors: active) {
+  .gone-g {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
 }
 
 .toc {
-  grid-column: 1 / span 2;
-  padding-top: var(--space-6);
-  font-size: var(--step--1);
+  margin-bottom: var(--space-2);
 }
 
-.toc ol {
-  position: sticky;
-  top: var(--space-4);
-  display: grid;
-  gap: var(--space-1);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.toc a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2rem;
-  color: var(--color-ink-2);
-  text-decoration: none;
-}
-
-.toc a:hover {
-  color: var(--color-ink);
-  text-decoration: underline;
-}
-
-@media (max-width: 52rem) {
-  .prose,
-  .toc {
-    grid-column: 1 / -1;
-  }
-
-  .toc {
-    display: none;
-  }
+.prose section:first-child h2 {
+  margin-top: var(--space-6);
 }

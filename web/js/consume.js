@@ -16,6 +16,7 @@
 
   const MALFORMED = 'This secret\u2019s contents are damaged. Ask the sender to share it again.';
   const BAD_FRAGMENT = 'This link is missing its key, so the secret can\u2019t be decrypted. Check that you copied the whole link, including everything after the #.';
+  const NO_CRYPTO = 'This browser only decrypts on secure (HTTPS) pages, so this secret can\u2019t be opened here. Nothing was downloaded, and the link still works. Ask the sender for an HTTPS link.';
   const BAD_ID = 'This link isn\u2019t valid. Check that you copied all of it.';
   const UNEXPECTED = 'Something went wrong opening this secret. Try again.';
   const FRAGMENT_PROBLEMS = new Map([['unsupported_version', 'This link was made by a newer version of Gone and can\u2019t be opened here.']]);
@@ -86,9 +87,10 @@
     }
   }
 
-  // validate checks the link before anything touches the network.
+  // validate checks the link and browser before anything touches the network.
   // Returns {frag, problem}.
   function validate() {
+    if (!util.cryptoAvailable()) return { frag: null, problem: NO_CRYPTO };
     const parsed = readFragment(location.hash);
     if (parsed.problem) return parsed;
     if (!registerFromPath()) return { frag: null, problem: BAD_ID };
@@ -158,10 +160,15 @@
       view.showDecoded({ message: params.get('text') || PREVIEW_TEXT, files: [] });
       return;
     }
+    // Every link gets the same Open page, valid or not, so loading it reveals
+    // nothing. A link that can't work says why only when Open is pressed,
+    // still without touching the network.
     const checked = validate();
     if (checked.problem) {
-      view.showError(checked.problem);
-      view.disableOpen();
+      view.onOpen(function () {
+        view.showError(checked.problem);
+        view.disableOpen();
+      });
       return;
     }
     if (checked.frag.version === window.goneCrypto.versionV2) view.showPassphrase();

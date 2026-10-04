@@ -28,7 +28,7 @@ test('preview mode shows sample or custom text without fetching', (t) => {
   assert.equal(calls.length, 0);
 });
 
-test('fragment and id problems are reported and lock Open without fetching', (t) => {
+test('fragment and id problems show the Open page, then explain on Open without fetching', (t) => {
   const calls = installFetch([]);
   const BAD = /everything after the #/;
   const cases = [
@@ -42,6 +42,10 @@ test('fragment and id problems are reported and lock Open without fetching', (t)
   ];
   for (const [url, want] of cases) {
     const { $, open } = boot(t, url);
+    assert.equal($('view-open').hidden, false, url);
+    assert.equal($('consume-error').hidden, true, url);
+    assert.ok(!disabled($), url);
+    open();
     assert.match($('consume-error-text').textContent, want, url);
     assert.equal($('consume-error').hidden, false);
     assert.ok(disabled($), url);
@@ -236,4 +240,18 @@ test('leaving the page mid-retry erases the download and ignores the outcome', a
   assert.ok(disabled($));
   assert.equal($('view-revealed').hidden, true);
   assert.equal(calls.length, 1);
+});
+
+test('an insecure page without WebCrypto locks Open before fetching', (t) => {
+  const calls = installFetch([]);
+  const real = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+  Object.defineProperty(globalThis, 'crypto', { configurable: true, value: {} });
+  t.after(() => Object.defineProperty(globalThis, 'crypto', real));
+  const { $, open } = boot(t, BASE + ID + VALID_FRAG);
+  assert.equal($('consume-error').hidden, true);
+  open();
+  assert.match($('consume-error-text').textContent, /secure \(HTTPS\) pages.*Nothing was downloaded/);
+  assert.ok(disabled($));
+  open();
+  assert.equal(calls.length, 0);
 });
