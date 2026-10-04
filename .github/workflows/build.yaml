@@ -4,15 +4,8 @@ on:
   push:
     branches: [main]
     tags: ['v*.*.*', 'v*.*', 'v*']
-    paths-ignore:
-      - '.github/instructions/**'
-      - 'scripts/**'
-      - '.codacy.yml'
-      - '.gitignore'
-      - 'README.md'
-      - 'LICENSE'
-      - 'docs/**'
-      - "Taskfile.yml"
+    # No paths-ignore: Codacy shows coverage for the newest commit on main,
+    # so a docs-only push that skipped the tests would report 0%.
   pull_request:
     branches: [main]
   workflow_dispatch:
