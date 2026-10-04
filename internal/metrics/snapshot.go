@@ -2,8 +2,8 @@ package metrics
 
 import (
 	"context"
-	"database/sql"
-	"errors"
+
+	"github.com/haukened/gone/internal/sqlrows"
 )
 
 // Snapshot returns current (persisted + in-memory deltas) by reading persisted
@@ -22,41 +22,35 @@ func (m *Manager) Snapshot(ctx context.Context) (counters map[string]int64, summ
 }
 
 // loadPersistedCounters reads counters from storage.
-func (m *Manager) loadPersistedCounters(ctx context.Context) (counters map[string]int64, err error) {
-	counters = make(map[string]int64)
-	rows, err := m.db.QueryContext(ctx, `SELECT name, value FROM metrics_counters`)
+func (m *Manager) loadPersistedCounters(ctx context.Context) (map[string]int64, error) {
+	counters := make(map[string]int64)
+	err := sqlrows.Query(ctx, m.db, `SELECT name, value FROM metrics_counters`, func(r sqlrows.Rows) error {
+		var n string
+		var v int64
+		err := r.Scan(&n, &v)
+		counters[n] = v
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer func() { err = errors.Join(err, rows.Close()) }()
-	for rows.Next() {
-		var n string
-		var v int64
-		if err := rows.Scan(&n, &v); err != nil {
-			return nil, err
-		}
-		counters[n] = v
-	}
-	return counters, rows.Err()
+	return counters, nil
 }
 
 // loadPersistedSummaries reads summaries from storage.
-func (m *Manager) loadPersistedSummaries(ctx context.Context) (summaries map[string]SummaryAgg, err error) {
-	summaries = make(map[string]SummaryAgg)
-	rows, err := m.db.QueryContext(ctx, `SELECT name, count, sum, min, max FROM metrics_summaries`)
+func (m *Manager) loadPersistedSummaries(ctx context.Context) (map[string]SummaryAgg, error) {
+	summaries := make(map[string]SummaryAgg)
+	err := sqlrows.Query(ctx, m.db, `SELECT name, count, sum, min, max FROM metrics_summaries`, func(r sqlrows.Rows) error {
+		var n string
+		var a SummaryAgg
+		err := r.Scan(&n, &a.Count, &a.Sum, &a.Min, &a.Max)
+		summaries[n] = a
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer func() { err = errors.Join(err, rows.Close()) }()
-	for rows.Next() {
-		var n string
-		var c, s, mn, mx int64
-		if err := rows.Scan(&n, &c, &s, &mn, &mx); err != nil {
-			return nil, err
-		}
-		summaries[n] = SummaryAgg{Count: c, Sum: s, Min: mn, Max: mx}
-	}
-	return summaries, rows.Err()
+	return summaries, nil
 }
 
 // layerDeltas merges in-memory deltas onto persisted values.
@@ -93,13 +87,3 @@ func layerSummaryDelta(summaries map[string]SummaryAgg, name string, agg *Summar
 	}
 	summaries[name] = cur
 }
-
-// sqlRows is the row iterator subset returned by database/sql queries.
-type sqlRows interface {
-	Close() error
-	Err() error
-	Next() bool
-	Scan(...any) error
-}
-
-var _ sqlRows = (*sql.Rows)(nil)

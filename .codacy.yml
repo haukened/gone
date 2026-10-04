@@ -1,6 +1,7 @@
 exclude_paths:
   - ".github/**/*"
   - ".codacy/**"
+  - ".golangci.yml"
   - "**/*_test.go"
   - "test/js/**"
   - "test/vectors/**"

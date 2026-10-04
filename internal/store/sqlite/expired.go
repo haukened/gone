@@ -3,9 +3,9 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
+	"github.com/haukened/gone/internal/sqlrows"
 	"github.com/haukened/gone/internal/store"
 )
 
@@ -57,15 +57,20 @@ const expiredWhere = `expires_at <= ? OR (claimed_until IS NOT NULL AND claimed_
 //   - t: expiration cutoff.
 //
 // Returns expired records or a DB error.
-func selectExpired(ctx context.Context, q interface {
-	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
-}, t time.Time) ([]store.ExpiredRecord, error) {
+func selectExpired(ctx context.Context, q sqlrows.Querier, t time.Time) (recs []store.ExpiredRecord, err error) {
 	const sel = `SELECT id, external, claim_hash IS NOT NULL FROM secrets WHERE ` + expiredWhere
-	rows, err := q.QueryContext(ctx, sel, t.Unix(), t.Unix())
+	err = sqlrows.Query(ctx, q, sel, func(r sqlrows.Rows) error {
+		var rec store.ExpiredRecord
+		if err := r.Scan(&rec.ID, &rec.External, &rec.Claimed); err != nil {
+			return err
+		}
+		recs = append(recs, rec)
+		return nil
+	}, t.Unix(), t.Unix())
 	if err != nil {
 		return nil, err
 	}
-	return scanExpiredRows(rows)
+	return recs, nil
 }
 
 // deleteExpired removes expired rows from the index.
@@ -84,44 +89,17 @@ func deleteExpired(ctx context.Context, e interface {
 	return err
 }
 
-// scanExpiredRows reads all rows (id, external, claimed) from the provided *sql.Rows into a
-// slice of ExpiredRecord. It always closes the rows. The returned slice may be
-// empty if no rows were present. An error is returned if scanning or rows.Err()
-// produces an error.
-func scanExpiredRows(rows *sql.Rows) (recs []store.ExpiredRecord, err error) {
-	defer func() { err = errors.Join(err, rows.Close()) }()
-	for rows.Next() {
-		var r store.ExpiredRecord
-		var extInt, claimedInt int
-		if err := rows.Scan(&r.ID, &extInt, &claimedInt); err != nil {
-			return nil, err
-		}
-		r.External = extInt == 1
-		r.Claimed = claimedInt == 1
-		recs = append(recs, r)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return recs, nil
-}
-
 // ListExternalIDs returns IDs of secrets with external (blob) storage.
 func (i *Index) ListExternalIDs(ctx context.Context) (ids []string, err error) {
-	const q = `SELECT id FROM secrets WHERE external=1`
-	rows, err := i.db.QueryContext(ctx, q)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { err = errors.Join(err, rows.Close()) }()
-	for rows.Next() {
+	err = sqlrows.Query(ctx, i.db, `SELECT id FROM secrets WHERE external=1`, func(r sqlrows.Rows) error {
 		var id string
-		if err = rows.Scan(&id); err != nil {
-			return nil, err
+		if err := r.Scan(&id); err != nil {
+			return err
 		}
 		ids = append(ids, id)
-	}
-	if err = rows.Err(); err != nil {
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return ids, nil

@@ -53,11 +53,11 @@ func configPath(env *Env) (string, string, error) {
 //
 // Returns the config or an I/O error.
 func loadConfig(env *Env) (config, error) {
-	_, path, err := configPath(env)
+	dir, path, err := configPath(env)
 	if err != nil {
 		return config{}, err
 	}
-	data, err := readConfigFile(path)
+	data, err := readConfigFile(dir, path)
 	if err != nil || data == nil {
 		return config{}, err
 	}
@@ -73,20 +73,20 @@ func loadConfig(env *Env) (config, error) {
 	return c, nil
 }
 
-// readConfigFile reads at most maxConfigBytes from path.
+// readConfigFile reads at most maxConfigBytes of the config file. The
+// file is opened through an os.Root confined to dir, so neither the name
+// nor a symlink inside dir can resolve outside it.
 //
 // Parameters:
-//   - path: config file path.
+//   - dir: config directory.
+//   - path: config file path, used only in error messages.
 //
-// Returns the contents, nil when the file does not exist, or an I/O
-// error (including when the file is too large).
-func readConfigFile(path string) ([]byte, error) {
-	f, err := os.Open(path) // #nosec G304 -- fixed name under the user config dir
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, ioErr("read config", err)
+// Returns the contents, nil when the file or directory does not exist,
+// or an I/O error (including when the file is too large).
+func readConfigFile(dir, path string) ([]byte, error) {
+	f, err := openConfigFile(dir)
+	if f == nil || err != nil {
+		return nil, err
 	}
 	defer func() { _ = f.Close() }()
 	data, err := io.ReadAll(io.LimitReader(f, maxConfigBytes+1))
@@ -97,6 +97,29 @@ func readConfigFile(path string) ([]byte, error) {
 		return nil, ioErr("read config", errors.New(path+" is too large"))
 	}
 	return data, nil
+}
+
+// openConfigFile opens the config file through an os.Root confined to
+// dir. The root is closed before returning; the file stays usable.
+//
+// Parameters:
+//   - dir: config directory.
+//
+// Returns the open file, nil when the file or directory does not exist,
+// or an I/O error.
+func openConfigFile(dir string) (*os.File, error) {
+	root, err := os.OpenRoot(dir)
+	if err == nil {
+		defer func() { _ = root.Close() }()
+		var f *os.File
+		if f, err = root.Open(configFileName); err == nil {
+			return f, nil
+		}
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	return nil, ioErr("read config", err)
 }
 
 // saveConfig atomically writes c with owner-only permissions.

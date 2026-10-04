@@ -60,6 +60,37 @@ func TestLoadConfigErrors(t *testing.T) {
 	}
 }
 
+// TestLoadConfigConfinement checks that the config file cannot be read
+// through a symlink escaping the config directory, and that a config
+// directory path that is not a directory is reported as an I/O error.
+//
+// Parameters:
+//   - t: the test handle.
+func TestLoadConfigConfinement(t *testing.T) {
+	te := newTestEnv(t)
+	outside := filepath.Join(t.TempDir(), "outside.json")
+	if err := os.WriteFile(outside, []byte(`{"server":"https://evil.example"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(te.configDir, configDirName)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, configFileName)); err != nil {
+		t.Fatal(err)
+	}
+	if c, err := loadConfig(te.Env); classify(err).code != exitIO || c.Server != "" {
+		t.Fatalf("symlink escape: c = %+v, err = %v", c, err)
+	}
+	notDir := newTestEnv(t)
+	if err := os.WriteFile(filepath.Join(notDir.configDir, configDirName), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadConfig(notDir.Env); classify(err).code != exitIO {
+		t.Fatalf("config dir is a file: err = %v", err)
+	}
+}
+
 // TestSaveConfig checks the saved file round-trips with private
 // permissions.
 //
