@@ -174,7 +174,8 @@
 
 .foot nav {
   display: flex;
-  gap: var(--space-4);
+  flex-wrap: wrap;
+  column-gap: var(--space-4);
 }
 
 .foot a {
