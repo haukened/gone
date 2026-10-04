@@ -26,6 +26,10 @@ import (
 	wembed "github.com/haukened/gone/web"
 )
 
+// version is the release this binary was built from, set at build time with
+// -ldflags "-X main.version=vX.Y.Z". Local builds report "dev".
+var version = "dev"
+
 // realClock implements app.Clock using time.Now.
 type realClock struct{}
 

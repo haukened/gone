@@ -191,6 +191,13 @@
   text-decoration: none;
 }
 
+.foot .ver {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .foot a:hover {
   color: var(--color-ink);
   text-decoration: underline;

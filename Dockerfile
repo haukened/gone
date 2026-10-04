@@ -34,12 +34,14 @@ RUN mkdir -p web/dist/css web/dist/js web/dist/fonts web/dist/img && \
     minify -r -o web/dist/js/ web/js/
 
 # Build a fully static, reproducible binary. SQLite is provided by the pure-Go modernc.org/sqlite driver.
+# VERSION is the release tag shown in the page footer; local builds say "dev".
 ARG TARGETOS
 ARG TARGETARCH
+ARG VERSION=dev
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -trimpath -tags=prod -ldflags='-s -w -buildid=' -o /app/bin/goned ./cmd/goned
+    go build -trimpath -tags=prod -ldflags="-s -w -buildid= -X main.version=${VERSION}" -o /app/bin/goned ./cmd/goned
 
 # The runtime image has no shell, so create the data dir here and copy it across.
 RUN mkdir -p /app/data

@@ -189,8 +189,14 @@ func (h *Handler) staticHandler() http.Handler {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		// Long-lived caching; caller can fingerprint filenames later.
-		w.Header().Set("Cache-Control", "public, max-age=300")
+		// Fingerprinted URLs (?v=<content hash>, from the page templates) never
+		// change content, so caches may keep them for a year. Bare URLs get a
+		// short lifetime so an upgrade is picked up quickly.
+		if r.URL.Query().Has("v") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "public, max-age=300")
+		}
 		if ct, ok := staticTypes[path.Ext(r.URL.Path)]; ok {
 			w.Header().Set("Content-Type", ct)
 		}

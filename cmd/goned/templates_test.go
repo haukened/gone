@@ -17,7 +17,7 @@ func validPages() fstest.MapFS {
 
 // TestLoadTemplatesFrom_Success verifies each page is parsed and assigned.
 func TestLoadTemplatesFrom_Success(t *testing.T) {
-	tmpls, err := loadTemplatesFrom(validPages())
+	tmpls, err := loadTemplatesFrom(validPages(), "v0.0.0-test")
 	if err != nil {
 		t.Fatalf("loadTemplatesFrom: %v", err)
 	}
@@ -45,10 +45,34 @@ func TestLoadTemplatesFrom_PageErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fsys := validPages()
 			tt.mutate(fsys)
-			_, err := loadTemplatesFrom(fsys)
+			_, err := loadTemplatesFrom(fsys, "v0.0.0-test")
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("err = %v, want containing %q", err, tt.want)
 			}
 		})
+	}
+}
+
+// TestTemplateFuncs verifies asset URLs carry a content fingerprint that
+// changes with the file, and that version reports the build.
+func TestTemplateFuncs(t *testing.T) {
+	fsys := fstest.MapFS{"css/a.css": {Data: []byte("a{}")}}
+	asset := templateFuncs(fsys, "v1.2.3")["asset"].(func(string) string)
+	first := asset("css/a.css")
+	if !strings.HasPrefix(first, "/static/css/a.css?v=") || len(first) != len("/static/css/a.css?v=")+12 {
+		t.Fatalf("asset url = %q", first)
+	}
+	if again := asset("css/a.css"); again != first {
+		t.Fatalf("fingerprint not stable: %q then %q", first, again)
+	}
+	if got := asset("css/missing.css"); got != "/static/css/missing.css" {
+		t.Fatalf("missing asset url = %q", got)
+	}
+	changed := templateFuncs(fstest.MapFS{"css/a.css": {Data: []byte("b{}")}}, "v1.2.3")["asset"].(func(string) string)
+	if changed("css/a.css") == first {
+		t.Fatal("fingerprint did not change with content")
+	}
+	if v := templateFuncs(fsys, "v1.2.3")["version"].(func() string)(); v != "v1.2.3" {
+		t.Fatalf("version = %q", v)
 	}
 }

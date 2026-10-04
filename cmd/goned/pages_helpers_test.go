@@ -25,6 +25,7 @@ func checkPageContract(t *testing.T, h http.Handler, p pageContractCase, assets 
 	requireDeclaredIcons(t, ids, body)
 	requireNoInlineCode(t, body)
 	requireDocumentLanguage(t, body)
+	requireFingerprintedAssets(t, body)
 	collectAssets(body, assets)
 }
 
@@ -118,6 +119,24 @@ func requireDocumentLanguage(t *testing.T, body string) {
 func collectAssets(body string, assets map[string]bool) {
 	for _, m := range assetRef.FindAllStringSubmatch(body, -1) {
 		assets[m[1]] = true
+	}
+}
+
+// requireFingerprintedAssets fails when a static asset is referenced without
+// a ?v= content fingerprint, which would let caches serve it stale.
+//
+// Parameters:
+//   - t: the test handle.
+//   - body: rendered HTML.
+func requireFingerprintedAssets(t *testing.T, body string) {
+	t.Helper()
+	for _, m := range assetRef.FindAllStringSubmatch(body, -1) {
+		if !strings.Contains(m[1], "?v=") {
+			t.Errorf("asset %s has no fingerprint", m[1])
+		}
+	}
+	if !strings.Contains(body, "Gone v0.0.0-test") {
+		t.Errorf("footer is missing the version")
 	}
 }
 

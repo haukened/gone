@@ -71,3 +71,28 @@ func TestStaticHandlerPinnedTypes(t *testing.T) {
 		})
 	}
 }
+
+// TestStaticHandlerCacheControl verifies fingerprinted asset URLs are cached
+// as immutable and bare URLs only briefly.
+func TestStaticHandlerCacheControl(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.css"), []byte("a{}"), 0o600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	h := httpx.New(noopService{}, 0, nil)
+	h.Assets = http.FS(os.DirFS(dir))
+	cases := map[string]string{
+		"/static/a.css?v=0123456789ab": "public, max-age=31536000, immutable",
+		"/static/a.css":                "public, max-age=300",
+	}
+	for url, want := range cases {
+		w := httptest.NewRecorder()
+		h.Router().ServeHTTP(w, httptest.NewRequest(http.MethodGet, url, nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("%s: expected 200 got %d", url, w.Code)
+		}
+		if got := w.Header().Get("Cache-Control"); got != want {
+			t.Fatalf("%s: Cache-Control %q, want %q", url, got, want)
+		}
+	}
+}

@@ -199,7 +199,7 @@ func (c *components) serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	tmpls, err := loadTemplatesFrom(c.assets)
+	tmpls, err := loadTemplatesFrom(c.assets, version)
 	if err != nil {
 		return err
 	}
