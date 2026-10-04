@@ -61,3 +61,14 @@ func TestDecryptPromptError(t *testing.T) {
 		t.Fatalf("unexpected retry: %q", te.stderr)
 	}
 }
+
+// TestInvalidEntryErrorMessage checks that the rejection reason is the
+// error text, so the retry prompt can show it.
+//
+// Parameters:
+//   - t: the test.
+func TestInvalidEntryErrorMessage(t *testing.T) {
+	if got := (&invalidEntryError{msg: "too long"}).Error(); got != "too long" {
+		t.Fatalf("Error() = %q", got)
+	}
+}
