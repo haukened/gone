@@ -106,9 +106,9 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - Follow conventional commits for commit messages
 
 ## Performance Goals
-- 95th percentile latency under 50ms at 100 requests per second
+- 95th percentile latency under 50ms at 100 requests per second on SSD storage, checked by `TestPerfLatencyTarget` (`task perf`, and the `perf` CI job). Each request in the mixed create/claim/acknowledge load waits for a disk sync, so on a spinning disk (roughly 25-30 synced writes per second) the server saturates at about 25 req/s.
 - Use SQLite in WAL mode for concurrency
-- Ensure fsync on data directory to guarantee durability
+- Keep `synchronous=FULL`: a claim lost to a power failure would return the secret to unclaimed after it had already been delivered, so the link could open it a second time
 
 ## Observability
 - Structured JSON logs using `slog`

@@ -85,6 +85,13 @@ tasks:
         interactive: true
         ignore_error: true
   
+  perf:
+    desc: Check the latency target (p95 under 50ms at 100 req/s); set TMPDIR to test a specific disk
+    env:
+      GONE_PERF: '1'
+    cmds:
+      - go test ./test -run TestPerfLatencyTarget -count=1 -v
+
   cover:
     desc: Run tests with coverage output
     cmds:

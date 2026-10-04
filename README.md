@@ -177,6 +177,7 @@ Core tasks:
 | `task lint` | Run Go linters with golangci-lint for default and `dev` build tags. |
 | `task test-js` | Run JavaScript unit tests (`node --test`, Node 20+, no npm install). |
 | `task cover-js` | Run JavaScript unit tests with coverage output. |
+| `task perf` | Check the latency target (p95 under 50ms at 100 req/s) against the real stack. Set `TMPDIR` to measure a specific disk. |
 
 Development build:
 ```sh
