@@ -18,12 +18,16 @@ const DriverName = "sqlite"
 var _ store.Index = (*Index)(nil)
 
 // Index implements store.Index using SQLite (via database/sql). It is safe for
-// concurrent use; database/sql manages connection pooling and serialization.
-type Index struct{ db *sql.DB }
+// concurrent use. Reads run in parallel; writes queue for writeGate first (see
+// acquireWrite), because SQLite allows only one writer at a time.
+type Index struct {
+	db        *sql.DB
+	writeGate chan struct{}
+}
 
 // New constructs an Index, initializing the required schema if absent.
 func New(db *sql.DB) (*Index, error) {
-	ix := &Index{db: db}
+	ix := &Index{db: db, writeGate: make(chan struct{}, 1)}
 	if err := ix.init(); err != nil {
 		return nil, err
 	}
@@ -56,7 +60,12 @@ func (i *Index) Insert(ctx context.Context, row store.NewRow) error {
 	if row.External {
 		ext = 1
 	}
-	_, err := i.db.ExecContext(ctx, q, row.ID, row.Meta.Version, row.Meta.NonceB64u, row.Inline, ext, row.Size,
+	release, err := i.acquireWrite(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
+	_, err = i.db.ExecContext(ctx, q, row.ID, row.Meta.Version, row.Meta.NonceB64u, row.Inline, ext, row.Size,
 		row.CreatedAt.Unix(), row.ExpiresAt.Unix(), row.ManageHash)
-	return err
+	return busyError(err)
 }

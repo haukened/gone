@@ -9,7 +9,8 @@
     [400, INVALID_LINK],
     [404, GONE_MESSAGE],
     [410, GONE_MESSAGE],
-    [429, 'Too many requests right now. Wait a moment, then try again.']
+    [429, 'Too many requests right now. Wait a moment, then try again.'],
+    [503, 'The server is busy right now. Wait a moment, then try again.']
   ]);
 
   function FetchError(message, retryable, status) {

@@ -3,6 +3,7 @@ package httpx
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -27,6 +28,7 @@ func TestMapServiceError(t *testing.T) {
 		{"invalid version", domain.ErrInvalidVersion, http.StatusBadRequest, "invalid version"},
 		{"invalid nonce", domain.ErrInvalidNonce, http.StatusBadRequest, "invalid nonce"},
 		{"os not exist", os.ErrNotExist, http.StatusNotFound, "not found"},
+		{"busy", fmt.Errorf("insert: %w", app.ErrBusy), http.StatusServiceUnavailable, "busy"},
 		{"internal default", errors.New("boom"), http.StatusInternalServerError, "internal"},
 	}
 	for _, tc := range cases {
@@ -38,6 +40,13 @@ func TestMapServiceError(t *testing.T) {
 			}
 			if rr.Body.String() == "" || !containsJSONError(rr.Body.String(), tc.body) {
 				t.Fatalf("expected body to contain %q got %s", tc.body, rr.Body.String())
+			}
+			wantRetry := ""
+			if tc.code == http.StatusServiceUnavailable {
+				wantRetry = busyRetryAfter
+			}
+			if got := rr.Header().Get("Retry-After"); got != wantRetry {
+				t.Fatalf("Retry-After = %q, want %q", got, wantRetry)
 			}
 		})
 	}

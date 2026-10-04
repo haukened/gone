@@ -17,7 +17,8 @@
   const UPLOAD_ERRORS = new Map([
     [400, 'The server rejected the secret'],
     [413, 'Secret too large for this server'],
-    [429, 'Slow down: too many requests. Please wait and retry.']
+    [429, 'Slow down: too many requests. Please wait and retry.'],
+    [503, 'The server is busy right now. Wait a moment, then try again.']
   ]);
 
   // buildPlaintext reads the files and encodes them with message into an

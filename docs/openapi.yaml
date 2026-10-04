@@ -143,6 +143,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/Busy'
   /api/secret/{id}:
     get:
       summary: Claim a secret and retrieve its ciphertext
@@ -220,6 +222,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/Busy'
     delete:
       summary: Acknowledge receipt and delete a claimed secret
       operationId: ackSecret
@@ -264,6 +268,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/Busy'
   /api/secret/{id}/status:
     get:
       summary: Check whether a secret is still waiting to be opened
@@ -306,6 +312,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/Busy'
   /api/secret/{id}/revoke:
     post:
       summary: Delete a secret before it is opened
@@ -340,6 +348,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/Busy'
   /healthz:
     get:
       summary: Liveness probe
@@ -403,6 +413,22 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             error: rate limited
+    Busy:
+      description: |
+        Storage is overloaded: the write could not get SQLite's write lock within
+        5 seconds. Nothing was changed, so the request can be retried as is.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+          description: Seconds to wait before retrying.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: busy
   parameters:
     SecretID:
       in: path

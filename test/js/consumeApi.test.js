@@ -119,7 +119,7 @@ test('status codes map to messages and retryability', async (t) => {
 test('a server error without a claim is retried once then stops', async (t) => {
   const { api, delays, logs } = setup(t);
   const calls = installFetch([() => fakeResponse({ status: 500 }), () => fakeResponse({ status: 503 })]);
-  await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => /server had a problem/.test(e.message) && e.retryable);
+  await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => /server is busy/.test(e.message) && e.retryable && e.status === 503);
   assert.equal(calls.length, 2);
   assert.deepEqual(delays, [500]);
   assert.equal(logs.warn.length, 1);
