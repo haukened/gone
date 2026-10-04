@@ -103,7 +103,7 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 ## Code Ownership & Contribution
 - Trunk-based development model
 - Feature branches with Pull Request reviews
-- Use squash merges
+- Merge PRs with merge commits (the GitHub default)
 - Follow conventional commits for commit messages
 
 ## Performance Goals
