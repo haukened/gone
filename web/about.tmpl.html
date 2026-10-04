@@ -65,6 +65,7 @@
 					<li>The sender can add a passphrase. Opening the secret then takes both the link and the passphrase, so a leaked link alone is not enough.</li>
 					<li>Send the passphrase separately from the link, for example the link by email and the passphrase by phone. Gone never stores the passphrase and cannot recover it.</li>
 					<li>Your browser stretches the passphrase with PBKDF2 (600,000 rounds) and mixes it with the link's key. Every wrong guess costs real time, but a short or common passphrase can still be guessed by someone who has the link. Use <strong>Generate</strong> for five random words.</li>
+					<li>As you type, Gone shows the passphrase's estimated entropy in bits and roughly how long it would take to guess. The estimate assumes someone who already has the link and can make a million guesses a second against the stretched passphrase. It's a guide, not a guarantee: names, dates, and well-known phrases fall faster than it shows.</li>
 					<li>If the passphrase is wrong, the recipient can try again as many times as they need without downloading the secret again.</li>
 					<li>Opening the link uses up the secret even if the passphrase is wrong. A passphrase keeps a leaked secret unreadable, but cannot stop someone with the link from destroying it.</li>
 					<li>Generated passphrases use the <a href="https://www.eff.org/dice">EFF short wordlist</a> by the Electronic Frontier Foundation, licensed under <a href="https://creativecommons.org/licenses/by/3.0/us/">CC BY 3.0 US</a>.</li>

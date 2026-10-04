@@ -57,9 +57,19 @@ test('typing rates strength, validates length and reports overhead', () => {
   typeIn(b, 'password');
   assert.equal(b.els.input.getAttribute('aria-invalid'), 'false');
   assert.equal(b.els.strength.dataset.level, 'weak');
-  assert.match(b.els.strength.textContent, /weak.*Generate/);
+  assert.equal(b.els.strength.textContent, 'About 33 bits of entropy, about 1 hour to guess. Longer is better, or press Generate.');
+  typeIn(b, 'Abcdefg1');
+  assert.equal(b.els.strength.dataset.level, 'fair');
+  assert.equal(b.els.strength.textContent, 'About 48 bits of entropy, about 3 years to guess.');
+  typeIn(b, 'aaaaaaaaaaaa');
+  assert.equal(b.els.strength.textContent, 'About 5 bits of entropy, guessed almost instantly. Longer is better, or press Generate.');
+  typeIn(b, 'correct horse battery staple');
+  assert.equal(b.els.strength.textContent, 'About 52 bits of entropy, about 58 years to guess.');
+  typeIn(b, 'Correct-Horse-Battery-Staple-Ocean-Violet');
+  assert.match(b.els.strength.textContent, /^About 78 bits of entropy, about \d+ billion years to guess\.$/);
+  typeIn(b, 'x7#Qp!vL9@zR2$mW8^kT4&nY6*bH3%fJ');
+  assert.equal(b.els.strength.textContent, 'About 210 bits of entropy, longer than the age of the universe to guess.');
   typeIn(b, 'lowercaseonly');
-  assert.equal(b.els.strength.textContent, 'Strength: fair.');
   assert.equal(b.field.value(), 'lowercaseonly');
 });
 
@@ -75,7 +85,7 @@ test('show toggle and Generate reveal the passphrase', () => {
   b.els.generate.click();
   assert.match(b.field.value(), /^([A-Z][a-z]*(-[a-z]+)?){5}$/);
   assert.equal(b.els.input.type, 'text');
-  assert.equal(b.els.strength.textContent, 'Strength: strong.');
+  assert.equal(b.els.strength.textContent, 'About 52 bits of entropy, about 58 years to guess.');
   assert.equal(b.changes(), 1);
 });
 
