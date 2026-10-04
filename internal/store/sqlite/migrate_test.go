@@ -11,8 +11,8 @@ import (
 	"github.com/haukened/gone/internal/app"
 )
 
-// dbUserVersion reads PRAGMA user_version through a *sql.DB.
-func dbUserVersion(t *testing.T, db *sql.DB) int {
+// sqliteDBUserVersion reads PRAGMA user_version through a *sql.DB.
+func sqliteDBUserVersion(t *testing.T, db *sql.DB) int {
 	t.Helper()
 	var v int
 	if err := db.QueryRow(`PRAGMA user_version`).Scan(&v); err != nil {
@@ -21,14 +21,14 @@ func dbUserVersion(t *testing.T, db *sql.DB) int {
 	return v
 }
 
-// assertFullyMigrated checks the version and every migrated column.
-func assertFullyMigrated(t *testing.T, db *sql.DB) {
+// sqliteAssertFullyMigrated checks the version and every migrated column.
+func sqliteAssertFullyMigrated(t *testing.T, db *sql.DB) {
 	t.Helper()
-	if got := dbUserVersion(t, db); got != SchemaVersion {
+	if got := sqliteDBUserVersion(t, db); got != SchemaVersion {
 		t.Fatalf("user_version = %d, want %d", got, SchemaVersion)
 	}
 	for _, col := range []string{"claim_hash", "claimed_until", "manage_hash"} {
-		if !hasColumn(t, db, col) {
+		if !sqliteHasColumn(t, db, col) {
 			t.Fatalf("missing column %q", col)
 		}
 	}
@@ -57,47 +57,90 @@ PRAGMA user_version = 1;`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			db := openTestDB(t)
-			now := time.Now().UTC()
-			if tc.setup != "" {
-				if _, err := db.Exec(tc.setup); err != nil {
-					t.Fatalf("setup: %v", err)
-				}
-				if _, err := db.Exec(`INSERT INTO secrets (id, version, nonce_b64u, inline, external, size, created_at, expires_at) VALUES ('legacy',1,'n',x'00',0,1,?,?)`, now.Unix(), now.Add(time.Hour).Unix()); err != nil {
-					t.Fatalf("insert legacy: %v", err)
-				}
-			}
-			ix, err := New(db)
-			if err != nil {
-				t.Fatalf("New: %v", err)
-			}
-			assertFullyMigrated(t, db)
-			if tc.setup == "" {
-				return
-			}
-			if !rowExists(t, db, "legacy") {
-				t.Fatalf("legacy row lost in migration")
-			}
-			if _, err = ix.Status(context.Background(), "legacy", testManageHash, now); !errors.Is(err, app.ErrNotFound) {
-				t.Fatalf("legacy row Status err = %v, want not found", err)
-			}
+			sqliteRunMigrateUpgradePath(t, tc.setup)
 		})
 	}
 }
 
+// sqliteRunMigrateUpgradePath verifies one schema upgrade path.
+//
+// Parameters:
+//   - t: test handle used for failure reporting.
+//   - setup: optional SQL used to create a legacy schema.
+//
+// Returns: none; failures abort the test.
+func sqliteRunMigrateUpgradePath(t *testing.T, setup string) {
+	t.Helper()
+	db := sqliteOpenTestDB(t)
+	now := time.Now().UTC()
+	sqliteApplyMigrateSetup(t, db, setup, now)
+	ix, err := New(db)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	sqliteAssertFullyMigrated(t, db)
+	sqliteAssertMigratedLegacyRow(t, db, ix, setup, now)
+}
+
+// sqliteApplyMigrateSetup applies optional legacy schema SQL.
+//
+// Parameters:
+//   - t: test handle used for failure reporting.
+//   - db: database under test.
+//   - setup: optional SQL used to create a legacy schema.
+//   - now: timestamp used for inserted legacy rows.
+//
+// Returns: none; failures abort the test.
+func sqliteApplyMigrateSetup(t *testing.T, db *sql.DB, setup string, now time.Time) {
+	t.Helper()
+	if setup == "" {
+		return
+	}
+	if _, err := db.Exec(setup); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	query := `INSERT INTO secrets (id, version, nonce_b64u, inline, external, size, created_at, expires_at) VALUES ('legacy',1,'n',x'00',0,1,?,?)`
+	if _, err := db.Exec(query, now.Unix(), now.Add(time.Hour).Unix()); err != nil {
+		t.Fatalf("insert legacy: %v", err)
+	}
+}
+
+// sqliteAssertMigratedLegacyRow verifies legacy rows survive migration.
+//
+// Parameters:
+//   - t: test handle used for failure reporting.
+//   - db: database under test.
+//   - ix: migrated index.
+//   - setup: setup SQL used by the case.
+//   - now: current time used for status checks.
+//
+// Returns: none; failures abort the test.
+func sqliteAssertMigratedLegacyRow(t *testing.T, db *sql.DB, ix *Index, setup string, now time.Time) {
+	t.Helper()
+	if setup == "" {
+		return
+	}
+	if !sqliteRowExists(t, db, "legacy") {
+		t.Fatalf("legacy row lost in migration")
+	}
+	if _, err := ix.Status(context.Background(), "legacy", sqliteTestManageHash, now); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("legacy row Status err = %v, want not found", err)
+	}
+}
+
 func TestMigrateReopenIsNoop(t *testing.T) {
-	db := openTestDB(t)
+	db := sqliteOpenTestDB(t)
 	if _, err := New(db); err != nil {
 		t.Fatalf("first New: %v", err)
 	}
 	if _, err := New(db); err != nil {
 		t.Fatalf("second New: %v", err)
 	}
-	assertFullyMigrated(t, db)
+	sqliteAssertFullyMigrated(t, db)
 }
 
 func TestMigrateRejectsNewerSchema(t *testing.T) {
-	db := openTestDB(t)
+	db := sqliteOpenTestDB(t)
 	if _, err := New(db); err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -110,7 +153,7 @@ func TestMigrateRejectsNewerSchema(t *testing.T) {
 }
 
 func TestMigrateApplyErrorWrapped(t *testing.T) {
-	db := openTestDB(t)
+	db := sqliteOpenTestDB(t)
 	ix := &Index{db: db}
 	// No secrets table: migration 1 introspects nothing then ALTER TABLE fails.
 	err := ix.migrate(context.Background())

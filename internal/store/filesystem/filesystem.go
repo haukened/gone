@@ -50,17 +50,24 @@ func (b *BlobStore) Write(id string, r io.Reader, size int64) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = io.CopyN(f, r, size)
-	if err != nil {
-		// delete partial file on error
-		_ = os.Remove(p)
-		return err
+	if _, err = io.CopyN(f, r, size); err != nil {
+		return errors.Join(closeBlobFile(f, err), os.Remove(p))
 	}
 	if err = f.Sync(); err != nil {
-		return err
+		return errors.Join(closeBlobFile(f, err), os.Remove(p))
+	}
+	if err = f.Close(); err != nil {
+		return errors.Join(err, os.Remove(p))
 	}
 	return nil
+}
+
+// closeBlobFile closes f while preserving any primary error.
+func closeBlobFile(f *os.File, primary error) error {
+	if closeErr := f.Close(); closeErr != nil {
+		return errors.Join(primary, closeErr)
+	}
+	return primary
 }
 
 // Open opens a blob file for reading by ID without deleting it on Close.

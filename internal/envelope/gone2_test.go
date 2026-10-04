@@ -8,7 +8,21 @@ import (
 	"testing"
 )
 
+var roundTripPayloads = []Payload{
+	{Message: []byte("text only")},
+	{Message: []byte{}, Files: []File{{Name: "a", Type: "image/png", Data: []byte{1, 2, 3}}}},
+	{Message: []byte("m"), Files: []File{{Name: "x.bin", Type: DefaultType, Data: []byte{}}, {Name: "y", Type: "text/csv", Data: []byte("1,2")}}},
+	{Message: Magic[:]},
+}
+
 // raw builds GONE2 bytes from a header string and body without validation.
+//
+// Parameters:
+//   - header: the JSON header to encode.
+//   - body: the body bytes to append after the header.
+//
+// Returns:
+//   - []byte: the encoded GONE2 test envelope bytes.
 func raw(header string, body []byte) []byte {
 	out := append([]byte{}, Magic[:]...)
 	out = binary.BigEndian.AppendUint32(out, uint32(len(header)))
@@ -16,6 +30,10 @@ func raw(header string, body []byte) []byte {
 	return append(out, body...)
 }
 
+// TestPackTextOnly verifies legacy text-only payload packing behavior.
+//
+// Parameters:
+//   - t: the test handle.
 func TestPackTextOnly(t *testing.T) {
 	for _, msg := range [][]byte{nil, []byte(""), []byte("hello"), []byte("GONE2"), []byte("GONE2\x00\x00")} {
 		got, err := Pack(Payload{Message: msg})
@@ -31,6 +49,10 @@ func TestPackTextOnly(t *testing.T) {
 	}
 }
 
+// TestPackCanonical verifies canonical GONE2 packing output.
+//
+// Parameters:
+//   - t: the test handle.
 func TestPackCanonical(t *testing.T) {
 	p := Payload{
 		Message: []byte("hi"),
@@ -54,6 +76,10 @@ func TestPackCanonical(t *testing.T) {
 	}
 }
 
+// TestPackErrors verifies Pack rejects invalid payloads.
+//
+// Parameters:
+//   - t: the test handle.
 func TestPackErrors(t *testing.T) {
 	cases := []struct {
 		name string
@@ -71,6 +97,10 @@ func TestPackErrors(t *testing.T) {
 	}
 }
 
+// TestBuildHeader verifies header size limits and empty header output.
+//
+// Parameters:
+//   - t: the test handle.
 func TestBuildHeader(t *testing.T) {
 	big := []fileHeader{{name: strings.Repeat("a", MaxHeaderBytes)}}
 	if _, err := buildHeader(0, big); !errors.Is(err, ErrHeaderTooLarge) {
@@ -81,8 +111,10 @@ func TestBuildHeader(t *testing.T) {
 	}
 }
 
-// TestWorstCaseHeaderFits pins the invariant that sanitized input can never
-// reach MaxHeaderBytes, so Pack only fails on it if limits change.
+// TestWorstCaseHeaderFits pins that sanitized input cannot reach MaxHeaderBytes.
+//
+// Parameters:
+//   - t: the test handle.
 func TestWorstCaseHeaderFits(t *testing.T) {
 	for _, name := range []string{strings.Repeat("\U0001F600", maxNameRunes), strings.Repeat(`"`, maxNameRunes)} {
 		fs := make([]File, MaxFiles)
@@ -99,27 +131,48 @@ func TestWorstCaseHeaderFits(t *testing.T) {
 	}
 }
 
+// TestRoundTrip verifies Pack and Unpack preserve representative payloads.
+//
+// Parameters:
+//   - t: the test handle.
 func TestRoundTrip(t *testing.T) {
-	ps := []Payload{
-		{Message: []byte("text only")},
-		{Message: []byte{}, Files: []File{{Name: "a", Type: "image/png", Data: []byte{1, 2, 3}}}},
-		{Message: []byte("m"), Files: []File{{Name: "x.bin", Type: DefaultType, Data: []byte{}}, {Name: "y", Type: "text/csv", Data: []byte("1,2")}}},
-		{Message: Magic[:]},
+	for i, p := range roundTripPayloads {
+		checkGone2RoundTrip(t, i, p)
 	}
-	for i, p := range ps {
-		b, err := Pack(p)
-		if err != nil {
-			t.Fatal(err)
-		}
-		got, err := Unpack(b)
-		if err != nil || !bytes.Equal(got.Message, p.Message) || len(got.Files) != len(p.Files) {
-			t.Fatalf("%d: %+v %v", i, got, err)
-		}
-		for j, f := range p.Files {
-			g := got.Files[j]
-			if g.Name != f.Name || g.Type != f.Type || !bytes.Equal(g.Data, f.Data) {
-				t.Errorf("%d/%d: %+v", i, j, g)
-			}
+}
+
+// checkGone2RoundTrip verifies one Pack and Unpack round trip case.
+//
+// Parameters:
+//   - t: the test handle.
+//   - i: the case index.
+//   - p: the payload to round trip.
+func checkGone2RoundTrip(t *testing.T, i int, p Payload) {
+	t.Helper()
+	b, err := Pack(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Unpack(b)
+	if err != nil || !bytes.Equal(got.Message, p.Message) || len(got.Files) != len(p.Files) {
+		t.Fatalf("%d: %+v %v", i, got, err)
+	}
+	checkGone2RoundTripFiles(t, i, got.Files, p.Files)
+}
+
+// checkGone2RoundTripFiles verifies round-tripped file metadata and data.
+//
+// Parameters:
+//   - t: the test handle.
+//   - i: the case index.
+//   - got: the decoded files.
+//   - want: the original files.
+func checkGone2RoundTripFiles(t *testing.T, i int, got []File, want []File) {
+	t.Helper()
+	for j, f := range want {
+		g := got[j]
+		if g.Name != f.Name || g.Type != f.Type || !bytes.Equal(g.Data, f.Data) {
+			t.Errorf("%d/%d: %+v", i, j, g)
 		}
 	}
 }

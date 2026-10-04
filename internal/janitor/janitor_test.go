@@ -20,7 +20,7 @@ type fakeStore struct {
 	callsRecon  int
 }
 
-func (fs *fakeStore) DeleteExpired(ctx context.Context, t time.Time) (int, error) {
+func (fs *fakeStore) DeleteExpired(_ context.Context, _ time.Time) (int, error) {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 	fs.callsExpire++
@@ -30,7 +30,7 @@ func (fs *fakeStore) DeleteExpired(ctx context.Context, t time.Time) (int, error
 	return fs.expireCount, nil
 }
 
-func (fs *fakeStore) Reconcile(ctx context.Context) error {
+func (fs *fakeStore) Reconcile(_ context.Context) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 	fs.callsRecon++

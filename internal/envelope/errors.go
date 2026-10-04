@@ -21,6 +21,9 @@ var (
 	// ErrInvalidLink indicates a link that is not an absolute http(s) URL of
 	// the form <origin>/secret/<id>#<fragment>.
 	ErrInvalidLink = errors.New("envelope: invalid link")
+	// ErrInvalidManageLink indicates a manage link that is not an absolute
+	// http(s) URL of the form <origin>/manage/<id>#<token>.
+	ErrInvalidManageLink = errors.New("envelope: invalid manage link")
 	// ErrInvalidEnvelope indicates a malformed GONE2 plaintext.
 	ErrInvalidEnvelope = errors.New("envelope: invalid envelope")
 	// ErrTooManyFiles indicates more than MaxFiles attachments.

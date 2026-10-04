@@ -47,48 +47,6 @@ func (s *Store) WithMetrics(m app.Metrics) *Store {
 	return s
 }
 
-// Save persists a secret. Data <= inlineMax is stored inline; larger data
-// is written to blob storage and only the reference is kept in the index.
-//
-// Parameters:
-//   - ctx: request context.
-//   - id: secret identifier.
-//   - meta: protocol metadata.
-//   - manageHash: hex SHA-256 of the sender's manage token.
-//   - r: ciphertext stream of exactly size bytes.
-//   - size: ciphertext length.
-//   - expiresAt: TTL deadline.
-//
-// Returns an error if the store is uninitialized, size is negative, or a
-// write fails.
-func (s *Store) Save(ctx context.Context, id string, meta app.Meta, manageHash string, r io.Reader, size int64, expiresAt time.Time) error {
-	if s == nil || s.index == nil || s.clock == nil {
-		return errors.New("store not properly initialized")
-	}
-	if size < 0 {
-		return errors.New("size must be non-negative")
-	}
-	createdAt := s.clock.Now()
-	var inline []byte
-	external := false
-	if size <= s.inlineMax {
-		// Read fully into memory for inline storage.
-		inline = make([]byte, size)
-		if _, err := io.ReadFull(r, inline); err != nil {
-			return err
-		}
-	} else {
-		if err := s.blobs.Write(id, r, size); err != nil {
-			return err
-		}
-		external = true
-	}
-	return s.index.Insert(ctx, NewRow{
-		ID: id, Meta: meta, Inline: inline, External: external, Size: size,
-		ManageHash: manageHash, CreatedAt: createdAt, ExpiresAt: expiresAt,
-	})
-}
-
 // Claim reserves a secret for one client and returns its ciphertext without
 // deleting it. Inline payloads are returned from memory; external payloads are
 // streamed from blob storage via a plain (non-deleting) reader so the client
@@ -234,32 +192,34 @@ func (s *Store) Reconcile(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	// Build set of index external IDs.
-	indexSet := make(map[string]struct{}, len(extIDs))
-	for _, id := range extIDs {
-		indexSet[id] = struct{}{}
-	}
-	// Any blob without index entry is orphan.
+	s.deleteReconcileOrphans(blobIDs, extIDs)
+	return nil
+}
+
+// deleteReconcileOrphans removes blob IDs not present in the external index set.
+//
+// Parameters:
+//   - blobIDs: IDs currently present in blob storage.
+//   - extIDs: IDs recorded as external in the index.
+func (s *Store) deleteReconcileOrphans(blobIDs, extIDs []string) {
+	indexSet := externalIDMembership(extIDs)
 	for _, bid := range blobIDs {
 		if _, ok := indexSet[bid]; !ok {
 			_ = s.blobs.Delete(bid)
 		}
 	}
-	return nil
 }
 
-// inlineReader provides a zero-allocation Read over a byte slice.
-type inlineReader struct {
-	b []byte
-}
-
-func newInlineReader(b []byte) *inlineReader { return &inlineReader{b: b} }
-
-func (r *inlineReader) Read(p []byte) (int, error) {
-	if len(r.b) == 0 {
-		return 0, io.EOF
+// externalIDMembership builds a lookup set for externally stored secret IDs.
+//
+// Parameters:
+//   - ids: external IDs read from the index.
+//
+// Returns a set keyed by secret ID.
+func externalIDMembership(ids []string) map[string]struct{} {
+	indexSet := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		indexSet[id] = struct{}{}
 	}
-	n := copy(p, r.b)
-	r.b = r.b[n:]
-	return n, nil
+	return indexSet
 }

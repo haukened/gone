@@ -39,7 +39,7 @@ ARG TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -trimpath -tags=prod -ldflags='-s -w -buildid=' -o /app/bin/gone ./cmd/gone
+    go build -trimpath -tags=prod -ldflags='-s -w -buildid=' -o /app/bin/goned ./cmd/goned
 
 # The runtime image has no shell, so create the data dir here and copy it across.
 RUN mkdir -p /app/data
@@ -49,7 +49,7 @@ RUN mkdir -p /app/data
 FROM dhi.io/static:20250419-debian13@sha256:98ef7a853608577e8d66dad1d25ada75d745d782f28d84e9ecfb85dfeb1f9c98
 
 COPY --from=builder --chown=65532:65532 /app/data /data
-COPY --from=builder --chown=0:0 --chmod=0555 /app/bin/gone /usr/local/bin/gone
+COPY --from=builder --chown=0:0 --chmod=0555 /app/bin/goned /usr/local/bin/goned
 
 # OCI Labels
 LABEL org.opencontainers.image.title="Gone" \
@@ -68,4 +68,4 @@ VOLUME ["/data"]
 # Run as non-root user
 USER 65532:65532
 
-ENTRYPOINT ["/usr/local/bin/gone"]
+ENTRYPOINT ["/usr/local/bin/goned"]

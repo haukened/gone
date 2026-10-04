@@ -172,21 +172,28 @@ A second factor: opening the secret needs both the link and a passphrase that th
 ---
 
 ## Phase 6: CLI
-A single static binary that can send and receive secrets.
+**Status: implemented** on `feat/cli`. The user guide is [`docs/cli.md`](cli.md).
 
-**Scope**
-* `cmd/gone-cli`, built on `internal/envelope`, the standard library, and `x/term` (to read a passphrase without echoing it).
-* Commands (proposed):
-  * `gone-cli send` reads standard input or a message argument, takes `--file`, `--ttl`, and `--passphrase-prompt`, and prints the share link and the management link.
-  * `gone-cli get <link>` writes the message to standard output and attachments to a directory. It never overwrites an existing file unless `--force` is given.
-  * `gone-cli status <manage-link>` and `gone-cli revoke <manage-link>`.
-* **Server URL:** `--server` or `GONE_SERVER`. Plain HTTP is refused unless `--insecure` is given, which mirrors the web UI's warning.
-* **Script-friendly output.** `--json` prints machine-readable results. Exit codes are fixed per outcome (not found, expired, wrong passphrase, rate limited).
-* **Secret hygiene.** Keys are never accepted as command-line arguments in a way that reaches shell history. Passphrases are read from the terminal or a file descriptor. Plaintext buffers are wiped where Go allows it.
-* **Releases.** The tag workflow builds the CLI for linux, darwin, and windows on amd64 and arm64. It publishes them with SHA-256 checksums and build-provenance attestations, alongside the container image.
+A single static binary, `gone`, that sends and receives secrets and talks to the same API as the browser. The server binary is now `goned`.
 
-**Open questions**
-* Should it be a separate `gone-cli` binary, or `gone send` / `gone get` subcommands of the server binary? A separate binary is recommended: it keeps the container entrypoint unchanged and keeps server code out of the client.
+**Scope (as built)**
+* **Binaries.** `cmd/gone` is the CLI and `cmd/goned` is the server (renamed from `cmd/gone`; the container entrypoint follows). The CLI imports no server code. It is built from `internal/envelope`, a small HTTP client in `internal/client`, the shared wordlist in `internal/passgen`, the standard library, and `x/term`.
+* **Commands.**
+  * `gone send` reads the message only from standard input, takes up to 10 `--file` attachments, `--ttl`, and one of `--passphrase-prompt`, `--passphrase-file`, or `--passphrase-generate`. It prints the share link, the manage link, and the expiry.
+  * `gone get <link>` writes the message to standard output and attachments to `--out`. It acknowledges the secret only after everything is decrypted and written. A passphrase prompt allows three tries against a single download.
+  * `gone status <manage-link>`, `gone revoke <manage-link>`, `gone set server <url>`, `gone version`, and `gone help`.
+* **Server URL.** `--server`, then `GONE_SERVER`, then `gone set server` (a `0600` file under the user config directory), then `https://gone.hauken.us`. `get`, `status`, and `revoke` use the link's origin. Plain HTTP needs `--insecure`; redirects are refused and responses are size-capped.
+* **Script-friendly output.** `--json` on every command, with errors as JSON on standard error. Exit codes are fixed per outcome: usage 2, not found 3, wrong passphrase 4, rate limited 5, integrity 6, network or server 7, local I/O 8.
+* **Safe saving.** Attachments are created with `O_EXCL` and mode `0600` inside an `os.Root`, so they never overwrite a file or escape the output directory. A collision becomes `name (1).ext`. Names get the protocol's sanitization plus a Windows-aware save policy. On a terminal, control and bidi characters in messages and printed names are escaped (`--raw` opts out).
+* **Secret hygiene.** Messages and passphrases never come from arguments. Keys, passphrases, and plaintext buffers are wiped where Go allows it.
+* **Tests.** Unit tests for `internal/cli`, `internal/client`, and `internal/passgen`. Integration tests in `test/` run the real CLI against an in-process server. Interop tests run the browser's crypto modules in Node (`test/interop/interop.js`) to exchange v1 and v2 secrets with the CLI in both directions; CI requires Node for them (`GONE_REQUIRE_NODE=1`).
+* **Releases.** On a `v*` tag, the build workflow runs the tests, cross-builds `gone` for linux, darwin, and windows on amd64 and arm64 and `goned` for linux (`scripts/release.sh`, also `task release`), attests build provenance with `actions/attest`, and publishes the archives, `SHA256SUMS`, and install notes to the GitHub release. The container image is still published by the release workflow.
+
+**Decisions** (formerly open questions)
+* **A separate binary.** `gone` is the client and `goned` the server, so the client has no server code or web assets, and the user-facing name is the short one.
+* **No message argument.** Reading only from standard input keeps messages out of shell history and the process list. Links are still arguments; [`docs/cli.md`](cli.md) explains the trade-off.
+* **No `--force`.** `get` never overwrites; it picks a free name instead, which is safer and just as scriptable.
+* **A three-try prompt.** The web UI allows unlimited retries because guessing is offline anyway. The CLI caps prompts at three for usability; `--passphrase-file` gets one.
 
 **Done when**
 * CLI and browser can exchange secrets in both directions, covered by integration tests in `test/`.
@@ -210,4 +217,4 @@ A single static binary that can send and receive secrets.
 | 3. Web UI revamp | Implemented |
 | 4. Sender status + revoke | Implemented |
 | 5. Optional passphrase | Implemented |
-| 6. CLI | Planned |
+| 6. CLI | Implemented |

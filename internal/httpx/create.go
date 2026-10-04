@@ -150,7 +150,7 @@ func (h *Handler) handleCreateSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body := http.MaxBytesReader(w, r.Body, meta.contentLength)
-	defer body.Close()
+	defer func() { _ = body.Close() }()
 	created, svcErr := h.Service.CreateSecret(r.Context(), body, meta.contentLength, meta.version, meta.nonce, meta.ttl)
 	if svcErr != nil {
 		h.mapServiceError(r.Context(), w, svcErr)

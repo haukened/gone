@@ -14,7 +14,7 @@ import (
 // failingRenderer simulates a template execution failure.
 type failingRenderer struct{}
 
-func (f failingRenderer) Execute(w http.ResponseWriter, _ any) error {
+func (f failingRenderer) Execute(_ http.ResponseWriter, _ any) error {
 	return errors.New("template boom")
 }
 

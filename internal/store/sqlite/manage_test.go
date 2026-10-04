@@ -11,13 +11,10 @@ import (
 	"github.com/haukened/gone/internal/app"
 )
 
-// testManageHash is the manage hash every test helper inserts.
-const testManageHash = "4d616e6167652d68617368"
-
-// newManageIndex opens a fresh database and Index for manage tests.
-func newManageIndex(t *testing.T) (*Index, *sql.DB) {
+// sqliteNewManageIndex opens a fresh database and Index for manage tests.
+func sqliteNewManageIndex(t *testing.T) (*Index, *sql.DB) {
 	t.Helper()
-	db := openTestDB(t)
+	db := sqliteOpenTestDB(t)
 	ix, err := New(db)
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -36,10 +33,10 @@ func TestIndexStatus(t *testing.T) {
 		wantErr error
 		wantRow bool // row still present afterwards
 	}{
-		{name: "pending", hash: testManageHash, at: now, wantRow: true},
+		{name: "pending", hash: sqliteTestManageHash, at: now, wantRow: true},
 		{name: "wrong hash", hash: "deadbeef", at: now, wantErr: app.ErrNotFound, wantRow: true},
 		{name: "empty hash", hash: "", at: now, wantErr: app.ErrNotFound, wantRow: true},
-		{name: "expired deletes row", hash: testManageHash, at: expires, wantErr: app.ErrNotFound},
+		{name: "expired deletes row", hash: sqliteTestManageHash, at: expires, wantErr: app.ErrNotFound},
 		{name: "expired wrong hash still deletes", hash: "deadbeef", at: expires, wantErr: app.ErrNotFound},
 		{
 			name: "active lease is pending",
@@ -48,7 +45,7 @@ func TestIndexStatus(t *testing.T) {
 					t.Fatalf("claim: %v", err)
 				}
 			},
-			hash: testManageHash, at: now.Add(30 * time.Second), wantRow: true,
+			hash: sqliteTestManageHash, at: now.Add(30 * time.Second), wantRow: true,
 		},
 		{
 			name: "lapsed lease deletes row",
@@ -57,7 +54,7 @@ func TestIndexStatus(t *testing.T) {
 					t.Fatalf("claim: %v", err)
 				}
 			},
-			hash: testManageHash, at: now.Add(2 * time.Minute), wantErr: app.ErrNotFound,
+			hash: sqliteTestManageHash, at: now.Add(2 * time.Minute), wantErr: app.ErrNotFound,
 		},
 		{
 			name: "legacy null hash",
@@ -66,14 +63,14 @@ func TestIndexStatus(t *testing.T) {
 					t.Fatalf("null hash: %v", err)
 				}
 			},
-			hash: testManageHash, at: now, wantErr: app.ErrNotFound, wantRow: true,
+			hash: sqliteTestManageHash, at: now, wantErr: app.ErrNotFound, wantRow: true,
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ix, db := newManageIndex(t)
+			ix, db := sqliteNewManageIndex(t)
 			ctx := context.Background()
-			insertInlineSecret(t, ctx, ix, "s", []byte("data"), now, expires)
+			sqliteInsertInlineSecret(ctx, t, ix, "s", []byte("data"), now, expires)
 			if tc.setup != nil {
 				tc.setup(t, ix, db)
 			}
@@ -84,7 +81,7 @@ func TestIndexStatus(t *testing.T) {
 			if tc.wantErr == nil && (!st.CreatedAt.Equal(now) || !st.ExpiresAt.Equal(expires)) {
 				t.Fatalf("Status = %+v", st)
 			}
-			if got := rowExists(t, db, "s"); got != tc.wantRow {
+			if got := sqliteRowExists(t, db, "s"); got != tc.wantRow {
 				t.Fatalf("row exists = %v, want %v", got, tc.wantRow)
 			}
 		})
@@ -92,67 +89,95 @@ func TestIndexStatus(t *testing.T) {
 }
 
 func TestIndexStatusUnknownID(t *testing.T) {
-	ix, _ := newManageIndex(t)
-	if _, err := ix.Status(context.Background(), "missing", testManageHash, time.Now()); !errors.Is(err, app.ErrNotFound) {
+	ix, _ := sqliteNewManageIndex(t)
+	if _, err := ix.Status(context.Background(), "missing", sqliteTestManageHash, time.Now()); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("Status err = %v, want ErrNotFound", err)
 	}
 }
 
 func TestIndexRevoke(t *testing.T) {
 	now := time.Unix(1700000000, 0).UTC()
-	tests := []struct {
-		name         string
-		external     bool
-		claimFirst   bool
-		hash         string
-		at           time.Time
-		wantErr      error
-		wantExternal bool
-	}{
-		{name: "inline pending", hash: testManageHash, at: now},
-		{name: "external pending reports external", external: true, hash: testManageHash, at: now, wantExternal: true},
-		{name: "wins over active lease", claimFirst: true, hash: testManageHash, at: now.Add(10 * time.Second)},
+	tests := []sqliteRevokeCase{
+		{name: "inline pending", hash: sqliteTestManageHash, at: now},
+		{name: "external pending reports external", external: true, hash: sqliteTestManageHash, at: now, wantExternal: true},
+		{name: "wins over active lease", claimFirst: true, hash: sqliteTestManageHash, at: now.Add(10 * time.Second)},
 		{name: "wrong hash", hash: "deadbeef", at: now, wantErr: app.ErrNotFound},
-		{name: "expired", hash: testManageHash, at: now.Add(time.Hour), wantErr: app.ErrNotFound},
-		{name: "lapsed lease", claimFirst: true, hash: testManageHash, at: now.Add(2 * time.Minute), wantErr: app.ErrNotFound},
+		{name: "expired", hash: sqliteTestManageHash, at: now.Add(time.Hour), wantErr: app.ErrNotFound},
+		{name: "lapsed lease", claimFirst: true, hash: sqliteTestManageHash, at: now.Add(2 * time.Minute), wantErr: app.ErrNotFound},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ix, db := newManageIndex(t)
-			ctx := context.Background()
-			if tc.external {
-				insertExternalSecret(t, ctx, ix, "s", 10, now, now.Add(time.Hour))
-			} else {
-				insertInlineSecret(t, ctx, ix, "s", []byte("data"), now, now.Add(time.Hour))
-			}
-			if tc.claimFirst {
-				if _, err := ix.Claim(ctx, "s", "claim", false, now, now.Add(time.Minute), nil); err != nil {
-					t.Fatalf("claim: %v", err)
-				}
-			}
-			ext, err := ix.Revoke(ctx, "s", tc.hash, tc.at)
-			if !errors.Is(err, tc.wantErr) {
-				t.Fatalf("Revoke err = %v, want %v", err, tc.wantErr)
-			}
-			if ext != tc.wantExternal {
-				t.Fatalf("external = %v, want %v", ext, tc.wantExternal)
-			}
-			wantRow := errors.Is(tc.wantErr, app.ErrNotFound) && tc.hash != testManageHash
-			if got := rowExists(t, db, "s"); got != wantRow {
-				t.Fatalf("row exists = %v, want %v", got, wantRow)
-			}
+			sqliteRunRevokeCase(t, now, tc)
 		})
 	}
 }
 
+type sqliteRevokeCase struct {
+	name         string
+	external     bool
+	claimFirst   bool
+	hash         string
+	at           time.Time
+	wantErr      error
+	wantExternal bool
+}
+
+// sqliteRunRevokeCase verifies one revoke behavior.
+//
+// Parameters:
+//   - t: test handle used for failure reporting.
+//   - now: base time for setup.
+//   - tc: revoke case values.
+//
+// Returns: none; failures abort the test.
+func sqliteRunRevokeCase(t *testing.T, now time.Time, tc sqliteRevokeCase) {
+	t.Helper()
+	ix, db := sqliteNewManageIndex(t)
+	ctx := context.Background()
+	sqliteInsertRevokeRow(ctx, t, ix, tc.external, now)
+	if tc.claimFirst {
+		sqliteMustClaimInline(ctx, t, ix, "s", "claim", false, sqliteClaimWindow{now: now, lease: now.Add(time.Minute)})
+	}
+	ext, err := ix.Revoke(ctx, "s", tc.hash, tc.at)
+	if !errors.Is(err, tc.wantErr) {
+		t.Fatalf("Revoke err = %v, want %v", err, tc.wantErr)
+	}
+	if ext != tc.wantExternal {
+		t.Fatalf("external = %v, want %v", ext, tc.wantExternal)
+	}
+	wantRow := errors.Is(tc.wantErr, app.ErrNotFound) && tc.hash != sqliteTestManageHash
+	if got := sqliteRowExists(t, db, "s"); got != wantRow {
+		t.Fatalf("row exists = %v, want %v", got, wantRow)
+	}
+}
+
+// sqliteInsertRevokeRow inserts the row used by a revoke case.
+//
+// Parameters:
+//   - t: test handle used for failure reporting.
+//   - ctx: request context.
+//   - ix: index under test.
+//   - external: whether to insert an external row.
+//   - now: base time for row timestamps.
+//
+// Returns: none; failures abort the test.
+func sqliteInsertRevokeRow(ctx context.Context, t *testing.T, ix *Index, external bool, now time.Time) {
+	t.Helper()
+	if external {
+		sqliteInsertExternalSecret(ctx, t, ix, "s", 10, now, now.Add(time.Hour))
+		return
+	}
+	sqliteInsertInlineSecret(ctx, t, ix, "s", []byte("data"), now, now.Add(time.Hour))
+}
+
 func TestIndexRevokeThenClaimOrAckNotFound(t *testing.T) {
-	ix, _ := newManageIndex(t)
+	ix, _ := sqliteNewManageIndex(t)
 	ctx := context.Background()
 	now := time.Now().UTC()
-	insertInlineSecret(t, ctx, ix, "a", []byte("data"), now, now.Add(time.Hour))
-	insertInlineSecret(t, ctx, ix, "b", []byte("data"), now, now.Add(time.Hour))
+	sqliteInsertInlineSecret(ctx, t, ix, "a", []byte("data"), now, now.Add(time.Hour))
+	sqliteInsertInlineSecret(ctx, t, ix, "b", []byte("data"), now, now.Add(time.Hour))
 
-	if _, err := ix.Revoke(ctx, "a", testManageHash, now); err != nil {
+	if _, err := ix.Revoke(ctx, "a", sqliteTestManageHash, now); err != nil {
 		t.Fatalf("revoke a: %v", err)
 	}
 	if _, err := ix.Claim(ctx, "a", "claim", false, now, now.Add(time.Minute), nil); !errors.Is(err, app.ErrNotFound) {
@@ -162,44 +187,44 @@ func TestIndexRevokeThenClaimOrAckNotFound(t *testing.T) {
 	if _, err := ix.Claim(ctx, "b", "claim", false, now, now.Add(time.Minute), nil); err != nil {
 		t.Fatalf("claim b: %v", err)
 	}
-	if _, err := ix.Revoke(ctx, "b", testManageHash, now); err != nil {
+	if _, err := ix.Revoke(ctx, "b", sqliteTestManageHash, now); err != nil {
 		t.Fatalf("revoke b during lease: %v", err)
 	}
 	if _, err := ix.Ack(ctx, "b", "claim"); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("ack after revoke err = %v", err)
 	}
-	if _, err := ix.Revoke(ctx, "b", testManageHash, now); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Revoke(ctx, "b", sqliteTestManageHash, now); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("second revoke err = %v", err)
 	}
 }
 
 func TestIndexRevokeAfterAckNotFound(t *testing.T) {
-	ix, _ := newManageIndex(t)
+	ix, _ := sqliteNewManageIndex(t)
 	ctx := context.Background()
 	now := time.Now().UTC()
-	insertInlineSecret(t, ctx, ix, "s", []byte("data"), now, now.Add(time.Hour))
+	sqliteInsertInlineSecret(ctx, t, ix, "s", []byte("data"), now, now.Add(time.Hour))
 	if _, err := ix.Claim(ctx, "s", "claim", false, now, now.Add(time.Minute), nil); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 	if _, err := ix.Ack(ctx, "s", "claim"); err != nil {
 		t.Fatalf("ack: %v", err)
 	}
-	if _, err := ix.Revoke(ctx, "s", testManageHash, now); !errors.Is(err, app.ErrNotFound) {
+	if _, err := ix.Revoke(ctx, "s", sqliteTestManageHash, now); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("revoke after ack err = %v", err)
 	}
 }
 
 func TestIndexRevokeConcurrentWithClaim(t *testing.T) {
 	for i := 0; i < 20; i++ {
-		ix, db := newManageIndex(t)
+		ix, db := sqliteNewManageIndex(t)
 		ctx := context.Background()
 		now := time.Now().UTC()
-		insertInlineSecret(t, ctx, ix, "s", []byte("data"), now, now.Add(time.Hour))
+		sqliteInsertInlineSecret(ctx, t, ix, "s", []byte("data"), now, now.Add(time.Hour))
 		start := make(chan struct{})
 		var wg sync.WaitGroup
 		var revokeErr, claimErr error
 		wg.Add(2)
-		go func() { defer wg.Done(); <-start; _, revokeErr = ix.Revoke(ctx, "s", testManageHash, now) }()
+		go func() { defer wg.Done(); <-start; _, revokeErr = ix.Revoke(ctx, "s", sqliteTestManageHash, now) }()
 		go func() {
 			defer wg.Done()
 			<-start
@@ -213,7 +238,7 @@ func TestIndexRevokeConcurrentWithClaim(t *testing.T) {
 		if claimErr != nil && !errors.Is(claimErr, app.ErrNotFound) {
 			t.Fatalf("claim err = %v", claimErr)
 		}
-		if rowExists(t, db, "s") {
+		if sqliteRowExists(t, db, "s") {
 			t.Fatalf("row survived revoke")
 		}
 	}

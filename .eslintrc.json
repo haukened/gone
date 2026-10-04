@@ -29,7 +29,7 @@
   },
   "overrides": [
     {
-      "files": ["test/js/**/*.js"],
+      "files": ["test/js/**/*.js", "test/interop/**/*.js"],
       "env": { "browser": false, "node": true },
       "globals": { "window": "readonly" },
       "rules": {

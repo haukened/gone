@@ -75,7 +75,7 @@ func TestOpenGenericError(t *testing.T) {
 		{"empty", key, nonce, nil},
 	}
 	for _, c := range cases {
-		if pt, err := Open(c.key, c.nonce, c.ct); err != ErrDecrypt || pt != nil {
+		if pt, err := Open(c.key, c.nonce, c.ct); !errors.Is(err, ErrDecrypt) || pt != nil {
 			t.Errorf("%s: got %q, %v", c.name, pt, err)
 		}
 	}

@@ -37,19 +37,27 @@ tasks:
       - '{{.MINIFY_BIN}} -r -o web/dist/js/ web/js/'
   
   build-dev:
-    desc: Build development binary without -tags=prod
+    desc: Build development server (goned) without -tags=prod, and the gone CLI
     cmds:
       - mkdir -p bin
+      - go build -o bin/goned ./cmd/goned
       - go build -o bin/gone ./cmd/gone
 
   build-prod:
-    desc: Build static production binary with -tags=prod (CGO disabled)
+    desc: Build static production server (goned, -tags=prod) and gone CLI (CGO disabled)
     deps: [minify]
     env:
       CGO_ENABLED: '0'
     cmds:
       - mkdir -p bin
-      - go build -trimpath -tags=prod -ldflags='-s -w -buildid=' -o bin/gone ./cmd/gone
+      - go build -trimpath -tags=prod -ldflags='-s -w -buildid=' -o bin/goned ./cmd/goned
+      - go build -trimpath -ldflags='-s -w -buildid=' -o bin/gone ./cmd/gone
+
+  release:
+    desc: Cross-build release archives and SHA256SUMS into dist/ (usage - task release -- vX.Y.Z)
+    deps: [minify]
+    cmds:
+      - scripts/release.sh {{.CLI_ARGS}}
 
   prod:
     desc: Orchestrate full production build (clean → minify → copy templates → go build -tags=prod)
@@ -73,7 +81,7 @@ tasks:
       - task: clean
       - task: dev
       - cmd: mkdir -p .tmp
-      - cmd: bin/gone
+      - cmd: bin/goned
         interactive: true
         ignore_error: true
   
@@ -99,10 +107,16 @@ tasks:
     cmds:
       - node --test --experimental-test-coverage --test-coverage-include='web/js/**' 'test/js/*.test.js'
 
+  lint:
+    desc: Run Go linters via golangci-lint, matching CI
+    cmds:
+      - golangci-lint run ./...
+      - golangci-lint run --build-tags dev ./...
+
   lint-web:
     desc: Lint JavaScript (ESLint) and CSS (stylelint) via npx, matching CI
     env:
       ESLINT_USE_FLAT_CONFIG: 'false'
     cmds:
-      - npx --yes eslint@9.39.5 --max-warnings 0 web/js test/js
+      - npx --yes eslint@9.39.5 --max-warnings 0 web/js test/js test/interop
       - npx --yes stylelint@17.15.0 'web/css/*.css'

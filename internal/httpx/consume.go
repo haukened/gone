@@ -32,22 +32,52 @@ const (
 //   - w: response writer.
 //   - r: incoming request.
 func (h *Handler) handleConsumeSecret(w http.ResponseWriter, r *http.Request) {
-	rest, ok := strings.CutPrefix(r.URL.Path, "/api/secret/")
-	if !ok || rest == "" {
+	route, ok := consumeSecretRouteFromPath(r.URL.Path)
+	if !ok {
 		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
 		return
 	}
+	h.dispatchConsumeSecretRoute(w, r, route)
+}
+
+// consumeSecretRoute identifies the secret and optional consume action.
+type consumeSecretRoute struct {
+	id     string
+	action string
+}
+
+// consumeSecretRouteFromPath extracts a consume-secret route from path.
+//
+// Parameters:
+//   - path: request URL path.
+//
+// Returns the route and true when the path has a non-empty secret suffix.
+func consumeSecretRouteFromPath(path string) (consumeSecretRoute, bool) {
+	rest, ok := strings.CutPrefix(path, "/api/secret/")
+	if !ok || rest == "" {
+		return consumeSecretRoute{}, false
+	}
 	id, action, _ := strings.Cut(rest, "/")
-	switch action {
+	return consumeSecretRoute{id: id, action: action}, true
+}
+
+// dispatchConsumeSecretRoute routes a parsed consume-secret request.
+//
+// Parameters:
+//   - w: response writer.
+//   - r: incoming request.
+//   - route: parsed secret route.
+func (h *Handler) dispatchConsumeSecretRoute(w http.ResponseWriter, r *http.Request, route consumeSecretRoute) {
+	switch route.action {
 	case "":
-		h.dispatchSecret(w, r, id)
+		h.dispatchSecret(w, r, route.id)
 	case "status":
 		if h.allowMethod(w, r, http.MethodGet) {
-			h.handleStatusSecret(w, r, id)
+			h.handleStatusSecret(w, r, route.id)
 		}
 	case "revoke":
 		if h.allowMethod(w, r, http.MethodPost) {
-			h.handleRevokeSecret(w, r, id)
+			h.handleRevokeSecret(w, r, route.id)
 		}
 	default:
 		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
@@ -110,7 +140,7 @@ func (h *Handler) handleClaimSecret(w http.ResponseWriter, r *http.Request, id s
 		clog.Error("claim", "action", "error")
 		return
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	hdr := w.Header()
 	hdr.Set("X-Gone-Version", fmt.Sprintf("%d", res.Meta.Version))
 	hdr.Set("X-Gone-Nonce", res.Meta.NonceB64u)

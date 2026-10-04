@@ -1,3 +1,4 @@
+/* global localStorage */
 'use strict';
 
 // Theme handling and the insecure-connection warning. Loaded without defer

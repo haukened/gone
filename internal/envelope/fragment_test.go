@@ -11,9 +11,37 @@ import (
 
 var testKey = bytes.Repeat([]byte{0xab}, domain.KeySize)
 
-func TestNewFragment(t *testing.T) {
+// TestNewFragmentAcceptedVersions verifies supported fragment versions are accepted.
+//
+// Parameters:
+//   - t: the test handle.
+func TestNewFragmentAcceptedVersions(t *testing.T) {
+	cases := []uint8{1, 2}
+	for _, version := range cases {
+		checkNewFragmentVersion(t, version)
+	}
+}
+
+// checkNewFragmentVersion verifies a fragment version is constructed correctly.
+//
+// Parameters:
+//   - t: the test handle.
+//   - version: the fragment version to construct.
+func checkNewFragmentVersion(t *testing.T, version uint8) {
+	t.Helper()
+	f, err := NewFragment(version, testKey)
+	if err != nil || f.Version() != version || !bytes.Equal(f.Key(), testKey) {
+		t.Fatalf("v%d: %v", version, err)
+	}
+}
+
+// TestFragmentKeyReturnsCopy verifies Fragment.Key does not expose internals.
+//
+// Parameters:
+//   - t: the test handle.
+func TestFragmentKeyReturnsCopy(t *testing.T) {
 	f, err := NewFragment(1, testKey)
-	if err != nil || f.Version() != 1 || !bytes.Equal(f.Key(), testKey) {
+	if err != nil {
 		t.Fatalf("NewFragment: %v", err)
 	}
 	k := f.Key()
@@ -21,17 +49,46 @@ func TestNewFragment(t *testing.T) {
 	if f.Key()[0] != 0xab {
 		t.Fatal("Key must return a copy")
 	}
-	if f, err := NewFragment(2, testKey); err != nil || f.Version() != 2 {
-		t.Fatalf("v2: %v", err)
+}
+
+// TestNewFragmentRejectsInvalidInputs verifies invalid versions and keys fail.
+//
+// Parameters:
+//   - t: the test handle.
+func TestNewFragmentRejectsInvalidInputs(t *testing.T) {
+	cases := []struct {
+		name    string
+		version uint8
+		key     []byte
+		want    error
+	}{
+		{"v3", 3, testKey, domain.ErrInvalidVersion},
+		{"short key", 1, testKey[:31], ErrInvalidKey},
 	}
-	if _, err := NewFragment(3, testKey); !errors.Is(err, domain.ErrInvalidVersion) {
-		t.Fatalf("v3: %v", err)
-	}
-	if _, err := NewFragment(1, testKey[:31]); !errors.Is(err, ErrInvalidKey) {
-		t.Fatalf("short key: %v", err)
+	for _, c := range cases {
+		checkNewFragmentRejects(t, c.name, c.version, c.key, c.want)
 	}
 }
 
+// checkNewFragmentRejects verifies one rejected NewFragment case.
+//
+// Parameters:
+//   - t: the test handle.
+//   - name: the case name.
+//   - version: the fragment version to construct.
+//   - key: the candidate fragment key.
+//   - want: the expected error.
+func checkNewFragmentRejects(t *testing.T, name string, version uint8, key []byte, want error) {
+	t.Helper()
+	if _, err := NewFragment(version, key); !errors.Is(err, want) {
+		t.Fatalf("%s: %v", name, err)
+	}
+}
+
+// TestFragmentRoundTrip verifies fragment string rendering and parsing.
+//
+// Parameters:
+//   - t: the test handle.
 func TestFragmentRoundTrip(t *testing.T) {
 	f, _ := NewFragment(1, testKey)
 	s := f.String()
@@ -44,6 +101,10 @@ func TestFragmentRoundTrip(t *testing.T) {
 	}
 }
 
+// TestParseFragmentErrors verifies malformed fragments return expected errors.
+//
+// Parameters:
+//   - t: the test handle.
 func TestParseFragmentErrors(t *testing.T) {
 	key := domain.EncodeB64URL(testKey)
 	cases := []struct {
@@ -76,86 +137,19 @@ func TestParseFragmentErrors(t *testing.T) {
 		{"v2:%%", ErrInvalidFragment},
 	}
 	for _, c := range cases {
-		if _, err := ParseFragment(c.in); !errors.Is(err, c.want) {
-			t.Errorf("ParseFragment(%q) = %v, want %v", c.in, err, c.want)
-		}
+		checkParseFragmentError(t, c.in, c.want)
 	}
 }
 
-func TestNewLink(t *testing.T) {
-	f, _ := NewFragment(1, testKey)
-	id := domain.SecretID(strings.Repeat("a", 32))
-	l, err := NewLink("https://gone.example:8443", id, f)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := "https://gone.example:8443/secret/" + id.String() + "#" + f.String()
-	if l.String() != want {
-		t.Fatalf("String = %q", l.String())
-	}
-	bad := []struct {
-		origin string
-		id     domain.SecretID
-		f      Fragment
-	}{
-		{"https://gone.example/", id, f},
-		{"https://gone.example/app", id, f},
-		{"https://gone.example?x", id, f},
-		{"https://gone.example?", id, f},
-		{"https://gone.example#x", id, f},
-		{"https://u:p@gone.example", id, f},
-		{"ftp://gone.example", id, f},
-		{"gone.example", id, f},
-		{"https://", id, f},
-		{"://bad", id, f},
-		{"https://gone.example", "nope", f},
-		{"https://gone.example", id, Fragment{}},
-	}
-	for _, c := range bad {
-		if _, err := NewLink(c.origin, c.id, c.f); !errors.Is(err, ErrInvalidLink) {
-			t.Errorf("NewLink(%q, %q) = %v", c.origin, c.id, err)
-		}
-	}
-}
-
-func TestParseLink(t *testing.T) {
-	f, _ := NewFragment(1, testKey)
-	id := strings.Repeat("0f", 16)
-	good := "https://gone.example/secret/" + id + "#" + f.String()
-	l, err := ParseLink(good)
-	if err != nil || l.Origin != "https://gone.example" || l.ID.String() != id || !bytes.Equal(l.Fragment.Key(), testKey) {
-		t.Fatalf("ParseLink: %+v %v", l, err)
-	}
-	if l.String() != good {
-		t.Fatalf("round trip %q", l.String())
-	}
-	frag := f.String()
-	cases := []struct {
-		in   string
-		want error
-	}{
-		{"http://localhost:8080/secret/" + id + "#" + frag, nil},
-		{"https://gone.example/secret/" + id, ErrInvalidFragment},
-		{"https://gone.example/secret/" + id + "#", ErrInvalidFragment},
-		{"https://gone.example/secret/" + id + "#v1%3A" + frag[3:], ErrInvalidFragment},
-		{"https://gone.example/secret/" + id + "#" + frag + "#x", ErrInvalidFragment},
-		{"https://gone.example/secret/" + id + "#v3:" + frag[3:], domain.ErrInvalidVersion},
-		{"https://gone.example/secret/" + id + "#" + frag + "%zz", ErrInvalidLink},
-		{"https://gone.example/secret/" + strings.ToUpper(id) + "#" + frag, ErrInvalidLink},
-		{"https://gone.example/secret/" + id + "/#" + frag, ErrInvalidLink},
-		{"https://gone.example/app/secret/" + id + "#" + frag, ErrInvalidLink},
-		{"https://gone.example/secret/" + id + "?a=b#" + frag, ErrInvalidLink},
-		{"https://gone.example/secret/" + id + "?#" + frag, ErrInvalidLink},
-		{"https://gone.example/secret%2F" + id + "#" + frag, ErrInvalidLink},
-		{"https://user@gone.example/secret/" + id + "#" + frag, ErrInvalidLink},
-		{"javascript:alert(1)//secret/" + id + "#" + frag, ErrInvalidLink},
-		{"/secret/" + id + "#" + frag, ErrInvalidLink},
-		{"https:///secret/" + id + "#" + frag, ErrInvalidLink},
-		{"%%", ErrInvalidLink},
-	}
-	for _, c := range cases {
-		if _, err := ParseLink(c.in); !errors.Is(err, c.want) {
-			t.Errorf("ParseLink(%q) = %v, want %v", c.in, err, c.want)
-		}
+// checkParseFragmentError verifies one rejected ParseFragment case.
+//
+// Parameters:
+//   - t: the test handle.
+//   - in: the candidate fragment string.
+//   - want: the expected error.
+func checkParseFragmentError(t *testing.T, in string, want error) {
+	t.Helper()
+	if _, err := ParseFragment(in); !errors.Is(err, want) {
+		t.Errorf("ParseFragment(%q) = %v, want %v", in, err, want)
 	}
 }

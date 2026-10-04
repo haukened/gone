@@ -171,13 +171,13 @@ func addMissingColumns(ctx context.Context, conn *sql.Conn, adds []columnDDL) er
 //   - conn: connection to query.
 //
 // Returns the set or an error if PRAGMA table_info fails.
-func columnNames(ctx context.Context, conn *sql.Conn) (map[string]struct{}, error) {
+func columnNames(ctx context.Context, conn *sql.Conn) (cols map[string]struct{}, err error) {
 	rows, err := conn.QueryContext(ctx, `SELECT name FROM pragma_table_info('secrets')`)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	cols := make(map[string]struct{})
+	defer func() { err = errors.Join(err, rows.Close()) }()
+	cols = make(map[string]struct{})
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {

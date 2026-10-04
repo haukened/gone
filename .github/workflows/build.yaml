@@ -31,8 +31,32 @@ env:
   NODE_VERSION: '24'
   ESLINT_VERSION: '9.39.5'
   STYLELINT_VERSION: '17.15.0'
+  GOLANGCI_LINT_VERSION: v2.14.0
 
 jobs:
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          args: ./...
+
+      - name: Run golangci-lint (dev tags)
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          args: --build-tags dev ./...
   # Fast correctness check for PRs and branch pushes. No artifacts.
   verify:
     runs-on: ubuntu-latest
@@ -68,19 +92,23 @@ jobs:
       - name: Build (prod via Taskfile)
         run: $HOME/go/bin/task prod
 
-      - name: Run tests
-        run: go test -v -coverprofile=coverage.out ./...
-
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      # Node is required: the CLI/browser interop tests run the real web
+      # crypto through a Node bridge and must not silently skip in CI.
+      - name: Run tests
+        env:
+          GONE_REQUIRE_NODE: '1'
+        run: go test -race -v -coverprofile=coverage.out ./...
+
       - name: Lint JavaScript and CSS
         env:
           ESLINT_USE_FLAT_CONFIG: 'false'
         run: |
-          npx --yes eslint@${{ env.ESLINT_VERSION }} --max-warnings 0 web/js test/js
+          npx --yes eslint@${{ env.ESLINT_VERSION }} --max-warnings 0 web/js test/js test/interop
           npx --yes stylelint@${{ env.STYLELINT_VERSION }} 'web/css/*.css'
 
       - name: Run JavaScript tests
@@ -106,7 +134,7 @@ jobs:
           github.ref == 'refs/heads/main' ||
           (github.event_name == 'pull_request' &&
            github.event.pull_request.head.repo.full_name == github.repository)
-        uses: codacy/codacy-coverage-reporter-action@v1.3.0
+        uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1.3.0
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: coverage.out
@@ -123,7 +151,7 @@ jobs:
           github.ref == 'refs/heads/main' ||
           (github.event_name == 'pull_request' &&
            github.event.pull_request.head.repo.full_name == github.repository)
-        uses: codacy/codacy-coverage-reporter-action@v1.3.0
+        uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1.3.0
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: lcov.info
@@ -131,13 +159,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Build and create release only on tags.
-  build_release:
+  # Tagged releases: test, cross-build the gone CLI and goned server,
+  # attest build provenance, and publish archives with SHA256SUMS.
+  # Runs its own tests because verify is skipped on tags.
+  release:
     runs-on: ubuntu-latest
-    needs: verify
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - uses: actions/checkout@v7
 
@@ -147,13 +179,10 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
 
-      - name: Restore Go module cache
-        uses: actions/cache/restore@v6
+      - name: Set up Node
+        uses: actions/setup-node@v7
         with:
-          path: |
-            ~/go/pkg/mod
-            ~/go/bin
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install minify
         run: go install github.com/tdewolff/minify/v2/cmd/minify@${{ env.MINIFY_VERSION }}
@@ -161,15 +190,30 @@ jobs:
       - name: Install Task
         run: go install github.com/go-task/task/v3/cmd/task@${{ env.TASK_VERSION }}
 
-      - name: Build (prod via Taskfile)
-        run: $HOME/go/bin/task prod
-
-      # On tags, cut a GitHub Release with the built binary
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v3
-        with:
-          files: |
-            bin/gone
+      - name: Run tests
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GONE_REQUIRE_NODE: '1'
+        run: go test -race ./...
+
+      - name: Minify web assets
+        run: $HOME/go/bin/task minify
+
+      - name: Build release archives
+        run: scripts/release.sh "$GITHUB_REF_NAME"
+
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: 'dist/*.tar.gz, dist/*.zip'
+
+      - name: Create Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          body_path: dist/RELEASE_NOTES.md
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ !contains(github.ref_name, '-') }}
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/SHA256SUMS

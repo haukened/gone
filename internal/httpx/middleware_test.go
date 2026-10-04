@@ -9,18 +9,20 @@ import (
 	"github.com/google/uuid"
 )
 
+type correlationMiddlewareCase struct {
+	name                string
+	requestHeaders      map[string]string
+	expectStatus        int
+	expectCallNext      bool
+	expectReuseHeader   bool
+	providedValue       string
+	expectGeneratedUUID bool
+	expectErrorContains string
+}
+
 // TestCorrelationIDMiddleware covers behavior of CorrelationIDMiddleware and GetCorrelationID.
 func TestCorrelationIDMiddleware(t *testing.T) {
-	tests := []struct {
-		name                string
-		requestHeaders      map[string]string
-		expectStatus        int
-		expectCallNext      bool
-		expectReuseHeader   bool
-		providedValue       string
-		expectGeneratedUUID bool
-		expectErrorContains string
-	}{
+	tests := []correlationMiddlewareCase{
 		{
 			name:                "generate when header missing",
 			requestHeaders:      nil,
@@ -47,67 +49,84 @@ func TestCorrelationIDMiddleware(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			var handlerCtxID string
-			hitNext := false
-			final := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				hitNext = true
-				w.WriteHeader(http.StatusOK)
-				id, ok := GetCorrelationID(r.Context())
-				if !ok {
-					t.Errorf("expected correlation ID in context")
-				}
-				handlerCtxID = id
-			})
-
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			for k, v := range tt.requestHeaders {
-				req.Header.Set(k, v)
-			}
-
-			rr := httptest.NewRecorder()
-			CorrelationIDMiddleware(final).ServeHTTP(rr, req)
-
-			resp := rr.Result()
-			gotHeader := resp.Header.Get(CorrelationIDHeader)
-			if gotHeader == "" {
-				t.Fatalf("expected response header %s to be set", CorrelationIDHeader)
-			}
-
-			if rr.Code != tt.expectStatus {
-				t.Fatalf("expected status %d, got %d", tt.expectStatus, rr.Code)
-			}
-
-			if hitNext != tt.expectCallNext {
-				t.Fatalf("expected next called=%v, got %v", tt.expectCallNext, hitNext)
-			}
-
-			if tt.expectErrorContains != "" && !strings.Contains(rr.Body.String(), tt.expectErrorContains) {
-				t.Fatalf("expected response body %q to contain %q", rr.Body.String(), tt.expectErrorContains)
-			}
-
-			if handlerCtxID == "" {
-				if tt.expectCallNext {
-					t.Fatalf("expected context correlation ID to be set in handler")
-				}
-			}
-
-			// Reuse case: value should match provided internal header.
-			if tt.expectReuseHeader && gotHeader != tt.providedValue {
-				t.Errorf("expected middleware to reuse provided value %q, got %q", tt.providedValue, gotHeader)
-			}
-
-			if tt.expectGeneratedUUID {
-				if _, err := uuid.Parse(gotHeader); err != nil {
-					t.Errorf("expected generated correlation ID to be a UUID, got %q: %v", gotHeader, err)
-				}
-			}
-
-			// Handler context ID should always match header set by middleware.
-			if tt.expectCallNext && handlerCtxID != gotHeader {
-				t.Errorf("expected handler context ID %q to equal response header %q", handlerCtxID, gotHeader)
-			}
+			runCorrelationMiddlewareCase(t, tt)
 		})
+	}
+}
+
+// runCorrelationMiddlewareCase executes one middleware case and checks the result.
+// It takes t for failures and tc as the scenario under test.
+func runCorrelationMiddlewareCase(t *testing.T, tc correlationMiddlewareCase) {
+	t.Helper()
+	handlerCtxID := ""
+	hitNext := false
+	final := correlationFinalHandler(&hitNext, &handlerCtxID)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	for k, v := range tc.requestHeaders {
+		req.Header.Set(k, v)
+	}
+	rr := httptest.NewRecorder()
+	CorrelationIDMiddleware(final).ServeHTTP(rr, req)
+	gotHeader := rr.Result().Header.Get(CorrelationIDHeader)
+	assertCorrelationBasics(t, tc, rr, gotHeader, hitNext)
+	assertCorrelationIDs(t, tc, gotHeader, handlerCtxID)
+}
+
+// correlationFinalHandler records whether the wrapped handler ran and which ID it saw.
+// It takes hitNext and handlerCtxID pointers to fill, and returns the final handler.
+func correlationFinalHandler(hitNext *bool, handlerCtxID *string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*hitNext = true
+		w.WriteHeader(http.StatusOK)
+		id, ok := GetCorrelationID(r.Context())
+		if ok {
+			*handlerCtxID = id
+		}
+	})
+}
+
+// assertCorrelationBasics verifies response status, header presence, and error body text.
+// It takes t for failures, tc as expectations, rr as the response, gotHeader, and hitNext.
+func assertCorrelationBasics(t *testing.T, tc correlationMiddlewareCase, rr *httptest.ResponseRecorder, gotHeader string, hitNext bool) {
+	t.Helper()
+	if gotHeader == "" {
+		t.Fatalf("expected response header %s to be set", CorrelationIDHeader)
+	}
+	if rr.Code != tc.expectStatus {
+		t.Fatalf("expected status %d, got %d", tc.expectStatus, rr.Code)
+	}
+	if hitNext != tc.expectCallNext {
+		t.Fatalf("expected next called=%v, got %v", tc.expectCallNext, hitNext)
+	}
+	if tc.expectErrorContains != "" && !strings.Contains(rr.Body.String(), tc.expectErrorContains) {
+		t.Fatalf("expected response body %q to contain %q", rr.Body.String(), tc.expectErrorContains)
+	}
+}
+
+// assertCorrelationIDs verifies reused, generated, and context correlation IDs.
+// It takes t for failures, tc as expectations, gotHeader, and handlerCtxID.
+func assertCorrelationIDs(t *testing.T, tc correlationMiddlewareCase, gotHeader, handlerCtxID string) {
+	t.Helper()
+	if tc.expectCallNext && handlerCtxID == "" {
+		t.Fatal("expected context correlation ID to be set in handler")
+	}
+	assertCorrelationHeaderSource(t, tc, gotHeader)
+	if tc.expectCallNext && handlerCtxID != gotHeader {
+		t.Errorf("expected handler context ID %q to equal response header %q", handlerCtxID, gotHeader)
+	}
+}
+
+// assertCorrelationHeaderSource verifies whether the response ID was reused or generated.
+// It takes t for failures, tc as expectations, and gotHeader as the observed response header.
+func assertCorrelationHeaderSource(t *testing.T, tc correlationMiddlewareCase, gotHeader string) {
+	t.Helper()
+	if tc.expectReuseHeader && gotHeader != tc.providedValue {
+		t.Errorf("expected middleware to reuse provided value %q, got %q", tc.providedValue, gotHeader)
+	}
+	if tc.expectGeneratedUUID {
+		if _, err := uuid.Parse(gotHeader); err != nil {
+			t.Errorf("expected generated correlation ID to be a UUID, got %q: %v", gotHeader, err)
+		}
 	}
 }

@@ -29,7 +29,7 @@ func TestHandleReady_NoReadiness(t *testing.T) {
 func TestHandleReady_Ready(t *testing.T) {
 	called := false
 	h := &Handler{
-		Readiness: func(ctx context.Context) error {
+		Readiness: func(_ context.Context) error {
 			called = true
 			return nil
 		},
@@ -54,7 +54,7 @@ func TestHandleReady_Ready(t *testing.T) {
 // TestHandleReady_NotReady ensures 503 and an error body when readiness fails.
 func TestHandleReady_NotReady(t *testing.T) {
 	h := &Handler{
-		Readiness: func(ctx context.Context) error {
+		Readiness: func(_ context.Context) error {
 			return errors.New("db unavailable")
 		},
 	}

@@ -57,14 +57,35 @@ func isJSSpace(r rune) bool { return inRanges(r, jsSpaceRanges) }
 //
 // Returns the sanitized name.
 func SanitizeFileName(name string) string {
+	out := stripUnsafeNameRunes(lastFileNameSegment(name))
+	return fallbackSanitizedName(out)
+}
+
+// lastFileNameSegment returns the last non-empty slash- or backslash-delimited
+// segment using the same splitting rules as JavaScript link handling.
+//
+// Parameters:
+//   - name: untrusted file name.
+//
+// Returns the last segment, or "" when none exists.
+func lastFileNameSegment(name string) string {
 	segs := strings.FieldsFunc(name, func(r rune) bool { return r == '/' || r == '\\' })
-	last := ""
-	if len(segs) > 0 {
-		last = segs[len(segs)-1]
+	if len(segs) == 0 {
+		return ""
 	}
+	return segs[len(segs)-1]
+}
+
+// stripUnsafeNameRunes removes unsafe code points and enforces maxNameRunes.
+//
+// Parameters:
+//   - segment: single untrusted path segment.
+//
+// Returns the trimmed safe-code-point portion of segment.
+func stripUnsafeNameRunes(segment string) string {
 	var b strings.Builder
 	n := 0
-	for _, r := range last {
+	for _, r := range segment {
 		if n == maxNameRunes {
 			break
 		}
@@ -73,9 +94,18 @@ func SanitizeFileName(name string) string {
 			n++
 		}
 	}
-	out := strings.TrimFunc(b.String(), isJSSpace)
-	if out == "" || out == "." || out == ".." {
+	return strings.TrimFunc(b.String(), isJSSpace)
+}
+
+// fallbackSanitizedName replaces empty and dot-only sanitized names.
+//
+// Parameters:
+//   - name: sanitized candidate.
+//
+// Returns name or fallbackName when name cannot safely identify a file.
+func fallbackSanitizedName(name string) string {
+	if name == "" || name == "." || name == ".." {
 		return fallbackName
 	}
-	return out
+	return name
 }

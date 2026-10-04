@@ -9,7 +9,7 @@ import (
 
 // SnapshotProvider abstracts Manager for testing.
 type SnapshotProvider interface {
-	Snapshot(ctx context.Context) (map[string]int64, map[string]summaryAgg, error)
+	Snapshot(ctx context.Context) (map[string]int64, map[string]SummaryAgg, error)
 }
 
 // Handler returns an http.HandlerFunc that writes JSON metrics snapshot.
@@ -29,10 +29,10 @@ func Handler(provider SnapshotProvider, token string) http.HandlerFunc {
 		outSummaries := make(map[string]map[string]int64, len(summaries))
 		for k, v := range summaries {
 			outSummaries[k] = map[string]int64{
-				"count": v.count,
-				"sum":   v.sum,
-				"min":   v.min,
-				"max":   v.max,
+				"count": v.Count,
+				"sum":   v.Sum,
+				"min":   v.Min,
+				"max":   v.Max,
 			}
 		}
 		resp := map[string]any{

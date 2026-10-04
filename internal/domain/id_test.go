@@ -23,30 +23,43 @@ func TestNewID(t *testing.T) {
 	const n = 10
 	unique := make(map[string]struct{}, n)
 	for i := 0; i < n; i++ {
-		id, err := NewID()
-		if err != nil {
-			t.Fatalf("NewID error: %v", err)
-		}
-		s := id.String()
-		if len(s) != 32 {
-			t.Fatalf("id length unexpected: %d", len(s))
-		}
-		if !id.Valid() {
-			t.Fatalf("generated id invalid: %s", id)
-		}
-		// Ensure all characters are lowercase hex explicitly.
-		for _, c := range s {
-			if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
-				t.Fatalf("id contains non-hex lowercase char: %s", s)
-			}
-		}
-		if _, exists := unique[s]; exists {
-			t.Fatalf("duplicate id generated: %s", s)
-		}
-		unique[s] = struct{}{}
+		assertNewID(t, unique)
 	}
 	if len(unique) != n { // extremely unlikely; indicates collision or logic error
 		t.Fatalf("expected %d unique ids, got %d", n, len(unique))
+	}
+}
+
+// assertNewID generates one ID, validates it, and records it as unique.
+// It takes t for failures and unique as the set of already generated IDs.
+func assertNewID(t *testing.T, unique map[string]struct{}) {
+	t.Helper()
+	id, err := NewID()
+	if err != nil {
+		t.Fatalf("NewID error: %v", err)
+	}
+	s := id.String()
+	if len(s) != 32 {
+		t.Fatalf("id length unexpected: %d", len(s))
+	}
+	if !id.Valid() {
+		t.Fatalf("generated id invalid: %s", id)
+	}
+	assertLowerHexID(t, s)
+	if _, exists := unique[s]; exists {
+		t.Fatalf("duplicate id generated: %s", s)
+	}
+	unique[s] = struct{}{}
+}
+
+// assertLowerHexID verifies an ID string contains only lowercase hexadecimal characters.
+// It takes t for failures and s as the ID string to inspect.
+func assertLowerHexID(t *testing.T, s string) {
+	t.Helper()
+	for _, c := range s {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			t.Fatalf("id contains non-hex lowercase char: %s", s)
+		}
 	}
 }
 
