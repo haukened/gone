@@ -177,6 +177,7 @@ func ttlOptionViews(opts []domain.TTLOption) []TTLOptionView {
 // nosniff never blocks them.
 var staticTypes = map[string]string{
 	".woff2": "font/woff2",
+	".ico":   "image/x-icon",
 }
 
 // staticHandler serves embedded/static assets under /static/.

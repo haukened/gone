@@ -41,22 +41,33 @@ func TestStaticHandlerErrors(t *testing.T) {
 	})
 }
 
-// TestStaticHandlerFontType verifies .woff2 assets are served as font/woff2
-// regardless of the host MIME table, so nosniff never blocks the font.
-func TestStaticHandlerFontType(t *testing.T) {
+// TestStaticHandlerPinnedTypes verifies assets whose types minimal container
+// images may not know (.woff2, .ico) are served with a fixed Content-Type, so
+// nosniff never blocks them.
+func TestStaticHandlerPinnedTypes(t *testing.T) {
+	cases := []struct{ file, want string }{
+		{"f.woff2", "font/woff2"},
+		{"favicon.ico", "image/x-icon"},
+	}
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "f.woff2"), []byte("wOF2"), 0o600); err != nil {
-		t.Fatalf("write file: %v", err)
+	for _, tc := range cases {
+		if err := os.WriteFile(filepath.Join(dir, tc.file), []byte("data"), 0o600); err != nil {
+			t.Fatalf("write file: %v", err)
+		}
 	}
 	h := httpx.New(noopService{}, 0, nil)
 	h.Assets = http.FS(os.DirFS(dir))
-	r := httptest.NewRequest(http.MethodGet, "/static/f.woff2", nil)
-	w := httptest.NewRecorder()
-	h.Router().ServeHTTP(w, r)
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200 got %d", w.Code)
-	}
-	if got := w.Header().Get("Content-Type"); got != "font/woff2" {
-		t.Fatalf("expected font/woff2 got %q", got)
+	for _, tc := range cases {
+		t.Run(tc.file, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/static/"+tc.file, nil)
+			w := httptest.NewRecorder()
+			h.Router().ServeHTTP(w, r)
+			if w.Code != http.StatusOK {
+				t.Fatalf("expected 200 got %d", w.Code)
+			}
+			if got := w.Header().Get("Content-Type"); got != tc.want {
+				t.Fatalf("expected %s got %q", tc.want, got)
+			}
+		})
 	}
 }
