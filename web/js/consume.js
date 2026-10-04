@@ -87,7 +87,7 @@
     }
   }
 
-  // validate checks the link before anything touches the network.
+  // validate checks the link and browser before anything touches the network.
   // Returns {frag, problem}.
   function validate() {
     if (!util.cryptoAvailable()) return { frag: null, problem: NO_CRYPTO };
@@ -160,10 +160,15 @@
       view.showDecoded({ message: params.get('text') || PREVIEW_TEXT, files: [] });
       return;
     }
+    // Every link gets the same Open page, valid or not, so loading it reveals
+    // nothing. A link that can't work says why only when Open is pressed,
+    // still without touching the network.
     const checked = validate();
     if (checked.problem) {
-      view.showError(checked.problem);
-      view.disableOpen();
+      view.onOpen(function () {
+        view.showError(checked.problem);
+        view.disableOpen();
+      });
       return;
     }
     if (checked.frag.version === window.goneCrypto.versionV2) view.showPassphrase();
