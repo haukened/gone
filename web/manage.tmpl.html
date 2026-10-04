@@ -6,108 +6,93 @@
 </head>
 <body>
 	{{ template "header" . }}
-	<main id="main" tabindex="-1">
-		<div id="view-check" class="wrap grid">
-			<div class="intro">
+	<main id="main" tabindex="-1" class="main">
+		<div id="view-check" class="view">
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg>Only for you, the sender</p>
 				<h1 id="check-heading" tabindex="-1">Checking on your secret.</h1>
 				<p class="lead">This page is only for you, the sender. It never opens the secret.</p>
-			</div>
-			<div class="steps">
-				<section class="step" aria-labelledby="step-check">
-					<div class="step-head"><h2 class="step-name" id="step-check">Status</h2></div>
-					<div class="step-body">
-						<span id="check-status" class="status" role="status">Checking…</span>
-						<div id="check-error" class="alert" hidden>
-							<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
-							<p id="check-error-text" role="alert"></p>
-						</div>
-						<div class="actions">
-							<button id="check-retry" class="btn btn-secondary" type="button" hidden>Try again</button>
-						</div>
+				<div class="form">
+					<span id="check-status" class="status" role="status">Checking…</span>
+					<div id="check-error" class="alert" hidden>
+						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+						<p id="check-error-text" role="alert"></p>
 					</div>
-				</section>
+					<div class="actions">
+						<button id="check-retry" class="btn btn-secondary" type="button" hidden>Try again</button>
+					</div>
+				</div>
 			</div>
 		</div>
-		<div id="view-pending" class="wrap grid" hidden>
-			<div class="intro">
-				<h1 id="pending-heading" tabindex="-1">Nobody has opened it yet.</h1>
+		<div id="view-pending" class="view" hidden>
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg>Only for you, the sender</p>
+				<h1 id="pending-heading" tabindex="-1">Nobody has opened it <span class="accent">yet.</span></h1>
 				<p class="lead">The link still works. It opens once, then it's gone.</p>
-			</div>
-			<div class="steps">
-				<section class="step" aria-labelledby="step-status">
-					<div class="step-head"><h2 class="step-name" id="step-status">Status</h2></div>
-					<div class="step-body">
-						<dl class="facts">
-							<div><dt>Created</dt><dd><time id="manage-created"></time></dd></div>
-							<div><dt>Expires</dt><dd><time id="manage-expires"></time></dd></div>
-							<div><dt>Checked</dt><dd><time id="manage-checked"></time></dd></div>
-						</dl>
-						<ol class="life life-h" aria-label="Secret status">
-							<li class="is-done"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-sealed" /></svg><span class="t">Sealed</span><span class="s">By you</span></li>
-							<li class="is-now" aria-current="step"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-waiting" /></svg><span class="t">Waiting</span><span class="s">Not opened yet</span></li>
-							<li class="is-next"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-opened" /></svg><span class="t">Opened once</span><span class="s">By whoever opens it first</span></li>
-							<li class="is-next"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-gone" /></svg><span class="t">Gone</span><span class="s">Deleted for good</span></li>
-						</ol>
-						<div class="field">
-							<div class="actions">
-								<button id="check-again" class="btn btn-secondary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-waiting" /></svg><span>Check again</span></button>
-							</div>
-							<span id="pending-status" class="status" role="status"></span>
+				<div class="form">
+					<span class="pill-status">Waiting</span>
+					<dl class="facts">
+						<div><dt>Created</dt><dd><time id="manage-created"></time></dd></div>
+						<div><dt>Expires</dt><dd><time id="manage-expires"></time></dd></div>
+						<div><dt>Checked</dt><dd><time id="manage-checked"></time></dd></div>
+					</dl>
+					<div class="field">
+						<div class="actions">
+							<button id="check-again" class="btn btn-secondary btn-small" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-waiting" /></svg><span>Check again</span></button>
+						</div>
+						<span id="pending-status" class="status" role="status"></span>
+					</div>
+				</div>
+				<section class="zone" aria-labelledby="delete-heading">
+					<h2 id="delete-heading">Delete it early</h2>
+					<p class="note" id="delete-note">Changed your mind, or sent it to the wrong person? Delete it now and the link stops working at once, even for someone about to open it.</p>
+					<div id="pending-error" class="alert" hidden>
+						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+						<p id="pending-error-text" role="alert"></p>
+					</div>
+					<div id="delete-start" class="actions">
+						<button id="delete-now" class="btn btn-danger-ghost" type="button" aria-describedby="delete-note"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-trash" /></svg><span>Delete now</span></button>
+					</div>
+					<div id="delete-confirm" class="confirm" role="group" aria-labelledby="delete-confirm-text" hidden>
+						<p id="delete-confirm-text" tabindex="-1"><strong>Delete it now?</strong>Anyone who hasn't opened it yet won't be able to. This can't be undone.</p>
+						<div class="actions">
+							<button id="delete-yes" class="btn btn-danger btn-small" type="button"><span>Delete it</span></button>
+							<button id="delete-no" class="btn btn-quiet btn-small" type="button">Keep it</button>
 						</div>
 					</div>
 				</section>
-				<section class="step" aria-labelledby="step-delete">
-					<div class="step-head"><h2 class="step-name" id="step-delete">Delete</h2></div>
-					<div class="step-body">
-						<p class="note" id="delete-note">Changed your mind, or sent it to the wrong person? Delete it now and the link stops working at once, even for someone about to open it.</p>
-						<div id="pending-error" class="alert" hidden>
-							<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
-							<p id="pending-error-text" role="alert"></p>
-						</div>
-						<div id="delete-start" class="actions">
-							<button id="delete-now" class="btn btn-secondary" type="button" aria-describedby="delete-note"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-gone" /></svg><span>Delete now</span></button>
-						</div>
-						<div id="delete-confirm" class="confirm" role="group" aria-labelledby="delete-confirm-text" hidden>
-							<p id="delete-confirm-text" tabindex="-1"><strong>Delete it now?</strong>Anyone who hasn't opened it yet won't be able to. This can't be undone.</p>
-							<div class="actions">
-								<button id="delete-yes" class="btn btn-primary" type="button"><span>Delete it</span></button>
-								<button id="delete-no" class="btn btn-secondary" type="button">Keep it</button>
-							</div>
-						</div>
-					</div>
+				<section class="rail" aria-label="Secret status">
+					<ol class="life">
+						<li class="is-done"><span class="t">Sealed</span>By you</li>
+						<li class="is-now" aria-current="step"><span class="t">Waiting</span>Not opened yet</li>
+						<li><span class="t">Opened once</span>By whoever opens it first</li>
+						<li><span class="t">Gone</span>Deleted for good</li>
+					</ol>
 				</section>
 			</div>
 		</div>
-		<div id="view-deleted" class="wrap grid" hidden>
-			<div class="intro">
+		<div id="view-deleted" class="view" hidden>
+			<div class="pane gone-hero">
+				<span class="gone-g" aria-hidden="true"></span>
 				<h1 id="deleted-heading" tabindex="-1">Deleted.</h1>
 				<p class="lead">The secret is gone from the server. The link you shared won't open anymore.</p>
-			</div>
-			<div class="steps">
-				<section class="step" aria-labelledby="step-deleted">
-					<div class="step-head gone-mark"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-gone" /></svg></div>
-					<div class="step-body">
-						<h2 class="step-name" id="step-deleted">What's next</h2>
-						<p class="note">If you meant to change who gets it, send a fresh secret to the right person. This manage link no longer does anything.</p>
-						<div class="actions"><a class="btn btn-secondary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Send another secret</a></div>
-					</div>
+				<section class="next" aria-labelledby="deleted-next">
+					<h2 id="deleted-next">What's next</h2>
+					<p class="note">If you meant to change who gets it, send a fresh secret to the right person. This manage link no longer does anything.</p>
 				</section>
+				<a class="btn btn-primary" href="/">Send another secret</a>
 			</div>
 		</div>
-		<div id="view-gone" class="wrap grid" hidden>
-			<div class="intro">
-				<h1 id="gone-heading" tabindex="-1">This secret is gone.</h1>
+		<div id="view-gone" class="view" hidden>
+			<div class="pane gone-hero">
+				<span class="gone-g" aria-hidden="true"></span>
+				<h1 id="gone-heading" tabindex="-1">This secret is <span class="accent">gone.</span></h1>
 				<p class="lead">It was opened, deleted, or it expired. Gone doesn't keep records, so it can't tell which.</p>
-			</div>
-			<div class="steps">
-				<section class="step" aria-labelledby="step-gone">
-					<div class="step-head gone-mark"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-gone" /></svg></div>
-					<div class="step-body">
-						<h2 class="step-name" id="step-gone">What you can do</h2>
-						<p class="note">Ask the person you sent it to whether they opened it. If they say they didn't and it hadn't expired yet, someone else may have, so change anything the secret contained.</p>
-						<div class="actions"><a class="btn btn-secondary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Send another secret</a></div>
-					</div>
+				<section class="next" aria-labelledby="gone-next">
+					<h2 id="gone-next">What you can do</h2>
+					<p class="note">Ask the person you sent it to whether they opened it. If they say they didn't and it hadn't expired yet, someone else may have, so change anything the secret contained.</p>
 				</section>
+				<a class="btn btn-secondary" href="/">Send another secret</a>
 			</div>
 		</div>
 	</main>

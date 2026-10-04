@@ -1,42 +1,47 @@
-/* Design tokens. Primitives borrow Radix slate/amber and Open Props scales;
-   semantic tokens resolve per colour scheme via light-dark(). */
+/* Design tokens: Moonstone. Pearl daylight and dusk behind frosted glass.
+   Semantic tokens resolve per colour scheme through light-dark(); components
+   use only the semantic names. */
 @font-face {
-  font-family: "Atkinson Hyperlegible Next";
-  src: url("../fonts/atkinson-next-latin.woff2") format("woff2");
-  font-weight: 200 800;
+  font-family: Geist;
+  src: url("../fonts/geist-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("../fonts/geist-mono-latin.woff2") format("woff2");
+  font-weight: 100 900;
   font-display: swap;
 }
 
 :root {
-  --navy-12: #14213d;
-  --navy-11: #3d4a63;
-  --navy-10: #5b6780;
-  --navy-7: #b8c3d1;
-  --navy-6: #d7dee7;
-  --navy-2: #f6f8fa;
-  --white: #fff;
-  --marigold-9: #f2a900;
-  --marigold-11: #b07800;
-  --amber-2: #fff8e6;
-  --amber-7: #e9c46a;
-  --night-2: #0b1324;
-  --night-3: #111b30;
-  --night-6: #22304a;
-  --night-7: #34445f;
-  --mist-12: #e9eef6;
-  --mist-11: #b9c4d6;
-  --mist-10: #8d99af;
-  --umber-2: #2a2210;
-  --umber-7: #6b5214;
-  --font-sans: "Atkinson Hyperlegible Next", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", menlo, consolas, monospace;
-  --step--1: 0.833rem;
+  /* Primitives */
+  --pearl: #eeecf1;
+  --dusk: #121019;
+  --ink-12: #1c1a26;
+  --ink-11: #4a4658;
+  --ink-10: #625e73;
+  --moon-12: #efedf6;
+  --moon-11: #c3bed4;
+  --moon-10: #a7a2ba;
+  --plum-12: #211e30;
+  --plum-11: #36324c;
+  --moonlight: #dcd6f4;
+  --moonlight-hi: #f6f4fe;
+  --violet-11: #4b3f8a;
+  --violet-4: #cfc6f7;
+
+  /* Type */
+  --font-sans: Geist, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Mono", menlo, consolas, monospace;
+  --step--1: 0.8125rem;
   --step-0: 1rem;
-  --step-1: 1.2rem;
-  --step-2: 1.44rem;
-  --step-3: 1.728rem;
-  --step-5: 2.488rem;
-  --step-num: 4.3rem;
+  --step-1: 1.0625rem;
+  --step-2: 1.375rem;
+  --step-4: clamp(1.875rem, 1.4rem + 2vw, 2.5rem);
+
+  /* Space and shape */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -44,24 +49,58 @@
   --space-5: 1.5rem;
   --space-6: 2rem;
   --space-7: 3rem;
-  --space-8: 4rem;
-  --radius: 4px;
-  --gap: 1.5rem;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --color-band: var(--navy-12);
-  --color-band-ink: var(--white);
-  --color-mark: var(--marigold-9);
-  --color-paper: light-dark(var(--navy-2), var(--night-2));
-  --color-surface: light-dark(var(--white), var(--night-3));
-  --color-ink: light-dark(var(--navy-12), var(--mist-12));
-  --color-ink-2: light-dark(var(--navy-11), var(--mist-11));
-  --color-ink-3: light-dark(var(--navy-10), var(--mist-10));
-  --color-line: light-dark(var(--navy-6), var(--night-6));
-  --color-line-strong: light-dark(var(--navy-7), var(--night-7));
-  --color-signal: light-dark(var(--marigold-11), var(--marigold-9));
-  --color-on-ink: light-dark(var(--white), var(--navy-12));
-  --color-warn-bg: light-dark(var(--amber-2), var(--umber-2));
-  --color-warn-line: light-dark(var(--amber-7), var(--umber-7));
+  --radius-pane: 22px;
+  --radius-well: 13px;
+  --radius-pill: 999px;
+  --blur: 36px;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Backdrop */
+  --color-bg: light-dark(var(--pearl), var(--dusk));
+  --light-a: light-dark(rgb(190 178 232 / 68%), rgb(120 100 190 / 46%));
+  --light-b: light-dark(rgb(250 200 178 / 62%), rgb(200 130 110 / 30%));
+  --light-c: light-dark(rgb(170 214 214 / 52%), rgb(90 150 160 / 26%));
+
+  /* Text */
+  --color-ink: light-dark(var(--ink-12), var(--moon-12));
+  --color-ink-2: light-dark(var(--ink-11), var(--moon-11));
+  --color-ink-3: light-dark(var(--ink-10), var(--moon-10));
+  --color-accent: light-dark(var(--violet-11), var(--violet-4));
+  --color-accent-line: light-dark(rgb(106 91 176 / 40%), rgb(185 173 240 / 40%));
+  --color-accent-soft: light-dark(rgb(106 91 176 / 10%), rgb(185 173 240 / 10%));
+
+  /* Glass */
+  --pane-hi: light-dark(rgb(255 255 255 / 68%), rgb(230 226 250 / 10%));
+  --pane-lo: light-dark(rgb(255 255 255 / 42%), rgb(230 226 250 / 4%));
+  --pane-solid: light-dark(#f8f7fa, #1c1926);
+  --edge: light-dark(rgb(255 255 255 / 88%), rgb(230 226 250 / 14%));
+  --edge-lo: light-dark(rgb(28 26 38 / 6%), rgb(0 0 0 / 30%));
+  --spec: light-dark(#fff, rgb(255 255 255 / 20%));
+  --shadow: light-dark(rgb(64 52 96 / 20%), rgb(4 2 10 / 70%));
+  --well: light-dark(rgb(250 249 252 / 66%), rgb(10 8 18 / 40%));
+  --well-edge: light-dark(rgb(28 26 38 / 10%), rgb(230 226 250 / 10%));
+  --well-shade: light-dark(rgb(28 26 38 / 5%), rgb(0 0 0 / 35%));
+  --hair: light-dark(rgb(28 26 38 / 9%), rgb(230 226 250 / 10%));
+  --lens: light-dark(#fff, rgb(230 226 250 / 14%));
+  --frost: light-dark(rgb(244 242 248 / 46%), rgb(24 20 36 / 32%));
+
+  /* Actions */
+  --primary-hi: light-dark(var(--plum-11), var(--moonlight-hi));
+  --primary: light-dark(var(--plum-12), var(--moonlight));
+  --on-primary: light-dark(#f6f4fb, #17142a);
+  --primary-spec: light-dark(rgb(255 255 255 / 16%), rgb(255 255 255 / 80%));
+  --primary-glow: light-dark(rgb(33 30 48 / 32%), rgb(190 180 240 / 30%));
+  --focus: light-dark(var(--violet-11), #d6cff5);
+  --focus-ring: light-dark(rgb(75 63 138 / 16%), rgb(214 207 245 / 18%));
+
+  /* Status */
+  --danger: light-dark(#a1283b, #ff9eac);
+  --on-danger: light-dark(#fff, #2a0a10);
+  --danger-soft: light-dark(rgb(161 40 59 / 8%), rgb(255 120 140 / 9%));
+  --danger-line: light-dark(rgb(161 40 59 / 28%), rgb(255 140 160 / 30%));
+  --warn: light-dark(#7d5200, #f2c46e);
+  --warn-soft: light-dark(rgb(176 120 0 / 10%), rgb(242 196 110 / 9%));
+  --warn-line: light-dark(rgb(176 120 0 / 30%), rgb(242 196 110 / 28%));
 
   color-scheme: light dark;
 }
@@ -72,11 +111,4 @@
 
 [data-theme="dark"] {
   color-scheme: dark;
-}
-
-@media (max-width: 52rem) {
-  :root {
-    --step-5: 2rem;
-    --step-num: 2.6rem;
-  }
 }

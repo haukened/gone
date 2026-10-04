@@ -6,20 +6,18 @@
 </head>
 <body>
 	{{ template "header" . }}
-	<main id="main" tabindex="-1" class="wrap grid">
-		<div class="intro">
-			<h1>{{ .Title }}</h1>
-			<p class="lead">{{ .Message }}</p>
-		</div>
-		<div class="steps">
-			<section class="step" aria-labelledby="error-next">
-				<div class="step-head gone-mark"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-gone" /></svg></div>
-				<div class="step-body">
-					<h2 class="step-name" id="error-next">What you can do</h2>
-					<p class="note">Error {{ .Status }}. Check the address, or start over from the home page.</p>
-					<div class="actions"><a class="btn btn-secondary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Back to home</a></div>
-				</div>
-			</section>
+	<main id="main" tabindex="-1" class="main">
+		<div class="view">
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>Error {{ .Status }}</p>
+				<h1>{{ .Title }}</h1>
+				<p class="lead">{{ .Message }}</p>
+				<section class="next" aria-labelledby="error-next">
+					<h2 id="error-next">What you can do</h2>
+					<p class="note">Check the address, or start over from the home page.</p>
+				</section>
+				<a class="btn btn-primary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Back to home</a>
+			</div>
 		</div>
 	</main>
 	{{ template "footer" . }}

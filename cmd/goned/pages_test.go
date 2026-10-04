@@ -30,7 +30,7 @@ type pageContractCase struct {
 	ids    []string
 }
 
-var sharedPageIDs = []string{"main", "theme-toggle", "i-waiting", "i-wordmark"}
+var sharedPageIDs = []string{"main", "theme-toggle", "i-waiting", "i-lock"}
 
 var pageContractCases = []pageContractCase{
 	{"/", http.StatusOK, []string{

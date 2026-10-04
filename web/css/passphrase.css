@@ -1,14 +1,14 @@
-/* Optional passphrase: input row, strength meter, recipient note. */
+/* Optional passphrase: input row and strength meter. */
 .passbox {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: var(--space-2);
+  gap: 0.375rem;
 }
 
 .passbox .input {
   min-height: 3rem;
   font-family: var(--font-mono);
-  font-size: 1rem;
+  font-size: 0.9375rem;
 }
 
 .passbox .btn {
@@ -32,10 +32,10 @@
   flex: none;
   box-sizing: border-box;
   width: 4rem;
-  height: 0.3rem;
-  border-left: calc(4rem * var(--fill)) solid var(--color-signal);
+  height: 0.25rem;
+  border-left: calc(4rem * var(--fill)) solid var(--color-accent);
   border-radius: 2px;
-  background: var(--color-line);
+  background: var(--hair);
 }
 
 .strength:empty::before {
@@ -58,23 +58,7 @@
   --fill: 1;
 }
 
-.pass-note {
-  display: flex;
-  gap: var(--space-2);
-  align-items: flex-start;
-}
-
-.pass-note[hidden] {
-  display: none;
-}
-
-.pass-note .ico {
-  flex: none;
-  margin-top: 0.2rem;
-  color: var(--color-signal);
-}
-
-@media (max-width: 52rem) {
+@media (max-width: 40rem) {
   .passbox {
     grid-template-columns: 1fr 1fr;
   }

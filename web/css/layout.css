@@ -1,57 +1,47 @@
-/* Page frame: wrap, 8-column grid, band, steps, aside, footer. */
+/* Page frame: header, the glass pane each view sits on, footer. */
 .wrap {
+  width: 100%;
   max-width: 72rem;
   margin-inline: auto;
   padding-inline: clamp(1rem, 4vw, 2.5rem);
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  column-gap: var(--gap);
-}
-
-.band {
-  background: var(--color-band);
-  color: var(--color-band-ink);
-}
-
-.band .wrap {
+.site .wrap {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  min-height: 4rem;
+  min-height: 5rem;
 }
 
-.band :focus-visible {
-  box-shadow: 0 0 0 2px var(--color-band-ink), 0 0 0 5px var(--color-mark);
-}
-
-/* The mark stands in for the "G": sized to cap height and set on the baseline. */
+/* The wordmark: the eroding G stands in for the capital, cap-height tall on
+   the text baseline, with the same overshoot as the "o". */
 .brand {
-  display: block;
-  line-height: 2.75rem;
+  display: inline-block;
+  padding: var(--space-1) var(--space-1);
+  border-radius: 8px;
   white-space: nowrap;
+  color: var(--color-ink);
   text-decoration: none;
-  font-size: var(--step-2);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 1.75rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.045em;
 }
 
-.brand .ico {
+.brand-g {
   display: inline-block;
-  width: 0.84em;
-  height: 0.84em;
-  margin-right: 0.03em;
-  vertical-align: -0.06em;
-  stroke: var(--color-mark);
-  stroke-width: 3.6;
+  width: 0.804em;
+  height: 0.752em;
+  margin-right: -0.01em;
+  vertical-align: -0.016em;
+  background: currentcolor;
+  mask: url("../img/gone-g-32.svg") center / contain no-repeat;
 }
 
 .nav {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-1);
   align-items: center;
 }
 
@@ -59,122 +49,137 @@
 .nav button {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 2.75rem;
   min-height: 2.75rem;
-  padding: 0 0.8rem;
-  color: inherit;
+  padding: 0 0.85rem;
+  color: var(--color-ink-2);
   font: inherit;
-  font-size: var(--step--1);
-  font-weight: 700;
+  font-size: 0.9375rem;
+  font-weight: 500;
   text-decoration: none;
   background: none;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
+  border: 0;
+  border-radius: var(--radius-pill);
   cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
 }
 
-.nav a:hover {
-  text-decoration: underline;
+.nav a:hover,
+.nav button:hover {
+  color: var(--color-ink);
+  background: var(--color-accent-soft);
 }
 
 .nav button {
-  border-color: rgb(255 255 255 / 28%);
+  padding: 0;
 }
 
-.nav button:hover {
-  border-color: var(--color-band-ink);
+.nav button .ico {
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
-.nav button[aria-pressed="true"] {
-  border-color: var(--color-mark);
-  background: rgb(255 255 255 / 10%);
+/* Show the moon while light, the sun while dark. */
+#theme-toggle[aria-pressed="true"] .when-light,
+#theme-toggle:not([aria-pressed="true"]) .when-dark {
+  display: none;
 }
 
-.nav button[aria-pressed="true"] .ico {
-  color: var(--color-mark);
+.main {
+  flex: 1;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  padding: clamp(0.5rem, 3vw, 2.25rem) clamp(1rem, 4vw, 2.5rem) var(--space-7);
 }
 
-.intro {
-  grid-column: 1 / span 6;
-  padding-block: var(--space-8) var(--space-7);
+.view {
+  width: 100%;
+  max-width: 36.25rem;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.view.wide {
+  max-width: 47.5rem;
+}
+
+/* One sheet of glass per view. Inputs sit in recessed wells inside it. */
+.pane {
+  position: relative;
+  border-radius: var(--radius-pane);
+  background: linear-gradient(160deg, var(--pane-hi), var(--pane-lo));
+  backdrop-filter: blur(var(--blur)) saturate(130%);
+  border: 1px solid var(--edge);
+  box-shadow:
+    inset 0 1px 0 var(--spec),
+    inset 0 -1px 0 var(--edge-lo),
+    0 40px 90px -40px var(--shadow),
+    0 2px 6px -2px var(--shadow);
+  padding: clamp(1.375rem, 5vw, 2.5rem);
+}
+
+.pane > h1 {
+  margin-bottom: var(--space-3);
+}
+
+.accent {
+  color: var(--color-accent);
+}
+
+.eyebrow {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding: 0.45rem 0.7rem 0.45rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-ink-2);
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-pill);
+}
+
+.eyebrow .ico {
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 .lead {
-  margin-top: var(--space-4);
+  max-width: 46ch;
+  margin-bottom: 1.75rem;
   font-size: var(--step-1);
   color: var(--color-ink-2);
-  max-width: 40ch;
-}
-
-.steps {
-  grid-column: 1 / span 6;
-}
-
-.aside {
-  grid-column: 7 / span 2;
-  border-top: 1px solid var(--color-line);
-  padding-top: var(--space-6);
-}
-
-.aside h2 {
-  font-size: var(--step-0);
-  margin-bottom: var(--space-5);
-}
-
-.step {
-  display: grid;
-  grid-template-columns: 9rem minmax(0, 1fr);
-  column-gap: var(--gap);
-  border-top: 1px solid var(--color-line);
-  padding-block: var(--space-6) var(--space-7);
-}
-
-.step-head {
-  grid-column: 1;
-}
-
-.step-num {
-  display: block;
-  font-size: var(--step-num);
-  font-weight: 700;
-  line-height: 0.85;
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-}
-
-.step-name {
-  display: block;
-  margin-top: var(--space-3);
-  font-size: var(--step-1);
-  font-weight: 700;
-}
-
-.step-body {
-  grid-column: 2;
-  display: grid;
-  gap: var(--space-5);
-  min-width: 0;
+  text-wrap: pretty;
 }
 
 .foot {
-  border-top: 1px solid var(--color-line);
-  margin-top: var(--space-8);
+  padding: var(--space-5) var(--space-4) var(--space-6);
+  font-size: var(--step--1);
+  color: var(--color-ink-3);
+  text-align: center;
 }
 
 .foot .wrap {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+}
+
+.foot p {
+  display: inline-flex;
+  gap: 0.45rem;
   align-items: center;
-  gap: var(--space-3);
-  padding-block: var(--space-5);
-  font-size: var(--step--1);
-  color: var(--color-ink-3);
 }
 
 .foot nav {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   column-gap: var(--space-4);
 }
 
@@ -183,46 +188,43 @@
   align-items: center;
   min-height: 2.75rem;
   color: var(--color-ink-2);
+  text-decoration: none;
 }
 
-@media (max-width: 52rem) {
-  .grid,
-  .step {
-    grid-template-columns: 1fr;
+.foot a:hover {
+  color: var(--color-ink);
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .pane {
+    background: var(--pane-solid);
+    backdrop-filter: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .brand-g {
+    forced-color-adjust: none;
+    background: CanvasText;
   }
 
-  .intro,
-  .steps,
-  .aside,
-  .step-head,
-  .step-body {
-    grid-column: 1 / -1;
+  .pane {
+    border-color: CanvasText;
+  }
+}
+
+@media (max-width: 40rem) {
+  .site .wrap {
+    min-height: 4rem;
   }
 
-  .intro {
-    padding-block: var(--space-6) var(--space-5);
+  .brand {
+    font-size: 1.6rem;
   }
 
-  .step {
-    padding-block: var(--space-5) var(--space-6);
-    row-gap: var(--space-4);
-  }
 
-  .step-head {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-3);
-  }
-
-  .step-name {
-    margin-top: 0;
-  }
-
-  .aside {
-    margin-top: var(--space-4);
-  }
-
-  .nav .hide-sm {
-    display: none;
+  .pane {
+    border-radius: 20px;
   }
 }

@@ -6,11 +6,12 @@
 </head>
 <body>
 	{{ template "header" . }}
-	<main id="main" tabindex="-1" class="wrap grid">
-		<div class="intro">
-			<h1>How Gone keeps a secret.</h1>
+	<main id="main" tabindex="-1" class="main">
+		<div class="view wide">
+		<div class="pane">
+			<p class="eyebrow">How it works</p>
+			<h1>How Gone keeps a <span class="accent">secret.</span></h1>
 			<p class="lead">Short answers for the people who send and open secrets, and for the people who run this server.</p>
-		</div>
 		<nav class="toc" aria-label="On this page">
 			<ol>
 				<li><a href="#what">What is Gone?</a></li>
@@ -113,8 +114,10 @@
 				</ul>
 				<p>To read the full license, visit the <a href="https://www.gnu.org/licenses/agpl-3.0.en.html">GNU website</a>.</p>
 			</section>
-			<p><a class="btn btn-secondary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Send a secret</a></p>
+			<p><a class="btn btn-primary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Send a secret</a></p>
 		</article>
+		</div>
+		</div>
 	</main>
 	{{ template "footer" . }}
 </body>
