@@ -13,8 +13,8 @@
   const WEAK_NUDGE = ' Longer is better, or press Generate.';
   const YEAR = 365.25 * 24 * 3600;
   const UNITS = [[60, 'second'], [3600, 'minute'], [86400, 'hour'], [YEAR, 'day']];
-  const BIG_YEARS = [[1e9, 'billion'], [1e6, 'million'], [1e3, 'thousand']];
-  const UNIVERSE_YEARS = 1.38e10;
+  const BIG_YEARS = [[1000000000, 'billion'], [1000000, 'million'], [1000, 'thousand']];
+  const UNIVERSE_YEARS = 13800000000;
 
   function plural(n, unit) {
     return `${n} ${unit}${n === 1 ? '' : 's'}`;

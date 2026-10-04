@@ -16,7 +16,7 @@
   const RANGE = 0x10000;
   // GUESSES_PER_SECOND models an offline attacker who already holds the link:
   // a rack of GPUs against PBKDF2-SHA256 at 600,000 rounds.
-  const GUESSES_PER_SECOND = 1e6;
+  const GUESSES_PER_SECOND = 1000000;
   if (window.gonePassgen || !window.goneWordlist) return;
   const list = window.goneWordlist;
   const limit = RANGE - (RANGE % list.length);
