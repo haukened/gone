@@ -82,7 +82,7 @@ sha256sum --ignore-missing -c SHA256SUMS   # macOS: shasum -a 256 --ignore-missi
 tar -xzf "\$ARCHIVE" && install -m 0755 "\${ARCHIVE%.tar.gz}/gone" ~/.local/bin/gone
 \`\`\`
 
-The signed build provenance is also attached as \`gone_${tag}.sigstore.json\`, for offline checks with \`gh attestation verify "\$ARCHIVE" --repo haukened/gone --bundle gone_${tag}.sigstore.json\`.
+The signed build provenance is also attached as \`gone_${tag}.sigstore.json\`, for offline checks with \`gh attestation verify "\$ARCHIVE" --repo haukened/gone --bundle gone_${tag}.sigstore.json\`. The same signed provenance statement is in \`gone_${tag}.intoto.jsonl\` (an in-toto DSSE envelope).
 
 See [docs/cli.md](https://github.com/haukened/gone/blob/${tag}/docs/cli.md) for usage. The server image is published to \`ghcr.io/haukened/gone:${tag}\`.
 EOF
