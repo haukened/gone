@@ -1,6 +1,7 @@
 [![Build](https://github.com/haukened/gone/actions/workflows/build.yaml/badge.svg)](https://github.com/haukened/gone/actions/workflows/build.yaml)
 [![Security Scan](https://github.com/haukened/gone/actions/workflows/sec.yaml/badge.svg)](https://github.com/haukened/gone/actions/workflows/sec.yaml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/haukened/gone/badge)](https://scorecard.dev/viewer/?uri=github.com/haukened/gone)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15214/badge)](https://www.bestpractices.dev/projects/15214)
 [![Codacy grade](https://app.codacy.com/project/badge/Grade/f632a2010c7748199f7c2cb8317feffa)](https://app.codacy.com/gh/haukened/gone/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Coverage](https://app.codacy.com/project/badge/Coverage/f632a2010c7748199f7c2cb8317feffa)](https://app.codacy.com/gh/haukened/gone/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 
