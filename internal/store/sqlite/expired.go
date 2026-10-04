@@ -14,7 +14,13 @@ import (
 // It returns records for blob cleanup; Claimed is set on rows removed because
 // of a lapsed claim.
 func (i *Index) DeleteExpired(ctx context.Context, t time.Time) ([]store.ExpiredRecord, error) {
-	return deleteExpiredTxn(ctx, i.db, t)
+	release, err := i.acquireWrite(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	recs, err := deleteExpiredTxn(ctx, i.db, t)
+	return recs, busyError(err)
 }
 
 // deleteExpiredTxn performs the DeleteExpired logic; isolated to reduce cyclomatic complexity on the method receiver.

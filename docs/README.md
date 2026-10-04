@@ -87,6 +87,7 @@ All errors are JSON `{ "error": "<message>" }`.
 | Size > `MaxBytes` | 413 | `size exceeded` |
 | Per-client rate limit exceeded (sets `Retry-After`) | 429 | `rate limited` |
 | Internal failure | 500 | `internal` |
+| Storage overloaded: no write turn within 5s (sets `Retry-After`; nothing changed, safe to retry) | 503 | `busy` |
 
 ## Rate Limiting
 Each client address has two token buckets: one for creating secrets (`POST /api/secret`, `GONE_RATE_CREATE`) and one for reading them (`GET` and `DELETE /api/secret/{id}`, plus `/status` and `/revoke`, `GONE_RATE_READ`). Both buckets hold up to `GONE_RATE_BURST` tokens and refill steadily at the configured rate. Health probes, pages, and static assets are not limited.

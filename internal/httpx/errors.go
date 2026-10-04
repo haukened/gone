@@ -53,7 +53,11 @@ var serviceErrorTable = []serviceErrorMapping{
 	{app.ErrNotFound, http.StatusNotFound, "not found", "not_found", slog.LevelInfo},
 	{domain.ErrTTLInvalid, http.StatusBadRequest, "ttl invalid", "ttl_invalid", slog.LevelWarn},
 	{os.ErrNotExist, http.StatusNotFound, "not found", "not_found", slog.LevelInfo},
+	{app.ErrBusy, http.StatusServiceUnavailable, "busy", "busy", slog.LevelWarn},
 }
+
+// busyRetryAfter is the Retry-After value, in seconds, sent with 503 busy.
+const busyRetryAfter = "1"
 
 // mapServiceError maps domain/store/service errors to HTTP responses.
 // Unknown errors become 500 without logging the raw error string, to avoid
@@ -68,6 +72,9 @@ func (h *Handler) mapServiceError(ctx context.Context, w http.ResponseWriter, er
 	for _, m := range serviceErrorTable {
 		if errors.Is(err, m.err) {
 			slog.Log(ctx, m.level, "service error", "cid", cid, "code", m.code)
+			if m.status == http.StatusServiceUnavailable {
+				w.Header().Set("Retry-After", busyRetryAfter)
+			}
 			h.writeError(ctx, w, m.status, m.msg)
 			return
 		}

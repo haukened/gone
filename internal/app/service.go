@@ -17,6 +17,10 @@ var ErrNotFound = errors.New("secret not found")
 // ErrSizeExceeded indicates the provided ciphertext size is zero or exceeds the configured maximum.
 var ErrSizeExceeded = errors.New("size exceeded")
 
+// ErrBusy indicates storage could not take the write in time because it is
+// overloaded; the request did not change anything and can be retried.
+var ErrBusy = errors.New("storage busy")
+
 // DefaultClaimLease is the claim lease used when Service.ClaimLease is unset.
 const DefaultClaimLease = 2 * time.Minute
 

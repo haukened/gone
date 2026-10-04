@@ -17,7 +17,8 @@
   const SERVER_ERROR = 'The server had a problem. Try again in a moment.';
   const STATUS_MESSAGES = new Map([
     [400, INVALID_LINK],
-    [429, 'Too many requests right now. Wait a moment, then try again.']
+    [429, 'Too many requests right now. Wait a moment, then try again.'],
+    [503, 'The server is busy right now. Wait a moment, then try again.']
   ]);
 
   // endpoints holds the URLs pinned by registerEndpoint; allowed is the

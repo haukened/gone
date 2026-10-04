@@ -77,6 +77,7 @@ test('upload accepts 200 and rejects bad statuses or bodies', async (t) => {
     [400, {}, 'The server rejected the secret'],
     [413, undefined, 'Secret too large for this server'],
     [429, undefined, 'Slow down: too many requests. Please wait and retry.'],
+    [503, undefined, 'The server is busy right now. Wait a moment, then try again.'],
     [500, undefined, 'Server error creating secret'],
     [201, undefined, 'Unexpected server response'],
     [201, {}, 'Unexpected server response']

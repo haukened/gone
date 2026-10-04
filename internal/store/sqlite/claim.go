@@ -73,13 +73,18 @@ type execer interface {
 //
 // Returns fn's error, app.ErrNotFound for errDeadRow, or a DB error.
 func (i *Index) immediateTx(ctx context.Context, fn func(conn *sql.Conn) error) (err error) {
+	release, err := i.acquireWrite(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
 	conn, err := i.db.Conn(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, conn.Close()) }()
 	if _, err = conn.ExecContext(ctx, "BEGIN IMMEDIATE"); err != nil {
-		return err
+		return busyError(err)
 	}
 	committed := false
 	defer func() {
@@ -92,7 +97,7 @@ func (i *Index) immediateTx(ctx context.Context, fn func(conn *sql.Conn) error) 
 		return fnErr
 	}
 	if _, err = conn.ExecContext(ctx, "COMMIT"); err != nil {
-		return err
+		return busyError(err)
 	}
 	committed = true
 	if fnErr != nil {

@@ -124,7 +124,7 @@ test('status maps 404 to gone and validates the pending body', async () => {
 test('status and revoke map failure statuses', async () => {
   const api = setup();
   api.registerEndpoint(ID);
-  const cases = [[400, /isn\u2019t valid/, false], [429, /Too many requests/, true], [500, /server had a problem/, true], [403, /server had a problem/, true]];
+  const cases = [[400, /isn\u2019t valid/, false], [429, /Too many requests/, true], [503, /server is busy/, true], [500, /server had a problem/, true], [403, /server had a problem/, true]];
   installFetch(cases.flatMap(([s]) => [resp(s), resp(s)]));
   for (const [s, re, retryable] of cases) {
     await assert.rejects(api.status(TOKEN), (e) => re.test(e.message) && e.retryable === retryable, `status ${s}`);
