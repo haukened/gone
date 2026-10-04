@@ -237,3 +237,15 @@ test('leaving the page mid-retry erases the download and ignores the outcome', a
   assert.equal($('view-revealed').hidden, true);
   assert.equal(calls.length, 1);
 });
+
+test('an insecure page without WebCrypto locks Open before fetching', (t) => {
+  const calls = installFetch([]);
+  const real = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+  Object.defineProperty(globalThis, 'crypto', { configurable: true, value: {} });
+  t.after(() => Object.defineProperty(globalThis, 'crypto', real));
+  const { $, open } = boot(t, BASE + ID + VALID_FRAG);
+  assert.match($('consume-error-text').textContent, /secure \(HTTPS\) pages.*Nothing was downloaded/);
+  assert.ok(disabled($));
+  open();
+  assert.equal(calls.length, 0);
+});
