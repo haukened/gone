@@ -1,7 +1,7 @@
 # Gone Protocol Specification
 
 Status: **normative** for protocol versions 1 and 2 and plaintext envelope GONE2.
-Reference implementations: the browser client (`web/js/crypto.js`, `envelope.js`, `fileMeta.js`, `consume.js`) and the Go package `internal/envelope`. Both are tested against the shared vectors in [`test/vectors/`](../test/vectors/).
+Reference implementations: the browser client (`web/js/crypto*.js` for encryption and links, `envelope.js` and `fileMeta.js` for GONE2, `consumeApi*.js` for the claim/acknowledge exchange) and the Go package `internal/envelope`, used by the `gone` CLI. Both are tested against the shared vectors in [`test/vectors/`](../test/vectors/).
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** are used as described in RFC 2119.
 
@@ -116,9 +116,9 @@ AAD = "gone:v2" || header
 - The server **never** parses the header. To the server a v2 body is opaque bytes, exactly like v1.
 - A valid v2 body is at least 37 bytes: the 21-byte header plus the 16-byte tag.
 - Readers **MUST** check the header **before** running the KDF. A body shorter than 37 bytes, an unknown KDF ID, or an iteration count outside the accepted range is **malformed**. Malformed is a final error: no passphrase can fix it. The iteration cap bounds the work a hostile sender can force on a recipient.
-- A passphrase that is empty, is not well-formed Unicode, or is longer than 1024 bytes after NFC and UTF-8 encoding is **invalid**. Readers report it the same way as a wrong passphrase.
+- A passphrase that is empty, is not well-formed Unicode, or is longer than 1024 bytes after NFC and UTF-8 encoding is **invalid**. Readers treat it as a failed attempt, like a wrong passphrase: it never ends the open or abandons the downloaded ciphertext.
 - Every other failure, including a wrong passphrase, a wrong link key, or a tampered body, **MUST** produce the single generic decryption error from §4.1. A wrong link key and a wrong passphrase can't be told apart.
-- Recipients **MAY** let the user retry the passphrase against the ciphertext they already downloaded. They **MUST NOT** fetch it again, since the claim (§8.2) has already started its deletion.
+- Recipients **MAY** let the user retry the passphrase against the ciphertext they already downloaded. They **MUST NOT** start a new claim for it, since the claim (§8.2) has already started its deletion. (Re-fetching with the claim token to recover an interrupted download is allowed; see §8.2.)
 - Implementations **SHOULD** overwrite `P`, `pw`, `K`, the link key, and the plaintext once they are no longer needed.
 
 **Security notes.**
@@ -270,7 +270,7 @@ version  = canonical decimal 1–255 (§2.2)
 payload  = 1*( ALPHA / DIGIT / "-" / "_" )
 ```
 
-For protocol versions 1 and 2, the payload is the strict base64url encoding of the 32-byte link key, which is exactly 43 characters. A v2 fragment carries the link key only. The passphrase **MUST NOT** appear in the link.
+For protocol versions 1 and 2, the payload is the strict base64url encoding of the 32-byte link key, which is exactly 43 characters. Both reference implementations reject fragments longer than 512 characters before parsing them. A v2 fragment carries the link key only. The passphrase **MUST NOT** appear in the link.
 
 ### 7.2 Parsing
 
@@ -306,8 +306,8 @@ The full endpoint reference, including status codes, is in [docs/README.md](READ
 | `X-Gone-TTL` | A Go duration inside the server's configured `[MinTTL, MaxTTL]`. |
 | `Content-Length` | Required. The body is the ciphertext. |
 
-- Each `X-Gone-*` header **MUST** appear exactly once.
-- If the version or nonce header breaks a rule, the server **MUST** respond with `400` and `invalid version` or `invalid nonce`. The application service repeats the same checks, so only valid metadata is ever stored.
+- Each `X-Gone-*` header **MUST** appear exactly once. A missing, empty, or repeated header gets `400 missing required headers`.
+- If a present version or nonce header breaks a rule, the server **MUST** respond with `400` and `invalid version` or `invalid nonce`. The application service repeats the same checks, so only valid metadata is ever stored.
 - The server never inspects the body beyond its length, and never parses the v2 header (§4.2). It **MAY** reject bodies shorter than the tag.
 - The `201` body carries `id`, `expires_at`, and `manage_token`. The token is 32 bytes from a CSPRNG, encoded as strict base64url (43 characters). The server stores only its SHA-256 and can never return it again.
 
@@ -315,11 +315,13 @@ The full endpoint reference, including status codes, is in [docs/README.md](READ
 
 On success the server returns `200` with the ciphertext and these headers:
 - `X-Gone-Version` and `X-Gone-Nonce`, exactly as they were stored;
-- `X-Gone-Claim`, the claim token;
-- `X-Gone-Claim-Expires`, the lease deadline.
+- `X-Gone-Claim`, the claim token: 32 bytes from a CSPRNG as strict base64url (43 characters). The server stores only its SHA-256;
+- `X-Gone-Claim-Expires`, the lease deadline as an RFC 3339 UTC timestamp (`GONE_CLAIM_LEASE`, default 2 minutes).
+
+A claim is atomic: once a secret is claimed, a `GET` without the claim token returns `404`. While the lease is valid, a `GET` that sends `X-Gone-Claim: <token>` re-fetches the same ciphertext, so a client can recover an interrupted download. No one else can.
 
 The client:
-1. **MUST** check that `X-Gone-Version` is exactly the canonical decimal string of the link's version. Otherwise it reports an unsupported version.
+1. **MUST** check that `X-Gone-Version` is exactly the canonical decimal string of the link's version, and reject the response otherwise. The browser reports this as an unsupported version; the CLI reports it as an integrity failure (exit 6).
 2. **MUST** decode the nonce strictly. A malformed nonce is reported with the same generic error as a failed decryption (§4.1). For v2 this error is final: it is checked before asking for a passphrase again.
 3. **MUST** check, when `Content-Length` is present, that it received exactly that many bytes. AES-GCM detects truncation even when `Content-Length` is absent (for example, when a proxy re-chunks the response).
 4. **SHOULD** stop reading once it has received more than its own ciphertext limit. Non-browser clients **MUST** enforce such a limit.
@@ -327,7 +329,7 @@ The client:
 
 ### 8.3 Acknowledge: `DELETE /api/secret/{id}`
 
-The request carries `X-Gone-Claim`. Clients **SHOULD** acknowledge only after decryption and decoding both succeed. Otherwise the lease expires and the janitor removes the secret.
+The request carries `X-Gone-Claim`. Clients **SHOULD** acknowledge only after decryption and decoding both succeed. Otherwise the lease expires and the janitor removes the secret. An acknowledgement with the right token succeeds even after the lease deadline, until the janitor has run; it never revives the secret for anyone else.
 
 ### 8.4 Status: `GET /api/secret/{id}/status`
 

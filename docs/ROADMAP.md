@@ -98,12 +98,12 @@ No user-visible change. This phase writes down the encryption format and adds a 
 ---
 
 ## Phase 3: Web UI revamp
-**Status: implemented** on `feat/ui-revamp`. The visual system is documented in [`DESIGN.md`](../DESIGN.md) and the product context in [`PRODUCT.md`](../PRODUCT.md).
+**Status: done** (merged in #29). The visual system is documented in [`DESIGN.md`](../DESIGN.md) and the product context in [`PRODUCT.md`](../PRODUCT.md).
 
 A full redesign that keeps today's constraints: vanilla JS, no `innerHTML`, strict CSP, and no third-party assets.
 
 **Scope**
-* **Design tokens.** One set of CSS custom properties for color, spacing, type, radius, and motion, for both light and dark themes. `app.css` gets reorganized around them.
+* **Design tokens.** One set of CSS custom properties for color, spacing, type, radius, and motion, for both light and dark themes. The stylesheet was split around them into `web/css/` (`tokens`, `base`, `layout`, `components`, `pages`, `passphrase`).
 * **Reusable building blocks:** form fields, buttons, a copyable-link card, status badges, and alert/notice styles. Phases 4 and 5 use these without adding new patterns.
 * **Rethought flows:**
   * *Send:* message, attachments, expiry, and a slot for the passphrase option.
@@ -111,7 +111,7 @@ A full redesign that keeps today's constraints: vanilla JS, no `innerHTML`, stri
   * *Receive:* reveal, a slot for the passphrase prompt, and the error states (expired, already opened, wrong passphrase).
 * **Accessibility:** target WCAG 2.2 AA. That means full keyboard operation, visible focus, correct labels and live regions, `prefers-reduced-motion` support, and sufficient contrast in both themes.
 * **Responsive layout** that works from small phones to wide desktops.
-* **Browser smoke tests:** add a small Playwright check of the send→receive round trip to CI.
+* **Browser smoke tests:** a Playwright check of the send→receive round trip in CI. *Not done:* the round trip is covered by JS unit tests and the Node interop tests in `test/interop` instead.
 
 **Done when**
 * Every existing flow works with the same or fewer steps.
@@ -121,7 +121,7 @@ A full redesign that keeps today's constraints: vanilla JS, no `innerHTML`, stri
 ---
 
 ## Phase 4: Sender status and revoke
-**Status: implemented** on `feat/sender-manage`.
+**Status: done** (merged in #30).
 
 The sender can check whether a secret is still waiting and delete it before it is opened.
 
@@ -151,7 +151,7 @@ The sender can check whether a secret is still waiting and delete it before it i
 ---
 
 ## Phase 5: Optional passphrase
-**Status: implemented** on `feat/passphrase`. The byte-level format is [`docs/protocol.md`](protocol.md) §4.2.
+**Status: done** (merged in #31). The byte-level format is [`docs/protocol.md`](protocol.md) §4.2.
 
 A second factor: opening the secret needs both the link and a passphrase that the sender shares separately.
 
@@ -172,7 +172,7 @@ A second factor: opening the secret needs both the link and a passphrase that th
 ---
 
 ## Phase 6: CLI
-**Status: implemented** on `feat/cli`. The user guide is [`docs/cli.md`](cli.md).
+**Status: done** (merged in #32). The user guide is [`docs/cli.md`](cli.md).
 
 A single static binary, `gone`, that sends and receives secrets and talks to the same API as the browser. The server binary is now `goned`.
 
@@ -202,9 +202,9 @@ A single static binary, `gone`, that sends and receives secrets and talks to the
 ---
 
 ## Release plan
-* Each phase merges to `main` on its own. Pre-release tags (`v3.0.0-alpha.N`) can be cut along the way for real-world testing.
-* `v3.0.0` is tagged when all six phases have landed.
-* The upgrade notes will cover:
+* Each phase merged to `main` on its own. No pre-release tags were cut.
+* `v3.0.0` was released on 2026-10-04, after all six phases landed.
+* Upgrade notes should cover:
   * the new environment variables;
   * the automatic schema migration;
   * the guarantee that v1 links created before the upgrade still open.
@@ -214,7 +214,7 @@ A single static binary, `gone`, that sends and receives secrets and talks to the
 | ----- | ------ |
 | 1. Rate limiting | Done |
 | 2. Protocol spec + Go envelope | Done |
-| 3. Web UI revamp | Implemented |
-| 4. Sender status + revoke | Implemented |
-| 5. Optional passphrase | Implemented |
-| 6. CLI | Implemented |
+| 3. Web UI revamp | Done |
+| 4. Sender status + revoke | Done |
+| 5. Optional passphrase | Done |
+| 6. CLI | Done |

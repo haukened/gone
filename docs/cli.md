@@ -91,7 +91,8 @@ gone send [flags]
 
 - **The message is read from standard input.** Pipe it in, or type it and press Ctrl-D (Ctrl-Z then Enter on Windows). There is deliberately no flag for the message, so it never lands in shell history or the process list.
 - To send only files, give standard input nothing: `gone send -f report.pdf </dev/null`.
-- The message plus files must fit within the server's size limit; the server also enforces its own minimum and maximum TTL.
+- The message plus files must fit within the server's size limit (`GONE_MAX_BYTES`, 10 MiB by default); the server also enforces its own minimum and maximum TTL. Independently of the server, `gone` refuses inputs over 64 MiB before encrypting anything (exit 2).
+- An attachment's type is guessed from its file extension. Its name is the file's base name.
 - At most one `--passphrase-*` flag may be used. A passphrase must be at least 8 characters. `--passphrase-generate` prints five random words from the EFF short wordlist, joined in CamelCase (about 51 bits), to standard error, so a redirected standard output only captures the link.
 
 Example with files and a passphrase:
@@ -116,10 +117,11 @@ gone get <link> [flags]
 ```
 
 - The message is written to standard output, attachments to `--out`. The secret is deleted from the server only after everything has been decrypted and written.
+- `--out` must be an existing, writable directory. This is checked before the link is opened, so a bad path never burns the secret. The same goes for `--passphrase-file` with a link that has no passphrase (exit 2).
 - **Existing files are never overwritten.** If `report.csv` exists, the attachment is saved as `report (1).csv`, and so on. Files are created exclusively with mode `0600` inside the output directory, and symlinks are not followed out of it.
-- Attachment names are sanitized as in [protocol.md §6.1](protocol.md#61-file-names); Windows reserved names (`CON`, `NUL`, …), trailing dots and spaces and `:` are also made safe. A leading `.` or `-` is replaced with `_` (`.zshenv` is saved as `_zshenv`), so a sender cannot plant a hidden dotfile or a name that looks like a command-line option.
-- For a passphrase-protected link, `gone` prompts on the terminal (up to three tries). The ciphertext is downloaded once and every try runs against that copy. In scripts, use `--passphrase-file`. That gives a single try: opening the link has already started the secret's deletion, so a wrong passphrase in the file means the secret is gone.
-- On a terminal, control characters in the message are escaped so a sender cannot inject terminal escape sequences. `--raw` turns this off. When standard output is a pipe or file, the message is written byte-for-byte. With `--json`, DEL, C1 and bidirectional-override characters are always written as `\uXXXX` escapes, so the output is safe on a terminal and still decodes to the original text.
+- Attachment names are sanitized as in [protocol.md §6.1](protocol.md#61-file-names); Windows reserved names (`CON`, `NUL`, …), trailing dots and spaces, and the characters `<>:"|?*` (replaced with `_` on every platform) are also made safe. A leading `.` or `-` is replaced with `_` (`.zshenv` is saved as `_zshenv`), so a sender cannot plant a hidden dotfile or a name that looks like a command-line option.
+- For a passphrase-protected link, `gone` prompts on the terminal (up to three tries). The ciphertext is downloaded once and every try runs against that copy. An empty or invalid entry (over 1024 bytes, or not UTF-8) uses up a try, like a wrong passphrase. Ctrl-D cancels at once, and because the link has already been opened, cancelling loses the secret. In scripts, use `--passphrase-file`; exactly one trailing newline (`\n` or `\r\n`) is removed from the file. That gives a single try: opening the link has already started the secret's deletion, so a wrong passphrase in the file means the secret is gone.
+- On a terminal, control characters in the message are escaped so a sender cannot inject terminal escape sequences. `--raw` turns this off. When standard output is a pipe or file, the message is written byte-for-byte. With `--json`, DEL, C1 and bidirectional-override characters are always written as `\uXXXX` escapes, so the output is safe on a terminal and still decodes to the original text. (A message that is not valid UTF-8 can't round-trip through JSON: invalid bytes become U+FFFD. Use plain output for binary messages.)
 
 ### `gone status`
 
@@ -143,7 +145,7 @@ Deletes the secret. Revoking an already-gone secret exits 3. Revoke is reliable 
 gone set server <url> [--insecure]
 ```
 
-Saves the default server for `send`. The value must be a bare origin such as `https://gone.example.com`. The file is `gone/config.json` under your user configuration directory (`~/.config` on Linux, `~/Library/Application Support` on macOS, `%AppData%` on Windows), written with mode `0600`.
+Saves the default server for `send`. The value must be a bare origin such as `https://gone.example.com`. The file is `gone/config.json` under your user configuration directory (`$XDG_CONFIG_HOME`, or `~/.config` if unset, on Linux; `~/Library/Application Support` on macOS; `%AppData%` on Windows), written with mode `0600`.
 
 `get`, `status` and `revoke` always use the server named in the link.
 
@@ -156,6 +158,8 @@ Saves the default server for `send`. The value must be a bare origin such as `ht
 ## Server selection and transport
 
 `send` picks its server from, in order: `--server`, the `GONE_SERVER` environment variable, the saved config, then `https://gone.hauken.us`.
+
+The standard proxy variables (`HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`) are honored for every request.
 
 - **HTTPS only by default.** `http://` origins and links are refused unless `--insecure` is given, on every command. Use it only for a local test server.
 - **No redirects.** A redirect is treated as a server error, so a secret is never sent to, or fetched from, an origin other than the one you named.
