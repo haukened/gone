@@ -30,8 +30,15 @@ func Test_checkMethodPath(t *testing.T) {
 	}
 }
 
-// helper handler with configurable MaxBody
-func newTestHandler(max int64) *Handler { return &Handler{MaxBody: max} }
+// newTestHandler returns a handler with the supplied maximum body size.
+// It takes maxBody in bytes and returns a handler configured for create parsing tests.
+func newTestHandler(maxBody int64) *Handler { return &Handler{MaxBody: maxBody} }
+
+type secretHeaderCase struct {
+	name    string
+	headers [][2]string
+	wantErr string
+}
 
 func Test_parseContentLength(t *testing.T) {
 	h := newTestHandler(10)
@@ -69,11 +76,7 @@ func Test_parseContentLength(t *testing.T) {
 
 func Test_parseSecretHeaders(t *testing.T) {
 	const nonce = "AAAAAAAAAAAAAAAA"
-	cases := []struct {
-		name    string
-		headers [][2]string
-		wantErr string
-	}{
+	cases := []secretHeaderCase{
 		{"ok", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-Nonce", nonce}, {"X-Gone-TTL", "5m"}}, ""},
 		{"missing all", nil, "missing required headers"},
 		{"missing nonce", [][2]string{{"X-Gone-Version", "1"}, {"X-Gone-TTL", "5m"}}, "missing required headers"},
@@ -93,25 +96,49 @@ func Test_parseSecretHeaders(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/api/secret", nil)
-			for _, h := range c.headers {
-				req.Header.Add(h[0], h[1])
-			}
-			ver, n, ttl, err := parseSecretHeaders(req)
-			if c.wantErr == "" {
-				want, _ := strconv.Atoi(c.headers[0][1])
-				if err != nil || int(ver) != want || n != nonce || ttl != 5*time.Minute {
-					t.Fatalf("unexpected parse: %v %d %s %v", err, ver, n, ttl)
-				}
-				return
-			}
-			if err == nil || err.Error() != c.wantErr {
-				t.Fatalf("err = %v, want %q", err, c.wantErr)
-			}
-			if code, msg := classifyCreateError(err); code != http.StatusBadRequest || msg != c.wantErr {
-				t.Fatalf("classify = %d %q", code, msg)
-			}
+			assertParsedSecretHeaders(t, c, nonce)
 		})
+	}
+}
+
+// assertParsedSecretHeaders verifies parseSecretHeaders for one case.
+// It takes t for failures, c as the case, and nonce as the expected nonce on success.
+func assertParsedSecretHeaders(t *testing.T, c secretHeaderCase, nonce string) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/api/secret", nil)
+	for _, h := range c.headers {
+		req.Header.Add(h[0], h[1])
+	}
+	ver, n, ttl, err := parseSecretHeaders(req)
+	if c.wantErr == "" {
+		assertSecretHeaderSuccess(t, c, ver, n, ttl, err, nonce)
+		return
+	}
+	assertSecretHeaderError(t, c, err)
+}
+
+// assertSecretHeaderSuccess verifies parsed header values for a successful case.
+// It takes t for failures, c as the case, parsed values, err, and nonce.
+func assertSecretHeaderSuccess(t *testing.T, c secretHeaderCase, ver uint8, n string, ttl time.Duration, parseErr error, nonce string) {
+	t.Helper()
+	want, versionErr := strconv.Atoi(c.headers[0][1])
+	if versionErr != nil {
+		t.Fatalf("parse expected version: %v", versionErr)
+	}
+	if parseErr != nil || int(ver) != want || n != nonce || ttl != 5*time.Minute {
+		t.Fatalf("unexpected parse: %v %d %s %v", parseErr, ver, n, ttl)
+	}
+}
+
+// assertSecretHeaderError verifies the parse error and create-error classification.
+// It takes t for failures, c as the case, and err as the parse result.
+func assertSecretHeaderError(t *testing.T, c secretHeaderCase, err error) {
+	t.Helper()
+	if err == nil || err.Error() != c.wantErr {
+		t.Fatalf("err = %v, want %q", err, c.wantErr)
+	}
+	if code, msg := classifyCreateError(err); code != http.StatusBadRequest || msg != c.wantErr {
+		t.Fatalf("classify = %d %q", code, msg)
 	}
 }
 

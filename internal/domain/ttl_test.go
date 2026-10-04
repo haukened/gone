@@ -6,6 +6,21 @@ import (
 	"time"
 )
 
+var invalidTTLOptionCases = []struct {
+	name    string
+	input   string
+	wantErr string
+}{
+	{name: "empty string", input: "", wantErr: "empty TTL label"},
+	{name: "whitespace only", input: "   ", wantErr: "empty TTL label"},
+	{name: "unsupported day unit", input: "1d", wantErr: "unsupported TTL unit"},
+	{name: "unsupported week unit", input: "2w", wantErr: "unsupported TTL unit"},
+	{name: "unsupported month unit uppercase M", input: "5M", wantErr: "unsupported TTL unit"},
+	{name: "unsupported year unit", input: "1y", wantErr: "unsupported TTL unit"},
+	{name: "nonsense format", input: "abc", wantErr: "time: invalid duration"},
+	{name: "bad unit", input: "10q", wantErr: "time: unknown unit"},
+}
+
 // TestNewTTLOptionValid verifies that valid TTL labels are parsed correctly and
 // that the returned TTLOption contains the expected Duration and normalized Label.
 func TestNewTTLOptionValid(t *testing.T) {
@@ -49,7 +64,6 @@ func TestNewTTLOptionValid(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			opt, err := NewTTLOption(tc.input)
@@ -69,55 +83,7 @@ func TestNewTTLOptionValid(t *testing.T) {
 // TestNewTTLOptionInvalid verifies that invalid labels produce appropriate errors.
 func TestNewTTLOptionInvalid(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		name    string
-		input   string
-		wantErr string // substring expected in error
-	}{
-		{
-			name:    "empty string",
-			input:   "",
-			wantErr: "empty TTL label",
-		},
-		{
-			name:    "whitespace only",
-			input:   "   ",
-			wantErr: "empty TTL label",
-		},
-		{
-			name:    "unsupported day unit",
-			input:   "1d",
-			wantErr: "unsupported TTL unit",
-		},
-		{
-			name:    "unsupported week unit",
-			input:   "2w",
-			wantErr: "unsupported TTL unit",
-		},
-		{
-			name:    "unsupported month unit uppercase M",
-			input:   "5M",
-			wantErr: "unsupported TTL unit",
-		},
-		{
-			name:    "unsupported year unit",
-			input:   "1y",
-			wantErr: "unsupported TTL unit",
-		},
-		{
-			name:    "nonsense format",
-			input:   "abc",
-			wantErr: "time: invalid duration", // from time.ParseDuration
-		},
-		{
-			name:    "bad unit",
-			input:   "10q",
-			wantErr: "time: unknown unit", // from time.ParseDuration
-		},
-	}
-
-	for _, tc := range tests {
-		tc := tc
+	for _, tc := range invalidTTLOptionCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			_, err := NewTTLOption(tc.input)

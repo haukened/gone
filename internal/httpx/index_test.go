@@ -49,14 +49,28 @@ func (noopService) Ack(_ context.Context, _ string, _ string) error {
 // TestIndexHandler ensures the index template renders and headers are set.
 func TestIndexHandler(t *testing.T) {
 	tmpl := template.Must(template.New("index").Parse(`<html><body><p>{{ .MaxBytes }}</p>{{ range .TTLOptions }}<option{{ if .Default }} selected{{ end }}>{{ .Label }}</option>{{ end }}</body></html>`))
+	h := indexTestHandler(tmpl)
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	h.Router().ServeHTTP(w, r)
+	assertIndexResponse(t, w)
+}
+
+// indexTestHandler constructs a handler with known TTL choices.
+// It takes tmpl as the index renderer and returns a configured handler.
+func indexTestHandler(tmpl *template.Template) *httpx.Handler {
 	h := httpx.New(noopService{}, 1234, nil)
 	h.IndexTmpl = httpx.TemplateRenderer{T: tmpl}
 	h.MinTTL = 5 * time.Minute
 	h.MaxTTL = 60 * time.Minute
 	h.TTLOptions = []domain.TTLOption{{Duration: 5 * time.Minute, Label: "5m"}, {Duration: 30 * time.Minute, Label: "30m"}, {Duration: time.Hour, Label: "1h"}}
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
-	w := httptest.NewRecorder()
-	h.Router().ServeHTTP(w, r)
+	return h
+}
+
+// assertIndexResponse verifies the rendered index status, headers, TTL values, and order.
+// It takes t for failures and w as the response to inspect.
+func assertIndexResponse(t *testing.T, w *httptest.ResponseRecorder) {
+	t.Helper()
 	if w.Code != http.StatusOK {
 		t.Fatalf("status %d", w.Code)
 	}
@@ -70,15 +84,21 @@ func TestIndexHandler(t *testing.T) {
 			t.Fatalf("expected body to contain %q: %s", expect, body)
 		}
 	}
-	// order check: shortest first, longest preselected
+	assertIndexTTLOrder(t, body)
+	if !strings.Contains(body, "<option selected>1h<") || strings.Count(body, "selected") != 1 {
+		t.Fatalf("expected only the longest option selected: %s", body)
+	}
+}
+
+// assertIndexTTLOrder verifies that TTL options are rendered shortest to longest.
+// It takes t for failures and body as the rendered HTML.
+func assertIndexTTLOrder(t *testing.T, body string) {
+	t.Helper()
 	idx1h := strings.Index(body, ">1h<")
 	idx30m := strings.Index(body, ">30m<")
 	idx5m := strings.Index(body, ">5m<")
-	if !(idx1h != -1 && idx30m != -1 && idx5m != -1 && idx5m < idx30m && idx30m < idx1h) {
+	if idx1h == -1 || idx30m == -1 || idx5m == -1 || idx5m >= idx30m || idx30m >= idx1h {
 		t.Fatalf("expected ascending order 5m,30m,1h; got positions %d %d %d in %s", idx5m, idx30m, idx1h, body)
-	}
-	if !strings.Contains(body, "<option selected>1h<") || strings.Count(body, "selected") != 1 {
-		t.Fatalf("expected only the longest option selected: %s", body)
 	}
 }
 
@@ -86,7 +106,7 @@ func TestIndexHandler(t *testing.T) {
 func TestStaticHandler(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "test.txt"), []byte("ok"), 0o600); err != nil {
-		panic(err)
+		t.Fatalf("write static fixture: %v", err)
 	}
 	fs := http.FS(os.DirFS(dir))
 	h := httpx.New(noopService{}, 100, nil)
@@ -95,10 +115,10 @@ func TestStaticHandler(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.Router().ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
-		panic(w.Code)
+		t.Fatalf("status %d", w.Code)
 	}
 	if cc := w.Header().Get("Cache-Control"); cc == "" {
-		panic("missing cache-control")
+		t.Fatal("missing cache-control")
 	}
 }
 

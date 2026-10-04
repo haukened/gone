@@ -21,7 +21,7 @@ test('selectionProblem', () => {
     [[10, 100, 10, 100], ''],
     [[12, 10, 10, 100], 'Too many files: remove 2 to stay within 10.'],
     [[1, 2148, 10, 100], 'Over the limit by 2.0 KB. Remove a file or shorten the message.'],
-    [[1, 1e12, 10, 0], '']
+    [[1, 10 ** 12, 10, 0], '']
   ];
   for (const [args, want] of cases) assert.equal(meter.selectionProblem(...args), want, args.join());
 });

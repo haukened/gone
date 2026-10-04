@@ -61,7 +61,6 @@ func TestRenderTemplate(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			rr := httptest.NewRecorder()
@@ -121,15 +120,16 @@ func TestNewCaptureWriter(t *testing.T) {
 func TestCaptureWriterWriteAndStatus(t *testing.T) {
 	t.Parallel()
 	cw := newCaptureWriter()
+	assertCaptureWriterWrites(t, cw)
+	assertCaptureWriterStatus(t, cw)
+}
 
-	tests := [][]byte{
-		[]byte("hello"),
-		[]byte(" "),
-		[]byte("world"),
-	}
-
+// assertCaptureWriterWrites verifies that writes append all bytes to the capture buffer.
+// It takes t for failures and cw as the capture writer under test.
+func assertCaptureWriterWrites(t *testing.T, cw *captureWriter) {
+	t.Helper()
 	total := 0
-	for _, part := range tests {
+	for _, part := range [][]byte{[]byte("hello"), []byte(" "), []byte("world")} {
 		n, err := cw.Write(part)
 		if err != nil {
 			t.Fatalf("write error: %v", err)
@@ -139,25 +139,25 @@ func TestCaptureWriterWriteAndStatus(t *testing.T) {
 		}
 		total += len(part)
 	}
-
 	if cw.buf.Len() != total {
 		t.Fatalf("buffer length %d want %d", cw.buf.Len(), total)
 	}
 	if got := cw.buf.String(); got != "hello world" {
 		t.Fatalf("buffer content %q want %q", got, "hello world")
 	}
+}
 
-	// Status should still be zero until explicitly set.
+// assertCaptureWriterStatus verifies status recording and overwrite behavior.
+// It takes t for failures and cw as the capture writer under test.
+func assertCaptureWriterStatus(t *testing.T, cw *captureWriter) {
+	t.Helper()
 	if cw.status != 0 {
 		t.Fatalf("unexpected initial status %d", cw.status)
 	}
-
 	cw.WriteHeader(418)
 	if cw.status != 418 {
 		t.Fatalf("status = %d want 418", cw.status)
 	}
-
-	// Second call overwrites (current implementation); verify behavior.
 	cw.WriteHeader(201)
 	if cw.status != 201 {
 		t.Fatalf("status overwrite = %d want 201", cw.status)

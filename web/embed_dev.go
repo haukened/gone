@@ -1,5 +1,6 @@
 //go:build !prod
 
+// Package web provides embedded and development-mode web assets.
 package web
 
 import (

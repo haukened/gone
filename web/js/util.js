@@ -1,3 +1,4 @@
+/* global localStorage */
 'use strict';
 
 // Shared helpers for gone page scripts: timing logs, delays, element

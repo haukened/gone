@@ -5,7 +5,9 @@
 bin
 web/dist
 gone
+goned
 cmd/gone/gone
+cmd/goned/goned
 *.out
 coverage.*
 .env

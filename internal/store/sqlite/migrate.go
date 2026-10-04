@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"github.com/haukened/gone/internal/sqlrows"
 )
 
 // ErrSchemaTooNew is returned by New when the database's user_version is
@@ -172,18 +174,15 @@ func addMissingColumns(ctx context.Context, conn *sql.Conn, adds []columnDDL) er
 //
 // Returns the set or an error if PRAGMA table_info fails.
 func columnNames(ctx context.Context, conn *sql.Conn) (map[string]struct{}, error) {
-	rows, err := conn.QueryContext(ctx, `SELECT name FROM pragma_table_info('secrets')`)
+	cols := make(map[string]struct{})
+	err := sqlrows.Query(ctx, conn, `SELECT name FROM pragma_table_info('secrets')`, func(r sqlrows.Rows) error {
+		var name string
+		err := r.Scan(&name)
+		cols[name] = struct{}{}
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	cols := make(map[string]struct{})
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return nil, err
-		}
-		cols[name] = struct{}{}
-	}
-	return cols, rows.Err()
+	return cols, nil
 }

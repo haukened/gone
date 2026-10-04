@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/haukened/gone/internal/domain"
@@ -50,48 +49,6 @@ type Created struct {
 	ID          domain.SecretID    // new secret identifier
 	ExpiresAt   time.Time          // TTL deadline
 	ManageToken domain.ManageToken // sender's bearer token for Status and Revoke
-}
-
-// CreateSecret validates inputs, assigns a new ID and manage token, determines
-// expiry, and persists the secret. Only the SHA-256 of the manage token is
-// stored.
-//
-// Parameters:
-//   - ctx: request context for cancellation and deadlines.
-//   - ct: ciphertext reader.
-//   - size: ciphertext size in bytes.
-//   - version: protocol version.
-//   - nonce: base64url nonce used for encryption.
-//   - ttl: time-to-live for the secret.
-//
-// Returns the new secret's ID, expiry, and manage token, or
-// domain.ErrTTLInvalid, ErrSizeExceeded, domain.ErrInvalidVersion,
-// domain.ErrInvalidNonce, or a storage error.
-func (s *Service) CreateSecret(ctx context.Context, ct io.Reader, size int64, version uint8, nonce string, ttl time.Duration) (Created, error) {
-	if err := validateTTL(ttl, s.MinTTL, s.MaxTTL); err != nil {
-		return Created{}, domain.ErrTTLInvalid
-	}
-	if size <= 0 || size > s.MaxBytes {
-		return Created{}, ErrSizeExceeded
-	}
-	if err := domain.ValidateProtocol(version, nonce); err != nil {
-		return Created{}, err
-	}
-	id, err := domain.NewID()
-	if err != nil { // extremely unlikely, but propagate
-		return Created{}, err
-	}
-	tok, err := domain.NewManageToken()
-	if err != nil {
-		return Created{}, err
-	}
-	expiresAt := s.Clock.Now().Add(ttl)
-	meta := Meta{Version: version, NonceB64u: nonce}
-	if err = s.Store.Save(ctx, id.String(), meta, tok.Hash(), ct, size, expiresAt); err != nil {
-		return Created{}, err
-	}
-	s.inc("secrets_created_total")
-	return Created{ID: id, ExpiresAt: expiresAt, ManageToken: tok}, nil
 }
 
 // Status reports a pending secret to the sender holding its manage token.
@@ -233,15 +190,15 @@ func (s *Service) claimLease() time.Duration {
 
 // validateTTL ensures the provided ttl falls within the inclusive [min,max] range.
 // Returns an error if out of bounds or zero.
-func validateTTL(ttl, min, max time.Duration) error {
+func validateTTL(ttl, minTTL, maxTTL time.Duration) error {
 	if ttl <= 0 {
 		return errors.New("ttl must be positive")
 	}
-	if min > 0 && ttl < min {
-		return fmt.Errorf("ttl below min: %v < %v", ttl, min)
+	if minTTL > 0 && ttl < minTTL {
+		return fmt.Errorf("ttl below min: %v < %v", ttl, minTTL)
 	}
-	if max > 0 && ttl > max {
-		return fmt.Errorf("ttl above max: %v > %v", ttl, max)
+	if maxTTL > 0 && ttl > maxTTL {
+		return fmt.Errorf("ttl above max: %v > %v", ttl, maxTTL)
 	}
 	return nil
 }

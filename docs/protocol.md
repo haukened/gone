@@ -238,10 +238,11 @@ These rules stop path traversal through attacker-controlled metadata and remove 
 
 The output never contains `/`, `\`, or an unsafe code point, and sanitizing it again does not change it (the function is idempotent).
 
-This sanitization guarantees that a name is a single path segment with no invisible formatting characters. It is **not** a filesystem save-name policy. Software that writes attachments to disk (for example, the Phase 3 CLI) **MUST** also apply a platform-aware policy that:
+This sanitization guarantees that a name is a single path segment with no invisible formatting characters. It is **not** a filesystem save-name policy. Software that writes attachments to disk (for example, the `gone` CLI) **MUST** also apply a platform-aware policy that:
 
 - creates files exclusively, never overwriting and never following symlinks, inside the chosen directory;
-- handles Windows reserved names (`CON`, `NUL`, …), trailing dots and spaces, and `:` (alternate data streams).
+- handles Windows reserved names (`CON`, `NUL`, …), trailing dots and spaces, and `:` (alternate data streams);
+- replaces a leading `.` or `-` with `_`, so a sender cannot create a hidden dotfile (such as `.bashrc`) or a name that parses as an option.
 
 ### 6.2 MIME types
 

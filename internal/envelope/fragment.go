@@ -181,8 +181,8 @@ func isBareOrigin(u *url.URL) bool {
 // Returns the link; domain.ErrInvalidVersion for an unsupported version; or
 // ErrInvalidLink / ErrInvalidFragment.
 func ParseLink(raw string) (Link, error) {
-	u, err := url.Parse(raw)
-	if err != nil || !isOrigin(u) || u.RawQuery != "" || u.ForceQuery {
+	u, err := parseSecretLinkURL(raw)
+	if err != nil {
 		return Link{}, ErrInvalidLink
 	}
 	idStr, ok := strings.CutPrefix(u.EscapedPath(), "/secret/")
@@ -195,6 +195,20 @@ func ParseLink(raw string) (Link, error) {
 		return Link{}, err
 	}
 	return Link{Origin: u.Scheme + "://" + u.Host, ID: id, Fragment: f}, nil
+}
+
+// parseSecretLinkURL parses and validates the URL-level secret-link shape.
+//
+// Parameters:
+//   - raw: full secret link.
+//
+// Returns the parsed URL or ErrInvalidLink.
+func parseSecretLinkURL(raw string) (*url.URL, error) {
+	u, err := url.Parse(raw)
+	if err != nil || !isOrigin(u) || u.RawQuery != "" || u.ForceQuery {
+		return nil, ErrInvalidLink
+	}
+	return u, nil
 }
 
 // isOrigin reports whether u is an absolute http(s) URL with a host and no

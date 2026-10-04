@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// TTLOption describes one selectable time-to-live value.
 type TTLOption struct {
 	Duration time.Duration
 	Label    string // human-friendly label for UI

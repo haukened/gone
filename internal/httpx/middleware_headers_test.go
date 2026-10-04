@@ -9,7 +9,7 @@ import (
 // TestSecureHeadersMiddleware ensures the security headers are consistently applied.
 func TestSecureHeadersMiddleware(t *testing.T) {
 	h := &Handler{}
-	final := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	final := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 	})
@@ -34,17 +34,12 @@ func TestSecureHeadersMiddleware(t *testing.T) {
 			}
 		}
 	}
-	if cc := res.Header.Get("Cache-Control"); cc == "" {
-		// Because Content-Type was set inside handler BEFORE writing body, our middleware skipped default?
-		// In current implementation middleware sets Cache-Control only if Content-Type is empty at time of middleware execution.
-		// Behavior acceptable; ensure we can still proceed without default no-store override.
-	}
 }
 
 // TestSecureHeadersDefaultCache ensures no-store is applied when downstream handler does not pre-set Content-Type.
 func TestSecureHeadersDefaultCache(t *testing.T) {
 	h := &Handler{}
-	final := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	final := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// Intentionally do not set Content-Type to trigger default cache headers.
 		w.WriteHeader(http.StatusOK)
 	})

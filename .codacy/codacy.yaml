@@ -9,4 +9,3 @@ tools:
     - opengrep@1.30.0
     - pmd@6.55.0
     - revive@1.16.0
-    - trivy@0.74.0

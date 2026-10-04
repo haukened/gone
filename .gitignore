@@ -40,7 +40,9 @@ TODO.md
 
 # the binary
 /gone
+/goned
 /cmd/gone/gone
+/cmd/goned/goned
 /bin
 
 # local tmp folder for development
@@ -65,3 +67,6 @@ TODO.md
 
 # Playwright MCP scratch output
 .playwright-mcp/
+
+# Release archives (scripts/release.sh)
+dist/

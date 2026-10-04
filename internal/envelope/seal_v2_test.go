@@ -11,6 +11,14 @@ import (
 )
 
 // v2Fixture seals one plaintext so tests can reuse the expensive PBKDF2 run.
+//
+// Parameters:
+//   - t: the test handle.
+//
+// Returns:
+//   - key: symmetric link key used for sealing.
+//   - nonce: random AEAD nonce returned by SealV2.
+//   - blob: sealed v2 blob returned by SealV2.
 func v2Fixture(t *testing.T) (key, nonce, blob []byte) {
 	t.Helper()
 	key = bytes.Repeat([]byte{7}, domain.KeySize)
@@ -23,20 +31,72 @@ func v2Fixture(t *testing.T) (key, nonce, blob []byte) {
 
 func TestSealV2Layout(t *testing.T) {
 	key, nonce, blob := v2Fixture(t)
+	requireV2Nonce(t, nonce)
+	requireV2BlobLayout(t, blob)
+	requireV2Opens(t, key, nonce, blob)
+	requireV2SaltChanges(t, key, blob)
+}
+
+// requireV2Nonce verifies a v2 nonce has the expected size.
+//
+// Parameters:
+//   - t: the test handle.
+//   - nonce: nonce returned by SealV2.
+func requireV2Nonce(t *testing.T, nonce []byte) {
+	t.Helper()
 	if len(nonce) != domain.NonceSize {
 		t.Fatalf("nonce = %d bytes", len(nonce))
 	}
+}
+
+// requireV2BlobLayout verifies the v2 blob length and header fields.
+//
+// Parameters:
+//   - t: the test handle.
+//   - blob: sealed v2 blob.
+func requireV2BlobLayout(t *testing.T, blob []byte) {
+	t.Helper()
 	if want := domain.V2HeaderSize + len("hello v2") + domain.TagSize; len(blob) != want {
 		t.Fatalf("blob = %d bytes, want %d", len(blob), want)
 	}
-	if blob[0] != domain.KDFPBKDF2SHA256 || binary.BigEndian.Uint32(blob[1:5]) != domain.V2Iterations {
-		t.Fatalf("header = %x", blob[:5])
+	if blob[0] != domain.KDFPBKDF2SHA256 {
+		t.Fatalf("kdf = %x", blob[0])
 	}
+	if binary.BigEndian.Uint32(blob[1:5]) != domain.V2Iterations {
+		t.Fatalf("iterations = %x", blob[1:5])
+	}
+}
+
+// requireV2Opens verifies the v2 blob decrypts to the expected plaintext.
+//
+// Parameters:
+//   - t: the test handle.
+//   - key: symmetric link key for opening.
+//   - nonce: AEAD nonce for opening.
+//   - blob: sealed v2 blob.
+func requireV2Opens(t *testing.T, key []byte, nonce []byte, blob []byte) {
+	t.Helper()
 	got, err := OpenV2(key, "CorrectHorseBattery", nonce, blob)
-	if err != nil || string(got) != "hello v2" {
-		t.Fatalf("OpenV2 = %q, %v", got, err)
+	if err != nil {
+		t.Fatal(err)
 	}
-	_, blob2, _ := SealV2(key, "CorrectHorseBattery", []byte("hello v2"))
+	if string(got) != "hello v2" {
+		t.Fatalf("OpenV2 = %q", got)
+	}
+}
+
+// requireV2SaltChanges verifies independent seals use distinct salts.
+//
+// Parameters:
+//   - t: the test handle.
+//   - key: symmetric link key for sealing.
+//   - blob: first sealed v2 blob.
+func requireV2SaltChanges(t *testing.T, key []byte, blob []byte) {
+	t.Helper()
+	_, blob2, err := SealV2(key, "CorrectHorseBattery", []byte("hello v2"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if bytes.Equal(blob[5:21], blob2[5:21]) {
 		t.Fatal("salt reused across seals")
 	}

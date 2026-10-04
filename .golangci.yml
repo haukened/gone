@@ -1,0 +1,107 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - copyloopvar
+    - errcheck
+    - errorlint
+    - gocritic
+    - govet
+    - ineffassign
+    - misspell
+    - nilerr
+    - revive
+    - staticcheck
+    - unconvert
+    - unused
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Print
+        - fmt.Printf
+        - fmt.Println
+        - (*bytes.Buffer).Write
+        - (*bytes.Buffer).WriteByte
+        - (*bytes.Buffer).WriteRune
+        - (*bytes.Buffer).WriteString
+        - (*strings.Builder).Write
+        - (*strings.Builder).WriteByte
+        - (*strings.Builder).WriteRune
+        - (*strings.Builder).WriteString
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+    revive:
+      severity: warning
+      confidence: 0.8
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+          exclude:
+            - "**/*_test.go"
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+          exclude:
+            - "**/*_test.go"
+        - name: exported
+        - name: increment-decrement
+        - name: var-naming
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+        - name: var-declaration
+        - name: defer
+        - name: unconditional-recursion
+        - name: identical-branches
+        - name: early-return
+        - name: useless-break
+        - name: atomic
+        - name: bare-return
+        - name: modifies-value-receiver
+        - name: datarace
+        - name: string-of-int
+        - name: waitgroup-by-value
+        - name: unhandled-error
+          arguments:
+            - fmt.Fprint
+            - fmt.Fprintf
+            - fmt.Fprintln
+            - fmt.Print
+            - fmt.Printf
+            - fmt.Println
+            - strings\.Builder\.Write
+            - strings\.Builder\.WriteByte
+            - strings\.Builder\.WriteRune
+            - strings\.Builder\.WriteString
+            - bytes\.Buffer\.Write
+            - bytes\.Buffer\.WriteByte
+            - bytes\.Buffer\.WriteRune
+            - bytes\.Buffer\.WriteString
+
+formatters:
+  enable:
+    - gofmt

@@ -1,6 +1,6 @@
 # Gone API Documentation
 
-This directory contains the OpenAPI specification (`openapi.yaml`) for the Gone one-time secret sharing service. This page summarizes the same API in prose. The encryption format, link fragment, and client rules are specified in [protocol.md](protocol.md).
+This directory contains the OpenAPI specification (`openapi.yaml`) for the Gone one-time secret sharing service. This page summarizes the same API in prose. The encryption format, link fragment, and client rules are specified in [protocol.md](protocol.md). The command-line client is documented in [cli.md](cli.md).
 
 ## Design Goals
 - **Minimal surface**: Three secret operations (create, claim, acknowledge), two sender operations (status, revoke), and health probes.

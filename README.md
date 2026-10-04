@@ -60,6 +60,17 @@ Guarantees (simple terms):
 * With a passphrase, a leaked link alone can't open the secret.
 * Your manage link can never reveal the secret, and once the secret is opened, deleted, or expired, the server keeps no record that it existed.
 
+### From the command line
+The `gone` CLI does the same from a terminal, and works with secrets sent from the browser and the other way round. Download a static binary from the [releases page](https://github.com/haukened/gone/releases) (verify it with `gh attestation verify <archive> --repo haukened/gone`), then:
+
+```sh
+printf 'hunter2' | gone send --ttl 30m              # prints the link and your manage link
+gone get 'https://gone.hauken.us/secret/AbC#v1:…'  # quote links in single quotes
+gone status '<manage-link>'                         # or: gone revoke '<manage-link>'
+```
+
+Messages are read from standard input, never from arguments. Add `-f FILE` for attachments, `--passphrase-prompt` or `--passphrase-generate` for a passphrase, and `--json` for scripts. Point it at your own server with `--server`, `GONE_SERVER`, or `gone set server <url>`. The full guide, with exit codes and JSON formats, is [docs/cli.md](docs/cli.md).
+
 ---
 
 ## 3. Configuration
@@ -128,7 +139,7 @@ Persistence notes:
 Enable + fetch quickly:
 ```sh
 GONE_METRICS_ADDR=127.0.0.1:9090 GONE_METRICS_TOKEN=tok \
-	go run ./cmd/gone &
+	go run ./cmd/goned &
 curl -H 'Authorization: Bearer tok' http://127.0.0.1:9090/
 ```
 
@@ -154,24 +165,26 @@ Please first install Task: https://taskfile.dev/docs/installation
 Core tasks:
 | Task | What it does |
 |------|---------------|
-| `task dev` | Clean + build development binary (no minified assets, no `-tags=prod`). |
-| `task prod` | Full production build: clean, minify assets into `web/dist`, build with `-tags=prod`. |
+| `task dev` | Clean + build development binaries (`bin/goned` server and `bin/gone` CLI; no minified assets, no `-tags=prod`). |
+| `task prod` | Full production build: clean, minify assets into `web/dist`, build `bin/goned` with `-tags=prod` and `bin/gone`. |
+| `task release -- vX.Y.Z` | Cross-build the release archives, `SHA256SUMS`, and release notes into `dist/` (what the tag workflow publishes). |
 | `task run` | Convenience: rebuild dev binary and run with a temporary data dir. |
 | `task cover` | Run Go tests with coverage output. |
 | `task test` | Run Go and JavaScript unit tests. |
+| `task lint` | Run Go linters with golangci-lint for default and `dev` build tags. |
 | `task test-js` | Run JavaScript unit tests (`node --test`, Node 20+, no npm install). |
 | `task cover-js` | Run JavaScript unit tests with coverage output. |
 
 Development build:
 ```sh
 task dev
-./bin/gone
+./bin/goned
 ```
 
 Production build (minified assets embedded):
 ```sh
 task prod
-./bin/gone
+./bin/goned
 ```
 
 Run with overrides (development example):
@@ -182,7 +195,7 @@ GONE_TTL_OPTIONS="5m,30m,1h" \
 GONE_MAX_BYTES=$((10*1024*1024)) \
 GONE_METRICS_ADDR=127.0.0.1:9090 \
 GONE_METRICS_TOKEN=localtok \
-./bin/gone
+./bin/goned
 ```
 
 Or just:
@@ -191,6 +204,8 @@ task run
 ```
 
 Gone is pure Go (SQLite via [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite)), so it builds with `CGO_ENABLED=0` into a fully static binary; `task prod` does this by default. Requires Go 1.27+.
+
+Go linting is configured by `.golangci.yml` and the shared revive rules in `.codacy/tools-configs/revive.toml`. Run `task lint` before opening a PR; Codacy uses the same revive ruleset.
 
 ### Container image
 The `Dockerfile` uses [Docker Hardened Images](https://dhi.io): `dhi.io/golang` (builder) and the distroless `dhi.io/static` runtime (no shell or package manager; runs as UID `65532`). Both are pinned by digest and kept current by Dependabot.
@@ -310,7 +325,7 @@ The full plan for Gone v3 is in [docs/ROADMAP.md](docs/ROADMAP.md). Highlights:
 * Rate limiting / abuse guard (done)
 * Optional passphrase, a second factor alongside the link (done)
 * Sender status & revoke via a private management link (done)
-* Command-line client (`gone-cli`)
+* Command-line client, `gone` (done; see [docs/cli.md](docs/cli.md))
 * Web UI revamp
 
 Other ideas:

@@ -85,15 +85,14 @@ type Janitor struct {
 	once   sync.Once
 }
 
-// New constructs but does not start a Janitor.
 // ExternalMetrics defines the subset of a metrics collector Janitor uses.
-// We define Observe to support per-cycle distribution recording.
 type ExternalMetrics interface {
 	Inc(name string, delta int64)
 	Observe(name string, value int64)
 }
 
-func New(store Store, ext ExternalMetrics, cfg Config) *Janitor { // second param previously ignored now used
+// New constructs but does not start a Janitor.
+func New(store Store, ext ExternalMetrics, cfg Config) *Janitor {
 	if cfg.Interval <= 0 {
 		cfg.Interval = time.Minute
 	}

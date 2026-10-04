@@ -1,3 +1,4 @@
+/* global Buffer, __dirname */
 'use strict';
 
 // Shared protocol vectors (test/vectors, docs/protocol.md section 9). The Go

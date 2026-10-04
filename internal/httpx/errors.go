@@ -13,14 +13,14 @@ import (
 )
 
 // writeJSONError writes a JSON error body with the provided HTTP status code and
-// message and emits a debug log entry when a correlation ID exists in ctx.
+// message.
 //
 // Parameters:
-//   - ctx: Request-scoped context that may contain the correlation ID.
+//   - _: unused request context kept for call-site symmetry.
 //   - w: HTTP response writer receiving headers/status/body.
 //   - code: HTTP status code to return.
 //   - msg: User-facing error message included in the JSON payload.
-func writeJSONError(ctx context.Context, w http.ResponseWriter, code int, msg string) {
+func writeJSONError(_ context.Context, w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(struct {

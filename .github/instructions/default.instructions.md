@@ -25,7 +25,10 @@ Gone is a minimal Go service for one-time secret sharing. Its goal is to provide
 ## Project Structure
 The project follows a minimal Go layout to keep code organized and maintainable:
 
-- `cmd/gone/`: The main entry point for the binary.
+- `cmd/goned/`: The server entry point (`goned`).
+- `cmd/gone/`: The command-line client entry point (`gone`).
+- `internal/client/`: HTTP API client used by the CLI.
+- `internal/cli/`: CLI commands, flags, and output.
 - `internal/store/`: Contains code for secret storage and database interactions.
 - `internal/httpx/`: Contains HTTP handlers and related logic.
 - `web/`: Static assets (HTML, CSS, JS) for the web interface.
@@ -67,8 +70,8 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - Vanilla JavaScript with WebCrypto API for client-side cryptography
 
 ## Build & Run
-- Build with: `go build ./cmd/gone`
-- Run with: `./gone`
+- Build the server with: `go build ./cmd/goned`, run with `./goned`
+- Build the CLI with: `go build ./cmd/gone`
 - Optional environment variables:
   - `GONE_ADDR`: network address to bind (default `:8080`)
   - `GONE_DATA_DIR`: directory for filesystem blobs
