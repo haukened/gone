@@ -1,11 +1,11 @@
 ---
-applyTo: '*.js'
+applyTo: '**/*.js'
 ---
 # JavaScript Authoring Guidelines for Gone
 
 Purpose: Keep frontend code small, secure, maintainable, dependency‑light, and friendly to static analysis.
 Target Runtime: Evergreen modern browsers (Chromium, Firefox, Safari) – ES2020+ features allowed when natively supported without polyfills.
-ECMAScript Baseline: ES2020. Later features (ES2021+) may be used only when Codacy/ESLint rulesets and all target browsers support them without polyfills. Always `use strict` in non-module files. Forbid `eval`, `new Function`, and dynamic imports from untrusted sources.
+ECMAScript Baseline: ES2022 (`.eslintrc.json` `ecmaVersion`). Later features may be used only when the ESLint ruleset and all target browsers support them without polyfills. Always `use strict` in non-module files. Forbid `eval`, `new Function`, and dynamic imports from untrusted sources.
 Files: `web/js/` holds small single-responsibility scripts (no bundler). Each is an IIFE that exposes at most one `window.gone*` namespace; load order is set by the `<script>` tags in `web/*.tmpl.html` (e.g. `util.js` → `fileMeta.js` → `crypto.js` → `envelope.js` → flow modules → `submit.js` / `consume.js`).
 Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`). Every new or changed module needs tests; keep coverage at 100% lines.
 
@@ -43,7 +43,7 @@ Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`
 - Prefer explicit loops over regex for performance‑sensitive or security‑sensitive transforms (base64 padding trim).
 
 ## Cryptography Handling
-- AES‑GCM with 12‑byte nonce, 32‑byte key, static AAD `gone:v1`.
+- AES‑GCM with 12‑byte nonce and 32‑byte key. AAD is `gone:v1` for v1; for v2 (passphrase) it is `gone:v2` plus the 21‑byte KDF header, and the key comes from HKDF over the link key and PBKDF2 of the passphrase (`cryptoV2*.js`, `docs/protocol.md` §4.2).
 - Fresh nonce per encryption. Never reuse.
 - Key exported as unpadded base64url into fragment `#v<version>:<key>`; never transmitted to server.
 - Enforce key length on import; throw early on mismatch.
@@ -62,7 +62,7 @@ Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`
 - Never log plaintext secret or key material.
 
 ## Network Calls
-- Explicit headers: `X-Gone-Version`, `X-Gone-Nonce`, `X-Gone-TTL`.
+- Explicit headers: `X-Gone-Version`, `X-Gone-Nonce`, `X-Gone-TTL` on create; `X-Gone-Claim` on claim retry and acknowledge; `X-Gone-Manage` on status and revoke. Tokens only ever go in headers, never in URLs or bodies.
 - Treat non‑2xx as failure; re‑enable UI with a slight delay for UX clarity.
 - Ciphertext body is raw bytes; no JSON wrapping.
 

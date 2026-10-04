@@ -18,8 +18,8 @@ This directory contains the OpenAPI specification (`openapi.yaml`) for the Gone 
 | DELETE | `/api/secret/{id}` | Acknowledge receipt; permanently deletes the secret |
 | GET | `/api/secret/{id}/status` | Sender: is the secret still waiting? (`X-Gone-Manage`) |
 | POST | `/api/secret/{id}/revoke` | Sender: delete the secret before it is opened (`X-Gone-Manage`) |
-| GET | `/healthz` | Liveness check |
-| GET | `/readyz` | Readiness check (DB ping) |
+| GET | `/healthz` | Liveness check (`200`, text `ok`) |
+| GET | `/readyz` | Readiness check: the database answers a ping and the blob directory is readable (`200`, text `ready`; otherwise `503` `not ready`) |
 
 Other methods on `/api/secret/{id}` return `405` with `Allow: GET, DELETE`. The same applies to `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`). Unknown `/api/` paths return a JSON `404`.
 
@@ -31,9 +31,9 @@ Metrics are **not** served on the public listener. When both `GONE_METRICS_ADDR`
    - `X-Gone-Version` (canonical decimal, no sign or leading zeros; `1`, or `2` for a passphrase-protected secret)
    - `X-Gone-Nonce` (exactly 16 unpadded base64url characters encoding the 12-byte GCM IV)
    - `X-Gone-TTL` (Go duration, e.g. `15m`)
-
-   Each header must appear exactly once.
    - `Content-Length` (required; chunked uploads are rejected)
+
+   Each `X-Gone-*` header must appear exactly once.
 3. The server validates size and TTL, issues an ID, and stores the ciphertext inline in SQLite (≤ `GONE_INLINE_MAX_BYTES`) or as a filesystem blob.
 4. Response: `201` with JSON `{ "id": "<32-hex>", "expires_at": "RFC3339", "manage_token": "<43-char base64url>" }`. The server keeps only a SHA-256 hash of the manage token.
 5. The client builds the share link `/secret/{id}#v1:<base64url-key>` (or `#v2:` with a passphrase). The key lives only in the URL fragment, which browsers never send to the server. The passphrase never appears in the link.
@@ -71,6 +71,7 @@ All errors are JSON `{ "error": "<message>" }`.
 
 | Condition | Status | Body `error` |
 | --------- | ------ | ------------ |
+| `X-Correlation-ID` present but not a UUID (any route) | 400 | `invalid correlation id` |
 | Invalid ID format | 400 | `invalid id` |
 | Malformed claim token (DELETE without/with bad `X-Gone-Claim`, or bad token on GET retry) | 400 | `invalid claim` |
 | Missing, repeated, or malformed `X-Gone-Manage` on status/revoke | 400 | `invalid manage token` |
@@ -103,9 +104,9 @@ Every response carries:
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: no-referrer`
 - `Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
-- `X-Correlation-ID` (echoed from the request, or a generated UUID v4)
+- `X-Correlation-ID`: the request's value if it parses as a UUID (returned in canonical form), or a generated UUID v4. A value that isn't a UUID is rejected with `400` on every route.
 
-Responses default to `Cache-Control: no-store` and `Pragma: no-cache`; static assets under `/static/` set their own caching policy.
+Responses default to `Cache-Control: no-store` and `Pragma: no-cache`; static assets under `/static/` override it with `Cache-Control: public, max-age=300` (the `Pragma: no-cache` header still appears on them).
 
 ## Future Extensions (Non-Breaking)
 - Optional JSON POST mode with metadata wrapper.
@@ -119,7 +120,7 @@ Responses default to `Cache-Control: no-store` and `Pragma: no-cache`; static as
 
 ## Implementation Notes
 - The inline vs external threshold (`GONE_INLINE_MAX_BYTES`, default 8 KiB) is not exposed via the API.
-- `X-Gone-Nonce` length is not strictly enforced beyond being non-empty; cryptographic validation is the client's responsibility.
+- `X-Gone-Nonce` must decode (base64url, unpadded) to exactly 12 bytes; anything else is `400 invalid nonce`.
 - The duration regex in the spec mirrors a subset of Go's `time.ParseDuration`.
 
 Refer to `openapi.yaml` for the machine-readable schema.

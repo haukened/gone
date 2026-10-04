@@ -2,14 +2,15 @@
 
 ## Supported Versions
 
+Security fixes go into the latest release only.
+
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.2.X  | :white_check_mark: |
-| 1.1.X | :x: |
-| 1.0.X | :x: |
-| 0.X.X | :x: |
-
+| 3.0.x   | :white_check_mark: |
+| 2.x     | :x:                |
+| 1.x     | :x:                |
+| 0.x     | :x:                |
 
 ## Reporting a Vulnerability
 
-Please use the [private vulnerability reporting](https://github.com/haukened/gone/security/advisories/new) functions within GithUb
+Please report vulnerabilities privately through GitHub's [private vulnerability reporting](https://github.com/haukened/gone/security/advisories/new). Do not open a public issue.
