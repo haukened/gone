@@ -2,9 +2,10 @@
 
 // Message rendering and view switching for consumed secrets.
 (function consumeViewMessagesModule() {
-  if (window.goneConsumeViewMessages || !window.goneConsumeViewBase) return;
+  if (window.goneConsumeViewMessages || !window.goneConsumeViewBase || !window.goneConsumeViewMask) return;
   const ctx = window.goneConsumeViewBase;
   const dom = ctx.dom;
+  const mask = window.goneConsumeViewMask;
   const VIEWS = ['open', 'revealed', 'gone'];
   const TITLES = { revealed: 'Gone \u00b7 Here\u2019s your secret', gone: 'Gone \u00b7 This secret is gone' };
 
@@ -22,7 +23,10 @@
     if (heading) heading.focus();
   }
 
+  // selectOutput is the copy fallback: the recipient copies by hand, so the
+  // message has to be shown first.
   function selectOutput() {
+    mask.show();
     const range = document.createRange();
     range.selectNodeContents(dom.output);
     const sel = window.getSelection();
@@ -41,7 +45,7 @@
 
   function showMessage(text) {
     if (!text || !dom.output) return;
-    dom.output.textContent = text;
+    mask.apply(text);
     if (dom.messagePanel) dom.messagePanel.hidden = false;
     wireCopy(text);
   }
