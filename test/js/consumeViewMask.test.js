@@ -14,24 +14,23 @@ test('a revealed message starts covered: size shown, text kept out of the page',
   assert.equal($('secret-cover').hidden, false);
   assert.equal($('secret-size').textContent, '3 lines');
   assert.equal($('secret-cover-dots').textContent.split('\n').length, 3);
-  assert.equal($('hide-secret').hidden, true);
+  assert.equal($('message-panel').classList.contains('is-shown'), false);
   assert.equal($('always-show').checked, false);
 });
 
-test('Show and Hide swap the cover for the message and move focus', (t) => {
-  const { env, $, view } = masked(t);
+test('the Show toggle stays put: it swaps the cover for the message and relabels', (t) => {
+  const { $, view } = masked(t);
   view.showDecoded({ message: 'hunter2', files: [] });
   $('show-secret').click();
   assert.equal($('secret-output').textContent, 'hunter2');
   assert.equal($('secret-output').hidden, false);
   assert.equal($('secret-cover').hidden, true);
-  assert.equal($('hide-secret').hidden, false);
-  assert.equal(env.document.activeElement, $('secret-output'));
-  $('hide-secret').click();
+  assert.equal($('show-secret').querySelector('span').textContent, 'Hide');
+  assert.ok($('message-panel').classList.contains('is-shown'));
+  $('show-secret').click();
   assert.equal($('secret-output').textContent, '');
   assert.equal($('secret-cover').hidden, false);
-  assert.equal($('hide-secret').hidden, true);
-  assert.equal(env.document.activeElement, $('show-secret'));
+  assert.equal($('show-secret').querySelector('span').textContent, 'Show');
 });
 
 test('Copy works while covered; the hand-copy fallback shows the message first', async (t) => {
@@ -45,7 +44,7 @@ test('Copy works while covered; the hand-copy fallback shows the message first',
   env.clipboard.fail = true;
   await $('copy-secret').click().settled;
   assert.equal($('secret-output').hidden, false);
-  assert.equal($('hide-secret').hidden, false);
+  assert.equal($('show-secret').querySelector('span').textContent, 'Hide');
   assert.equal(env.selection.ranges[0].node, $('secret-output'));
 });
 

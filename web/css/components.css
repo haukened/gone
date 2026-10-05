@@ -666,8 +666,9 @@ textarea:focus-visible,
   text-wrap: balance;
 }
 
-.cover-note .btn {
-  margin-top: var(--space-1);
+.secret-panel:not(.is-shown) .when-shown,
+.secret-panel.is-shown .when-covered {
+  display: none;
 }
 
 .cover-size {
