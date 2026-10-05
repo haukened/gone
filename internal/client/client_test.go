@@ -42,6 +42,14 @@ func TestNormalizeOrigin(t *testing.T) {
 		{"HTTPS://gone.example:8443", false, "https://gone.example:8443", nil},
 		{"http://localhost:8080", true, "http://localhost:8080", nil},
 		{"http://localhost:8080", false, "", ErrInsecureOrigin},
+		{"http://LocalHost", true, "http://localhost", nil},
+		{"http://gone.localhost:8080", true, "http://gone.localhost:8080", nil},
+		{"http://127.0.0.2:8080", true, "http://127.0.0.2:8080", nil},
+		{"http://[::1]:8080", true, "http://[::1]:8080", nil},
+		{"http://gone.example", true, "", ErrInsecureOrigin},
+		{"http://192.168.1.10:8080", true, "", ErrInsecureOrigin},
+		{"http://localhost.example", true, "", ErrInsecureOrigin},
+		{"http://[::ffff:10.0.0.1]", true, "", ErrInsecureOrigin},
 		{"ftp://gone.example", false, "", ErrInvalidOrigin},
 		{"https://gone.example/path", false, "", ErrInvalidOrigin},
 		{"https://gone.example?q=1", false, "", ErrInvalidOrigin},
@@ -57,6 +65,24 @@ func TestNormalizeOrigin(t *testing.T) {
 		got, err := NormalizeOrigin(tc.in, tc.allowHTTP)
 		if !errors.Is(err, tc.err) || got != tc.want {
 			t.Errorf("NormalizeOrigin(%q, %v) = %q, %v; want %q, %v", tc.in, tc.allowHTTP, got, err, tc.want, tc.err)
+		}
+	}
+}
+
+func TestCanonicalOrigin(t *testing.T) {
+	tests := []struct {
+		in, want string
+		err      error
+	}{
+		{"HTTP://Gone.Example:8080/", "http://gone.example:8080", nil},
+		{"https://gone.example", "https://gone.example", nil},
+		{"ftp://gone.example", "", ErrInvalidOrigin},
+		{"https://gone.example/path", "", ErrInvalidOrigin},
+	}
+	for _, tc := range tests {
+		got, err := CanonicalOrigin(tc.in)
+		if !errors.Is(err, tc.err) || got != tc.want {
+			t.Errorf("CanonicalOrigin(%q) = %q, %v; want %q, %v", tc.in, got, err, tc.want, tc.err)
 		}
 	}
 }

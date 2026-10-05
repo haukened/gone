@@ -100,3 +100,13 @@ test('reveals every security warning over plain HTTP only', (t) => {
   assert.ok(secure.warnings.every((w) => w.hidden === true));
   assert.deepEqual(secure.logs.warn, []);
 });
+
+test('trusts isSecureContext when the browser reports it', (t) => {
+  t.after(() => { delete globalThis.isSecureContext; });
+  globalThis.isSecureContext = true;
+  const local = boot(t, { url: 'http://localhost:8080/' });
+  assert.ok(local.warnings.every((w) => w.hidden === true));
+  globalThis.isSecureContext = false;
+  const lan = boot(t, { url: 'https://gone.test/' });
+  assert.ok(lan.warnings.every((w) => w.hidden === false));
+});

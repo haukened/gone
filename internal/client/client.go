@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -30,8 +31,9 @@ const (
 
 // Options configures a Client.
 type Options struct {
-	// AllowHTTP permits a plain-HTTP origin. TLS certificates are always
-	// verified when HTTPS is used.
+	// AllowHTTP permits a plain-HTTP origin on a loopback host, the same
+	// exception browsers make for localhost. Any other http origin is always
+	// refused. TLS certificates are always verified when HTTPS is used.
 	AllowHTTP bool
 	// Timeout bounds each request; zero means DefaultTimeout.
 	Timeout time.Duration
@@ -91,20 +93,54 @@ func (c *Client) Origin() string { return c.origin }
 //
 // Parameters:
 //   - raw: origin string.
-//   - allowHTTP: whether "http" is an acceptable scheme.
+//   - allowHTTP: whether "http" is acceptable for a loopback host.
 //
 // Returns the origin as scheme://host, ErrInvalidOrigin, or
 // ErrInsecureOrigin.
 func NormalizeOrigin(raw string, allowHTTP bool) (string, error) {
-	u, err := url.Parse(strings.TrimSuffix(raw, "/"))
-	if err != nil || !bareOrigin(u) {
-		return "", ErrInvalidOrigin
-	}
-	scheme := strings.ToLower(u.Scheme)
-	if err := checkScheme(scheme, allowHTTP); err != nil {
+	u, err := parseOrigin(raw)
+	if err != nil {
 		return "", err
 	}
-	return scheme + "://" + strings.ToLower(u.Host), nil
+	if u.Scheme == "http" && (!allowHTTP || !loopback(u.Hostname())) {
+		return "", ErrInsecureOrigin
+	}
+	return u.Scheme + "://" + u.Host, nil
+}
+
+// CanonicalOrigin validates and canonicalizes an http or https origin
+// without deciding whether http may be used; New makes that decision.
+//
+// Parameters:
+//   - raw: origin string.
+//
+// Returns the origin as scheme://host or ErrInvalidOrigin.
+func CanonicalOrigin(raw string) (string, error) {
+	u, err := parseOrigin(raw)
+	if err != nil {
+		return "", err
+	}
+	return u.Scheme + "://" + u.Host, nil
+}
+
+// parseOrigin parses a bare http or https origin, lowercasing the scheme
+// and host. A single trailing slash is accepted.
+//
+// Parameters:
+//   - raw: origin string.
+//
+// Returns the parsed URL or ErrInvalidOrigin.
+func parseOrigin(raw string) (*url.URL, error) {
+	u, err := url.Parse(strings.TrimSuffix(raw, "/"))
+	if err != nil || !bareOrigin(u) {
+		return nil, ErrInvalidOrigin
+	}
+	u.Scheme = strings.ToLower(u.Scheme)
+	if u.Scheme != "https" && u.Scheme != "http" {
+		return nil, ErrInvalidOrigin
+	}
+	u.Host = strings.ToLower(u.Host)
+	return u, nil
 }
 
 // bareOrigin reports whether u has a host and nothing beyond scheme and
@@ -120,21 +156,21 @@ func bareOrigin(u *url.URL) bool {
 		u.RawQuery == "" && u.Fragment == "" && !u.ForceQuery
 }
 
-// checkScheme validates a lowercased URL scheme.
+// loopback reports whether host names this machine: localhost, a
+// *.localhost name, or a loopback IP address. Browsers treat these as
+// secure contexts too.
 //
 // Parameters:
-//   - scheme: lowercased scheme.
-//   - allowHTTP: whether "http" is acceptable.
+//   - host: hostname without port or brackets.
 //
-// Returns nil, ErrInsecureOrigin, or ErrInvalidOrigin.
-func checkScheme(scheme string, allowHTTP bool) error {
-	switch {
-	case scheme == "https", scheme == "http" && allowHTTP:
-		return nil
-	case scheme == "http":
-		return ErrInsecureOrigin
+// Returns true for a loopback host.
+func loopback(host string) bool {
+	h := strings.ToLower(host)
+	if h == "localhost" || strings.HasSuffix(h, ".localhost") {
+		return true
 	}
-	return ErrInvalidOrigin
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }
 
 // do sends one request to path on the client's origin.

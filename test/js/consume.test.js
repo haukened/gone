@@ -249,6 +249,7 @@ test('an insecure page without WebCrypto locks Open before fetching', (t) => {
   t.after(() => Object.defineProperty(globalThis, 'crypto', real));
   const { $, open } = boot(t, BASE + ID + VALID_FRAG);
   assert.equal($('consume-error').hidden, true);
+  assert.ok(disabled($));
   open();
   assert.match($('consume-error-text').textContent, /secure \(HTTPS\) pages.*Nothing was downloaded/);
   assert.ok(disabled($));

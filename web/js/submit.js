@@ -6,6 +6,12 @@
   const ctx = window.goneSubmitDom;
   const state = window.goneSubmitState;
 
+  // Without WebCrypto (plain HTTP) nothing can be encrypted, so the button
+  // stays off and the hint says why.
+  if (!ctx.util.cryptoAvailable()) {
+    ctx.els.primaryBtn.disabled = true;
+    ctx.util.setText(ctx.byId('submit-hint'), 'Turned off: this page isn\u2019t HTTPS, so this browser can\u2019t encrypt.');
+  }
   ctx.form.addEventListener('submit', window.goneSubmitRun.handleSubmit);
   ctx.els.textarea.addEventListener('input', state.updateMeter);
   state.selection.render();

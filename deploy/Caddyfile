@@ -1,0 +1,5 @@
+# Serves Gone over HTTPS on $GONE_DOMAIN. Caddy redirects HTTP to HTTPS and
+# manages the certificate.
+{$GONE_DOMAIN} {
+	reverse_proxy gone:8080
+}

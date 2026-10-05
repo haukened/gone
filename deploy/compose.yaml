@@ -1,0 +1,60 @@
+# Gone behind Caddy, which gets and renews a TLS certificate automatically.
+# Browsers only encrypt on HTTPS pages, so Gone does not work over plain HTTP
+# (except at http://localhost on the same machine).
+#
+#   1. Point a DNS name (A/AAAA record) at this host.
+#   2. Open ports 80 and 443 to the internet; Caddy needs both to get a
+#      certificate from Let's Encrypt.
+#   3. GONE_DOMAIN=gone.example.com docker compose up -d
+#
+# Only Caddy is published. Gone listens on the private network below.
+name: gone
+
+services:
+  gone:
+    image: ghcr.io/haukened/gone:latest
+    restart: unless-stopped
+    environment:
+      # Caddy is the only other container on this network. Trusting it lets
+      # Gone rate-limit each visitor instead of treating everyone as Caddy.
+      GONE_TRUSTED_PROXIES: 172.31.255.0/28
+    volumes:
+      - gone-data:/data
+    networks:
+      - gone
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      gone:
+        condition: service_healthy
+    environment:
+      GONE_DOMAIN: ${GONE_DOMAIN:?set GONE_DOMAIN to the DNS name of this server}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - gone
+
+networks:
+  gone:
+    ipam:
+      config:
+        # Change this if it collides with an existing network; keep
+        # GONE_TRUSTED_PROXIES above in step.
+        - subnet: 172.31.255.0/28
+
+volumes:
+  gone-data:
+  caddy-data:
+  caddy-config:

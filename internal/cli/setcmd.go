@@ -25,7 +25,7 @@ func (a *app) runSet(args []string) error {
 	}
 	origin, err := client.NormalizeOrigin(pos[1], *insecure)
 	if errors.Is(err, client.ErrInsecureOrigin) {
-		return usagef("%q uses http; pass --insecure to allow unencrypted transport", pos[1])
+		return usagef("%q uses http; Gone only talks to https servers (a localhost server may use http with --insecure)", pos[1])
 	}
 	if err != nil {
 		return usagef("%q is not a valid server origin (want https://host[:port])", pos[1])

@@ -85,7 +85,7 @@ gone send [flags]
       --passphrase-file PATH protect with the passphrase in PATH
       --passphrase-generate  protect with a generated passphrase (printed to stderr)
       --json                 print the result as JSON
-      --insecure             allow an http:// server
+      --insecure             allow an http:// server on localhost
       --timeout DURATION     per-request timeout (default 1m)
 ```
 
@@ -112,7 +112,7 @@ gone get <link> [flags]
       --passphrase-file PATH read the passphrase from PATH instead of prompting
       --json                 print the result as JSON
       --raw                  print the message without escaping control characters
-      --insecure             allow an http:// link
+      --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
 ```
 
@@ -161,7 +161,7 @@ Saves the default server for `send`. The value must be a bare origin such as `ht
 
 The standard proxy variables (`HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`) are honored for every request.
 
-- **HTTPS only by default.** `http://` origins and links are refused unless `--insecure` is given, on every command. Use it only for a local test server.
+- **HTTPS only.** `http://` origins and links are refused on every command. The one exception is a server on this machine (`localhost`, `*.localhost`, `127.0.0.0/8` or `::1`) with `--insecure`, for local testing; browsers make the same exception. Any other `http://` server is refused even with `--insecure`.
 - **No redirects.** A redirect is treated as a server error, so a secret is never sent to, or fetched from, an origin other than the one you named.
 - **Bounded responses.** Responses larger than the protocol allows are rejected before they are read.
 
