@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/store"
+	"github.com/haukened/gone/v3/internal/store"
 )
 
 type sqliteClaimWindow struct {

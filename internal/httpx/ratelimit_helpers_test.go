@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // stubLimiter allows the first n requests and records the keys it sees.

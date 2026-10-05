@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/haukened/gone/internal/cli"
+	"github.com/haukened/gone/v3/internal/cli"
 )
 
 // cliRunner drives the gone CLI in-process against a test server.

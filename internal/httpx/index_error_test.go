@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/haukened/gone/internal/httpx"
+	"github.com/haukened/gone/v3/internal/httpx"
 )
 
 // failingRenderer simulates a template execution failure.

@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/haukened/gone/internal/sqlrows"
-	"github.com/haukened/gone/internal/store"
+	"github.com/haukened/gone/v3/internal/sqlrows"
+	"github.com/haukened/gone/v3/internal/store"
 )
 
 // DeleteExpired deletes secrets whose TTL has elapsed (expires_at <= t) or

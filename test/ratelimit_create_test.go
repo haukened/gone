@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/ratelimit"
+	"github.com/haukened/gone/v3/internal/ratelimit"
 )
 
 // TestCreateBurstThenRecovery verifies create burst exhaustion and refill.

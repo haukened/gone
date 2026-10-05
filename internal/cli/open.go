@@ -4,9 +4,9 @@ import (
 	"errors"
 	"io"
 
-	"github.com/haukened/gone/internal/client"
-	"github.com/haukened/gone/internal/domain"
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/client"
+	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // maxPassphraseAttempts bounds interactive passphrase retries.

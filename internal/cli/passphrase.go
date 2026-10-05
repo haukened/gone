@@ -7,8 +7,8 @@ import (
 	"os"
 	"unicode/utf8"
 
-	"github.com/haukened/gone/internal/domain"
-	"github.com/haukened/gone/internal/passgen"
+	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/passgen"
 )
 
 // minPassphraseRunes matches the web UI's minimum (web/js/passgen.js

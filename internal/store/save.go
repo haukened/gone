@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
+	"github.com/haukened/gone/v3/internal/app"
 )
 
 // Save persists a secret. Data <= inlineMax is stored inline; larger data

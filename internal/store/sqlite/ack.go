@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/store"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/store"
 )
 
 // Ack completes delivery of a claimed secret by deleting its row, provided the

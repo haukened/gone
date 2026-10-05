@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/haukened/gone/internal/sqlrows"
+	"github.com/haukened/gone/v3/internal/sqlrows"
 )
 
 // ErrSchemaTooNew is returned by New when the database's user_version is

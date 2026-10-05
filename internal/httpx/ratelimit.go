@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/haukened/gone/internal/metrics"
-	"github.com/haukened/gone/internal/ratelimit"
+	"github.com/haukened/gone/v3/internal/metrics"
+	"github.com/haukened/gone/v3/internal/ratelimit"
 )
 
 // RateLimiter decides whether a client identified by key may make a request.

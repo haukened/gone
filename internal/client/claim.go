@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // Response and request header names (docs/protocol.md §8).

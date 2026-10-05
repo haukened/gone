@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // CreateRequest is a sealed secret ready to store.

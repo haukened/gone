@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/httpx"
+	"github.com/haukened/gone/v3/internal/httpx"
 )
 
 // createManaged creates a secret and returns its ID and manage token.

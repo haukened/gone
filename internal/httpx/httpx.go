@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // ServicePort abstracts the subset of app.Service used by the HTTP layer.

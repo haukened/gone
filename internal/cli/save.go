@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // maxCollisionSuffix bounds the "name (n).ext" search.

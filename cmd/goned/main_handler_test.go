@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/config"
-	"github.com/haukened/gone/internal/domain"
-	"github.com/haukened/gone/internal/store/sqlite"
-	wembed "github.com/haukened/gone/web"
+	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/store/sqlite"
+	wembed "github.com/haukened/gone/v3/web"
 )
 
 // TestBuildHandler_IndexRoute exercises basic route wiring for index template.

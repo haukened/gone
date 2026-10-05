@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/store"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/store"
 )
 
 func TestStoreDeleteExpired(t *testing.T) {

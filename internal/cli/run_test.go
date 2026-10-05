@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/client"
+	"github.com/haukened/gone/v3/internal/client"
 )
 
 // TestRunHelpAndVersion checks the help, per-command help and version

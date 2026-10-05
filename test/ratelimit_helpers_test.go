@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/haukened/gone/internal/httpx"
+	"github.com/haukened/gone/v3/internal/httpx"
 )
 
 // read issues GET /api/secret/{id} with an optional claim token.

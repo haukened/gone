@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/haukened/gone/internal/client"
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/client"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // manageTarget parses a manage-link command line and connects to its

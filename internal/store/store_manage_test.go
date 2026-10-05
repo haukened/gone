@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/store"
-	"github.com/haukened/gone/internal/store/filesystem"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/store"
+	"github.com/haukened/gone/v3/internal/store/filesystem"
 )
 
 func TestStoreAckDeletesExternalBlobOnly(t *testing.T) {

@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/config"
-	"github.com/haukened/gone/internal/store"
-	wembed "github.com/haukened/gone/web"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/store"
+	wembed "github.com/haukened/gone/v3/web"
 )
 
 // ListExternalIDs reports no external IDs.

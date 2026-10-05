@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/haukened/gone/internal/client"
-	"github.com/haukened/gone/internal/domain"
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/client"
+	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // TestSealPayloadVersions checks that a passphrase selects protocol v2 and

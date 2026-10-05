@@ -12,8 +12,8 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/store"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/store"
 )
 
 // storeTestManageHash is the manage hash used for every saved secret.

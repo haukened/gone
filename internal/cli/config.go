@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/haukened/gone/internal/client"
+	"github.com/haukened/gone/v3/internal/client"
 )
 
 const (

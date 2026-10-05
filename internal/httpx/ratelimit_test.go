@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/metrics"
+	"github.com/haukened/gone/v3/internal/metrics"
 )
 
 func TestReadRateLimited(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/haukened/gone/internal/config"
-	"github.com/haukened/gone/internal/httpx"
-	"github.com/haukened/gone/internal/ratelimit"
+	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/httpx"
+	"github.com/haukened/gone/v3/internal/ratelimit"
 )
 
 // applyRateLimits configures per-client rate limiting on h and starts the

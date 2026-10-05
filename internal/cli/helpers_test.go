@@ -13,12 +13,12 @@ import (
 	"testing"
 	"time"
 
-	goneapp "github.com/haukened/gone/internal/app"
-	gonecfg "github.com/haukened/gone/internal/config"
-	"github.com/haukened/gone/internal/httpx"
-	"github.com/haukened/gone/internal/store"
-	"github.com/haukened/gone/internal/store/filesystem"
-	"github.com/haukened/gone/internal/store/sqlite"
+	goneapp "github.com/haukened/gone/v3/internal/app"
+	gonecfg "github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/httpx"
+	"github.com/haukened/gone/v3/internal/store"
+	"github.com/haukened/gone/v3/internal/store/filesystem"
+	"github.com/haukened/gone/v3/internal/store/sqlite"
 )
 
 // testEnv is a fake process environment with captured output.

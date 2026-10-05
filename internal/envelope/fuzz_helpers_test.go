@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // fuzzUnpackOne verifies one Unpack fuzz input.

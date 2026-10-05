@@ -1,4 +1,4 @@
-module github.com/haukened/gone
+module github.com/haukened/gone/v3
 
 go 1.27.0
 

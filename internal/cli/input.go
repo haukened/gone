@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // maxInputBytes caps the message plus attachments before encryption.

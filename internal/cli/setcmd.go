@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/haukened/gone/internal/client"
+	"github.com/haukened/gone/v3/internal/client"
 )
 
 // runSet implements "gone set server <url> [--insecure]".

@@ -10,12 +10,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/config"
-	"github.com/haukened/gone/internal/httpx"
-	"github.com/haukened/gone/internal/janitor"
-	"github.com/haukened/gone/internal/metrics"
-	"github.com/haukened/gone/internal/store"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/httpx"
+	"github.com/haukened/gone/v3/internal/janitor"
+	"github.com/haukened/gone/v3/internal/metrics"
+	"github.com/haukened/gone/v3/internal/store"
 )
 
 // shutdownTimeout bounds how long in-flight requests may take to finish once

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/config"
-	"github.com/haukened/gone/internal/httpx"
+	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/httpx"
 )
 
 // createID creates a secret and returns its ID.

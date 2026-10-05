@@ -6,7 +6,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 type errReader struct{}

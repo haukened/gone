@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/client"
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/client"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // uploadSealed uploads a browser-sealed payload over the real API and

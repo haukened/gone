@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/client"
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/client"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // jsFile is a file in an interop bridge request or reply.

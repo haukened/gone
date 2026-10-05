@@ -3,7 +3,7 @@ package envelope
 import (
 	"strings"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 type fragmentCase struct {

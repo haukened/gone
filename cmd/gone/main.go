@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/haukened/gone/internal/cli"
+	"github.com/haukened/gone/v3/internal/cli"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".

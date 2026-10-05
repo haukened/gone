@@ -3,7 +3,7 @@ package cli
 import (
 	"errors"
 
-	"github.com/haukened/gone/internal/client"
+	"github.com/haukened/gone/v3/internal/client"
 )
 
 const (

@@ -18,9 +18,9 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/haukened/gone/internal/config"
-	"github.com/haukened/gone/internal/store"
-	wembed "github.com/haukened/gone/web"
+	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/store"
+	wembed "github.com/haukened/gone/v3/web"
 )
 
 // freeAddr returns a loopback address with a currently unused port.
