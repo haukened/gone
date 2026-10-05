@@ -4,7 +4,7 @@
 (function consumeApiCryptoModule() {
   if (window.goneConsumeApiCrypto || !window.goneConsumeApiErrors || !window.goneCrypto) return;
   const errs = window.goneConsumeApiErrors;
-  const PASSPHRASE_ERROR = 'That passphrase didn\u2019t work. Check it and try again.';
+  const PASSPHRASE_ERROR = 'That passphrase didn\u2019t work. The secret is already gone from the server, and this browser holds the only copy, still encrypted. Check the passphrase and try again here: closing or leaving this page destroys the secret for good.';
   const DAMAGED_ERROR = 'This secret\u2019s contents are damaged. Ask the sender to share it again.';
   const NONCE_BYTES = 12;
 

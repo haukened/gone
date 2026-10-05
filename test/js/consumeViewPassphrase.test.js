@@ -58,7 +58,8 @@ function assertOpeningFailure(f) {
   assert.equal(pass.readOnly, false);
   view.passphraseFailed();
   assert.equal(openLabel.textContent, 'Try again');
-  assert.match($('open-pass-warn').textContent, /deleted from the server\. Only this page still has it/);
+  assert.equal($('open-pass-warn').hidden, true);
+  assert.equal(f.btn.getAttribute('aria-describedby'), 'consume-error-text');
   assert.equal(pass.getAttribute('aria-invalid'), 'true');
   assert.equal(globalThis.document.activeElement, pass);
   assert.equal(pass.selected, true);
