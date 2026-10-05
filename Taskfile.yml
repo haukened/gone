@@ -92,16 +92,6 @@ tasks:
     cmds:
       - go test ./test -run TestPerfLatencyTarget -count=1 -v
 
-  screenshots:
-    desc: Regenerate the README screenshots in docs/img (needs Node; installs Playwright into .tmp)
-    vars:
-      PLAYWRIGHT_VERSION: '1.62.1'
-    cmds:
-      - task: build-dev
-      - npm install --silent --no-save --no-package-lock --prefix .tmp/screenshots playwright@{{.PLAYWRIGHT_VERSION}}
-      - npm exec --prefix .tmp/screenshots -- playwright install chromium
-      - NODE_PATH=.tmp/screenshots/node_modules node scripts/screenshots.cjs
-
   cover:
     desc: Run tests with coverage output
     cmds:
