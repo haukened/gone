@@ -10,6 +10,8 @@ A heavy G whose right side erodes into particles. The solid letter is drawn on t
 | `gone-mark-64.svg` | Drawn for 64px: only particles big enough to see, firmer eroded edge. |
 | `gone-mark-32.svg` | Drawn for 32px: the seven largest particles. |
 | `gone-mark-16.svg` | 16px pixel master, drawn on the pixel grid. Render it at exactly 16px. |
+| `hero-light.jpg`, `hero-dark.jpg` | README hero banner, 1280×400 at 2x, swapped by colour scheme with `<picture>`. |
+| `social-preview.png` | GitHub social preview, 1280×640 (dark). Uploaded by hand in Settings → General → Social preview; GitHub has no API for it. |
 
 Each mark file has two paths: the letter first, then the particles. Recolour or animate the particles on their own by targeting the second path.
 

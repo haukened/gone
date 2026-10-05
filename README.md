@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/hero-dark.jpg">
+  <img src="docs/brand/hero-light.jpg" alt="Gone: share a secret exactly once. Encrypted in your browser, deleted after one read.">
+</picture>
+
 [![Build](https://github.com/haukened/gone/actions/workflows/build.yaml/badge.svg)](https://github.com/haukened/gone/actions/workflows/build.yaml)
 [![Security Scan](https://github.com/haukened/gone/actions/workflows/sec.yaml/badge.svg)](https://github.com/haukened/gone/actions/workflows/sec.yaml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/haukened/gone/badge)](https://scorecard.dev/viewer/?uri=github.com/haukened/gone)
@@ -8,9 +13,6 @@
 [![Latest release](https://img.shields.io/github/v/release/haukened/gone)](https://github.com/haukened/gone/releases/latest)
 ![GitHub License](https://img.shields.io/github/license/haukened/gone)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/haukened/gone)
-
-
-# gone
 
 *Because security shouldn't live behind paywalls.*
 
