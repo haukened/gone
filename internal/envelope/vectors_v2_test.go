@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // aeadV2Case is one protocol v2 vector. The passphrase is hex-encoded UTF-8

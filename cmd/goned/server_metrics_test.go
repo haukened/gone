@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/config"
-	"github.com/haukened/gone/internal/metrics"
+	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/metrics"
 )
 
 var metricDisabledCases = []struct {

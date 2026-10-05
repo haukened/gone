@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/client"
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/client"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // TestClassify checks every error maps to the documented exit code and

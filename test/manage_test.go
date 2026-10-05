@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/ratelimit"
+	"github.com/haukened/gone/v3/internal/ratelimit"
 )
 
 func TestManageStatusThenRevoke(t *testing.T) {

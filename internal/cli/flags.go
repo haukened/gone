@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/haukened/gone/internal/client"
+	"github.com/haukened/gone/v3/internal/client"
 )
 
 // stringList is a repeatable string flag.

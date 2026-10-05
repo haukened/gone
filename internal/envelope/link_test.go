@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // TestNewLink verifies links render correctly and invalid inputs fail.

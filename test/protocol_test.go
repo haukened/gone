@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 func TestProtocolRoundTrip(t *testing.T) {

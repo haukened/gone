@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/haukened/gone/internal/domain"
-	"github.com/haukened/gone/internal/store"
+	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/store"
 )
 
 // Ensure BlobStore implements store.BlobStorage

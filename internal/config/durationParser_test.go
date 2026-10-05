@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // TestStringToTTLOptions covers the DecodeHook behavior for various inputs.

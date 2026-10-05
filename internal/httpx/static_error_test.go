@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/haukened/gone/internal/httpx"
+	"github.com/haukened/gone/v3/internal/httpx"
 )
 
 // static error tests rely on noopService from existing tests.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // TestMain silences the server's request logs.

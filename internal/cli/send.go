@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/haukened/gone/internal/client"
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/client"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // defaultTTL is the secret lifetime when --ttl is not given.

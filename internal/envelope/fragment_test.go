@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 var testKey = bytes.Repeat([]byte{0xab}, domain.KeySize)

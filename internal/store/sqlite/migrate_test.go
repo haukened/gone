@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
+	"github.com/haukened/gone/v3/internal/app"
 )
 
 // sqliteDBUserVersion reads PRAGMA user_version through a *sql.DB.

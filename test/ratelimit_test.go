@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/config"
-	"github.com/haukened/gone/internal/httpx"
-	"github.com/haukened/gone/internal/ratelimit"
-	"github.com/haukened/gone/internal/store"
-	"github.com/haukened/gone/internal/store/filesystem"
-	"github.com/haukened/gone/internal/store/sqlite"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/httpx"
+	"github.com/haukened/gone/v3/internal/ratelimit"
+	"github.com/haukened/gone/v3/internal/store"
+	"github.com/haukened/gone/v3/internal/store/filesystem"
+	"github.com/haukened/gone/v3/internal/store/sqlite"
 )
 
 // fakeClock is a manually advanced clock shared by the limiters under test.

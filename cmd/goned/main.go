@@ -25,8 +25,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/haukened/gone/internal/config"
-	wembed "github.com/haukened/gone/web"
+	"github.com/haukened/gone/v3/internal/config"
+	wembed "github.com/haukened/gone/v3/web"
 )
 
 // version is the release this binary was built from, set at build time with

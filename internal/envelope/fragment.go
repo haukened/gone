@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // maxFragmentLen bounds fragment parsing work; v1 and v2 fragments are 46

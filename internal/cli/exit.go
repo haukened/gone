@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/haukened/gone/internal/client"
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/client"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // Process exit codes. They are part of the CLI's public contract

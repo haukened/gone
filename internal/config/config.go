@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/haukened/gone/internal/domain"
-	"github.com/haukened/gone/internal/ratelimit"
+	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/ratelimit"
 	"github.com/knadh/koanf/providers/env/v2"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"

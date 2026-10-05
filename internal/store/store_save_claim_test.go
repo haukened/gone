@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/store"
-	"github.com/haukened/gone/internal/store/filesystem"
-	"github.com/haukened/gone/internal/store/sqlite"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/store"
+	"github.com/haukened/gone/v3/internal/store/filesystem"
+	"github.com/haukened/gone/v3/internal/store/sqlite"
 )
 
 // storeFixture holds an integrated store and its backing blob directory.

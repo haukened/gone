@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 func TestServiceStatus(t *testing.T) {

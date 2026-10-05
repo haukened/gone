@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/client"
-	"github.com/haukened/gone/internal/domain"
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/client"
+	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // createRawV1 stores plain as a v1 secret on origin without going through

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/store"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/store"
 )
 
 // manageRow is the subset of a secrets row needed by Status and Revoke.

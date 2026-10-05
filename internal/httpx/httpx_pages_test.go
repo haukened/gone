@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/haukened/gone/internal/httpx"
+	"github.com/haukened/gone/v3/internal/httpx"
 )
 
 func TestHealthAndReady(t *testing.T) {

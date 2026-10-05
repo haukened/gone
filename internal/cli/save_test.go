@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // openRoot opens dir as an os.Root closed at test end.

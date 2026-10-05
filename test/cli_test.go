@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/client"
-	"github.com/haukened/gone/internal/ratelimit"
+	"github.com/haukened/gone/v3/internal/client"
+	"github.com/haukened/gone/v3/internal/ratelimit"
 )
 
 // Exit codes documented in docs/cli.md.

@@ -10,7 +10,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
+	"github.com/haukened/gone/v3/internal/app"
 )
 
 // Index abstracts the metadata/index operations (typically backed by SQLite).

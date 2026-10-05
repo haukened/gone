@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/config"
-	"github.com/haukened/gone/internal/httpx"
-	"github.com/haukened/gone/internal/ratelimit"
+	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/httpx"
+	"github.com/haukened/gone/v3/internal/ratelimit"
 )
 
 // TestStartLimiter verifies disabled and enabled limiter construction.

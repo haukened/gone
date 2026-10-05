@@ -3,7 +3,7 @@ package metrics
 import (
 	"context"
 
-	"github.com/haukened/gone/internal/sqlrows"
+	"github.com/haukened/gone/v3/internal/sqlrows"
 )
 
 // Snapshot returns current (persisted + in-memory deltas) by reading persisted

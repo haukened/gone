@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 	"io"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // NewKey returns a fresh random v1 key from crypto/rand.

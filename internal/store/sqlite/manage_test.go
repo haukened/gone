@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
+	"github.com/haukened/gone/v3/internal/app"
 )
 
 // sqliteNewManageIndex opens a fresh database and Index for manage tests.

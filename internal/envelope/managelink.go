@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // ManageLink is a parsed sender manage link (protocol §7.3). It authorizes

@@ -5,7 +5,7 @@ import (
 	"net/netip"
 	"strings"
 
-	"github.com/haukened/gone/internal/ratelimit"
+	"github.com/haukened/gone/v3/internal/ratelimit"
 )
 
 // Minimum prefix lengths accepted for trusted proxies. Broader ranges would

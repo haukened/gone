@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/haukened/gone/internal/domain"
-	"github.com/haukened/gone/internal/envelope"
-	"github.com/haukened/gone/internal/httpx"
+	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/envelope"
+	"github.com/haukened/gone/v3/internal/httpx"
 )
 
 // headerVector is one server_headers.json case.

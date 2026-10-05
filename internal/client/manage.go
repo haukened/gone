@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // Status describes a pending secret.

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // requestMeta holds parsed and validated request metadata needed to create a secret.

@@ -6,7 +6,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/haukened/gone/internal/store"
+	"github.com/haukened/gone/v3/internal/store"
 
 	// database/sql SQLite driver (pure Go, no CGO)
 	_ "modernc.org/sqlite"

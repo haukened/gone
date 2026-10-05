@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // ErrNotFound indicates the secret was not found or already consumed/expired.

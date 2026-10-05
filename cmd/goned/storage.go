@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/haukened/gone/internal/config"
-	"github.com/haukened/gone/internal/store"
-	"github.com/haukened/gone/internal/store/filesystem"
-	"github.com/haukened/gone/internal/store/sqlite"
+	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/store"
+	"github.com/haukened/gone/v3/internal/store/filesystem"
+	"github.com/haukened/gone/v3/internal/store/sqlite"
 )
 
 // privateDirPerm is owner-only access (rwx------). Directories need the

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/haukened/gone/internal/httpx"
+	"github.com/haukened/gone/v3/internal/httpx"
 )
 
 // pageTemplate is a SecretRenderer that writes a fixed body.

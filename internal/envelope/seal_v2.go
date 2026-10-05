@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // v2Header is the parsed, bounds-checked 21-byte v2 blob header

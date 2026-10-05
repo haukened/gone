@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/haukened/gone/internal/domain"
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // sealed is an encrypted payload ready to upload.

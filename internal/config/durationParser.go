@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // StringToTTLOptions is a DecodeHookFunc that converts a string to domain.TTLOption

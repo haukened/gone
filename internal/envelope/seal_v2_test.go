@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // v2Fixture seals one plaintext so tests can reuse the expensive PBKDF2 run.

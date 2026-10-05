@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/haukened/gone/internal/client"
-	"github.com/haukened/gone/internal/envelope"
+	"github.com/haukened/gone/v3/internal/client"
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // getOpts holds the parsed "gone get" flags.

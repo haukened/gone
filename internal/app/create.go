@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/haukened/gone/internal/domain"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // CreateSecret validates inputs, assigns a new ID and manage token, determines

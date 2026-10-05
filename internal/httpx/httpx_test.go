@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haukened/gone/internal/app"
-	"github.com/haukened/gone/internal/domain"
-	"github.com/haukened/gone/internal/httpx"
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/httpx"
 )
 
 func TestHandleCreateSecretSuccess(t *testing.T) {
