@@ -76,7 +76,8 @@ func (r *perfRecorder) fail(err error) {
 // GONE_PERF_RPS offers a different rate to find a machine's limit (the p95
 // target is still checked, but the target rate is 100). The data
 // directory follows TMPDIR, so point TMPDIR at the disk you deploy on to
-// measure that disk.
+// measure that disk. CI points it at RAM (/dev/shm) so shared-runner disk
+// stalls don't fail the build; there the test guards the code path.
 //
 // Parameters:
 //   - t: the test.

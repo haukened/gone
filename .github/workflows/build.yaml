@@ -153,7 +153,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Latency target (p95 under 50ms at 100 req/s) against the real stack.
-  # Runners use SSDs; see test/perf_test.go for running it on other disks.
+  # The data directory is on RAM (/dev/shm): shared runner disks stall on
+  # fsync for hundreds of milliseconds at random, which failed this job on
+  # unchanged code. This job guards the code path; `task perf` with TMPDIR
+  # on a real disk is the deployment benchmark (see test/perf_test.go).
   perf:
     runs-on: ubuntu-latest
     if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
@@ -169,7 +172,11 @@ jobs:
       - name: Run latency target test
         env:
           GONE_PERF: '1'
-        run: go test ./test -run TestPerfLatencyTarget -count=1 -v
+        # Compile first so only the test, not the build, uses the RAM disk.
+        run: |
+          findmnt -n -o FSTYPE /dev/shm | grep -qx tmpfs
+          go test -c -o "$RUNNER_TEMP/perf.test" ./test
+          TMPDIR=/dev/shm "$RUNNER_TEMP/perf.test" -test.run TestPerfLatencyTarget -test.count=1 -test.v
 
   # Tagged releases: test, cross-build the gone CLI and goned server,
   # attest build provenance, and publish archives with SHA256SUMS.
