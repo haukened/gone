@@ -19,6 +19,7 @@ function openView(n, openLabel) {
     n('open-secret', 'button', {}, [h('svg'), openLabel]),
     n('download-progress', 'progress', { hidden: true }),
     n('consume-status', 'span'),
+    n('open-hint', 'span'),
     n('consume-error', 'div', { hidden: true }, [n('consume-error-text', 'p')])
   ]);
 }

@@ -20,7 +20,8 @@ function assertShown(f) {
   assert.equal(view.showPassphrase(), true);
   assert.equal($('open-pass-field').hidden, false);
   assert.equal($('open-pass-warn').hidden, false);
-  assert.equal(btn.getAttribute('aria-describedby'), 'open-pass-warn open-hint');
+  assert.equal($('open-hint').hidden, true);
+  assert.equal(btn.getAttribute('aria-describedby'), 'open-pass-warn');
   assert.equal(btn.getAttribute('aria-disabled'), 'true');
   assert.equal(view.passphraseMissing(), true);
 }
@@ -50,13 +51,14 @@ function toggleAndSubmit(f) {
 }
 
 function assertOpeningFailure(f) {
-  const { view, openLabel, pass } = f;
+  const { $, view, openLabel, pass } = f;
   view.setOpening(true);
   assert.equal(pass.readOnly, true);
   view.setOpening(false);
   assert.equal(pass.readOnly, false);
   view.passphraseFailed();
   assert.equal(openLabel.textContent, 'Try again');
+  assert.match($('open-pass-warn').textContent, /deleted from the server\. Only this page still has it/);
   assert.equal(pass.getAttribute('aria-invalid'), 'true');
   assert.equal(globalThis.document.activeElement, pass);
   assert.equal(pass.selected, true);

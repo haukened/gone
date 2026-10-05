@@ -6,6 +6,7 @@
   const ctx = window.goneConsumeViewBase;
   const dom = ctx.dom;
   let needsPass = false;
+  const HELD_ONLY = 'The secret has been deleted from the server. Only this page still has it, so keep trying here; closing or reloading this page loses it for good.';
 
   function missing() {
     return needsPass && !dom.pass.value;
@@ -26,9 +27,12 @@
     if (!dom.pass) return false;
     needsPass = true;
     if (dom.passField) dom.passField.hidden = false;
+    // The passphrase warning replaces the general hint: it says the same
+    // and covers what a wrong passphrase does.
     if (dom.passWarn) {
       dom.passWarn.hidden = false;
-      if (dom.open) dom.open.setAttribute('aria-describedby', 'open-pass-warn open-hint');
+      if (dom.openHint) dom.openHint.hidden = true;
+      if (dom.open) dom.open.setAttribute('aria-describedby', 'open-pass-warn');
     }
     dom.pass.addEventListener('input', function () { dom.pass.setAttribute('aria-invalid', 'false'); ctx.syncOpen(); });
     dom.pass.addEventListener('keydown', onPassKey);
@@ -40,6 +44,8 @@
   function failed() {
     ctx.state.openLabel = 'Try again';
     ctx.util.setText(dom.openLabel, ctx.state.openLabel);
+    // Once downloaded, the server copy is gone; only this page holds it.
+    ctx.util.setText(dom.passWarn, HELD_ONLY);
     if (!dom.pass) return;
     dom.pass.setAttribute('aria-invalid', 'true');
     dom.pass.focus();
