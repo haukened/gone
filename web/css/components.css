@@ -570,11 +570,7 @@ textarea:focus-visible,
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-}
-
-.secret-panel:not(.is-shown) .when-shown,
-.secret-panel.is-shown .when-covered {
-  display: none;
+  margin-left: auto;
 }
 
 .secret-panel header .label {
@@ -668,6 +664,10 @@ textarea:focus-visible,
 .cover-note p {
   max-width: 22rem;
   text-wrap: balance;
+}
+
+.cover-note .btn {
+  margin-top: var(--space-1);
 }
 
 .cover-size {
@@ -879,11 +879,5 @@ textarea:focus-visible,
 
   .actions .btn {
     flex: 1 1 auto;
-  }
-
-  .panel-actions {
-    flex: 1 1 100%;
-    flex-direction: column;
-    padding-right: var(--space-2);
   }
 }

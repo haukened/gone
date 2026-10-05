@@ -46,8 +46,15 @@
     dom.output.textContent = shown ? text : '';
     dom.output.hidden = !shown;
     dom.cover.hidden = shown;
-    if (dom.messagePanel) dom.messagePanel.classList.toggle('is-shown', shown);
-    if (dom.showLabel) dom.showLabel.textContent = shown ? 'Hide message' : 'Show message';
+    if (dom.hide) dom.hide.hidden = !shown;
+  }
+
+  // toggle answers a click on Show or Hide. The clicked button disappears,
+  // so focus moves to what replaced it.
+  function toggle(shown) {
+    setShown(shown);
+    const next = shown ? dom.output : dom.show;
+    next.focus();
   }
 
   function maskable() {
@@ -74,7 +81,8 @@
   }
 
   if (maskable()) {
-    dom.show.addEventListener('click', function () { setShown(dom.output.hidden); });
+    dom.show.addEventListener('click', function () { toggle(true); });
+    if (dom.hide) dom.hide.addEventListener('click', function () { toggle(false); });
     if (dom.alwaysShow) {
       dom.alwaysShow.addEventListener('change', function () {
         remember(dom.alwaysShow.checked);

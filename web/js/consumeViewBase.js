@@ -23,7 +23,7 @@
       output: byId('secret-output'),
       copy: byId('copy-secret'),
       show: byId('show-secret'),
-      showLabel: byId('show-secret') ? byId('show-secret').querySelector('span') : null,
+      hide: byId('hide-secret'),
       cover: byId('secret-cover'),
       coverDots: byId('secret-cover-dots'),
       size: byId('secret-size'),

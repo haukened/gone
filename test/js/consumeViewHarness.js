@@ -23,12 +23,12 @@ function openView(n, openLabel) {
   ]);
 }
 
-// maskNodes are the show button, cover and "always show" box, which only
+// maskNodes are the Show and Hide buttons, cover and "always show" box, which only
 // some tests include.
 function maskNodes(n) {
   return [
-    n('show-secret', 'button', {}, [h('svg'), h('span', { textContent: 'Show message' })]),
-    n('secret-cover', 'div', {}, [n('secret-cover-dots', 'pre'), n('secret-size', 'span')]),
+    n('hide-secret', 'button', { hidden: true }),
+    n('secret-cover', 'div', {}, [n('secret-cover-dots', 'pre'), n('secret-size', 'span'), n('show-secret', 'button')]),
     n('always-show', 'input', { type: 'checkbox' })
   ];
 }
