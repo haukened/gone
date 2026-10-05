@@ -23,33 +23,45 @@ function openView(n, openLabel) {
   ]);
 }
 
-function revealedView(n, copyLabel) {
+// maskNodes are the show button, cover and "always show" box, which only
+// some tests include.
+function maskNodes(n) {
+  return [
+    n('show-secret', 'button', {}, [h('svg'), h('span', { textContent: 'Show message' })]),
+    n('secret-cover', 'div', {}, [n('secret-cover-dots', 'pre'), n('secret-size', 'span')]),
+    n('always-show', 'input', { type: 'checkbox' })
+  ];
+}
+
+function revealedView(n, copyLabel, masked) {
+  const panel = [n('copy-secret', 'button', {}, [h('svg'), copyLabel]), n('secret-output', 'div')].concat(masked ? maskNodes(n) : []);
   return n('view-revealed', 'div', { hidden: true }, [
     n('revealed-heading', 'h1'),
     n('ack-warning', 'div', { hidden: true }),
-    n('message-panel', 'div', { hidden: true }, [n('copy-secret', 'button', {}, [h('svg'), copyLabel]), n('secret-output', 'div')]),
+    n('message-panel', 'div', { hidden: true }, panel),
     n('copy-status', 'span'),
     n('file-section', 'div', { hidden: true }, [n('file-output-list', 'ul'), n('download-all', 'button', { hidden: true })])
   ]);
 }
 
-function page(env, skip) {
+function page(env, skip, masked) {
   const omit = new Set(skip || []);
   const n = (id, tag, props, kids) => optionalNode(omit, id, tag, props, kids);
   const openLabel = h('span', { textContent: 'Open secret' });
   const copyLabel = h('span', { textContent: 'Copy message' });
-  const views = [openView(n, openLabel), revealedView(n, copyLabel), n('view-gone', 'div', { hidden: true }, [n('gone-heading', 'h1')])];
+  const views = [openView(n, openLabel), revealedView(n, copyLabel, masked), n('view-gone', 'div', { hidden: true }, [n('gone-heading', 'h1')])];
   env.document.body.append(...views.filter(Boolean));
   const $ = (id) => env.document.getElementById(id);
   return { $, openLabel, copyLabel };
 }
 
 function setup(t, skip, opts) {
-  const env = reset('https://gone.test/secret/x');
-  const dom = page(env, skip);
+  const o = opts || {};
+  const env = reset('https://gone.test/secret/x', o.env);
+  const dom = page(env, skip, o.masked);
   t.mock.method(console, 'log', () => {});
   load('util', 'fileMeta', 'icons');
-  const delays = (opts && opts.realSleep) ? null : fastUtil();
+  const delays = o.realSleep ? null : fastUtil();
   load('consumeView');
   return Object.assign({ env, view: window.goneConsumeView, delays }, dom);
 }

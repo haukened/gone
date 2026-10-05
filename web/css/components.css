@@ -559,20 +559,32 @@ textarea:focus-visible,
 }
 
 .secret-panel header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  column-gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
   padding: 0.5rem 0.5rem 0 1rem;
 }
 
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.secret-panel:not(.is-shown) .when-shown,
+.secret-panel.is-shown .when-covered {
+  display: none;
+}
+
 .secret-panel header .label {
+  flex: 1 1 auto;
   font-size: var(--step--1);
   color: var(--color-ink-3);
 }
 
 .secret-panel header .status {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   justify-content: flex-end;
   min-height: 0;
 }
@@ -592,7 +604,7 @@ textarea:focus-visible,
   overflow-wrap: anywhere;
 }
 
-#view-revealed:not([hidden]) .secret-text {
+#view-revealed:not([hidden]) .secret-text:not([hidden]) {
   animation: defrost 1.2s var(--ease-out) both;
 }
 
@@ -606,6 +618,86 @@ textarea:focus-visible,
     filter: blur(0);
     opacity: 1;
   }
+}
+
+/* The covered message: placeholder dots behind frost, never the real text. */
+.secret-cover {
+  position: relative;
+  display: grid;
+  min-height: 8.5rem;
+  margin: 0.6rem 0.5rem 0;
+  overflow: hidden;
+  border-radius: calc(var(--radius-well) - 4px);
+}
+
+.cover-dots {
+  grid-area: 1 / 1;
+  margin: 0;
+  padding: 0.6rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  color: var(--color-ink-2);
+  white-space: pre;
+  user-select: none;
+  filter: blur(5px);
+  opacity: 0.8;
+}
+
+.secret-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--frost);
+}
+
+.cover-note {
+  position: relative;
+  z-index: 1;
+  grid-area: 1 / 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  text-align: center;
+  font-size: var(--step--1);
+  color: var(--color-ink-2);
+}
+
+.cover-note p {
+  max-width: 22rem;
+  text-wrap: balance;
+}
+
+.cover-size {
+  padding: 0.15rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-ink);
+  background: var(--lens);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 1px 2px var(--well-shade);
+  font-variant-numeric: tabular-nums;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  font-size: var(--step--1);
+  color: var(--color-ink-2);
+  border-top: 1px solid var(--hair);
+  cursor: pointer;
+}
+
+.check input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  accent-color: var(--color-accent);
 }
 
 .vault {
@@ -787,5 +879,11 @@ textarea:focus-visible,
 
   .actions .btn {
     flex: 1 1 auto;
+  }
+
+  .panel-actions {
+    flex: 1 1 100%;
+    flex-direction: column;
+    padding-right: var(--space-2);
   }
 }

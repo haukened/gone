@@ -189,6 +189,7 @@ Depth comes from glass only:
   - Each step has a 2px top rule: hairline when upcoming, faint violet when done (`.is-done`), solid violet when current (`.is-now`).
 - **Callouts:** `.alert` is amber, for warnings and errors; `.banner` is an alert floating above the pane. `.callout` is violet, for notes like "Passphrase protected".
 - **Vault:** decorative frosted placeholder lines with a lock, shown before opening.
+- **Covered message:** after Open, the message starts behind frost in case the recipient is sharing their screen. The frost has blurred placeholder dots, a size pill ("4 lines", or characters for one line) and one line of explanation. The real text is not in the page until **Show message**, which plays the defrost animation and becomes **Hide message**. **Copy message** works while covered. "Always show secrets on this device" is a per-browser localStorage convenience.
 - **Gone hero:** the 64px drawing of the mark (`gone-g-64.svg`, masked), `h1`, lead, a `.next` well with what to do, one button.
 - **Manage:**
   - Status details: a `.pill-status`, a `.facts` key/value list, and Check again.

@@ -21,7 +21,7 @@ const GONE_GLOBALS = ['goneUtil', 'goneCrypto', 'goneCryptoEncoding', 'goneCrypt
   'goneCryptoV2Inputs', 'goneCryptoV2Key', 'goneCryptoV2', 'goneFileMeta', 'goneEnvelope', 'goneConsumeApi',
   'goneConsumeApiErrors', 'goneConsumeApiEndpoint', 'goneConsumeApiRead', 'goneConsumeApiFetch',
   'goneConsumeApiCrypto', 'goneConsumeApiAck', 'goneConsumeView', 'goneConsumeViewBase',
-  'goneConsumeViewStatus', 'goneConsumeViewPassphrase', 'goneConsumeViewMessages', 'goneConsumeViewFiles',
+  'goneConsumeViewStatus', 'goneConsumeViewPassphrase', 'goneConsumeViewMask', 'goneConsumeViewMessages', 'goneConsumeViewFiles',
   'goneConsumeViewFinal', 'goneFileSelection', 'goneSizeMeter', 'goneUpload', 'goneResultPanel', 'goneIcons',
   'goneTheme', 'goneManageApi', 'goneManageView', 'goneWordlist', 'gonePassgen', 'gonePassphraseField',
   'goneSubmitDom', 'goneSubmitState', 'goneSubmitUi', 'goneSubmitRun', 'goneSubmitPreview'];
@@ -29,7 +29,7 @@ const GONE_GLOBALS = ['goneUtil', 'goneCrypto', 'goneCryptoEncoding', 'goneCrypt
 const MODULE_DEPS = {
   crypto: ['cryptoEncoding', 'cryptoCore', 'cryptoCipher', 'cryptoV2Inputs', 'cryptoV2Key', 'cryptoV2'],
   consumeApi: ['consumeApiErrors', 'consumeApiEndpoint', 'consumeApiRead', 'consumeApiFetch', 'consumeApiCrypto', 'consumeApiAck'],
-  consumeView: ['consumeViewBase', 'consumeViewPassphrase', 'consumeViewStatus', 'consumeViewMessages', 'consumeViewFiles', 'consumeViewFinal'],
+  consumeView: ['consumeViewBase', 'consumeViewPassphrase', 'consumeViewStatus', 'consumeViewMask', 'consumeViewMessages', 'consumeViewFiles', 'consumeViewFinal'],
   submit: ['submitDom', 'submitState', 'submitUi', 'submitRun', 'submitPreview']
 };
 
@@ -83,7 +83,8 @@ function storageFor(env, opts) {
   if (opts.storageThrows) return new Proxy({}, { get() { throw new Error('blocked'); } });
   return {
     getItem: (k) => (k in env.storage ? env.storage[k] : null),
-    setItem: (k, v) => { env.storage[k] = String(v); }
+    setItem: (k, v) => { env.storage[k] = String(v); },
+    removeItem: (k) => { delete env.storage[k]; }
   };
 }
 
