@@ -95,15 +95,13 @@
   padding: clamp(0.5rem, 3vw, 2.25rem) clamp(1rem, 4vw, 2.5rem) var(--space-7);
 }
 
+/* Wide enough for 71 monospace columns in the message well, so a PEM line
+   (64) or an OpenSSH key line (70) never wraps. Prose keeps its own measure. */
 .view {
   width: 100%;
-  max-width: 36.25rem;
+  max-width: 47.5rem;
   display: grid;
   gap: var(--space-4);
-}
-
-.view.wide {
-  max-width: 47.5rem;
 }
 
 /* One sheet of glass per view. Inputs sit in recessed wells inside it. */

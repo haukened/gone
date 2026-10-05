@@ -155,7 +155,7 @@ Semantic tokens (`--color-*`, `--pane-*`, `--well*`, `--primary*`, `--danger*`, 
 
 ## Layout
 
-- The header and footer use `.wrap` (72rem max). Content is one centred `.view` (36.25rem; About is 47.5rem) holding one `.pane`.
+- The header and footer use `.wrap` (72rem max). Content is one centred `.view` (47.5rem, so the message well fits 71 monospace columns) holding one `.pane`. Prose inside keeps its own measure (`.lead` 46ch).
 - Inside a pane: eyebrow chip, `h1`, lead, then a `.form` grid with 1.25rem gaps, then the lifecycle `.rail`.
 - Mobile (≤40rem): the lifecycle rail becomes 2×2, passphrase buttons drop below the input, and action buttons stretch.
 
