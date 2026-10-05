@@ -8,6 +8,9 @@
 //  4. Start metrics, the janitor, and the HTTP server.
 //  5. On SIGINT/SIGTERM, shut down gracefully and flush metrics.
 //
+// "goned healthcheck" probes a running server's /readyz instead, for a
+// container HEALTHCHECK.
+//
 // The process exits with a non-zero status code on configuration validation
 // failure or fatal server errors.
 package main
@@ -90,7 +93,12 @@ func run(ctx context.Context) (err error) {
 }
 
 // main runs the service until SIGINT or SIGTERM and exits non-zero on error.
+// "goned healthcheck" instead probes a running server and exits 0 if it is
+// ready.
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		os.Exit(healthcheck(os.Stderr))
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	err := run(ctx)
 	stop()

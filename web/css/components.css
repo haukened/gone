@@ -710,7 +710,8 @@ textarea:focus-visible,
   font-family: var(--font-mono);
   font-size: 0.875rem;
   line-height: 1.75;
-  color: var(--color-ink-2);
+  color: transparent;
+  text-shadow: 0 0 6px var(--color-ink-2);
   white-space: pre;
   background: var(--well);
   border: 1px solid var(--well-edge);
