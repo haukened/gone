@@ -40,12 +40,28 @@
     return true;
   }
 
+  // markDownloaded moves the status rail past Waiting: the secret has been
+  // claimed and is off the server, though not yet readable.
+  function markDownloaded() {
+    const s = dom.steps;
+    if (!s.waiting || !s.opened) return;
+    s.waiting.classList.remove('is-now');
+    s.waiting.classList.add('is-done');
+    s.waiting.removeAttribute('aria-current');
+    s.opened.classList.add('is-now');
+    s.opened.setAttribute('aria-current', 'step');
+    ctx.util.setText(s.waitingNote, 'Done');
+    ctx.util.setText(s.openedNote, 'Downloaded; needs the passphrase');
+    ctx.util.setText(s.goneNote, 'When you leave this page');
+  }
+
   function failed() {
     ctx.state.openLabel = 'Try again';
     ctx.util.setText(dom.openLabel, ctx.state.openLabel);
     // The error now says the server copy is gone and this page holds the
     // only one, so the before-opening hint would only contradict it.
     if (dom.passWarn) dom.passWarn.hidden = true;
+    markDownloaded();
     if (dom.open) dom.open.setAttribute('aria-describedby', 'consume-error-text');
     if (!dom.pass) return;
     dom.pass.setAttribute('aria-invalid', 'true');

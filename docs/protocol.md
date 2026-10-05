@@ -329,7 +329,7 @@ The client:
 
 ### 8.3 Acknowledge: `DELETE /api/secret/{id}`
 
-The request carries `X-Gone-Claim`. Clients **SHOULD** acknowledge only after decryption and decoding both succeed. Otherwise the lease expires and the janitor removes the secret. An acknowledgement with the right token succeeds even after the lease deadline, until the janitor has run; it never revives the secret for anyone else.
+The request carries `X-Gone-Claim`. Clients **SHOULD** acknowledge only after decryption and decoding both succeed. Otherwise the lease expires and the janitor removes the secret. An acknowledgement with the right token succeeds even after the lease deadline, until the janitor has run; it never revives the secret for anyone else. After that (or after a revoke) it returns `404`; clients holding the claim **SHOULD** treat that `404` as a completed deletion, since the secret is gone either way.
 
 ### 8.4 Status: `GET /api/secret/{id}/status`
 

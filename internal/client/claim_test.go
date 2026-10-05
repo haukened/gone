@@ -146,8 +146,13 @@ func TestAck(t *testing.T) {
 	var method, tok string
 	c, srv := newTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		method, tok = r.Method, r.Header.Get(headerClaim)
-		if tok != testClaim.String() {
+		switch tok {
+		case testClaim.String():
+		case "gone":
 			w.WriteHeader(http.StatusNotFound)
+			return
+		default:
+			w.WriteHeader(http.StatusConflict)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -158,8 +163,12 @@ func TestAck(t *testing.T) {
 	if method != http.MethodDelete {
 		t.Fatalf("method = %s", method)
 	}
-	if err := c.Ack(context.Background(), testID, "wrong"); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("err = %v", err)
+	// A 404 means the row is already deleted: still a completed deletion.
+	if err := c.Ack(context.Background(), testID, "gone"); err != nil {
+		t.Fatalf("404 err = %v", err)
+	}
+	if err := c.Ack(context.Background(), testID, "wrong"); err == nil {
+		t.Fatal("409 was accepted")
 	}
 	srv.Close()
 	if err := c.Ack(context.Background(), testID, testClaim); !errors.Is(err, ErrNetwork) {

@@ -36,7 +36,14 @@
       pass: byId('open-passphrase'),
       passToggle: byId('open-pass-toggle'),
       passWarn: byId('open-pass-warn'),
-      openHint: byId('open-hint')
+      openHint: byId('open-hint'),
+      steps: {
+        waiting: byId('step-waiting'),
+        waitingNote: byId('step-waiting-note'),
+        opened: byId('step-opened'),
+        openedNote: byId('step-opened-note'),
+        goneNote: byId('step-gone-note')
+      }
     };
   }
 

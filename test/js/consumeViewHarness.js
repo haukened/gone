@@ -20,6 +20,9 @@ function openView(n, openLabel) {
     n('download-progress', 'progress', { hidden: true }),
     n('consume-status', 'span'),
     n('open-hint', 'span'),
+    n('step-waiting', 'li', { className: 'is-now' }, [n('step-waiting-note', 'span', { textContent: 'For you' })]),
+    n('step-opened', 'li', {}, [n('step-opened-note', 'span', { textContent: 'When you press Open' })]),
+    n('step-gone-note', 'span', { textContent: 'Right after' }),
     n('consume-error', 'div', { hidden: true }, [n('consume-error-text', 'p')])
   ]);
 }
