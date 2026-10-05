@@ -100,6 +100,14 @@ test('acknowledge retries non-204 and network errors, then reports failure', asy
   assert.deepEqual(delays, [500, 1000, 1500]);
 });
 
+test('acknowledge treats 404 as already deleted, without retrying', async (t) => {
+  const { api, delays } = setup(t);
+  const calls = installFetch([() => fakeResponse({ status: 404 })]);
+  assert.equal(await api.acknowledge({ token: 'tok' }), true);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(delays, []);
+});
+
 test('acknowledge succeeds on a later attempt', async (t) => {
   const { api } = setup(t);
   installFetch([() => fakeResponse({ status: 500 }), () => fakeResponse({ status: 204 })]);

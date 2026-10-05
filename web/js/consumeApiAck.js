@@ -10,7 +10,9 @@
   async function ackOnce(claim) {
     try {
       const resp = await endpoint.apiFetch('DELETE', { 'X-Gone-Claim': claim.token });
-      return resp.status === 204;
+      // 404 for a claim we hold means the row is already deleted (the lease
+      // lapsed and the janitor ran, or the sender revoked it): still gone.
+      return resp.status === 204 || resp.status === 404;
     } catch {
       return false;
     }

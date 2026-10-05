@@ -59,6 +59,14 @@ function assertOpeningFailure(f) {
   view.passphraseFailed();
   assert.equal(openLabel.textContent, 'Try again');
   assert.equal($('open-pass-warn').hidden, true);
+  assert.ok($('step-waiting').classList.contains('is-done'));
+  assert.ok(!$('step-waiting').classList.contains('is-now'));
+  assert.equal($('step-waiting').getAttribute('aria-current'), null);
+  assert.ok($('step-opened').classList.contains('is-now'));
+  assert.equal($('step-opened').getAttribute('aria-current'), 'step');
+  assert.equal($('step-waiting-note').textContent, 'Done');
+  assert.equal($('step-opened-note').textContent, 'Downloaded; needs the passphrase');
+  assert.equal($('step-gone-note').textContent, 'When you leave this page');
   assert.equal(f.btn.getAttribute('aria-describedby'), 'consume-error-text');
   assert.equal(pass.getAttribute('aria-invalid'), 'true');
   assert.equal(globalThis.document.activeElement, pass);
