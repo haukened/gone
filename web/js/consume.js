@@ -164,6 +164,9 @@
     // nothing. A link that can't work says why only when Open is pressed,
     // still without touching the network.
     const checked = validate();
+    // Missing WebCrypto says nothing about the link, so Open is locked at
+    // once; the insecure-page banner explains why.
+    if (!util.cryptoAvailable()) view.disableOpen();
     if (checked.problem) {
       view.onOpen(function () {
         view.showError(checked.problem);

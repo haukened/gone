@@ -28,6 +28,7 @@ function formChildren(skip, opts, label) {
     ...sizeControls(skip),
     ...(opts.pass ? passFields() : []),
     ...optionalNode(skip, 'button', h('button', { type: 'submit' }, label)),
+    ...optionalNode(skip, 'submit-hint', h('span', { id: 'submit-hint' })),
     ...optionalNode(skip, 'upload-progress', h('progress', { id: 'upload-progress', hidden: true })),
     ...optionalNode(skip, 'submit-error', h('div', { id: 'submit-error', hidden: true }, optionalNode(skip, 'submit-error-content', h('p', { id: 'submit-error-content' }))))
   ];

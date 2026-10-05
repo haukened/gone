@@ -32,7 +32,7 @@ Flags:
       --passphrase-file PATH protect with the passphrase in PATH
       --passphrase-generate  protect with a generated passphrase (printed to stderr)
       --json                 print the result as JSON
-      --insecure             allow an http:// server
+      --insecure             allow an http:// server on localhost
       --timeout DURATION     per-request timeout (default 1m)
 `
 
@@ -48,7 +48,7 @@ Flags:
       --passphrase-file PATH read the passphrase from PATH instead of prompting
       --json                 print the result as JSON
       --raw                  print the message without escaping control characters
-      --insecure             allow an http:// link
+      --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
 `
 
@@ -59,7 +59,7 @@ Shows whether the secret is still waiting to be opened.
 
 Flags:
       --json                 print the result as JSON
-      --insecure             allow an http:// link
+      --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
 `
 
@@ -70,7 +70,7 @@ Deletes the secret so it can no longer be opened.
 
 Flags:
       --json                 print the result as JSON
-      --insecure             allow an http:// link
+      --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
 `
 
@@ -78,8 +78,8 @@ Flags:
 const usageSet = `Usage: gone set server <url> [--insecure]
 
 Saves the default server used by "gone send". The value must be a bare
-origin such as https://gone.example.com. http:// requires --insecure here
-and on every later send.
+origin such as https://gone.example.com. http:// is refused, except for a
+localhost server with --insecure here and on every later send.
 `
 
 // usageVersion documents "gone version".

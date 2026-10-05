@@ -62,9 +62,16 @@
     }
   }
 
-  // warnIfInsecure reveals every .security-warning when served over plain HTTP.
+  // insecure reports whether the browser withholds WebCrypto here. Plain HTTP
+  // is insecure except on localhost, which browsers treat as secure.
+  function insecure() {
+    if (typeof window.isSecureContext === 'boolean') return !window.isSecureContext;
+    return window.location.protocol === 'http:';
+  }
+
+  // warnIfInsecure reveals every .security-warning on an insecure page.
   function warnIfInsecure() {
-    if (window.location.protocol !== 'http:') return;
+    if (!insecure()) return;
     console.warn('[gone] insecure context detected (HTTP)');
     document.querySelectorAll('.security-warning').forEach(function (n) { n.hidden = false; });
   }

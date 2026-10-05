@@ -35,15 +35,37 @@ Gone lets you paste a sensitive value (password, token, wifi key), generate a on
 
 ---
 
-## 1. Quick Start (90‑second demo)
+## 1. Quick Start
 
-Run with Docker:
+> [!IMPORTANT]
+> **Gone needs HTTPS.** Browsers only allow the encryption Gone uses (WebCrypto) on secure pages. Over plain `http://`, Gone shows a warning, turns off sending, and won't open links. The one exception is `http://localhost` on the machine running Gone, which browsers treat as secure.
+
+### Try it on this machine
 
 ```sh
 docker run --rm -p 8080:8080 ghcr.io/haukened/gone:latest
 ```
 
 Visit http://localhost:8080, paste a secret and/or attach files, pick an expiry, copy the generated link, send it. The recipient opens the link, the secret displays once, and the server deletes it as soon as their browser confirms it received everything.
+
+This only works from the same machine. Another device visiting `http://<this-ip>:8080` gets an insecure page, so sending is turned off there.
+
+### Run it for real, behind Caddy
+
+[`deploy/compose.yaml`](deploy/compose.yaml) runs Gone behind [Caddy](https://caddyserver.com), which gets and renews a Let's Encrypt certificate on its own. You need a DNS name pointing at the server and ports 80 and 443 open to the internet.
+
+```sh
+mkdir gone && cd gone
+curl -fsSLO https://raw.githubusercontent.com/haukened/gone/main/deploy/compose.yaml
+curl -fsSLO https://raw.githubusercontent.com/haukened/gone/main/deploy/Caddyfile
+GONE_DOMAIN=gone.example.com docker compose up -d
+```
+
+Then visit https://gone.example.com. Only Caddy is published; Gone listens on a private Docker network, keeps its data in the `gone-data` volume, and trusts Caddy's `X-Forwarded-For` so rate limits apply per visitor. Put `GONE_DOMAIN=…` in a `.env` file next to `compose.yaml` to skip typing it, and add any [configuration](#3-configuration) under `environment:`.
+
+### Already have a reverse proxy?
+
+Any proxy that terminates TLS works: nginx, Traefik, HAProxy, or a Cloudflare Tunnel. Forward to Gone's port `8080` and set `GONE_TRUSTED_PROXIES` to the proxy's address (see [Behind a reverse proxy](#behind-a-reverse-proxy)). Don't expose port `8080` itself to other machines.
 
 Want metrics? (optional)
 ```sh
@@ -90,7 +112,7 @@ gone get 'https://gone.hauken.us/secret/AbC#v1:…'  # quote links in single quo
 gone status '<manage-link>'                         # or: gone revoke '<manage-link>'
 ```
 
-Messages are read from standard input, never from arguments. Add `-f FILE` for attachments, `--passphrase-prompt` or `--passphrase-generate` for a passphrase, and `--json` for scripts. Point it at your own server with `--server`, `GONE_SERVER`, or `gone set server <url>`. The full guide, with exit codes and JSON formats, is [docs/cli.md](docs/cli.md).
+Messages are read from standard input, never from arguments. Add `-f FILE` for attachments, `--passphrase-prompt` or `--passphrase-generate` for a passphrase, and `--json` for scripts. Point it at your own server with `--server`, `GONE_SERVER`, or `gone set server <url>`. Like the browser, it only talks to `https://` servers; `--insecure` allows `http://` for a server on `localhost` and nowhere else. The full guide, with exit codes and JSON formats, is [docs/cli.md](docs/cli.md).
 
 ---
 
@@ -119,6 +141,8 @@ Derived automatically:
 TTL Format: comma‑separated Go durations using `s`, `m`, `h` (e.g. `30s,5m,90m,2h`). Day and week units (`d`, `w`) are not accepted; write `24h` or `168h`.
 
 ### Behind a reverse proxy
+The proxy must serve Gone over HTTPS; browsers won't encrypt or decrypt on a plain-HTTP page. [`deploy/compose.yaml`](deploy/compose.yaml) is a ready-made Caddy setup.
+
 Rate limits key on the client address (IPv4 `/32`, IPv6 `/64`). Behind a load balancer or reverse proxy every request appears to come from the proxy, so all users share one budget. Set `GONE_TRUSTED_PROXIES` to the proxy's address (e.g. `10.0.0.0/8` or `172.18.0.2`) so gone reads the real client from `X-Forwarded-For`. Only list proxies you control: a trusted proxy can make any request look like it came from any address. If `X-Forwarded-For` arrives from an untrusted peer, gone ignores it and logs a one-time warning.
 
 Limits are kept in memory per process, so with several replicas the effective budget is the configured budget times the replica count.
@@ -362,7 +386,7 @@ Other ideas:
 ---
 
 ## 12. Contributing & Support
-* **Get it:** the container image `ghcr.io/haukened/gone` (see [Quick Start](#1-quick-start-90second-demo)), or the `gone` CLI and `goned` server from the [releases page](https://github.com/haukened/gone/releases).
+* **Get it:** the container image `ghcr.io/haukened/gone` (see [Quick Start](#1-quick-start)), or the `gone` CLI and `goned` server from the [releases page](https://github.com/haukened/gone/releases).
 * **Report a bug or request a feature:** [open an issue](https://github.com/haukened/gone/issues/new/choose). Issues are public and searchable.
 * **Report a vulnerability:** privately, as described in [SECURITY.md](SECURITY.md). Never in a public issue.
 * **Contribute:** read [CONTRIBUTING.md](CONTRIBUTING.md) for the pull request process and the coding, testing, and documentation requirements.

@@ -199,11 +199,13 @@ test('preview=result renders a mock share panel without focus', (t) => {
 });
 
 
-test('an insecure page without WebCrypto explains HTTPS instead of encrypting', async (t) => {
-  const b = boot(t);
+test('an insecure page without WebCrypto turns Create off and never encrypts', async (t) => {
   const real = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
   Object.defineProperty(globalThis, 'crypto', { configurable: true, value: {} });
   t.after(() => Object.defineProperty(globalThis, 'crypto', real));
+  const b = boot(t);
+  assert.equal(b.btn.disabled, true);
+  assert.match(b.$('submit-hint').textContent, /isn\u2019t HTTPS/);
   b.$('secret').value = 'hello';
   submit(b);
   await waitFor(() => !b.$('submit-error').hidden);

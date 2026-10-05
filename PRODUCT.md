@@ -30,7 +30,7 @@ Zero-knowledge, one-time, self-hostable, tiny. Gone's honesty is structural — 
 - Result: a shareable link containing the decryption key in the fragment, plus a private manage link for the sender. With a passphrase, a reminder to send it through a different channel.
 - Receive: confirm-to-reveal, passphrase prompt for v2 links (retries against one download), decrypt locally, show text, download attachments; states for expired, already opened/not found, wrong passphrase, and decryption failure.
 - Manage: the sender's manage link shows whether the secret is still waiting and can delete it before it is opened. It can never reveal the secret.
-- Technical: Go html/template pages, vanilla JS with WebCrypto, strict CSP (self-only scripts/styles/fonts, no inline), no third-party assets or CDNs, no innerHTML, works over HTTPS; warns when served insecurely.
+- Technical: Go html/template pages, vanilla JS with WebCrypto, strict CSP (self-only scripts/styles/fonts, no inline), no third-party assets or CDNs, no innerHTML, requires HTTPS (or localhost); on an insecure page it warns and turns off sending.
 - Pages: send (home), result, receive, manage, about, error.
 
 ## Brand Commitments

@@ -59,7 +59,7 @@ func newClient(env *Env, origin, source string, c common) (*client.Client, error
 	})
 	switch {
 	case errors.Is(err, client.ErrInsecureOrigin):
-		return nil, usagef("%s uses http; pass --insecure to allow unencrypted transport", source)
+		return nil, usagef("%s uses http; Gone only talks to https servers (a localhost server may use http with --insecure)", source)
 	case err != nil:
 		return nil, usagef("%s is not a valid server origin (want https://host[:port])", source)
 	}

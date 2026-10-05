@@ -46,7 +46,8 @@ func configPath(env *Env) (string, string, error) {
 
 // loadConfig reads the config file. A missing file yields an empty config.
 // The stored server is re-validated as a bare http(s) origin; whether
-// http is acceptable is decided per invocation by --insecure.
+// http is acceptable is decided per invocation by --insecure, and only
+// ever for a localhost server.
 //
 // Parameters:
 //   - env: process environment.
@@ -66,7 +67,7 @@ func loadConfig(env *Env) (config, error) {
 		return config{}, ioErr("read config", errors.New(path+" is not valid JSON"))
 	}
 	if c.Server != "" {
-		if c.Server, err = client.NormalizeOrigin(c.Server, true); err != nil {
+		if c.Server, err = client.CanonicalOrigin(c.Server); err != nil {
 			return config{}, ioErr("read config", errors.New(path+": invalid server"))
 		}
 	}

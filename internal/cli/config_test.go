@@ -192,8 +192,11 @@ func TestNewClientErrors(t *testing.T) {
 		t.Fatalf("invalid err = %v", err)
 	}
 	c.insecure = true
-	if _, err := newClient(te.Env, "http://x.example", "--server", c); err != nil {
-		t.Fatalf("insecure err = %v", err)
+	if _, err := newClient(te.Env, "http://localhost:8080", "--server", c); err != nil {
+		t.Fatalf("insecure localhost err = %v", err)
+	}
+	if _, err := newClient(te.Env, "http://x.example", "--server", c); err == nil {
+		t.Fatal("insecure remote http was accepted")
 	}
 }
 
@@ -210,6 +213,7 @@ func TestRunSet(t *testing.T) {
 		{"valid", []string{"set", "server", "https://Example.COM/"}, exitOK},
 		{"insecure", []string{"set", "server", "http://localhost:8080", "--insecure"}, exitOK},
 		{"http", []string{"set", "server", "http://localhost:8080"}, exitUsage},
+		{"remote http", []string{"set", "server", "http://192.168.1.10:8080", "--insecure"}, exitUsage},
 		{"invalid", []string{"set", "server", "nope"}, exitUsage},
 		{"wrong key", []string{"set", "color", "x"}, exitUsage},
 		{"missing", []string{"set", "server"}, exitUsage},
