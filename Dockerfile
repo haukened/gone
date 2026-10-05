@@ -70,4 +70,8 @@ VOLUME ["/data"]
 # Run as non-root user
 USER 65532:65532
 
+# The image has no shell or curl, so goned probes its own /readyz.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["/usr/local/bin/goned", "healthcheck"]
+
 ENTRYPOINT ["/usr/local/bin/goned"]

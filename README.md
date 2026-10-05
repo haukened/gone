@@ -44,6 +44,8 @@ Fetch metrics snapshot:
 curl -H 'Authorization: Bearer tok' http://localhost:9090/
 ```
 
+Health: the image has a Docker `HEALTHCHECK` that runs `goned healthcheck` every 30 seconds. It is a one-shot probe, not a second server: it calls the running server's `/readyz` on `GONE_ADDR` (loopback when the address is `:port` or unspecified) and exits `0` when ready, `1` otherwise. `docker ps` shows the result. Kubernetes can probe `/healthz` and `/readyz` directly.
+
 ---
 
 ## 2. Basic Usage
