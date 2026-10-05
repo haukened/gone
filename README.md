@@ -18,6 +18,21 @@ Go + One = Gone — a tiny service for sharing a secret exactly once.
 
 Gone lets you paste a sensitive value (password, token, wifi key), generate a one‑time link, and send that link. The first person to open it sees the secret; after that it’s gone for good.
 
+**Try it:** [gone.hauken.us](https://gone.hauken.us), a public instance run by the maintainer. Secrets can be up to 10 MB and are deleted after a day if nobody opens them. No uptime guarantee; limits may change.
+
+<table>
+<tr>
+<td width="33%" valign="top"><a href="docs/img/send-light.jpg"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/send-dark.jpg"><img src="docs/img/send-light.jpg" alt="The send form: a message encrypted in the browser, an expiry, and an optional passphrase"></picture></a></td>
+<td width="33%" valign="top"><a href="docs/img/open-light.jpg"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/open-dark.jpg"><img src="docs/img/open-light.jpg" alt="The Open page: the secret waits behind frosted glass until the recipient presses Open"></picture></a></td>
+<td width="33%" valign="top"><a href="docs/img/revealed-light.jpg"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/revealed-dark.jpg"><img src="docs/img/revealed-light.jpg" alt="The revealed secret, hidden in case of screen sharing, with Show and Copy"></picture></a></td>
+</tr>
+<tr>
+<td align="center"><b>Send</b><br>Encrypted in your browser</td>
+<td align="center"><b>Open</b><br>One click, then it's deleted</td>
+<td align="center"><b>Read</b><br>Hidden until you show it</td>
+</tr>
+</table>
+
 ---
 
 ## 1. Quick Start (90‑second demo)
