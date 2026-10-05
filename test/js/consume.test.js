@@ -175,7 +175,7 @@ test('a v2 link asks for the passphrase and retries a wrong one without fetching
   assert.equal(disabled($), false);
   open();
   await waitFor(() => logs.error.length > 0, KDF_WAIT);
-  assert.equal($('consume-error-text').textContent, 'That passphrase didn\u2019t work. Check it and try again.');
+  assert.equal($('consume-error-text').textContent, 'That passphrase didn\u2019t work. The secret is already gone from the server, and this browser holds the only copy, still encrypted. Check the passphrase and try again here: closing or leaving this page destroys the secret for good.');
   assert.equal($('open-passphrase').getAttribute('aria-invalid'), 'true');
   assert.equal($('open-secret').textContent, 'Try again');
   assert.equal(disabled($), false);

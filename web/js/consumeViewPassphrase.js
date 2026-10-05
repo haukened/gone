@@ -26,9 +26,12 @@
     if (!dom.pass) return false;
     needsPass = true;
     if (dom.passField) dom.passField.hidden = false;
+    // The passphrase warning replaces the general hint: it says the same
+    // and covers what a wrong passphrase does.
     if (dom.passWarn) {
       dom.passWarn.hidden = false;
-      if (dom.open) dom.open.setAttribute('aria-describedby', 'open-pass-warn open-hint');
+      if (dom.openHint) dom.openHint.hidden = true;
+      if (dom.open) dom.open.setAttribute('aria-describedby', 'open-pass-warn');
     }
     dom.pass.addEventListener('input', function () { dom.pass.setAttribute('aria-invalid', 'false'); ctx.syncOpen(); });
     dom.pass.addEventListener('keydown', onPassKey);
@@ -40,6 +43,10 @@
   function failed() {
     ctx.state.openLabel = 'Try again';
     ctx.util.setText(dom.openLabel, ctx.state.openLabel);
+    // The error now says the server copy is gone and this page holds the
+    // only one, so the before-opening hint would only contradict it.
+    if (dom.passWarn) dom.passWarn.hidden = true;
+    if (dom.open) dom.open.setAttribute('aria-describedby', 'consume-error-text');
     if (!dom.pass) return;
     dom.pass.setAttribute('aria-invalid', 'true');
     dom.pass.focus();

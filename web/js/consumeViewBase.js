@@ -35,7 +35,8 @@
       passField: byId('open-pass-field'),
       pass: byId('open-passphrase'),
       passToggle: byId('open-pass-toggle'),
-      passWarn: byId('open-pass-warn')
+      passWarn: byId('open-pass-warn'),
+      openHint: byId('open-hint')
     };
   }
 
