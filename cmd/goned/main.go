@@ -25,12 +25,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/haukened/gone/v3/internal/buildinfo"
 	"github.com/haukened/gone/v3/internal/config"
 	wembed "github.com/haukened/gone/v3/web"
 )
 
 // version is the release this binary was built from, set at build time with
-// -ldflags "-X main.version=vX.Y.Z". Local builds report "dev".
+// -ldflags "-X main.version=vX.Y.Z". main falls back to the module version
+// (go install); local builds report "dev" or a VCS pseudo-version.
 var version = "dev"
 
 // realClock implements app.Clock using time.Now.
@@ -96,6 +98,7 @@ func run(ctx context.Context) (err error) {
 // "goned healthcheck" instead probes a running server and exits 0 if it is
 // ready.
 func main() {
+	version = buildinfo.Version(version)
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
 		os.Exit(healthcheck(os.Stderr))
 	}
