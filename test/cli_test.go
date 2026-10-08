@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -51,6 +52,45 @@ func TestCLITextRoundTrip(t *testing.T) {
 	}
 	if code := r.run("", "get", link); code != exitNotFound {
 		t.Fatalf("second get exit %d", code)
+	}
+}
+
+// TestCLIAgentFlow moves a secret by reference, as a script or agent
+// would: file in, link out, then link on stdin, file out. The plaintext
+// never appears on stdout or stderr.
+//
+// Parameters:
+//   - t: the test.
+func TestCLIAgentFlow(t *testing.T) {
+	srv := newGone(t)
+	r := newCLI(t, srv)
+	const secret = "restic-password-7d1f\n"
+	src := writeFile(t, "restic.pw", secret)
+	if code := r.run("", "send", "--json", "--server", srv.URL, "--message-file", src); code != 0 {
+		t.Fatalf("send exit %d: %s", code, r.stderr)
+	}
+	var sent struct {
+		Link string `json:"link"`
+	}
+	if err := json.Unmarshal(r.stdout.Bytes(), &sent); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(t.TempDir(), "restic.pw")
+	if code := r.run(sent.Link+"\n", "get", "-", "--json", "--message-out", dest); code != 0 {
+		t.Fatalf("get exit %d: %s", code, r.stderr)
+	}
+	if strings.Contains(r.stdout.String()+r.stderr.String(), "restic-password") {
+		t.Fatalf("plaintext printed: %q %q", r.stdout, r.stderr)
+	}
+	data, err := os.ReadFile(dest) // #nosec G304 -- test temp dir
+	if err != nil || string(data) != secret {
+		t.Fatalf("message file = %q, %v", data, err)
+	}
+	if info, err := os.Stat(dest); err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("mode: %v %v", info, err)
+	}
+	if code := r.run(sent.Link, "get", "-", "--message-out", dest+".2"); code != exitNotFound {
+		t.Fatalf("second get exit %d: %s", code, r.stderr)
 	}
 }
 

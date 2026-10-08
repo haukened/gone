@@ -67,6 +67,11 @@ func TestGetLocalErrors(t *testing.T) {
 		{"bad timeout", []string{"get", "--timeout", "0s", link}, exitUsage, "timeout"},
 		{"v1 with passphrase file", []string{"get", "--passphrase-file", writeTemp(t, "p", "x"), link}, exitUsage, "no passphrase"},
 		{"missing out dir", []string{"get", "-o", filepath.Join(t.TempDir(), "nope"), link}, exitIO, "output directory"},
+		{"message-out exists", []string{"get", "--message-out", writeTemp(t, "m", "x"), link}, exitIO, "already exists"},
+		{"message-out missing dir", []string{"get", "--message-out", filepath.Join(t.TempDir(), "nope", "m"), link}, exitIO, "message output directory"},
+		{"message-out names a dir", []string{"get", "--message-out", t.TempDir() + string(filepath.Separator), link}, exitUsage, "must name a file"},
+		{"message-out dash", []string{"get", "--message-out", "-", link}, exitUsage, "must name a file"},
+		{"empty stdin link", []string{"get", "-"}, exitUsage, "not a valid gone link"},
 	}
 	for _, tt := range tests {
 		te.reset()

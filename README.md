@@ -114,7 +114,7 @@ gone get 'https://gone.hauken.us/secret/AbC#v1:…'  # quote links in single quo
 gone status '<manage-link>'                         # or: gone revoke '<manage-link>'
 ```
 
-Messages are read from standard input, never from arguments. Add `-f FILE` for attachments, `--passphrase-prompt` or `--passphrase-generate` for a passphrase, and `--json` for scripts. Point it at your own server with `--server`, `GONE_SERVER`, or `gone set server <url>`. Like the browser, it only talks to `https://` servers; `--insecure` allows `http://` for a server on `localhost` and nowhere else. The full guide, with exit codes and JSON formats, is [docs/cli.md](docs/cli.md).
+Messages are read from standard input, never from arguments. Add `-f FILE` for attachments, `--passphrase-prompt` or `--passphrase-generate` for a passphrase, and `--json` for scripts. Point it at your own server with `--server`, `GONE_SERVER`, or `gone set server <url>`. Like the browser, it only talks to `https://` servers; `--insecure` allows `http://` for a server on `localhost` and nowhere else. Scripts and AI agents can handle secrets by reference: `--message-file` sends a file's contents, `gone get - --message-out FILE` reads the link from standard input and writes the message to a new `0600` file, so the plaintext never appears in their output (see [Scripts and agents](docs/cli.md#scripts-and-agents)). The full guide, with exit codes and JSON formats, is [docs/cli.md](docs/cli.md).
 
 ---
 
