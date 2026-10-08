@@ -209,6 +209,13 @@ A single static binary, `gone`, that sends and receives secrets and talks to the
   * the automatic schema migration;
   * the guarantee that v1 links created before the upgrade still open.
 
+## After v3.0.0
+Work after the six phases. Each item is still one PR, under the same guiding principles.
+
+* **Agent-friendly CLI** (done). `send --message-file`, `get --message-out` and `-` for links on standard input let scripts and AI agents move secrets by reference, so the plaintext stays out of their output and context. Error output never contains plaintext, keys, tokens, passphrases or secret IDs, and a test enforces it. Decisions: no `--mode` (the file is always `0600`, like attachments), still no `--force`, and no separate non-interactive mode (file flags already avoid every prompt).
+* **Request a secret** (planned). Someone asks for a secret, a person fills in a web page, and it lands in a file. This needs its own protocol and server design.
+* **`gone mcp`** (planned). A stdio MCP server as a thin layer over the agent-friendly CLI.
+
 ## Tracking
 | Phase | Status |
 | ----- | ------ |

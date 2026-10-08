@@ -91,12 +91,43 @@ func writeUnique(root *os.Root, name string, data []byte) (string, error) {
 		if errors.Is(err, fs.ErrExist) {
 			continue
 		}
+		if err == nil {
+			err = finishWrite(root, candidate, f, data)
+		}
 		if err != nil {
 			return "", ioErr("save attachment", err)
 		}
-		return candidate, finishWrite(root, candidate, f, data)
+		return candidate, nil
 	}
 	return "", ioErr("save attachment", fmt.Errorf("too many files named %q", name))
+}
+
+// writeNew atomically creates name under root with data and mode 0600,
+// never replacing an existing file. The data goes to a temporary file that
+// is synced and then hard-linked to name, so name is either absent or
+// complete; the link fails if name exists, even as a dangling symlink.
+//
+// Parameters:
+//   - root: output directory root.
+//   - name: file name within root.
+//   - data: file contents.
+//   - op: operation name for the error message.
+//
+// Returns nil or an I/O error; the temporary file is always removed.
+func writeNew(root *os.Root, name string, data []byte, op string) error {
+	tmp := ".gone-" + rand.Text() + ".tmp"
+	f, err := root.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err == nil {
+		err = finishWrite(root, tmp, f, data)
+	}
+	if err == nil {
+		err = root.Link(tmp, name)
+		_ = root.Remove(tmp)
+	}
+	if err != nil {
+		return ioErr(op, err)
+	}
+	return nil
 }
 
 // finishWrite writes, syncs and closes f, removing it on failure.
@@ -107,7 +138,7 @@ func writeUnique(root *os.Root, name string, data []byte) (string, error) {
 //   - f: newly created file.
 //   - data: file contents.
 //
-// Returns nil or an I/O error.
+// Returns nil or the unwrapped write, sync or close error.
 func finishWrite(root *os.Root, name string, f *os.File, data []byte) error {
 	_, err := f.Write(data)
 	if err == nil {
@@ -118,9 +149,8 @@ func finishWrite(root *os.Root, name string, f *os.File, data []byte) error {
 	}
 	if err != nil {
 		_ = root.Remove(name)
-		return ioErr("save attachment", err)
 	}
-	return nil
+	return err
 }
 
 // collisionName returns name for n == 0, else "stem (n).ext". A leading dot

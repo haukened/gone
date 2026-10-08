@@ -28,6 +28,9 @@ func (a *app) manageTarget(name string, args []string) (*client.Client, envelope
 	if err := validateCommon(c); err != nil {
 		return nil, envelope.ManageLink{}, err
 	}
+	if raw, err = a.readLinkArg(raw); err != nil {
+		return nil, envelope.ManageLink{}, err
+	}
 	link, err := envelope.ParseManageLink(raw)
 	if err != nil {
 		return nil, envelope.ManageLink{}, usagef("%s: not a valid manage link", name)

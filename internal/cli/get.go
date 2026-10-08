@@ -12,9 +12,18 @@ import (
 // getOpts holds the parsed "gone get" flags.
 type getOpts struct {
 	common
-	out  string
-	raw  bool
-	pass passOpts
+	out        string
+	messageOut string
+	raw        bool
+	pass       passOpts
+}
+
+// outputs are the opened destinations for one "gone get".
+type outputs struct {
+	// root is the attachment directory.
+	root *os.Root
+	// msg is the --message-out destination, or nil to print the message.
+	msg *messageOut
 }
 
 // ackError reports that a secret was delivered but the server did not
@@ -48,6 +57,7 @@ func parseGet(args []string) (getOpts, string, error) {
 		fs.StringVar(&o.out, name, ".", "")
 	}
 	fs.BoolVar(&o.raw, "raw", false, "")
+	fs.StringVar(&o.messageOut, "message-out", "", "")
 	raw, err := onePositional(fs, args, "link")
 	if err != nil {
 		return o, "", err
@@ -69,6 +79,9 @@ func (a *app) runGet(ctx context.Context, args []string) error {
 		return err
 	}
 	a.json = o.json
+	if raw, err = a.readLinkArg(raw); err != nil {
+		return err
+	}
 	link, err := envelope.ParseLink(raw)
 	if err != nil {
 		return usagef("not a valid gone link (quote it in single quotes so the shell keeps the #fragment)")
@@ -82,12 +95,40 @@ func (a *app) runGet(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	root, err := openOutDir(o.out)
+	out, err := openOutputs(o)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = root.Close() }()
-	return a.retrieve(ctx, cl, link, pass, root, o)
+	defer out.close()
+	return a.retrieve(ctx, cl, link, pass, out, o)
+}
+
+// openOutputs opens and checks the attachment directory and, when set, the
+// --message-out destination, before the claim.
+//
+// Parameters:
+//   - o: get options.
+//
+// Returns the opened outputs or a usage/I/O error.
+func openOutputs(o getOpts) (outputs, error) {
+	root, err := openOutDir(o.out)
+	if err != nil {
+		return outputs{}, err
+	}
+	out := outputs{root: root}
+	if o.messageOut != "" {
+		if out.msg, err = openMessageOut(o.messageOut); err != nil {
+			out.close()
+			return outputs{}, err
+		}
+	}
+	return out, nil
+}
+
+// close releases the opened destinations.
+func (out outputs) close() {
+	_ = out.root.Close()
+	out.msg.close()
 }
 
 // retrieve claims, decrypts, delivers and acknowledges one secret.
@@ -97,11 +138,11 @@ func (a *app) runGet(ctx context.Context, args []string) error {
 //   - cl: API client for the link's origin.
 //   - link: parsed share link.
 //   - pass: recipient passphrase; nil for protocol v1.
-//   - root: output directory root.
+//   - out: opened output destinations.
 //   - o: get options.
 //
 // Returns nil or a classified error.
-func (a *app) retrieve(ctx context.Context, cl *client.Client, link envelope.Link, pass []byte, root *os.Root, o getOpts) error {
+func (a *app) retrieve(ctx context.Context, cl *client.Client, link envelope.Link, pass []byte, out outputs, o getOpts) error {
 	version := link.Fragment.Version()
 	claimed, err := cl.Claim(ctx, link.ID, version)
 	if err != nil {
@@ -115,7 +156,7 @@ func (a *app) retrieve(ctx context.Context, cl *client.Client, link envelope.Lin
 	if err != nil {
 		return err
 	}
-	if err := a.deliver(root, o, plain); err != nil {
+	if err := a.deliver(out, o, plain); err != nil {
 		return err
 	}
 	if err := cl.Ack(ctx, link.ID, claimed.Token); err != nil {
@@ -124,22 +165,33 @@ func (a *app) retrieve(ctx context.Context, cl *client.Client, link envelope.Lin
 	return nil
 }
 
-// deliver decodes the plaintext, saves attachments and prints the result.
+// deliver decodes the plaintext, writes the message file (if any) and the
+// attachments, and reports the result. If an attachment cannot be saved,
+// the message file is removed again.
 //
 // Parameters:
-//   - root: output directory root.
+//   - out: opened output destinations.
 //   - o: get options.
 //   - plain: decrypted plaintext.
 //
 // Returns nil, an integrity error, or an I/O error.
-func (a *app) deliver(root *os.Root, o getOpts, plain []byte) error {
+func (a *app) deliver(out outputs, o getOpts, plain []byte) error {
 	p, err := envelope.Unpack(plain)
 	if err != nil {
 		return err
 	}
-	saved, err := saveFiles(root, o.out, p.Files)
+	if out.msg != nil {
+		if err := out.msg.write(p.Message); err != nil {
+			return err
+		}
+	}
+	saved, err := saveFiles(out.root, o.out, p.Files)
 	if err != nil {
+		out.msg.remove()
 		return err
+	}
+	if out.msg != nil {
+		return a.reportMessageFile(out.msg.path, len(p.Message), saved)
 	}
 	if a.json {
 		return writeJSON(a.env.Stdout, struct {
@@ -147,10 +199,45 @@ func (a *app) deliver(root *os.Root, o getOpts, plain []byte) error {
 			Files   []savedFile `json:"files"`
 		}{string(p.Message), saved})
 	}
+	a.reportSaved(saved)
+	return a.printMessage(p.Message, o.raw)
+}
+
+// messageFile describes the message written by --message-out.
+type messageFile struct {
+	Path string `json:"path"`
+	Size int    `json:"size"`
+}
+
+// reportMessageFile reports a message saved with --message-out. The
+// plaintext is never written to stdout or stderr.
+//
+// Parameters:
+//   - path: message file path as given.
+//   - size: message length in bytes.
+//   - saved: saved attachments.
+//
+// Returns an output error, if any.
+func (a *app) reportMessageFile(path string, size int, saved []savedFile) error {
+	if a.json {
+		return writeJSON(a.env.Stdout, struct {
+			MessageFile messageFile `json:"message_file"`
+			Files       []savedFile `json:"files"`
+		}{messageFile{path, size}, saved})
+	}
+	a.reportSaved(saved)
+	_, _ = fmt.Fprintf(a.env.Stderr, "Saved message: %s (%d bytes)\n", escapeTerminal(path), size)
+	return nil
+}
+
+// reportSaved lists saved attachments on stderr.
+//
+// Parameters:
+//   - saved: saved attachments.
+func (a *app) reportSaved(saved []savedFile) {
 	for _, s := range saved {
 		_, _ = fmt.Fprintf(a.env.Stderr, "Saved: %s (%d bytes)\n", escapeTerminal(s.Path), s.Size)
 	}
-	return a.printMessage(p.Message, o.raw)
 }
 
 // printMessage writes the message to stdout. On a terminal, control

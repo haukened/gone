@@ -162,10 +162,50 @@ func TestFinishWriteError(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = finishWrite(root, "x", f, []byte("data"))
-	if classify(err).code != exitIO {
+	if err == nil {
 		t.Fatalf("err = %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "x")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("file not removed: %v", err)
+	}
+}
+
+// TestWriteNew checks the atomic create-never-replace writer: mode 0600, no
+// temporary files left behind, an existing name or dangling symlink is
+// refused, and a vanished directory fails cleanly.
+//
+// Parameters:
+//   - t: the test.
+func TestWriteNew(t *testing.T) {
+	dir := t.TempDir()
+	root := openRoot(t, dir)
+	if err := writeNew(root, "m", []byte("hi"), "save message"); err != nil {
+		t.Fatal(err)
+	}
+	checkSavedFile(t, filepath.Join(dir, "m"), "hi")
+	err := writeNew(root, "m", []byte("other"), "save message")
+	if classify(err).code != exitIO || !errors.Is(err, os.ErrExist) {
+		t.Fatalf("existing: %v", err)
+	}
+	checkSavedFile(t, filepath.Join(dir, "m"), "hi")
+	if err := os.Symlink(filepath.Join(dir, "target"), filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeNew(root, "link", []byte("x"), "save message"); !errors.Is(err, os.ErrExist) {
+		t.Fatalf("symlink: %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(dir, "target")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("symlink followed: %v", err)
+	}
+	if left, _ := filepath.Glob(filepath.Join(dir, ".gone-*")); len(left) != 0 {
+		t.Fatalf("temp files left: %v", left)
+	}
+	gone := t.TempDir()
+	goneRoot := openRoot(t, gone)
+	if err := os.Remove(gone); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeNew(goneRoot, "m", nil, "save message"); classify(err).code != exitIO {
+		t.Fatalf("removed dir: %v", err)
 	}
 }

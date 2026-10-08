@@ -81,6 +81,7 @@ gone send [flags]
   -s, --server URL           server origin (default: $GONE_SERVER, config, https://gone.hauken.us)
   -t, --ttl DURATION         lifetime, e.g. 30m or 24h (default 1h)
   -f, --file PATH            attach a file; repeat for more (max 10)
+      --message-file PATH    read the message from PATH instead of standard input
       --passphrase-prompt    protect with a passphrase typed at a prompt
       --passphrase-file PATH protect with the passphrase in PATH
       --passphrase-generate  protect with a generated passphrase (printed to stderr)
@@ -89,7 +90,8 @@ gone send [flags]
       --timeout DURATION     per-request timeout (default 1m)
 ```
 
-- **The message is read from standard input.** Pipe it in, or type it and press Ctrl-D (Ctrl-Z then Enter on Windows). There is deliberately no flag for the message, so it never lands in shell history or the process list.
+- **The message is read from standard input.** Pipe it in, or type it and press Ctrl-D (Ctrl-Z then Enter on Windows). There is deliberately no flag for the message *text*, so it never lands in shell history or the process list.
+- `--message-file PATH` reads the message from a regular file instead, byte for byte (a trailing newline is kept), and standard input is not read at all. Pipes, FIFOs and devices are refused; pipe those into standard input instead.
 - To send only files, give standard input nothing: `gone send -f report.pdf </dev/null`.
 - The message plus files must fit within the server's size limit (`GONE_MAX_BYTES`, 10 MiB by default); the server also enforces its own minimum and maximum TTL. Independently of the server, `gone` refuses inputs over 64 MiB before encrypting anything (exit 2).
 - An attachment's type is guessed from its file extension. Its name is the file's base name.
@@ -106,9 +108,10 @@ gone send -f id_ed25519 -f id_ed25519.pub --passphrase-generate --ttl 2h </dev/n
 Downloads, decrypts and deletes a secret.
 
 ```text
-gone get <link> [flags]
+gone get <link|-> [flags]
 
   -o, --out DIR              directory for attachments (default .)
+      --message-out PATH     write the message to the new file PATH instead of standard output
       --passphrase-file PATH read the passphrase from PATH instead of prompting
       --json                 print the result as JSON
       --raw                  print the message without escaping control characters
@@ -117,7 +120,10 @@ gone get <link> [flags]
 ```
 
 - The message is written to standard output, attachments to `--out`. The secret is deleted from the server only after everything has been decrypted and written.
-- `--out` must be an existing, writable directory. This is checked before the link is opened, so a bad path never burns the secret. The same goes for `--passphrase-file` with a link that has no passphrase (exit 2).
+- A link of `-` is read from standard input (surrounding whitespace is ignored), so it stays out of the process list and shell history: `gone get - < link.txt`.
+- `--message-out PATH` writes the message to a new file instead of standard output, with mode `0600`, byte for byte (`--raw` has no effect on it). An empty message still creates an empty file. The file is written to a temporary name in the same directory, synced, then hard-linked into place, so `PATH` either does not exist or is complete. It is never overwritten: if `PATH` exists, even as a dangling symlink, `get` fails with exit 8. On Windows the mode is not applied; the file inherits the directory's permissions.
+- `--out` must be an existing, writable directory. `--message-out` must name a file that does not exist yet, in an existing directory that is writable and supports hard links. Both are checked before the link is opened, so a bad path never burns the secret. The same goes for `--passphrase-file` with a link that has no passphrase (exit 2).
+- If writing fails *after* the link was opened (for example, an attachment cannot be saved), whatever this run wrote is removed and the deletion is not confirmed. The secret is still lost: the server has already handed it out once.
 - **Existing files are never overwritten.** If `report.csv` exists, the attachment is saved as `report (1).csv`, and so on. Files are created exclusively with mode `0600` inside the output directory, and symlinks are not followed out of it.
 - Attachment names are sanitized as in [protocol.md §6.1](protocol.md#61-file-names); Windows reserved names (`CON`, `NUL`, …), trailing dots and spaces, and the characters `<>:"|?*` (replaced with `_` on every platform) are also made safe. A leading `.` or `-` is replaced with `_` (`.zshenv` is saved as `_zshenv`), so a sender cannot plant a hidden dotfile or a name that looks like a command-line option.
 - For a passphrase-protected link, `gone` prompts on the terminal (up to three tries). The ciphertext is downloaded once and every try runs against that copy. An empty or invalid entry (over 1024 bytes, or not UTF-8) uses up a try, like a wrong passphrase. Ctrl-D cancels at once, and because the link has already been opened, cancelling loses the secret. In scripts, use `--passphrase-file`; exactly one trailing newline (`\n` or `\r\n`) is removed from the file. That gives a single try: opening the link has already started the secret's deletion, so a wrong passphrase in the file means the secret is gone.
@@ -126,15 +132,15 @@ gone get <link> [flags]
 ### `gone status`
 
 ```text
-gone status <manage-link> [--json] [--insecure] [--timeout DURATION]
+gone status <manage-link|-> [--json] [--insecure] [--timeout DURATION]
 ```
 
-Prints `State: pending`, with creation and expiry times, while the secret is still waiting. Once it has been opened, revoked or has expired, the server answers "not found" (exit 3); it does not reveal which.
+Prints `State: pending`, with creation and expiry times, while the secret is still waiting. A manage link of `-` is read from standard input. Once it has been opened, revoked or has expired, the server answers "not found" (exit 3); it does not reveal which.
 
 ### `gone revoke`
 
 ```text
-gone revoke <manage-link> [--json] [--insecure] [--timeout DURATION]
+gone revoke <manage-link|-> [--json] [--insecure] [--timeout DURATION]
 ```
 
 Deletes the secret. Revoking an already-gone secret exits 3. Revoke is reliable only before the recipient opens the link: someone who has already downloaded the ciphertext keeps it.
@@ -152,6 +158,37 @@ Saves the default server for `send`. The value must be a bare origin such as `ht
 ### `gone version`, `gone help`
 
 `gone version` prints the build version. `gone help <command>` prints the help for one command.
+
+---
+
+## Scripts and agents
+
+Scripts and AI agents can move secrets *by reference*, so the plaintext never passes through their output, logs or context: file in, link out; link in, file out.
+
+**Send a file's contents** (here a generated restic password):
+
+```sh
+gone send --message-file /root/.restic-password --ttl 1h --json </dev/null | jq -r .link
+```
+
+The message comes from the file, not from `cat`, so nothing secret flows through a pipe. Add `--passphrase-file PATH` for a v2 link.
+
+**Receive into a file:**
+
+```sh
+gone get - --message-out ./restic.pw --json < link.txt
+#   {"message_file":{"path":"./restic.pw","size":33},"files":[]}
+```
+
+The link is read from standard input, so it needs no quoting and stays out of `ps`. The message lands in a new `0600` file and is never printed. For a passphrase-protected link, add `--passphrase-file PATH`.
+
+Guidelines:
+
+- **Don't use `get --json` without `--message-out`.** Its `message` field is the plaintext.
+- **No prompts.** With `--message-file` (send) and `--passphrase-file` (get), `gone` never reads the terminal. Redirect standard input from `/dev/null` (or a link file) anyway, so nothing can block on a TTY.
+- **Check before the claim.** Everything `get` can verify locally (the link, the passphrase file, `--out` and `--message-out`) is checked before the link is opened. A local mistake exits with 2 or 8 and the link still works. A failure after the link was opened (a wrong passphrase in the file, an integrity error, or a failed write) loses the secret: ask the sender to send it again.
+- **Exit codes** are listed in [Exit codes](#exit-codes); with `--json`, errors are JSON on standard error.
+- **Clean up.** Delete the received file when it has been used.
 
 ---
 
@@ -203,6 +240,14 @@ With `--json`, results are a single line of JSON on standard output. Times are R
 {"message":"hunter2","files":[{"name":"report.csv","path":"out/report (1).csv","type":"text/csv","size":1024}]}
 ```
 
+This contains the plaintext. Anything that captures standard output (a log, a CI job, an AI agent's context) captures the secret. To keep it out, use `--message-out`.
+
+`get --message-out`: the `message` key is absent, and `message_file` gives the path as you passed it and the size in bytes:
+
+```json
+{"message_file":{"path":"creds/restic.pw","size":17},"files":[]}
+```
+
 `status`:
 
 ```json
@@ -248,15 +293,16 @@ Always put links in **single quotes**:
 gone get 'https://gone.hauken.us/secret/AbC#v1:XyZ'
 ```
 
-The key is after the `#`. Some shells treat `#` or other characters specially, and an unquoted link can be silently cut short. A damaged link is rejected before anything is fetched, so the secret is not burned, but quoting avoids the confusion.
+The key is after the `#`. Some shells treat `#` or other characters specially, and an unquoted link can be silently cut short. A damaged link is rejected before anything is fetched, so the secret is not burned, but quoting avoids the confusion. Passing the link on standard input with `-` avoids quoting altogether.
 
 ---
 
 ## Security notes
 
-- **Shell history and the process list.** Links are command-line arguments, so they can end up in shell history and are briefly visible to other local users in `ps`. A share link is useless once opened, so open it promptly. A manage link stays valid until the secret is gone; to keep it out of history, start the command with a space (bash with `HISTCONTROL=ignorespace`, zsh with `setopt HIST_IGNORE_SPACE`).
+- **Shell history and the process list.** A link given as an argument can end up in shell history and is briefly visible to other local users in `ps`. Pass `-` instead and supply the link on standard input (`gone get - < link.txt`, `gone status - < manage.txt`). A share link is useless once opened, so open it promptly. A manage link stays valid until the secret is gone.
 - **Messages and passphrases never come from arguments.** Messages come from standard input. Passphrases come from a no-echo terminal prompt or a file. Prefer a file with mode `0600`, or a process substitution such as `--passphrase-file <(pass show gone)`.
 - **Share the passphrase separately.** A passphrase only helps if it travels on a different channel than the link. Someone who opens a leaked link burns the secret, and can then guess the passphrase offline; a generated passphrase makes that impractical.
 - **Untrusted content.** Messages and file names come from the sender. On a terminal, `gone` escapes control characters and bidirectional-override characters in messages and in the file names it prints, and attachments are never written outside `--out`. Review attachments before opening them.
 - **Memory.** Keys, passphrases and plaintext are wiped from memory after use where Go makes that possible. This is best effort: the Go runtime can copy data (for example when converting to strings), and the garbage collector does not zero freed memory.
-- **Plaintext on disk.** Attachments are written in plaintext to `--out`, readable only by you (`0600`). Delete them when you are done.
+- **Plaintext on disk.** Attachments and `--message-out` files are written in plaintext, readable only by you (`0600`). Delete them when you are done.
+- **What `gone` never prints.** Error messages and reports never contain the plaintext, a passphrase, a link's key or `#fragment`, a manage token, or the secret ID. Network errors name the server's origin, not the request path. The only exceptions are the outputs you ask for: the message from `get` without `--message-out`, the links from `send`, and a `--passphrase-generate` passphrase. Values you type as arguments are your own exposure (they are already in `ps` and history), and `gone` may repeat a mistyped flag value in a usage error.

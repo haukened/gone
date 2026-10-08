@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -182,7 +183,8 @@ func loopback(host string) bool {
 //   - hdr: extra request headers; may be nil.
 //   - body: request body bytes; nil for no body.
 //
-// Returns the response, or an error wrapping ErrNetwork.
+// Returns the response, or an error wrapping ErrNetwork whose message names
+// the origin but not the request path.
 func (c *Client) do(ctx context.Context, method, path string, hdr http.Header, body []byte) (*http.Response, error) {
 	var rd io.Reader
 	if body != nil {
@@ -203,6 +205,12 @@ func (c *Client) do(ctx context.Context, method, path string, hdr http.Header, b
 	}
 	resp, err := c.hc.Do(req) // #nosec G704 -- origin is validated by NormalizeOrigin
 	if err != nil {
+		// The request path holds the secret ID, which is enough to burn
+		// the secret; report only the origin.
+		var ue *url.Error
+		if errors.As(err, &ue) {
+			ue.URL = c.origin
+		}
 		return nil, wrapNetwork(err)
 	}
 	return resp, nil

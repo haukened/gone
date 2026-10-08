@@ -145,6 +145,31 @@ func TestUntrustedCertificate(t *testing.T) {
 	}
 }
 
+// TestNetworkErrorOmitsPath checks that transport errors name the origin
+// but not the request path, which holds the secret ID, and still match
+// ErrNetwork and context cancellation.
+//
+// Parameters:
+//   - t: test handle.
+func TestNetworkErrorOmitsPath(t *testing.T) {
+	srv := httptest.NewTLSServer(http.NotFoundHandler())
+	srv.Close()
+	c, err := New(srv.URL, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = c.Revoke(context.Background(), testID, testManage)
+	if !errors.Is(err, ErrNetwork) || strings.Contains(err.Error(), testID.String()) ||
+		strings.Contains(err.Error(), "/api/secret") || !strings.Contains(err.Error(), srv.URL) {
+		t.Fatalf("err = %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err = c.Ack(ctx, testID, testClaim); !errors.Is(err, context.Canceled) || strings.Contains(err.Error(), testID.String()) {
+		t.Fatalf("canceled err = %v", err)
+	}
+}
+
 func TestPlainHTTPAllowed(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
