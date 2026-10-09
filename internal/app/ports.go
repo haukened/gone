@@ -40,6 +40,36 @@ type SecretStatus struct {
 	ExpiresAt time.Time // TTL deadline
 }
 
+// RequestStatus describes a request as reported to its requester: waiting for
+// a reply, or with a reply ready to open.
+type RequestStatus struct {
+	Ready     bool      // a reply has been sent and not yet opened
+	CreatedAt time.Time // when the request (or, once ready, its reply) was stored
+	ExpiresAt time.Time // deadline for a reply, or for opening it once ready
+}
+
+// RequestStore is the storage port for secret requests. Implementations
+// must make filling atomic (one reply per request) and must never let a reply
+// be claimed without its manage hash.
+type RequestStore interface {
+	// CreateRequest persists a new open request. fillHash and manageHash are
+	// hex SHA-256 digests; ttl is kept so a reply gets its own full lifetime.
+	CreateRequest(ctx context.Context, id, fillHash, manageHash string, ttl time.Duration, expiresAt time.Time) error
+	// RequestOpen returns the expiry of an open request whose fill hash
+	// matches, without changing anything. Returns ErrNotFound otherwise.
+	RequestOpen(ctx context.Context, id, fillHash string) (time.Time, error)
+	// Fill stores the single reply to an open request. 'r' streams exactly
+	// 'size' bytes of ciphertext. Returns the reply's expiry or ErrNotFound.
+	Fill(ctx context.Context, id, fillHash string, meta Meta, r io.Reader, size int64) (time.Time, error)
+	// RequestStatus reports a request to its requester, without changing
+	// anything. Returns ErrNotFound for anything not waiting or ready.
+	RequestStatus(ctx context.Context, id, manageHash string) (RequestStatus, error)
+	// ClaimReply reserves a ready reply for the requester, as SecretStore.Claim.
+	ClaimReply(ctx context.Context, id, manageHash, claimHash string, retry bool, claimedUntil time.Time) (Claimed, error)
+	// CancelRequest deletes an open request or an unopened reply.
+	CancelRequest(ctx context.Context, id, manageHash string) error
+}
+
 // SecretStore is the storage port for secrets. Implementations must provide
 // durability and the single-consume invariant. They typically coordinate an
 // index (e.g. SQLite) with blob storage (filesystem) but those details are

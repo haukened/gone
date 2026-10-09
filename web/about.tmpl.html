@@ -5,7 +5,7 @@
 	<title>Gone · How Gone keeps a secret</title>
 </head>
 <body>
-	{{ template "header" . }}
+	{{ template "header" "about" }}
 	<main id="main" tabindex="-1" class="main">
 		<div class="view">
 		<div class="pane">
@@ -19,6 +19,7 @@
 				<li><a href="#flow">How Gone keeps secrets</a></li>
 				<li><a href="#files">File attachments</a></li>
 				<li><a href="#passphrase">Optional passphrase</a></li>
+				<li><a href="#requests">Requesting a secret</a></li>
 				<li><a href="#why">Why this matters</a></li>
 				<li><a href="#threats">Threat model notes</a></li>
 				<li><a href="#license">License</a></li>
@@ -69,6 +70,17 @@
 					<li>If the passphrase is wrong, the recipient can try again as many times as they need without downloading the secret again.</li>
 					<li>Opening the link uses up the secret even if the passphrase is wrong. A passphrase keeps a leaked secret unreadable, but cannot stop someone with the link from destroying it.</li>
 					<li>Generated passphrases use the <a href="https://www.eff.org/dice">EFF short wordlist</a> by the Electronic Frontier Foundation, licensed under <a href="https://creativecommons.org/licenses/by/3.0/us/">CC BY 3.0 US</a>.</li>
+				</ul>
+			</section>
+			<section aria-labelledby="requests">
+				<h2 id="requests">Requesting a secret</h2>
+				<ul>
+					<li>Need a secret from someone? <a href="/request">Request a secret</a> makes a link for you to send them. They type the secret on that page, and it comes back to you.</li>
+					<li>Your browser makes a key pair. The private key is stored in this browser in a form no web page can read out, so the reply can only be opened here, even after you close and reopen the browser. The public key travels in the link's fragment, which never reaches the server.</li>
+					<li>Their browser encrypts the reply to your public key (ECDH P-256, then AES-256-GCM). The server stores only ciphertext and can't read it, and each request takes one reply.</li>
+					<li>Your label for a request stays in this browser. The server only learns how long to wait.</li>
+					<li>Anyone with the request link can send the one reply, so send it only to the right person. If you're answering a request, check it came from who you expect.</li>
+					<li>Clearing this site's data, or using a private window, loses your requests. Make a new one if that happens.</li>
 				</ul>
 			</section>
 			<section aria-labelledby="why">

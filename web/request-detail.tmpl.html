@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	{{ template "assets" }}
+	<title>Gone · Your request</title>
+</head>
+<body>
+	{{ template "header" "request" }}
+	<main id="main" tabindex="-1" class="main">
+		<div id="view-check" class="view">
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-inbox" /></svg>Your request</p>
+				<h1 id="check-heading" tabindex="-1">Checking on your request.</h1>
+				<p class="lead">Only this browser can open the reply.</p>
+				<div class="form">
+					<span id="check-status" class="status" role="status">Checking…</span>
+					<div id="check-error" class="alert" hidden>
+						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+						<p id="check-error-text" role="alert"></p>
+					</div>
+					<div class="actions">
+						<button id="check-retry" class="btn btn-secondary" type="button" hidden>Try again</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="view-missing" class="view" hidden>
+			<div class="pane gone-hero">
+				<span class="gone-g" aria-hidden="true"></span>
+				<h1 id="missing-heading" tabindex="-1">This request isn't in this <span class="accent">browser.</span></h1>
+				<p class="lead">It may have been opened, cancelled or expired, or it was made in another browser. A reply can only be opened where its request was made.</p>
+				<section class="next" aria-labelledby="missing-next">
+					<h2 id="missing-next">What you can do</h2>
+					<p class="note">If you still need the secret, make a new request and send the new link.</p>
+				</section>
+				<a class="btn btn-primary" href="/request">Request a secret</a>
+			</div>
+		</div>
+		<div id="view-waiting" class="view" hidden>
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-inbox" /></svg><span id="waiting-label">Your request</span></p>
+				<h1 id="waiting-heading" tabindex="-1">Waiting for a <span class="accent">reply.</span></h1>
+				<p class="lead">You can close this page. Come back in this browser and the reply will be here.</p>
+				<div class="form">
+					<span class="pill-status" data-state="waiting">Waiting</span>
+					<dl class="facts">
+						<div><dt>Asked</dt><dd><time id="request-created"></time></dd></div>
+						<div><dt>Link works until</dt><dd><time id="request-expires"></time></dd></div>
+						<div><dt>Checked</dt><dd><time id="request-checked"></time></dd></div>
+					</dl>
+					<div class="field">
+						<label class="label" for="waiting-link">Request link</label>
+						<div class="linkbox">
+							<input id="waiting-link" class="input" type="text" readonly spellcheck="false" autocomplete="off" />
+							<button id="copy-waiting-link" class="btn btn-secondary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy link</span></button>
+						</div>
+						<span id="waiting-copy-status" class="status" role="status"></span>
+					</div>
+					<div class="field">
+						<div class="actions">
+							<button id="check-again" class="btn btn-secondary btn-small" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-waiting" /></svg><span>Check again</span></button>
+						</div>
+						<span id="waiting-status" class="status" role="status"></span>
+					</div>
+				</div>
+				<section class="zone" aria-labelledby="cancel-heading">
+					<h2 id="cancel-heading">Cancel this request</h2>
+					<p class="note" id="cancel-note">Sent the link to the wrong person, or don't need it anymore? Cancel it and the link stops working at once.</p>
+					<div id="waiting-error" class="alert" hidden>
+						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+						<p id="waiting-error-text" role="alert"></p>
+					</div>
+					<div id="cancel-start" class="actions">
+						<button id="cancel-now" class="btn btn-danger-ghost" type="button" aria-describedby="cancel-note"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-trash" /></svg><span>Cancel request</span></button>
+					</div>
+					<div id="cancel-confirm" class="confirm" role="group" aria-labelledby="cancel-confirm-text" hidden>
+						<p id="cancel-confirm-text" tabindex="-1"><strong>Cancel it now?</strong>Anyone who opens the link won't be able to reply. This can't be undone.</p>
+						<div class="actions">
+							<button id="cancel-yes" class="btn btn-danger btn-small" type="button"><span>Cancel it</span></button>
+							<button id="cancel-no" class="btn btn-quiet btn-small" type="button">Keep waiting</button>
+						</div>
+					</div>
+				</section>
+				<section class="rail" aria-label="Request status">
+					<ol class="life">
+						<li class="is-done"><span class="t">Asked</span>By you</li>
+						<li class="is-now" aria-current="step"><span class="t">Waiting</span>For their reply</li>
+						<li><span class="t">Replied</span>Encrypted to this browser</li>
+						<li><span class="t">Opened once</span>By you, then gone</li>
+					</ol>
+				</section>
+			</div>
+		</div>
+		<div id="view-cancelled" class="view" hidden>
+			<div class="pane gone-hero">
+				<span class="gone-g" aria-hidden="true"></span>
+				<h1 id="cancelled-heading" tabindex="-1">Cancelled.</h1>
+				<p class="lead">The request link doesn't work anymore, and this browser has forgotten its key.</p>
+				<a class="btn btn-primary" href="/request">Make a new request</a>
+			</div>
+		</div>
+		<div id="view-open" class="view" hidden>
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg><span id="open-label">Your request</span></p>
+				<h1 id="open-heading" tabindex="-1">Your reply is <span class="accent">here.</span></h1>
+				<p class="lead">It opens once, in this browser. Opening it deletes it from the server, so copy anything you need.</p>
+				<div class="form">
+					<pre class="vault" aria-hidden="true">•••••   ••••••••••••••••••
+•••••   •••••••••••••
+•••••   ••••••••••••••••
+•••••   •••••• ••••• ••• •••••<svg class="ico" focusable="false"><use href="#i-lock" /></svg></pre>
+					<div class="field">
+						<button id="open-secret" class="btn btn-primary btn-block" type="button" aria-describedby="open-hint"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-eye" /></svg><span>Open reply</span></button>
+						<progress id="download-progress" class="bar" max="1" value="0" aria-label="Download progress" hidden></progress>
+						<span id="consume-status" class="hint fine" role="status"></span>
+						<span class="hint fine" id="open-hint">Not ready? Leave it. It's kept until <time id="open-expires"></time>.</span>
+					</div>
+					<div id="consume-error" class="alert" hidden>
+						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+						<p id="consume-error-text" role="alert"></p>
+					</div>
+				</div>
+				<section class="rail" aria-label="Request status">
+					<ol class="life">
+						<li class="is-done"><span class="t">Asked</span>By you</li>
+						<li class="is-done"><span class="t">Waiting</span>Done</li>
+						<li class="is-now" aria-current="step"><span class="t">Replied</span>Ready for you</li>
+						<li><span class="t">Opened once</span>When you press Open</li>
+					</ol>
+				</section>
+			</div>
+		</div>
+		<div id="view-revealed" class="view" hidden>
+			<div id="ack-warning" class="alert banner" hidden>
+				<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+				<div role="alert"><strong>Couldn't confirm deletion.</strong>The server did not confirm this reply was deleted. It will still be deleted automatically within a few minutes and cannot be opened again. Save what you need now.</div>
+			</div>
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg>Decrypted on this device</p>
+				<h1 id="revealed-heading" tabindex="-1">Here's your <span class="accent">secret.</span></h1>
+				<p class="lead">Gone is deleting it from the server now, and this browser has forgotten the request. Once you leave this page, it's gone for good.</p>
+				<div class="form">
+					<div id="message-panel" class="secret-panel" hidden>
+						<header>
+							<span class="label" id="message-label">Message</span>
+							<span class="panel-actions">
+								<button id="show-secret" class="btn btn-secondary btn-small" type="button" aria-controls="secret-output"><svg class="ico when-covered" aria-hidden="true" focusable="false"><use href="#i-eye" /></svg><svg class="ico when-shown" aria-hidden="true" focusable="false"><use href="#i-eye-off" /></svg><span>Show</span></button>
+								<button id="copy-secret" class="btn btn-secondary btn-small" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy</span></button>
+							</span>
+							<span id="copy-status" class="status" role="status"></span>
+						</header>
+						<div id="secret-cover" class="secret-cover">
+							<pre id="secret-cover-dots" class="cover-dots" aria-hidden="true"></pre>
+							<div class="cover-note">
+								<span id="secret-size" class="cover-size"></span>
+								<p>Hidden in case you're sharing your screen.</p>
+							</div>
+						</div>
+						<div id="secret-output" class="secret-text" role="region" aria-labelledby="message-label" tabindex="0" hidden></div>
+						<label class="check"><input id="always-show" type="checkbox" /><span>Always show secrets on this device</span></label>
+					</div>
+					<div id="file-section" class="field" hidden>
+						<div class="label-row">
+							<span class="label" id="files-label">Files</span>
+							<span class="hint">Files now exist only in this tab. Closing it loses them.</span>
+						</div>
+						<ul id="file-output-list" class="files" aria-labelledby="files-label"></ul>
+						<div class="actions">
+							<button id="download-all" class="btn btn-primary" type="button" hidden><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-down" /></svg>Download all</button>
+						</div>
+					</div>
+					<a class="btn btn-secondary btn-block" href="/request">Back to your requests</a>
+				</div>
+				<section class="rail" aria-label="Request status">
+					<ol class="life">
+						<li class="is-done"><span class="t">Asked</span>By you</li>
+						<li class="is-done"><span class="t">Waiting</span>Done</li>
+						<li class="is-done"><span class="t">Replied</span>Done</li>
+						<li class="is-now" aria-current="step"><span class="t">Opened once</span>Just now, by you</li>
+					</ol>
+				</section>
+			</div>
+		</div>
+		<div id="view-gone" class="view" hidden>
+			<div class="pane gone-hero">
+				<span class="gone-g" aria-hidden="true"></span>
+				<h1 id="gone-heading" tabindex="-1">This request is <span class="accent">gone.</span></h1>
+				<p class="lead">It expired, was cancelled, or its reply was already opened. Gone doesn't keep records, so it can't tell which.</p>
+				<section class="next" aria-labelledby="gone-next">
+					<h2 id="gone-next">What you can do</h2>
+					<p class="note">If you still need the secret, make a new request and send the new link.</p>
+				</section>
+				<a class="btn btn-primary" href="/request">Request a secret</a>
+			</div>
+		</div>
+	</main>
+	{{ template "footer" . }}
+	<script src="{{ asset "js/cryptoEncoding.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoCore.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoCipher.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoV2Inputs.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoV2Key.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoV2.js" }}" defer></script>
+	<script src="{{ asset "js/crypto.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoV3.js" }}" defer></script>
+	<script src="{{ asset "js/util.js" }}" defer></script>
+	<script src="{{ asset "js/fileMeta.js" }}" defer></script>
+	<script src="{{ asset "js/envelope.js" }}" defer></script>
+	<script src="{{ asset "js/icons.js" }}" defer></script>
+	<script src="{{ asset "js/consumeApiErrors.js" }}" defer></script>
+	<script src="{{ asset "js/consumeApiEndpoint.js" }}" defer></script>
+	<script src="{{ asset "js/consumeApiRead.js" }}" defer></script>
+	<script src="{{ asset "js/consumeApiFetch.js" }}" defer></script>
+	<script src="{{ asset "js/consumeApiCrypto.js" }}" defer></script>
+	<script src="{{ asset "js/consumeApiAck.js" }}" defer></script>
+	<script src="{{ asset "js/consumeApi.js" }}" defer></script>
+	<script src="{{ asset "js/consumeViewBase.js" }}" defer></script>
+	<script src="{{ asset "js/consumeViewPassphrase.js" }}" defer></script>
+	<script src="{{ asset "js/consumeViewStatus.js" }}" defer></script>
+	<script src="{{ asset "js/consumeViewMask.js" }}" defer></script>
+	<script src="{{ asset "js/consumeViewMessages.js" }}" defer></script>
+	<script src="{{ asset "js/consumeViewFiles.js" }}" defer></script>
+	<script src="{{ asset "js/consumeViewFinal.js" }}" defer></script>
+	<script src="{{ asset "js/consumeView.js" }}" defer></script>
+	<script src="{{ asset "js/consumeOpener.js" }}" defer></script>
+	<script src="{{ asset "js/requestStore.js" }}" defer></script>
+	<script src="{{ asset "js/requestApi.js" }}" defer></script>
+	<script src="{{ asset "js/requestPoll.js" }}" defer></script>
+	<script src="{{ asset "js/requestDetailView.js" }}" defer></script>
+	<script src="{{ asset "js/requestDetail.js" }}" defer></script>
+</body>
+</html>

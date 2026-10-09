@@ -27,6 +27,7 @@ const DefaultClaimLease = 2 * time.Minute
 // Service orchestrates secret creation and one-time consumption using the injected store and clock.
 type Service struct {
 	Store      SecretStore
+	Requests   RequestStore // optional secret-request storage; nil disables requests
 	Clock      Clock
 	MaxBytes   int64
 	MinTTL     time.Duration
@@ -138,16 +139,7 @@ func (s *Service) Claim(ctx context.Context, idStr, tokenStr string) (ClaimResul
 	if _, err := domain.ParseID(idStr); err != nil {
 		return ClaimResult{}, domain.ErrInvalidID
 	}
-	retry := tokenStr != ""
-	var (
-		tok domain.ClaimToken
-		err error
-	)
-	if retry {
-		tok, err = domain.ParseClaimToken(tokenStr)
-	} else {
-		tok, err = domain.NewClaimToken()
-	}
+	tok, retry, err := claimToken(tokenStr)
 	if err != nil {
 		return ClaimResult{}, err
 	}

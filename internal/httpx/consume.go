@@ -2,6 +2,8 @@ package httpx
 
 import (
 	"fmt"
+
+	"github.com/haukened/gone/v3/internal/app"
 	"io"
 	"log/slog"
 	"net/http"
@@ -140,6 +142,17 @@ func (h *Handler) handleClaimSecret(w http.ResponseWriter, r *http.Request, id s
 		clog.Error("claim", "action", "error")
 		return
 	}
+	h.writeClaim(w, res, clog)
+}
+
+// writeClaim writes a claimed ciphertext with its protocol and claim
+// headers, as GET /api/secret/{id} and GET /api/request/{id}/reply share.
+//
+// Parameters:
+//   - w: response writer.
+//   - res: the claim result; its body is closed here.
+//   - clog: request logger.
+func (h *Handler) writeClaim(w http.ResponseWriter, res app.ClaimResult, clog *slog.Logger) {
 	defer func() { _ = res.Body.Close() }()
 	hdr := w.Header()
 	hdr.Set("X-Gone-Version", fmt.Sprintf("%d", res.Meta.Version))
@@ -150,7 +163,7 @@ func (h *Handler) handleClaimSecret(w http.ResponseWriter, r *http.Request, id s
 	hdr.Set("Content-Type", "application/octet-stream")
 	hdr.Set("Content-Length", strconv.FormatInt(res.Size, 10))
 	w.WriteHeader(http.StatusOK)
-	if _, err = io.CopyN(w, res.Body, res.Size); err != nil {
+	if _, err := io.CopyN(w, res.Body, res.Size); err != nil {
 		clog.Error("claim", "action", "error")
 		return
 	}

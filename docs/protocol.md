@@ -1,7 +1,7 @@
 # Gone Protocol Specification
 
-Status: **normative** for protocol versions 1 and 2 and plaintext envelope GONE2.
-Reference implementations: the browser client (`web/js/crypto*.js` for encryption and links, `envelope.js` and `fileMeta.js` for GONE2, `consumeApi*.js` for the claim/acknowledge exchange) and the Go package `internal/envelope`, used by the `gone` CLI. Both are tested against the shared vectors in [`test/vectors/`](../test/vectors/).
+Status: **normative** for protocol versions 1, 2 and 3 and plaintext envelope GONE2.
+Reference implementations: the browser client (`web/js/crypto*.js` for encryption and links, `envelope.js` and `fileMeta.js` for GONE2, `consumeApi*.js` for the claim/acknowledge exchange, `request*.js` and `reply*.js` for secret requests) and the Go package `internal/envelope`, used by the `gone` CLI. Both are tested against the shared vectors in [`test/vectors/`](../test/vectors/).
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** are used as described in RFC 2119.
 
@@ -22,6 +22,24 @@ sender                          server                       recipient
   |                               |                    decrypt, decode
   |                               |<- DELETE + claim token -------|
   |                               | delete                        |
+```
+
+A **secret request** runs the other way (§4.3, §8.6). The requester's browser makes a key pair and gives the holder of the secret a reply link carrying the public key. The holder encrypts to that key, and only the requester's browser can decrypt the reply:
+
+```
+requester                       server                       holder
+  | keypair (privR, pubR)         |                               |
+  |-- POST /api/request + TTL --->| store hashes only             |
+  |<- 201 {id, manage_token, -----|                               |
+  |        fill_token}            |                               |
+  | link = /reply/{id}#v3:<pubR>.<fill_token> -- out of band ---->|
+  |                               |<- PUT reply + fill token -----|
+  |                               |   ct = AES-GCM(ECDH(eph, pubR))
+  |-- GET status + manage token ->|                               |
+  |-- GET reply (claim) --------->|                               |
+  |<- ct + claim token -----------|                               |
+  | decrypt with privR            |                               |
+  |-- DELETE reply + claim ------>| delete                        |
 ```
 
 **Trust boundary.** The server is trusted to enforce TTL, size limits, and single delivery. It is **not** trusted with confidentiality or integrity: it never sees the key or the plaintext, and AES-GCM authentication detects any modification of the ciphertext or nonce.
@@ -61,7 +79,9 @@ Which number changes depends on what changes:
 
 - Servers **MUST** reject unsupported protocol versions (§8). Clients **MUST** reject an unsupported protocol version in a link *before* making any request (§7.2).
 
-Currently supported: protocol versions **1** and **2**, envelope **GONE2**.
+Currently supported: protocol versions **1** and **2** for secrets, **3** for request replies, and envelope **GONE2**.
+
+Protocol versions are scoped to a route. Versions 1 and 2 are valid only for `POST /api/secret` and secret links (§7.1). Version 3 is valid only for request replies (§8.6) and reply links (§7.4). Servers **MUST** reject a version on a route it does not belong to, and clients **MUST** reject a secret link whose fragment says `v3` and a reply link whose fragment says anything else.
 
 ## 4. Cryptography
 
@@ -124,6 +144,47 @@ AAD = "gone:v2" || header
 **Security notes.**
 - Anyone who gets the link can try passphrases offline against a downloaded ciphertext. The iteration count slows this down but does not stop it. A passphrase therefore protects a leaked link only if it is strong, for example the five random words the browser client offers to generate.
 - A passphrase does not stop someone with the link from burning the secret. Claiming it starts deletion whether or not they know the passphrase.
+
+### 4.3 Protocol version 3 (request reply)
+
+Version 3 encrypts a reply to a requester's public key, so the requester never has to share a symmetric key. There is no link key: the reply link carries a **public** key (§7.4), and only the requester holds the matching private key.
+
+| Parameter | Value |
+| --------- | ----- |
+| Key agreement | ECDH on NIST P-256 |
+| Requester key `R` | A P-256 key pair from a CSPRNG, unique per request. `pubR` is the 65-byte uncompressed point (`0x04 \|\| X \|\| Y`). |
+| Ephemeral key `E` | A P-256 key pair from a CSPRNG, unique per reply. `pubE` is its 65-byte uncompressed point. |
+| KDF | HKDF-SHA-256 |
+| Nonce | 12 bytes from a CSPRNG (the `X-Gone-Nonce` header, as in v1) |
+| Cipher | AES-256-GCM, 16-byte tag |
+
+**Ciphertext body (blob).**
+
+```
+blob   = header || GCM-Encrypt(K, nonce, plaintext, AAD)
+header = pubE   ; 65 bytes
+```
+
+**Key derivation.**
+
+```
+Z   = ECDH(privE, pubR)                    ; the 32-byte X coordinate
+K   = HKDF-SHA-256(IKM = Z, salt = empty, info = "gone:v3 aead key" || pubE || pubR, 32 bytes)
+AAD = "gone:v3" || header
+```
+
+- The plaintext is raw text or a GONE2 envelope (§5), exactly as for v1 and v2.
+- Both public keys are bound into the HKDF info, and `pubE` is also authenticated as the AAD, so swapping either key makes decryption fail.
+- Senders **MUST** check that `pubR` is a valid point on the curve before using it. A reply link with an invalid point cannot be answered.
+- The server **never** parses the header. To the server a v3 body is opaque bytes. A valid v3 body is at least 81 bytes: the 65-byte header plus the 16-byte tag.
+- Every failure when opening a reply, including a short body, an ephemeral point that is not on the curve or not uncompressed, the wrong private key, or a tampered body, **MUST** produce the single generic decryption error from §4.1.
+- The requester's private key **SHOULD** be non-extractable (WebCrypto `extractable: false`) and **MUST NOT** leave the requester's device. Implementations **SHOULD** discard it once the reply is opened or the request ends.
+- Implementations **SHOULD** overwrite `privE`, `Z`, `K` and the plaintext once they are no longer needed.
+
+**Security notes.**
+- Anyone who holds the reply link can send a reply that decrypts. The link is the capability: a requester should send it only to the person who holds the secret, and that person should check the link really came from the requester.
+- The fill token (§7.4) lets the server refuse a reply from someone who knows only the request ID, for example from a proxy log. It does not authenticate the person replying.
+- A malicious server could serve modified JavaScript that leaks keys, as with every version. The protocol protects against a server that stores and forwards honestly but is later compromised or curious.
 
 ## 5. Plaintext formats
 
@@ -293,6 +354,26 @@ token       = 43( ALPHA / DIGIT / "-" / "_" )
 - Clients **MUST** validate both the id and the token **before** sending any request. A malformed manage link makes no request at all.
 - Clients **MUST** send the token only in the `X-Gone-Manage` header, never in a URL or a request body.
 
+### 7.4 Reply links
+
+The link a requester gives to the person who holds the secret:
+
+```
+reply-link = base "/reply/" id "#" "v3:" pubkey "." fill
+id         = 32 lowercase hex characters
+pubkey     = strict base64url of pubR, 65 bytes (87 characters)
+fill       = 43( ALPHA / DIGIT / "-" / "_" )
+```
+
+- `pubkey` **MUST** decode to exactly 65 bytes whose first byte is `0x04`. Whether it is a point on the curve is checked when the reply is encrypted (§4.3).
+- `fill` is the `fill_token` returned by create (§8.6). Clients **MUST** send it only in the `X-Gone-Fill` header.
+- The parsing rules of §7.2 apply. A `.` separates the two parts; any other character outside the base64url alphabet makes the fragment invalid. A fragment with any version other than `3` is rejected as unsupported.
+- Clients **MUST** validate the id and the whole fragment **before** sending any request.
+
+### 7.5 No requester link
+
+The requester has no link of their own. The `manage_token` and private key stay in the browser that created the request (for the web client, IndexedDB), and are never put in a URL. Losing that storage loses the request; the requester makes a new one.
+
 ## 8. HTTP exchange
 
 The full endpoint reference, including status codes, is in [docs/README.md](README.md) and [openapi.yaml](openapi.yaml). This section lists only what is protocol-relevant.
@@ -350,6 +431,27 @@ The request carries `X-Gone-Manage`. Its status codes match §8.4, with `204` on
 - A repeated revoke returns `404`.
 - Claim and acknowledge never read or change the manage digest.
 
+### 8.6 Secret requests
+
+The request endpoints live under `/api/request`. A request is **open** until it is answered, then its reply is **ready** until the requester opens it. Expired, cancelled, answered, opened and unknown requests, and wrong tokens, all return the same `404`, as in §8.4. There are no tombstones.
+
+| Method and path | Token header | Purpose |
+| --------------- | ------------ | ------- |
+| `POST /api/request` | none | Create. Carries `X-Gone-TTL` (a Go duration within `[MinTTL, MaxTTL]`) and no body. `201 {id, expires_at, manage_token, fill_token}`. |
+| `GET /api/request/{id}` | `X-Gone-Fill` | Open check for the reply page. `200 {state:"open", expires_at}`. |
+| `PUT /api/request/{id}/reply` | `X-Gone-Fill` | Send the reply. Headers as §8.1 except that `X-Gone-Version` **MUST** be `3` and there is no `X-Gone-TTL`. `201 {expires_at}`. |
+| `GET /api/request/{id}/status` | `X-Gone-Manage` | `200 {state:"waiting"\|"ready", created_at, expires_at}`. |
+| `GET /api/request/{id}/reply` | `X-Gone-Manage` | Claim the reply, exactly as §8.2. A retry also sends `X-Gone-Claim`. |
+| `DELETE /api/request/{id}/reply` | `X-Gone-Claim` | Acknowledge, exactly as §8.3. |
+| `POST /api/request/{id}/revoke` | `X-Gone-Manage` | Cancel the request or delete an unopened reply. `204`. |
+
+- Both tokens are 32 bytes from a CSPRNG, encoded as strict base64url (43 characters). The server stores only their SHA-256 and can never return them again. It never sees `pubR`, the requester's label, or anything in the reply link's fragment.
+- Each request accepts **one** reply. The change from open to ready is atomic: of two concurrent replies, exactly one gets `201` and the other `404`.
+- When a reply arrives, its expiry is reset to the reply time plus the request's original TTL, so a reply sent near the end of the window still gets the full time.
+- The open check and status are read-only. They **MUST NOT** change, extend or delete anything, so polling costs no writes.
+- A reply can be claimed only with the request's manage token. `GET /api/secret/{id}` never returns a reply, so knowing the ID alone is never enough to burn it.
+- Revoke wins over an active claim, as in §8.5.
+
 ## 9. Test vectors
 
 `test/vectors/*.json` are the conformance suite. Every implementation **MUST** pass all of them.
@@ -358,9 +460,11 @@ The request carries `X-Gone-Manage`. Its status codes match §8.4, with `204` on
 | ---- | ------ |
 | `aead_v1.json` | §4.1: encryption with a fixed nonce, plus decryption failures |
 | `aead_v2.json` | §4.2: NFC, PBKDF2, HKDF and encryption with a fixed salt and nonce, plus malformed, invalid-passphrase and decryption failures |
+| `aead_v3.json` | §4.3: ECDH, HKDF and encryption with fixed P-256 keys and nonce, plus decryption failures |
 | `envelope_gone2.json` | §5: canonical encoding, decoding, rejection cases |
 | `fragment_v1.json` | §2, §7: fragment parsing |
 | `fragment_v2.json` | §7: v2 fragment parsing |
+| `fragment_v3.json` | §7.4: reply fragment parsing |
 | `sanitize.json` | §6: file names and MIME types |
 | `server_headers.json` | §8.1: version and nonce header acceptance |
 

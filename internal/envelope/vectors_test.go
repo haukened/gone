@@ -103,9 +103,11 @@ func TestVectors(t *testing.T) {
 	files := map[string]any{
 		"aead_v1.json":        buildAEAD(t),
 		"aead_v2.json":        buildAEADV2(t),
+		"aead_v3.json":        buildAEADV3(t),
 		"envelope_gone2.json": envelopeVectors{Description: "GONE2 plaintext; binary fields are hex", Pack: buildPack(), Unpack: buildUnpack()},
 		"fragment_v1.json":    buildFragments(fragmentInputs()),
 		"fragment_v2.json":    buildFragments(fragmentV2Inputs()),
+		"fragment_v3.json":    buildReplyFragments(fragmentV3Inputs(t)),
 		"sanitize.json":       buildSanitize(),
 		"server_headers.json": buildServer(),
 	}

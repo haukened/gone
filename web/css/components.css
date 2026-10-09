@@ -783,6 +783,35 @@ textarea:focus-visible,
   box-shadow: 0 0 0 4px var(--color-accent-soft);
 }
 
+/* A reply that's ready to open: firmer edge, and the dot breathes. */
+.pill-status[data-state="ready"] {
+  color: var(--color-ink);
+  border-color: var(--color-accent);
+}
+
+.pill-status[data-state="gone"] {
+  color: var(--color-ink-3);
+  background: none;
+  border-color: var(--hair);
+}
+
+.pill-status[data-state="gone"]::before {
+  background: var(--color-ink-3);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pill-status[data-state="ready"]::before {
+    animation: pill-breathe 2.4s var(--ease-out) infinite;
+  }
+}
+
+@keyframes pill-breathe {
+  50% {
+    box-shadow: 0 0 0 7px var(--color-accent-soft);
+  }
+}
+
 /* Disclosure */
 .disclosure {
   border-block: 1px solid var(--hair);

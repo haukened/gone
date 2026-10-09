@@ -10,9 +10,15 @@ import (
 	"github.com/haukened/gone/v3/internal/store"
 )
 
+// rowQuerier is the subset of *sql.DB / *sql.Conn used for single-row reads.
+type rowQuerier interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
 // manageRow is the subset of a secrets row needed by Status and Revoke.
 type manageRow struct {
 	external   bool
+	reply      bool
 	createdAt  time.Time
 	manageHash string
 	life       store.IndexResult // ExpiresAt, ClaimHash, ClaimedUntil for isDead
@@ -115,8 +121,8 @@ func loadManagedRow(ctx context.Context, conn *sql.Conn, id, manageHash string, 
 //   - id: secret identifier.
 //
 // Returns the row, app.ErrNotFound if absent, or a DB error.
-func selectManageRow(ctx context.Context, conn *sql.Conn, id string) (*manageRow, error) {
-	const sel = `SELECT external, created_at, expires_at, claim_hash, claimed_until, manage_hash FROM secrets WHERE id=?`
+func selectManageRow(ctx context.Context, conn rowQuerier, id string) (*manageRow, error) {
+	const sel = `SELECT external, created_at, expires_at, claim_hash, claimed_until, manage_hash, reply FROM secrets WHERE id=?`
 	var (
 		row          manageRow
 		extInt       int
@@ -126,7 +132,7 @@ func selectManageRow(ctx context.Context, conn *sql.Conn, id string) (*manageRow
 		claimedUntil sql.NullInt64
 		manageHash   sql.NullString
 	)
-	err := conn.QueryRowContext(ctx, sel, id).Scan(&extInt, &created, &expires, &claimHash, &claimedUntil, &manageHash)
+	err := conn.QueryRowContext(ctx, sel, id).Scan(&extInt, &created, &expires, &claimHash, &claimedUntil, &manageHash, &row.reply)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, app.ErrNotFound
 	}

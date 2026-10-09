@@ -34,7 +34,11 @@ const shutdownTimeout = 10 * time.Second
 //   - *app.Service: the configured service (Metrics left unset).
 func buildService(idx store.Index, blobs store.BlobStorage, cfg *config.Config, clock app.Clock) *app.Service {
 	st := store.New(idx, blobs, clock, cfg.InlineMaxBytes)
-	return &app.Service{Store: st, Clock: clock, MaxBytes: cfg.MaxBytes, MinTTL: cfg.MinTTL, MaxTTL: cfg.MaxTTL, ClaimLease: cfg.ClaimLease}
+	svc := &app.Service{Store: st, Clock: clock, MaxBytes: cfg.MaxBytes, MinTTL: cfg.MinTTL, MaxTTL: cfg.MaxTTL, ClaimLease: cfg.ClaimLease}
+	if _, ok := idx.(store.RequestIndex); ok {
+		svc.Requests = st
+	}
+	return svc
 }
 
 // readinessCheck reports whether the database answers pings and the blob
@@ -75,6 +79,10 @@ func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir stri
 	h.AboutTmpl = httpx.AboutTemplateRenderer{T: tmpls.about}
 	h.SecretTmpl = httpx.TemplateRenderer{T: tmpls.secret}
 	h.ManageTmpl = httpx.TemplateRenderer{T: tmpls.manage}
+	h.RequestTmpl = httpx.TemplateRenderer{T: tmpls.request}
+	h.RequestDetailTmpl = httpx.TemplateRenderer{T: tmpls.requestDetail}
+	h.ReplyTmpl = httpx.TemplateRenderer{T: tmpls.reply}
+	h.Requests = svc
 	if tmpls.errorPage != nil {
 		h.ErrorTmpl = httpx.TemplateRenderer{T: tmpls.errorPage}
 	}

@@ -135,6 +135,9 @@ func TestBuildService(t *testing.T) {
 	if s.ClaimLease != 75*time.Second {
 		t.Fatalf("ClaimLease mismatch got %v", s.ClaimLease)
 	}
+	if s.Requests != nil {
+		t.Fatalf("requests enabled for an index without request support")
+	}
 }
 
 // TestBuildServiceUsesConfiguredInlineThreshold validates blob threshold wiring.

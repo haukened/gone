@@ -11,6 +11,8 @@ var (
 	ErrInvalidClaim = errors.New("invalid claim token")
 	// ErrInvalidManage indicates a malformed sender manage token.
 	ErrInvalidManage = errors.New("invalid manage token")
+	// ErrInvalidFill indicates a malformed request fill token.
+	ErrInvalidFill = errors.New("invalid fill token")
 	// ErrInvalidVersion indicates a malformed or unsupported protocol version.
 	ErrInvalidVersion = errors.New("invalid version")
 	// ErrInvalidNonce indicates a nonce that is not strict base64url of the

@@ -30,8 +30,9 @@ Zero-knowledge, one-time, self-hostable, tiny. Gone's honesty is structural — 
 - Result: a shareable link containing the decryption key in the fragment, plus a private manage link for the sender. With a passphrase, a reminder to send it through a different channel.
 - Receive: confirm-to-reveal, passphrase prompt for v2 links (retries against one download), decrypt locally, show text, download attachments; states for expired, already opened/not found, wrong passphrase, and decryption failure.
 - Manage: the sender's manage link shows whether the secret is still waiting and can delete it before it is opened. It can never reveal the secret.
+- Request: the requester makes a request link (an optional label that stays in their browser, and how long to wait). Their browser keeps a non-extractable private key in IndexedDB; whoever holds the link sends one reply encrypted to it. The requester's page lists the requests saved in that browser, checks them while it's open, and opens a reply once. A reply can only be opened in the browser that asked; there is no way to move it elsewhere.
 - Technical: Go html/template pages, vanilla JS with WebCrypto, strict CSP (self-only scripts/styles/fonts, no inline), no third-party assets or CDNs, no innerHTML, requires HTTPS (or localhost); on an insecure page it warns and turns off sending.
-- Pages: send (home), result, receive, manage, about, error.
+- Pages: send (home), result, receive, manage, request (new request and the list), request detail (waiting, open the reply, cancel), reply (answer a request), about, error.
 
 ## Brand Commitments
 
@@ -45,7 +46,7 @@ Zero-knowledge, one-time, self-hostable, tiny. Gone's honesty is structural — 
 
 1. Restraint is the trust signal: nothing decorative competes with the task or hints at hidden behavior.
 2. Make the irreversible obvious: revealing and burning are one-way and must be stated plainly before they happen.
-3. Seconds, not steps: the sender's path from paste to copied link stays as short as it is today or shorter.
+3. Seconds, not steps: the sender's path from paste to copied link stays as short as it is today or shorter. Requests live on their own page, so they add nothing to it.
 4. The recipient may be non-technical and on a phone: plain language, large targets, no jargon required.
 5. Self-contained by construction: nothing loads from anywhere but the operator's server.
 

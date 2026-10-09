@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	{{ template "assets" }}
+	<title>Gone · Request a secret</title>
+</head>
+<body>
+	{{ template "header" "request" }}
+	<main id="main" tabindex="-1" class="main">
+		<div id="view-compose" class="view">
+			<div class="alert banner security-warning" role="alert" hidden>
+				<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+				<div><strong>This page isn't secure, so requests are turned off.</strong>Browsers only encrypt on HTTPS pages. Ask whoever runs this server to put it behind HTTPS.</div>
+			</div>
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-inbox" /></svg>Opens only in this browser</p>
+				<h1>Ask someone for a <span class="accent">secret.</span></h1>
+				<p class="lead">Make a link to send to the person who has it. What they send back is encrypted to this browser, so only you can open it, once.</p>
+				<form id="create-request" class="form" aria-label="Create a request" novalidate>
+					<div class="field">
+						<div class="label-row">
+							<label class="label" for="request-label">Label <span class="opt">(optional)</span></label>
+							<span class="hint" id="request-label-hint">Only you see this. It stays on this device.</span>
+						</div>
+						<input id="request-label" class="input" type="text" maxlength="80" placeholder="For example: staging database password" autocomplete="off" aria-describedby="request-label-hint" />
+					</div>
+					<fieldset class="seg field" aria-describedby="request-ttl-hint">
+						<legend>Wait for a reply</legend>
+						<div class="seg-track">
+							{{ range .TTLOptions }}<input type="radio" class="sr-only" name="ttl" id="ttl-{{ .Label }}" value="{{ .Label }}" data-seconds="{{ .DurationSeconds }}"{{ if .Default }} checked{{ end }} /><label for="ttl-{{ .Label }}">{{ .Short }}<span class="sr-only"> ({{ .Display }})</span></label>{{ end }}
+						</div>
+						<span class="hint" id="request-ttl-hint">The link stops working after this. A reply is then kept for the same length of time.</span>
+					</fieldset>
+					<div class="field">
+						<button id="create-request-btn" class="btn btn-primary btn-block" type="submit" aria-describedby="request-hint"><span>Create request link</span><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg></button>
+						<span class="hint fine" id="request-hint">A key pair is made here. The private key never leaves this browser.</span>
+					</div>
+					<div id="storage-alert" class="alert" hidden>
+						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+						<p>This browser can't save the key a request needs, so it couldn't open the reply. Private windows often can't. Try a normal window.</p>
+					</div>
+					<div id="request-error" class="alert" hidden>
+						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+						<p id="request-error-text" role="alert"></p>
+					</div>
+				</form>
+				<section id="request-list-section" class="requests" aria-labelledby="request-list-heading">
+					<h2 id="request-list-heading">Your requests on this device</h2>
+					<ul id="request-list" class="request-list" hidden></ul>
+					<p id="request-empty" class="note">Requests you make here show up in this list. You can close the page; they'll be waiting when you come back.</p>
+					<span id="request-list-status" class="status" role="status"></span>
+				</section>
+			</div>
+		</div>
+		<div id="view-created" class="view" hidden>
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg>Request ready</p>
+				<h1 id="created-heading" tabindex="-1">Send this request <span class="accent">link.</span></h1>
+				<p class="lead">They type the secret on that page and it's encrypted for this browser. When it arrives, it shows up here.</p>
+				<div class="form">
+					<div class="field">
+						<label class="label" for="reply-link">Request link</label>
+						<div class="linkbox">
+							<input id="reply-link" class="input" type="text" readonly spellcheck="false" autocomplete="off" />
+							<button id="copy-reply" class="btn btn-primary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy link</span></button>
+						</div>
+						<span id="copy-status" class="status" role="status"></span>
+						<p class="hint">The link can't open anything. It only lets someone send you one reply, so it's fine to send through chat or email. Make sure it reaches the right person.</p>
+					</div>
+					<p class="callout"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span><strong>Opens only in this browser.</strong> You can close this page. Come back to <a href="/request">Request a secret</a> in this browser to open the reply.</span></p>
+					<div class="field">
+						<span id="created-state" class="pill-status" data-state="waiting">Waiting for a reply</span>
+						<span id="created-status" class="status" role="status"></span>
+					</div>
+					<div class="actions">
+						<a id="created-open" class="btn btn-secondary" href="/request">View this request</a>
+						<a class="btn btn-quiet" href="/request">Make another request</a>
+					</div>
+				</div>
+				<section class="rail" aria-label="Request status">
+					<ol class="life">
+						<li class="is-done"><span class="t">Asked</span>Just now</li>
+						<li id="created-step-waiting" class="is-now" aria-current="step"><span class="t">Waiting</span><span>Until <time id="created-expiry"></time></span></li>
+						<li id="created-step-replied"><span class="t">Replied</span>Encrypted to this browser</li>
+						<li><span class="t">Opened once</span>By you, then gone</li>
+					</ol>
+				</section>
+			</div>
+		</div>
+	</main>
+	{{ template "footer" . }}
+	<script src="{{ asset "js/cryptoEncoding.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoCore.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoV2Key.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoV3.js" }}" defer></script>
+	<script src="{{ asset "js/util.js" }}" defer></script>
+	<script src="{{ asset "js/requestStore.js" }}" defer></script>
+	<script src="{{ asset "js/requestApi.js" }}" defer></script>
+	<script src="{{ asset "js/requestPoll.js" }}" defer></script>
+	<script src="{{ asset "js/requestList.js" }}" defer></script>
+	<script src="{{ asset "js/request.js" }}" defer></script>
+</body>
+</html>

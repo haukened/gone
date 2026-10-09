@@ -47,6 +47,8 @@ var serviceErrorTable = []serviceErrorMapping{
 	{domain.ErrInvalidID, http.StatusBadRequest, "invalid id", "invalid_id", slog.LevelWarn},
 	{domain.ErrInvalidClaim, http.StatusBadRequest, "invalid claim", "invalid_claim", slog.LevelWarn},
 	{domain.ErrInvalidManage, http.StatusBadRequest, "invalid manage token", "invalid_manage", slog.LevelWarn},
+	{domain.ErrInvalidFill, http.StatusBadRequest, "invalid fill token", "invalid_fill", slog.LevelWarn},
+	{app.ErrRequestsDisabled, http.StatusNotFound, "not found", "requests_disabled", slog.LevelInfo},
 	{domain.ErrInvalidVersion, http.StatusBadRequest, "invalid version", "invalid_version", slog.LevelWarn},
 	{domain.ErrInvalidNonce, http.StatusBadRequest, "invalid nonce", "invalid_nonce", slog.LevelWarn},
 	{app.ErrSizeExceeded, http.StatusRequestEntityTooLarge, "size exceeded", "size_exceeded", slog.LevelWarn},

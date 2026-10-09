@@ -27,10 +27,14 @@ func sqliteAssertFullyMigrated(t *testing.T, db *sql.DB) {
 	if got := sqliteDBUserVersion(t, db); got != SchemaVersion {
 		t.Fatalf("user_version = %d, want %d", got, SchemaVersion)
 	}
-	for _, col := range []string{"claim_hash", "claimed_until", "manage_hash"} {
+	for _, col := range []string{"claim_hash", "claimed_until", "manage_hash", "reply"} {
 		if !sqliteHasColumn(t, db, col) {
 			t.Fatalf("missing column %q", col)
 		}
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='requests'`).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("requests table missing: n=%d err=%v", n, err)
 	}
 }
 
@@ -54,6 +58,11 @@ ALTER TABLE secrets ADD COLUMN claimed_until INTEGER;`},
 			`ALTER TABLE secrets ADD COLUMN claim_hash TEXT;
 ALTER TABLE secrets ADD COLUMN claimed_until INTEGER;
 PRAGMA user_version = 1;`},
+		{name: "v2", setup: baseSchema +
+			`ALTER TABLE secrets ADD COLUMN claim_hash TEXT;
+ALTER TABLE secrets ADD COLUMN claimed_until INTEGER;
+ALTER TABLE secrets ADD COLUMN manage_hash TEXT;
+PRAGMA user_version = 2;`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
