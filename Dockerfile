@@ -6,7 +6,13 @@
 
 # ----------- Builder Stage -----------
 # Build on the native platform and cross-compile; CGO is disabled so no target toolchain is needed.
-FROM --platform=$BUILDPLATFORM dhi.io/golang:1.27-debian13-dev@sha256:cd8e96d7dea8311275d4633816f1f283d3b044997a6ccfbd8c1f9e409702136f AS builder
+FROM --platform=$BUILDPLATFORM dhi.io/golang:1.27-debian13-dev@sha256:b2c53244752dcb35fea192b1e7015635696c8456130e5b82bb0306f89e1144eb AS builder
+
+# The image sets GOTOOLCHAIN=local, so it can only build with its own Go. When
+# go.mod needs a newer patch release than the image has yet (for a security
+# fix), "auto" fetches exactly that toolchain from proxy.golang.org, checked
+# against sum.golang.org. Once the image catches up, its own Go is used.
+ENV GOTOOLCHAIN=auto
 
 ARG MINIFY_VERSION=v2.24.17
 
