@@ -96,9 +96,14 @@
 						<label class="label" for="share-link">One-time link</label>
 						<div class="linkbox">
 							<input id="share-link" class="input" type="text" readonly spellcheck="false" autocomplete="off" />
+							<button id="qr-toggle" class="btn btn-secondary btn-qr" type="button" aria-expanded="false" aria-controls="share-qr" hidden><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-qr" /></svg><span class="qr-label" aria-hidden="true">QR</span><span class="sr-only">QR code</span></button>
 							<button id="copy-link" class="btn btn-primary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy link</span></button>
 						</div>
 						<span id="copy-status" class="status" role="status"></span>
+						<figure id="share-qr" class="qr" hidden>
+							<div id="share-qr-code" class="qr-code" role="img" aria-label="QR code of your one-time link"></div>
+							<figcaption class="hint">Scan with the recipient's phone. Anyone who sees this code can open the secret.</figcaption>
+						</figure>
 						<p class="hint">The key is the part after <strong>#</strong>. It stays in the link and is never sent to the server, so anyone holding the full link can open it. Don't post it anywhere public.</p>
 					</div>
 					<p id="result-pass-note" class="callout" hidden><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span><strong>Passphrase protected.</strong> The recipient will need the passphrase you set, and Gone can't recover it. Send it to them separately.</span></p>
@@ -145,6 +150,8 @@
 	<script src="{{ asset "js/submitFiles.js" }}" defer></script>
 	<script src="{{ asset "js/submitMeter.js" }}" defer></script>
 	<script src="{{ asset "js/submitUpload.js" }}" defer></script>
+	<script src="{{ asset "js/qr.js" }}" defer></script>
+	<script src="{{ asset "js/submitQr.js" }}" defer></script>
 	<script src="{{ asset "js/submitResult.js" }}" defer></script>
 	<script src="{{ asset "js/wordlist.js" }}" defer></script>
 	<script src="{{ asset "js/passgen.js" }}" defer></script>

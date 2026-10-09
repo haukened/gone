@@ -2,7 +2,8 @@
 
 // Result view shown after a secret is created: fills the server-rendered
 // #result view with the share link and expiry, wires the copy button, and
-// swaps it in for #compose. Requires window.goneUtil. Exposed as
+// swaps it in for #compose. Requires window.goneUtil; uses
+// window.goneResultQr for the opt-in QR code when it is loaded. Exposed as
 // window.goneResultPanel.
 (function resultPanelModule() {
   if (window.goneResultPanel || !window.goneUtil) return;
@@ -57,6 +58,14 @@
     section.hidden = false;
   }
 
+  // showQr offers the opt-in QR code for the share link, closed. The button
+  // stays hidden when the QR module or its markup is missing.
+  function showQr(input) {
+    const el = { button: byId('qr-toggle'), figure: byId('share-qr'), code: byId('share-qr-code'), input: input };
+    if (!window.goneResultQr || !util.allPresent([el.button, el.figure, el.code])) return;
+    window.goneResultQr.attach(el);
+  }
+
   // show fills and reveals the result view, hiding the compose view.
   //
   // opts: {shareURL, manageURL = '', expiresAt, passphrase = false, focus = true}.
@@ -69,6 +78,7 @@
     input.value = opts.shareURL;
     setExpiry(byId('result-expiry'), opts.expiresAt);
     wireOnce(btn, input, byId('copy-status'), 'Link copied to clipboard.');
+    showQr(input);
     showManage(opts.manageURL || '');
     const passNote = byId('result-pass-note');
     if (passNote) passNote.hidden = !opts.passphrase;

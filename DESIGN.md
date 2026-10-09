@@ -185,6 +185,7 @@ Depth comes from glass only:
 - **Wells:** `textarea`, `.input`, `.drop`, `.files li`, `.secret-panel` and `.linkbox` share the recessed well treatment. Focus turns the edge violet and adds a 4px soft ring.
 - **Segmented control (expiry):** a pill track. The checked radio's label becomes a raised lens.
 - **Link box:** the read-only link in a recessed pill, with its copy button inside the right end.
+- **Share QR code:** opt-in. A glass **QR** button sits in the share link box before Copy (icon only at 40rem and below; its name stays "QR code" for screen readers). It is a disclosure (`aria-expanded`) that opens a white tile under the link box holding the code, with a 4-module quiet zone and one line of caption. The code is always black on white in both themes, because many scanners can't read an inverted code. Only the send result has it; request and reply links never get one.
 - **Lifecycle rail:** four steps (Sealed, Waiting, Opened once, Gone) in a row along the foot of the pane.
   - Each step has a 2px top rule: hairline when upcoming, faint violet when done (`.is-done`), solid violet when current (`.is-now`).
 - **Callouts:** `.alert` is amber, for warnings and errors; `.banner` is an alert floating above the pane. `.callout` is violet, for notes like "Passphrase protected".

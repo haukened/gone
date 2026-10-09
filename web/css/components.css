@@ -498,6 +498,68 @@ textarea:focus-visible,
   font-size: 0.8125rem;
 }
 
+.linkbox .btn-qr {
+  padding: 0 0.85rem;
+}
+
+.btn-qr[aria-expanded="true"] {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-line);
+}
+
+/* QR code for the share link: opt-in, under the link box. The code is always
+   dark on white with a 4-module quiet zone, whatever the theme, because many
+   scanners can't read an inverted code. */
+.qr {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  text-align: center;
+}
+
+.qr-code {
+  width: min(15rem, 100%);
+  aspect-ratio: 1;
+  padding: 0.35rem;
+  background: #fff;
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-well);
+  box-shadow: 0 12px 30px -16px var(--shadow);
+  forced-color-adjust: none;
+}
+
+.qr-code svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.qr-light {
+  fill: #fff;
+}
+
+.qr-dark {
+  fill: #000;
+}
+
+.qr .hint {
+  max-width: 34ch;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .qr:not([hidden]) {
+    animation: qr-in 0.25s var(--ease-out);
+  }
+}
+
+@keyframes qr-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 /* Lifecycle rail: four quiet steps along the foot of the pane. */
 .rail {
   margin-top: 1.75rem;
@@ -910,5 +972,15 @@ textarea:focus-visible,
 
   .actions .btn {
     flex: 1 1 auto;
+  }
+
+  /* Icon only, so the link keeps its room; the name stays for screen readers. */
+  .linkbox .btn-qr {
+    width: 2.5rem;
+    padding: 0;
+  }
+
+  .btn-qr .qr-label {
+    display: none;
   }
 }

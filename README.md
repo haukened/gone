@@ -92,7 +92,7 @@ Health: the image has a Docker `HEALTHCHECK` that runs `goned healthcheck` every
 2. Your browser encrypts it locally before it ever leaves your machine.
 3. The server stores only the encrypted blob plus when it should expire.
 4. You get a link like: `https://example/secret/abcd#v1:ENC_KEY_MATERIAL`.
-5. You send that full URL (including everything after the `#`) to someone.
+5. You send that full URL (including everything after the `#`) to someone. Handing it over in person? Press **QR** next to **Copy link** and let them scan the code with their phone. Request links never get a QR code: a code hides the address it opens, which makes it easy to fake.
 6. When they open it, the server hands their browser the encrypted blob, the browser decrypts it locally using the part after `#`, then tells the server to delete it.
 7. A refresh or second visit won’t work—the secret is already gone.
 8. Want a second lock? Open **Add a passphrase** on the form, type one or press **Generate** for five random words, and send the passphrase to the recipient separately from the link. They need both to open the secret.
