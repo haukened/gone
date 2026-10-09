@@ -52,7 +52,7 @@ test('typing rates strength, validates length and reports overhead', () => {
   assert.equal(b.changes(), 1);
   assert.equal(b.els.input.getAttribute('aria-invalid'), 'true');
   assert.match(b.els.strength.textContent, /^Too short: use at least 8/);
-  assert.match(b.field.problem(), /at least 8 characters, or leave it empty/);
+  assert.match(window.goneI18n.t(b.field.problem().key, b.field.problem().args), /at least 8 characters, or leave it empty/);
   assert.equal(b.field.overhead(), 21);
   typeIn(b, 'password');
   assert.equal(b.els.input.getAttribute('aria-invalid'), 'false');

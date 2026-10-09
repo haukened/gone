@@ -1,6 +1,7 @@
 'use strict';
 
-// UI updates for submit errors, progress, and busy state.
+// UI updates for submit errors, progress, and busy state. Text is set as
+// goneI18n message keys.
 (function submitUiModule() {
   if (window.goneSubmitUi || !window.goneSubmitDom || !window.goneSubmitState) return;
   const ctx = window.goneSubmitDom;
@@ -11,8 +12,10 @@
     if (els.errorBox) els.errorBox.hidden = !visible;
   }
 
-  function showError(msg) {
-    ctx.util.setText(els.errorContent, msg);
+  // showError shows a problem: a message key, or {key, args}.
+  function showError(problem) {
+    const p = typeof problem === 'string' ? { key: problem } : problem;
+    window.goneI18n.set(els.errorContent, p.key, p.args);
     setErrorVisible(true);
   }
 
@@ -29,13 +32,13 @@
     }
   }
 
-  function setButtonLabel(text) {
-    ctx.util.setText(els.primaryLabel, text);
+  function setButtonLabel(key, args) {
+    window.goneI18n.set(els.primaryLabel, key, args);
   }
 
   function setUploadProgress(loaded, total) {
     const pct = total ? Math.floor((loaded / total) * 100) : 0;
-    setButtonLabel(`Uploading ${pct}%`);
+    setButtonLabel('js.submit.uploading', { pct: pct });
     if (!els.uploadProgress) return;
     els.uploadProgress.hidden = false;
     els.uploadProgress.max = total || 1;
@@ -51,15 +54,15 @@
     if (ctx.fileInput) ctx.fileInput.disabled = busy;
     if (state.passphrase) state.passphrase.setBusy(busy);
     if (!busy) {
-      setButtonLabel(ctx.idleLabel);
+      window.goneI18n.restore(els.primaryLabel, ctx.idleLabel);
       if (els.uploadProgress) els.uploadProgress.hidden = true;
     }
     state.updateMeter();
   }
 
-  function failSubmission(logMsg, err, userMsg) {
+  function failSubmission(logMsg, err, userKey) {
     console.error(logMsg, err);
-    showError(userMsg);
+    showError(userKey);
     setBusy(false);
   }
 

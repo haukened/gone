@@ -20,7 +20,7 @@ test('does nothing when dependencies or required elements are missing', (t) => {
 test('initial render blocks the empty form and shows the meter', (t) => {
   const b = boot(t);
   assert.equal(b.blocked(), true);
-  assert.equal(b.$('size-label').textContent, '0 B of 1000 B');
+  assert.equal(b.$('size-label').textContent, '0 B of 1,000 B');
   assert.equal(b.$('size-warning').hidden, true);
   assert.equal(b.$('size-meter').max, 1000);
 });
@@ -29,7 +29,7 @@ test('typing and attaching files update the meter and button', (t) => {
   const b = boot(t);
   type(b, 'hello');
   assert.equal(b.blocked(), false);
-  assert.equal(b.$('size-label').textContent, '21 B of 1000 B');
+  assert.equal(b.$('size-label').textContent, '21 B of 1,000 B');
   type(b, '');
   addFiles(b, [new File(['x'.repeat(2000)], 'big.bin')]);
   assert.equal(b.blocked(), true);

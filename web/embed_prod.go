@@ -13,6 +13,9 @@ var embedded embed.FS
 
 var Assets fs.FS
 
+// Dev reports a development build; release builds have no pseudo-locale.
+const Dev = false
+
 func init() {
 	slog.Info("serving web assets from embedded filesystem", "build_tag", "prod")
 	sub, err := fs.Sub(embedded, "dist")

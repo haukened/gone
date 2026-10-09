@@ -2,10 +2,14 @@ package httpx
 
 import (
 	"errors"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/fstest"
+
+	"github.com/haukened/gone/v3/internal/i18n"
 )
 
 // mockTemplate implements the minimal interface required by renderTemplate.
@@ -65,7 +69,7 @@ func TestRenderTemplate(t *testing.T) {
 			t.Parallel()
 			rr := httptest.NewRecorder()
 
-			renderTemplate(rr, tc.tmpl, nil)
+			renderTemplate(rr, nil, tc.tmpl, nil)
 
 			if rr.Code != tc.wantStatus {
 				t.Fatalf("status = %d want %d", rr.Code, tc.wantStatus)
@@ -161,5 +165,70 @@ func assertCaptureWriterStatus(t *testing.T, cw *captureWriter) {
 	cw.WriteHeader(201)
 	if cw.status != 201 {
 		t.Fatalf("status overwrite = %d want 201", cw.status)
+	}
+}
+
+// TestLocalizedTemplate covers choosing a clone by locale, falling back to
+// the base locale, and having none.
+func TestLocalizedTemplate(t *testing.T) {
+	lt := LocalizedTemplate{
+		"en": template.Must(template.New("p").Parse("hello")),
+		"es": template.Must(template.New("p").Parse("hola")),
+	}
+	cases := []struct{ tag, want string }{{"es", "hola"}, {"fr", "hello"}, {"en", "hello"}}
+	for _, tc := range cases {
+		rr := httptest.NewRecorder()
+		if err := lt.ExecuteLocale(rr, tc.tag, nil); err != nil || rr.Body.String() != tc.want {
+			t.Errorf("%s: %q, %v", tc.tag, rr.Body.String(), err)
+		}
+	}
+	rr := httptest.NewRecorder()
+	if err := lt.Execute(rr, nil); err != nil || rr.Body.String() != "hello" {
+		t.Errorf("Execute: %q, %v", rr.Body.String(), err)
+	}
+	if err := (LocalizedTemplate{}).ExecuteLocale(httptest.NewRecorder(), "es", nil); !errors.Is(err, errNoTemplate) {
+		t.Errorf("empty: %v", err)
+	}
+}
+
+// TestRenderTemplateLocale verifies a localized page renders in the
+// request's locale with Content-Language and Vary.
+func TestRenderTemplateLocale(t *testing.T) {
+	lt := LocalizedTemplate{
+		"en": template.Must(template.New("p").Parse("hello")),
+		"es": template.Must(template.New("p").Parse("hola")),
+	}
+	b, err := i18n.Load(fstest.MapFS{
+		"m/en.json": {Data: []byte(`{"k": "v"}`)},
+		"m/es.json": {Data: []byte(`{"k": "w"}`)},
+	}, "m", i18n.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rr *httptest.ResponseRecorder
+	h := i18n.Middleware(b, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		renderTemplate(w, r, lt, nil)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Accept-Language", "es-MX")
+	rr = httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Body.String() != "hola" || rr.Header().Get("Content-Language") != "es" || rr.Header().Get("Vary") != "Cookie, Accept-Language" {
+		t.Fatalf("got %q %v", rr.Body.String(), rr.Header())
+	}
+}
+
+// TestRenderErrorPageKeys verifies the error template gets message keys.
+func TestRenderErrorPageKeys(t *testing.T) {
+	h := &Handler{ErrorTmpl: TemplateRenderer{T: template.Must(template.New("e").Parse("{{ .Status }} {{ .PageTitleKey }} {{ .TitleKey }} {{ .MessageKey }}"))}}
+	rr := httptest.NewRecorder()
+	h.renderErrorPage(rr, httptest.NewRequest(http.MethodGet, "/x", nil), http.StatusNotFound, "error.notFound")
+	if rr.Code != http.StatusNotFound || rr.Body.String() != "404 error.notFound.pageTitle error.notFound.title error.notFound.message" {
+		t.Fatalf("got %d %q", rr.Code, rr.Body.String())
+	}
+	rr = httptest.NewRecorder()
+	(&Handler{}).renderErrorPage(rr, nil, http.StatusNotFound, "error.notFound")
+	if rr.Code != http.StatusNotFound || rr.Body.String() != "Not Found" {
+		t.Fatalf("plain fallback %d %q", rr.Code, rr.Body.String())
 	}
 }

@@ -187,7 +187,7 @@ function applyProps(node, props) {
 }
 
 function parseSelector(sel) {
-  const m = /^([a-z0-9]*)(?:#([\w-]+))?(?:\.([\w-]+))?(?:\[(\w+)="([^"]*)"\])?$/i.exec(sel);
+  const m = /^([a-z0-9]*)(?:#([\w-]+))?(?:\.([\w-]+))?(?:\[([\w-]+)(?:="([^"]*)")?\])?$/i.exec(sel);
   if (!m) throw new Error('unsupported selector ' + sel);
   return { tag: m[1], id: m[2], className: m[3], attr: m[4], value: m[5] };
 }
@@ -204,7 +204,11 @@ function matches(node, sel) {
 function tagMatches(node, sel) { return !sel.tag || node.tagName === sel.tag.toUpperCase(); }
 function idMatches(node, sel) { return !sel.id || node.id === sel.id; }
 function classMatches(node, sel) { return !sel.className || node.classList.contains(sel.className); }
-function attrMatches(node, sel) { return !sel.attr || attrValue(node, sel.attr) === sel.value; }
+function attrMatches(node, sel) {
+  if (!sel.attr) return true;
+  if (sel.value === undefined) return node.hasAttribute(sel.attr);
+  return attrValue(node, sel.attr) === sel.value;
+}
 
 function queryAll(root, sel) {
   const out = [];

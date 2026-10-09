@@ -14,9 +14,9 @@
   const view = window.goneConsumeView;
   if (!util || !util.allPresent([window.goneEnvelope, api, view])) return;
 
-  const MALFORMED = 'This secret\u2019s contents are damaged. Ask the sender to share it again.';
-  const UNEXPECTED = 'Something went wrong opening this secret. Try again.';
-  const ERASED = 'You left this page, so the downloaded secret was erased from it. Ask the sender to share it again.';
+  const MALFORMED = 'js.consume.damaged';
+  const UNEXPECTED = 'js.consume.unexpected';
+  const ERASED = 'js.consume.erased';
 
   function decodeEnvelope(plaintext) {
     try {
@@ -34,7 +34,7 @@
   async function run(source, claim, held) {
     const t0 = performance.now();
     if (!held.fetched) {
-      view.setStatus('Retrieving\u2026');
+      view.setStatus('js.consume.retrieving');
       held.fetched = await api.fetchWithRetry(claim, view.setProgress);
       util.logTiming('consume_fetch', t0, performance.now());
     }

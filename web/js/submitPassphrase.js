@@ -2,55 +2,63 @@
 
 // Optional passphrase field on the create form: show/hide toggle, Generate
 // button, live entropy and time-to-guess hint, and length validation. Requires
-// window.goneUtil, window.goneCrypto and window.gonePassgen. Exposed as
+// window.goneI18n, window.goneCrypto and window.gonePassgen. Exposed as
 // window.gonePassphraseField.
 (function passphraseFieldModule() {
-  if (window.gonePassphraseField || !window.goneUtil || !window.goneCrypto || !window.gonePassgen) return;
-  const util = window.goneUtil;
+  if (window.gonePassphraseField || !window.goneI18n || !window.goneCrypto || !window.gonePassgen) return;
+  const i18n = window.goneI18n;
   const passgen = window.gonePassgen;
 
-  const SHORT_TEXT = `Too short: use at least ${passgen.minChars} characters.`;
-  const WEAK_NUDGE = ' Longer is better, or press Generate.';
   const YEAR = 365.25 * 24 * 3600;
-  const UNITS = [[60, 'second'], [3600, 'minute'], [86400, 'hour'], [YEAR, 'day']];
-  const BIG_YEARS = [[1000000000, 'billion'], [1000000, 'million'], [1000, 'thousand']];
+  const UNITS = [[60, 'seconds'], [3600, 'minutes'], [86400, 'hours'], [YEAR, 'days']];
+  const BIG_YEARS = [1000000000, 1000000, 1000];
   const UNIVERSE_YEARS = 13800000000;
 
-  function plural(n, unit) {
-    return `${n} ${unit}${n === 1 ? '' : 's'}`;
-  }
-
-  // duration renders seconds as rough, plain English: "3 hours", "58 years",
-  // "12 thousand years".
+  // duration describes seconds roughly, as a nested message for the hint:
+  // "3 hours", "58 years", "12 thousand years".
   function duration(seconds) {
     let prev = 1;
     for (const [limit, unit] of UNITS) {
-      if (seconds < limit) return plural(Math.max(1, Math.round(seconds / prev)), unit);
+      if (seconds < limit) return unitMsg(unit, Math.max(1, Math.round(seconds / prev)));
       prev = limit;
     }
     const years = seconds / YEAR;
-    for (const [n, word] of BIG_YEARS) {
-      if (years >= n) return `${Math.round(years / n)} ${word} years`;
-    }
-    return plural(Math.round(years), 'year');
+    const big = BIG_YEARS.find(function (n) { return years >= n; });
+    if (!big) return unitMsg('years', Math.round(years));
+    const rounded = Math.round(years / big) * big;
+    return { msg: 'js.pass.years', args: { count: rounded, n: { compact: rounded } } };
   }
 
-  // describe returns the hint for a passphrase: its entropy and the average
-  // time an attacker holding the link would need to guess it.
+  function unitMsg(unit, n) {
+    return { msg: 'js.pass.' + unit, args: { count: n, n: n } };
+  }
+
+  // describe returns the hint for a passphrase as {key, args}, or null when
+  // empty: its entropy and the average time an attacker holding the link
+  // would need to guess it.
   function describe(level, entropyBits) {
-    if (level === 'empty') return '';
-    if (level === 'short') return SHORT_TEXT;
+    if (level === 'empty') return null;
+    if (level === 'short') return { key: 'js.pass.short', args: { min: passgen.minChars } };
     const seconds = passgen.crackSeconds(entropyBits);
-    const years = seconds / YEAR;
-    let crack;
-    if (seconds < 1) crack = 'guessed almost instantly';
-    else if (years > UNIVERSE_YEARS) crack = 'longer than the age of the universe to guess';
-    else crack = `about ${duration(seconds)} to guess`;
-    const text = `About ${Math.round(entropyBits)} bits of entropy, ${crack}.`;
-    return level === 'weak' ? text + WEAK_NUDGE : text;
+    const args = { bits: Math.round(entropyBits) };
+    let key = 'js.pass.guessTime';
+    if (seconds < 1) key = 'js.pass.guessInstant';
+    else if (seconds / YEAR > UNIVERSE_YEARS) key = 'js.pass.guessUniverse';
+    else args.time = duration(seconds);
+    if (level !== 'weak') return { key: key, args: args };
+    return { key: 'js.pass.weak', args: { text: { msg: key, args: args } } };
   }
 
-  const SHORT_PROBLEM = `Make the passphrase at least ${passgen.minChars} characters, or leave it empty.`;
+  // showStrength writes the strength hint into node, if there is one.
+  function showStrength(node, level, entropyBits) {
+    if (!node) return;
+    node.dataset.level = level;
+    const hint = describe(level, entropyBits);
+    if (hint) i18n.set(node, hint.key, hint.args);
+    else i18n.clear(node);
+  }
+
+  const SHORT_PROBLEM = { key: 'js.pass.shortProblem', args: { min: passgen.minChars } };
 
   // create wires the passphrase controls.
   //
@@ -67,7 +75,7 @@
       return input.value;
     }
 
-    // problem returns a user-facing message when a non-empty passphrase is too short.
+    // problem returns {key, args} when a non-empty passphrase is too short.
     function problem() {
       return passgen.strength(input.value) === 'short' ? SHORT_PROBLEM : '';
     }
@@ -79,7 +87,7 @@
 
     function setShown(shown) {
       input.type = shown ? 'text' : 'password';
-      util.setText(toggleLabel, shown ? 'Hide' : 'Show');
+      i18n.set(toggleLabel, shown ? 'js.common.hide' : 'js.common.show');
     }
 
     // entropy is exact for an untouched generated passphrase, else estimated.
@@ -90,10 +98,7 @@
     function render() {
       const entropyBits = entropy();
       const level = passgen.strength(input.value, entropyBits);
-      if (els.strength) {
-        els.strength.dataset.level = level;
-        util.setText(els.strength, describe(level, entropyBits));
-      }
+      showStrength(els.strength, level, entropyBits);
       input.setAttribute('aria-invalid', String(level === 'short'));
     }
 

@@ -26,9 +26,12 @@ This directory contains the OpenAPI specification (`openapi.yaml`) for the Gone 
 | DELETE | `/api/request/{id}/reply` | Requester: acknowledge the reply; permanently deletes it (`X-Gone-Claim`) |
 | POST | `/api/request/{id}/revoke` | Requester: cancel the request, or delete an unopened reply (`X-Gone-Manage`) |
 | GET | `/healthz` | Liveness check (`200`, text `ok`) |
+| GET | `/i18n/{tag}.json` | The web pages' message catalog for one language (`en`, `es`, `fr`, `de`, `pt-BR`), used to switch language in place. With the current `?v=` hash it may be cached for a year. |
 | GET | `/readyz` | Readiness check: the database answers a ping and the blob directory is readable (`200`, text `ready`; otherwise `503` `not ready`) |
 
 Other methods on `/api/secret/{id}` return `405` with `Allow: GET, DELETE`. The same applies to `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`), and to `/api/request/{id}/reply` (`Allow: GET, PUT, DELETE`). Unknown `/api/` paths return a JSON `404`.
+
+Pages are rendered in the language chosen by the `gone_lang` cookie, else the best match for `Accept-Language`, else English. Page responses carry `Content-Language` and `Vary: Cookie, Accept-Language`. The API itself is not translated: error bodies are always English, and the pages map status codes to their own messages.
 
 Metrics are **not** served on the public listener. When both `GONE_METRICS_ADDR` and `GONE_METRICS_TOKEN` are set, a separate listener requires `Authorization: Bearer <token>` on every request and serves `GET /metrics` in the Prometheus text exposition format (version 0.0.4) and `GET /` as a JSON snapshot; other paths return `404`. If either variable is missing, metrics are disabled.
 

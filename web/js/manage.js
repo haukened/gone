@@ -11,9 +11,9 @@
   const view = window.goneManageView;
   if (!util || !util.allPresent([api, view]) || !view.present) return;
 
-  const UNEXPECTED = 'Something went wrong. Try again.';
+  const UNEXPECTED = 'js.common.unexpected';
 
-  // message returns the user-facing text for an error.
+  // message returns the message key for an error.
   function message(e) {
     if (api.isManageError(e)) return e.message;
     console.error('[gone] manage error', e);

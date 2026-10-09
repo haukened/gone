@@ -52,7 +52,7 @@
   function apiFetch(method, headers) {
     const url = api.endpoint;
     if (allowedEndpoints.has(url)) return fetch(url, apiInit(method, Object.assign({}, api.headers, headers)));
-    return Promise.reject(errs.FetchError('Blocked request to an unexpected URL', false));
+    return Promise.reject(errs.FetchError('js.consume.blocked', false));
   }
 
   window.goneConsumeApiEndpoint = Object.freeze({ registerEndpoint: registerEndpoint, registerReplyEndpoint: registerReplyEndpoint, apiFetch: apiFetch });

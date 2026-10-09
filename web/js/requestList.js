@@ -2,13 +2,13 @@
 
 // Renders the requester's list of requests on /request: one row per request
 // saved in this browser, with its label, age and state, linking to
-// /request/{id}. Text is set with textContent only. Exposed as
-// window.goneRequestList.
+// /request/{id}. Text is set with textContent or goneI18n only; a label the
+// requester typed is never translated. Exposed as window.goneRequestList.
 (function requestListModule() {
-  if (window.goneRequestList || !window.goneUtil) return;
+  if (window.goneRequestList || !window.goneUtil || !window.goneI18n) return;
   const util = window.goneUtil;
-  const UNTITLED = 'Untitled request';
-  const STATES = { waiting: 'Waiting', ready: 'Reply ready' };
+  const i18n = window.goneI18n;
+  const STATES = { waiting: 'common.life.waiting', ready: 'js.request.stateReady' };
   const MINUTE = 60000;
   const HOUR = 60 * MINUTE;
   const DAY = 24 * HOUR;
@@ -17,32 +17,37 @@
     return document.getElementById(id);
   }
 
-  // since renders how long ago a timestamp was, in the largest whole unit.
+  // since describes how long ago a timestamp was, in the largest whole
+  // unit, as a message key and args.
   function since(ms, now) {
     const d = Math.max(0, now - ms);
-    if (d < MINUTE) return 'just now';
-    if (d < HOUR) return `${Math.floor(d / MINUTE)} min ago`;
-    if (d < DAY) return `${Math.floor(d / HOUR)} h ago`;
-    return `${Math.floor(d / DAY)} d ago`;
+    if (d < MINUTE) return { key: 'js.request.askedJustNow' };
+    const unit = d < HOUR ? ['minute', MINUTE] : d < DAY ? ['hour', HOUR] : ['day', DAY];
+    return { key: 'js.request.asked', args: { when: { rel: -Math.floor(d / unit[1]), unit: unit[0] } } };
   }
 
-  function title(entry) {
-    return entry.label || UNTITLED;
+  // titleNode shows the requester's label, or "Untitled request".
+  function titleNode(entry) {
+    const span = util.el('span', { className: 'name' }, []);
+    if (entry.label) i18n.plain(span, entry.label);
+    else i18n.set(span, 'js.request.untitled');
+    return span;
   }
 
   function pill(state) {
-    return util.el('span', { className: 'pill-status', textContent: STATES[state] || STATES.waiting }, []);
+    const span = util.el('span', { className: 'pill-status' }, []);
+    i18n.set(span, STATES[state] || STATES.waiting);
+    return span;
   }
 
   function row(entry, now) {
     const state = entry.state === 'ready' ? 'ready' : 'waiting';
     const p = pill(state);
     p.dataset.state = state;
-    const link = util.el('a', { className: 'request-row', href: `/request/${entry.id}` }, [
-      util.el('span', { className: 'name', textContent: title(entry) }, []),
-      util.el('span', { className: 'when', textContent: `Asked ${since(entry.createdAt, now)}` }, []),
-      p
-    ]);
+    const when = util.el('span', { className: 'when' }, []);
+    const ago = since(entry.createdAt, now);
+    i18n.set(when, ago.key, ago.args);
+    const link = util.el('a', { className: 'request-row', href: `/request/${entry.id}` }, [titleNode(entry), when, p]);
     const li = util.el('li', {}, [link]);
     li.dataset.id = entry.id;
     return li;
@@ -60,10 +65,10 @@
     if (empty) empty.hidden = entries.length > 0;
   }
 
-  // announce puts message in the list's live region.
-  function announce(message) {
-    util.setText(byId('request-list-status'), message);
+  // announce puts a message key in the list's live region.
+  function announce(key, args) {
+    i18n.set(byId('request-list-status'), key, args);
   }
 
-  window.goneRequestList = Object.freeze({ render: render, announce: announce, since: since, title: title });
+  window.goneRequestList = Object.freeze({ render: render, announce: announce, since: since });
 })();

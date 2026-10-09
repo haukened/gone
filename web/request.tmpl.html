@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}" dir="{{ dir }}">
 <head>
 	{{ template "assets" }}
-	<title>Gone · Request a secret</title>
+	<title data-i18n="request.pageTitle">{{ t "request.pageTitle" }}</title>
 </head>
 <body>
 	{{ template "header" "request" }}
@@ -10,34 +10,34 @@
 		<div id="view-compose" class="view">
 			<div class="alert banner security-warning" role="alert" hidden>
 				<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
-				<div><strong>This page isn't secure, so requests are turned off.</strong>Browsers only encrypt on HTTPS pages. Ask whoever runs this server to put it behind HTTPS.</div>
+				<div data-i18n="request.insecure">{{ rich "request.insecure" nil "strong" `<strong>` }}</div>
 			</div>
 			<div class="pane">
-				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-inbox" /></svg>Opens only in this browser</p>
-				<h1>Ask someone for a <span class="accent">secret.</span></h1>
-				<p class="lead">Make a link to send to the person who has it. What they send back is encrypted to this browser, so only you can open it, once.</p>
-				<form id="create-request" class="form" aria-label="Create a request" novalidate>
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-inbox" /></svg><span data-i18n="request.eyebrow">{{ t "request.eyebrow" }}</span></p>
+				<h1 data-i18n="request.title">{{ rich "request.title" nil "accent" `<span class="accent">` }}</h1>
+				<p class="lead" data-i18n="request.lead">{{ t "request.lead" }}</p>
+				<form id="create-request" class="form" aria-label="{{ t "request.form" }}" data-i18n-attr="aria-label:request.form" novalidate>
 					<div class="field">
 						<div class="label-row">
-							<label class="label" for="request-label">Label <span class="opt">(optional)</span></label>
-							<span class="hint" id="request-label-hint">Only you see this. It stays on this device.</span>
+							<label class="label" for="request-label" data-i18n="request.label">{{ rich "request.label" nil "opt" `<span class="opt">` }}</label>
+							<span class="hint" id="request-label-hint" data-i18n="request.labelHint">{{ t "request.labelHint" }}</span>
 						</div>
-						<input id="request-label" class="input" type="text" maxlength="80" placeholder="For example: staging database password" autocomplete="off" aria-describedby="request-label-hint" />
+						<input id="request-label" class="input" type="text" maxlength="80" placeholder="{{ t "request.labelPlaceholder" }}" data-i18n-attr="placeholder:request.labelPlaceholder" autocomplete="off" aria-describedby="request-label-hint" />
 					</div>
 					<fieldset class="seg field" aria-describedby="request-ttl-hint">
-						<legend>Wait for a reply</legend>
+						<legend data-i18n="request.ttl">{{ t "request.ttl" }}</legend>
 						<div class="seg-track">
-							{{ range .TTLOptions }}<input type="radio" class="sr-only" name="ttl" id="ttl-{{ .Label }}" value="{{ .Label }}" data-seconds="{{ .DurationSeconds }}"{{ if .Default }} checked{{ end }} /><label for="ttl-{{ .Label }}">{{ .Short }}<span class="sr-only"> ({{ .Display }})</span></label>{{ end }}
+							{{ range .TTLOptions }}<input type="radio" class="sr-only" name="ttl" id="ttl-{{ .Label }}" value="{{ .Label }}" data-seconds="{{ .DurationSeconds }}"{{ if .Default }} checked{{ end }} /><label for="ttl-{{ .Label }}"><span aria-hidden="true" data-i18n-value="{{ json (dur .DurationSeconds "short") }}">{{ fmt (dur .DurationSeconds "short") }}</span><span class="sr-only" data-i18n-value="{{ json (dur .DurationSeconds "long") }}">{{ fmt (dur .DurationSeconds "long") }}</span></label>{{ end }}
 						</div>
-						<span class="hint" id="request-ttl-hint">The link stops working after this. A reply is then kept for the same length of time.</span>
+						<span class="hint" id="request-ttl-hint" data-i18n="request.ttlHint">{{ t "request.ttlHint" }}</span>
 					</fieldset>
 					<div class="field">
-						<button id="create-request-btn" class="btn btn-primary btn-block" type="submit" aria-describedby="request-hint"><span>Create request link</span><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg></button>
-						<span class="hint fine" id="request-hint">A key pair is made here. The private key never leaves this browser.</span>
+						<button id="create-request-btn" class="btn btn-primary btn-block" type="submit" aria-describedby="request-hint"><span data-i18n="js.request.create">{{ t "js.request.create" }}</span><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg></button>
+						<span class="hint fine" id="request-hint" data-i18n="request.keyHint">{{ t "request.keyHint" }}</span>
 					</div>
 					<div id="storage-alert" class="alert" hidden>
 						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
-						<p>This browser can't save the key a request needs, so it couldn't open the reply. Private windows often can't. Try a normal window.</p>
+						<p data-i18n="request.storage">{{ t "request.storage" }}</p>
 					</div>
 					<div id="request-error" class="alert" hidden>
 						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
@@ -45,44 +45,44 @@
 					</div>
 				</form>
 				<section id="request-list-section" class="requests" aria-labelledby="request-list-heading">
-					<h2 id="request-list-heading">Your requests on this device</h2>
+					<h2 id="request-list-heading" data-i18n="request.listHeading">{{ t "request.listHeading" }}</h2>
 					<ul id="request-list" class="request-list" hidden></ul>
-					<p id="request-empty" class="note">Requests you make here show up in this list. You can close the page; they'll be waiting when you come back.</p>
+					<p id="request-empty" class="note" data-i18n="request.empty">{{ t "request.empty" }}</p>
 					<span id="request-list-status" class="status" role="status"></span>
 				</section>
 			</div>
 		</div>
 		<div id="view-created" class="view" hidden>
 			<div class="pane">
-				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg>Request ready</p>
-				<h1 id="created-heading" tabindex="-1">Send this request <span class="accent">link.</span></h1>
-				<p class="lead">They type the secret on that page and it's encrypted for this browser. When it arrives, it shows up here.</p>
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg><span data-i18n="request.createdEyebrow">{{ t "request.createdEyebrow" }}</span></p>
+				<h1 id="created-heading" tabindex="-1" data-i18n="request.createdTitle">{{ rich "request.createdTitle" nil "accent" `<span class="accent">` }}</h1>
+				<p class="lead" data-i18n="request.createdLead">{{ t "request.createdLead" }}</p>
 				<div class="form">
 					<div class="field">
-						<label class="label" for="reply-link">Request link</label>
+						<label class="label" for="reply-link" data-i18n="request.link">{{ t "request.link" }}</label>
 						<div class="linkbox">
 							<input id="reply-link" class="input" type="text" readonly spellcheck="false" autocomplete="off" />
-							<button id="copy-reply" class="btn btn-primary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy link</span></button>
+							<button id="copy-reply" class="btn btn-primary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span data-i18n="result.copy">{{ t "result.copy" }}</span></button>
 						</div>
 						<span id="copy-status" class="status" role="status"></span>
-						<p class="hint">The link can't open anything. It only lets someone send you one reply, so it's fine to send through chat or email. Make sure it reaches the right person.</p>
+						<p class="hint" data-i18n="request.linkHint">{{ t "request.linkHint" }}</p>
 					</div>
-					<p class="callout"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span><strong>Opens only in this browser.</strong> You can close this page. Come back to <a href="/request">Request a secret</a> in this browser to open the reply.</span></p>
+					<p class="callout"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span data-i18n="request.callout">{{ rich "request.callout" nil "strong" `<strong>` "link" `<a href="/request">` }}</span></p>
 					<div class="field">
-						<span id="created-state" class="pill-status" data-state="waiting">Waiting for a reply</span>
+						<span id="created-state" class="pill-status" data-state="waiting" data-i18n="js.request.stateWaiting">{{ t "js.request.stateWaiting" }}</span>
 						<span id="created-status" class="status" role="status"></span>
 					</div>
 					<div class="actions">
-						<a id="created-open" class="btn btn-secondary" href="/request">View this request</a>
-						<a class="btn btn-quiet" href="/request">Make another request</a>
+						<a id="created-open" class="btn btn-secondary" href="/request" data-i18n="request.view">{{ t "request.view" }}</a>
+						<a class="btn btn-quiet" href="/request" data-i18n="request.another">{{ t "request.another" }}</a>
 					</div>
 				</div>
-				<section class="rail" aria-label="Request status">
+				<section class="rail" aria-label="{{ t "request.status" }}" data-i18n-attr="aria-label:request.status">
 					<ol class="life">
-						<li class="is-done"><span class="t">Asked</span>Just now</li>
-						<li id="created-step-waiting" class="is-now" aria-current="step"><span class="t">Waiting</span><span>Until <time id="created-expiry"></time></span></li>
-						<li id="created-step-replied"><span class="t">Replied</span>Encrypted to this browser</li>
-						<li><span class="t">Opened once</span>By you, then gone</li>
+						<li class="is-done" data-i18n="request.life.asked">{{ rich "request.life.asked" nil "t" `<span class="t">` }}</li>
+						<li id="created-step-waiting" class="is-now" aria-current="step"><span class="t" data-i18n="common.life.waiting">{{ t "common.life.waiting" }}</span><span data-i18n="result.life.until">{{ rich "result.life.until" nil "time" `<time id="created-expiry">` }}</span></li>
+						<li id="created-step-replied" data-i18n="request.life.replied">{{ rich "request.life.replied" nil "t" `<span class="t">` }}</li>
+						<li data-i18n="request.life.opened">{{ rich "request.life.opened" nil "t" `<span class="t">` }}</li>
 					</ol>
 				</section>
 			</div>

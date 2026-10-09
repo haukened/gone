@@ -234,22 +234,24 @@ textarea:focus-visible,
   font-weight: 500;
 }
 
+/* Options share the row, each at least as wide as its label, and wrap to a
+   second row when a longer language needs the room. */
 .seg-track {
   clear: both;
-  display: grid;
-  grid-auto-columns: minmax(0, 1fr);
-  grid-auto-flow: column;
+  display: flex;
+  flex-wrap: wrap;
   gap: 2px;
   padding: 4px;
   margin-bottom: var(--space-2);
   background: var(--well);
   border: 1px solid var(--well-edge);
-  border-radius: var(--radius-pill);
+  border-radius: 1.6rem;
   box-shadow: inset 0 1px 2px var(--well-shade);
 }
 
 .seg label {
   display: grid;
+  flex: 1 0 auto;
   place-items: center;
   min-height: 2.625rem;
   padding: 0 0.25rem;
@@ -363,7 +365,11 @@ textarea:focus-visible,
 .btn-block {
   width: 100%;
   min-height: 3.375rem;
+  padding-block: 0.6rem;
   font-size: var(--step-0);
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
 }
 
 .btn:disabled,
@@ -982,5 +988,14 @@ textarea:focus-visible,
 
   .btn-qr .qr-label {
     display: none;
+  }
+}
+
+/* The narrowest phones: tighter options so a full set of durations fits on
+   one row in longer languages. */
+@media (max-width: 24rem) {
+  .seg label {
+    padding: 0 0.15rem;
+    font-size: 0.8125rem;
   }
 }

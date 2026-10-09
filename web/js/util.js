@@ -2,13 +2,12 @@
 'use strict';
 
 // Shared helpers for gone page scripts: timing logs, delays, element
-// building, and copy feedback. No helper here parses HTML.
-// Exposed as window.goneUtil.
+// building, and copy feedback. No helper here parses HTML. Copy feedback is
+// translated through window.goneI18n. Exposed as window.goneUtil.
 (function utilModule() {
   if (window.goneUtil) return;
 
   const COPIED_MS = 2200;
-  const COPY_FAILED = 'Couldn\u2019t copy automatically. It\u2019s selected: press Ctrl+C (\u2318C on Mac).';
   const copyTimers = new WeakMap();
 
   // readDebugTiming enables [gone][timing] logs via ?debug=timing or the
@@ -60,19 +59,22 @@
     return node;
   }
 
-  // flashCopied relabels btn's <span> to "Copied" and announces message in
-  // the status live region, restoring both after a moment. btn stays enabled
-  // so keyboard focus is never dropped.
-  function flashCopied(btn, status, message) {
+  // flashCopied relabels btn's <span> to "Copied" and announces the message
+  // key in the status live region, restoring both after a moment. The label's
+  // own message key is restored (so a language change meanwhile is kept), or
+  // its text when it has none. btn stays enabled so keyboard focus is never
+  // dropped.
+  function flashCopied(btn, status, messageKey) {
+    const i18n = window.goneI18n;
     const label = btn.querySelector('span');
     const prev = copyTimers.get(btn);
     if (prev) clearTimeout(prev.timer);
-    const idle = prev ? prev.idle : label.textContent;
-    label.textContent = 'Copied';
-    setText(status, message);
+    const idle = prev ? prev.idle : i18n.snapshot(label);
+    i18n.set(label, 'js.common.copied');
+    if (status) i18n.set(status, messageKey);
     const timer = setTimeout(function () {
-      label.textContent = idle;
-      setText(status, '');
+      i18n.restore(label, idle);
+      if (status) i18n.clear(status);
       copyTimers.delete(btn);
     }, COPIED_MS);
     copyTimers.set(btn, { timer: timer, idle: idle });
@@ -88,7 +90,7 @@
       return true;
     } catch {
       if (select) select();
-      setText(status, COPY_FAILED);
+      if (status) window.goneI18n.set(status, 'js.common.copyFailed');
       return false;
     }
   }

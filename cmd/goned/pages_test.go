@@ -102,7 +102,7 @@ func pageRouter(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatalf("sqlite init: %v", err)
 	}
-	tmpls, err := loadTemplatesFrom(wembed.Assets, "v0.0.0-test")
+	tmpls, err := loadTemplatesFrom(wembed.Assets, "v0.0.0-test", testBundle(t))
 	if err != nil {
 		t.Fatalf("load templates: %v", err)
 	}

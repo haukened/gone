@@ -15,6 +15,10 @@ import (
 // `go test ./web` behave consistently.
 var Assets fs.FS
 
+// Dev reports a development build, which adds the pseudo-locale for
+// checking translations and layout.
+const Dev = true
+
 func init() {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {

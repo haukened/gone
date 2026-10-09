@@ -1,8 +1,9 @@
 'use strict';
 
-// Shared DOM lookup and state for consume view modules.
+// Shared DOM lookup and state for consume view modules. Text goes through
+// window.goneI18n.
 (function consumeViewBaseModule() {
-  if (window.goneConsumeViewBase || !window.goneUtil || !window.goneFileMeta || !window.goneIcons) return;
+  if (window.goneConsumeViewBase || !window.goneUtil || !window.goneI18n || !window.goneIcons) return;
 
   function byId(id) {
     return document.getElementById(id);
@@ -49,11 +50,15 @@
 
   const dom = lookupDom();
   const state = { plaintext: null, files: [], urls: [], pending: 0, busy: false, locked: false };
-  state.openLabel = dom.openLabel ? dom.openLabel.textContent : '';
-  const ctx = { util: window.goneUtil, icons: window.goneIcons, formatBytes: window.goneFileMeta.formatBytes, byId: byId, dom: dom, state: state, pass: null };
+  state.openLabel = window.goneI18n.snapshot(dom.openLabel);
+  const ctx = { util: window.goneUtil, i18n: window.goneI18n, icons: window.goneIcons, byId: byId, dom: dom, state: state, pass: null };
 
-  function setStatus(msg) {
-    ctx.util.setText(dom.status, msg);
+  // setStatus shows a status message key, or clears the status when key is
+  // empty.
+  function setStatus(key, args) {
+    if (!dom.status) return;
+    if (key) ctx.i18n.set(dom.status, key, args);
+    else ctx.i18n.clear(dom.status);
   }
 
   function syncOpen() {

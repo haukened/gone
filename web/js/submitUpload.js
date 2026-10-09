@@ -10,15 +10,16 @@
   const util = window.goneUtil;
 
   const UPLOAD_PATH = '/api/secret';
-  const NETWORK_ERROR = 'Network error uploading secret';
+  const NETWORK_ERROR = 'js.upload.network';
   const TRANSPORT_ERROR_RE = /network|abort|timed/;
   const SECRET_ID_RE = /^[0-9a-f]{32}$/;
   const MANAGE_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
+  const SERVER_ERROR = 'js.upload.server';
   const UPLOAD_ERRORS = new Map([
-    [400, 'The server rejected the secret'],
-    [413, 'Secret too large for this server'],
-    [429, 'Slow down: too many requests. Please wait and retry.'],
-    [503, 'The server is busy right now. Wait a moment, then try again.']
+    [400, 'js.upload.rejected'],
+    [413, 'js.upload.tooLarge'],
+    [429, 'js.common.tooMany'],
+    [503, 'js.common.busy']
   ]);
 
   // buildPlaintext reads the files and encodes them with message into an
@@ -87,15 +88,16 @@
     });
   }
 
+  // uploadErrorMessage returns the message key for a failed upload status.
   function uploadErrorMessage(status) {
-    return UPLOAD_ERRORS.get(status) || 'Server error creating secret';
+    return UPLOAD_ERRORS.get(status) || SERVER_ERROR;
   }
 
   // upload sends the encrypted secret with the given TTL under protocol
   // version (default v1).
   //
-  // Returns the server's JSON ({id, expires_at, manage_token}); rejects with a user-facing
-  // message on a non-success status or malformed response.
+  // Returns the server's JSON ({id, expires_at, manage_token}); rejects with a message
+  // key on a non-success status or malformed response.
   async function upload(encResult, ttl, onProgress, version) {
     const headers = {
       'X-Gone-Version': String(version || gc.version),
@@ -111,16 +113,17 @@
       console.error('[gone] server error', res.status);
       throw new Error(uploadErrorMessage(res.status));
     }
-    if (!res.json || !res.json.id) throw new Error('Unexpected server response');
+    if (!res.json || !res.json.id) throw new Error(SERVER_ERROR);
     return res.json;
   }
 
-  // friendlyError maps transport failures to a generic network message and
-  // passes server messages through.
+  // friendlyError returns the message key to show for an upload failure:
+  // transport failures get the network message, keyed errors pass through,
+  // anything else gets the generic server message.
   function friendlyError(e) {
     const msg = e && e.message;
     if (!msg || TRANSPORT_ERROR_RE.test(msg)) return NETWORK_ERROR;
-    return msg;
+    return msg.indexOf('js.') === 0 ? msg : SERVER_ERROR;
   }
 
   // buildShareURL returns the link the recipient opens for protocol version

@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}" dir="{{ dir }}">
 <head>
 	{{ template "assets" }}
-	<title>Gone · {{ .Title }}</title>
+	<title data-i18n="{{ .PageTitleKey }}">{{ t .PageTitleKey }}</title>
 </head>
 <body>
 	{{ template "header" "" }}
 	<main id="main" tabindex="-1" class="main">
 		<div class="view">
 			<div class="pane">
-				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>Error {{ .Status }}</p>
-				<h1>{{ .Title }}</h1>
-				<p class="lead">{{ .Message }}</p>
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg><span data-i18n="error.status" data-i18n-args="{{ json (args "status" .Status) }}">{{ t "error.status" "status" .Status }}</span></p>
+				<h1 data-i18n="{{ .TitleKey }}">{{ t .TitleKey }}</h1>
+				<p class="lead" data-i18n="{{ .MessageKey }}">{{ t .MessageKey }}</p>
 				<section class="next" aria-labelledby="error-next">
-					<h2 id="error-next">What you can do</h2>
-					<p class="note">Check the address, or start over from the home page.</p>
+					<h2 id="error-next" data-i18n="secret.goneNext">{{ t "secret.goneNext" }}</h2>
+					<p class="note" data-i18n="error.note">{{ t "error.note" }}</p>
 				</section>
-				<a class="btn btn-primary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Back to home</a>
+				<a class="btn btn-primary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg><span data-i18n="error.home">{{ t "error.home" }}</span></a>
 			</div>
 		</div>
 	</main>

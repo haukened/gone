@@ -33,13 +33,12 @@
     return t.replace(/\s+$/, '').split('\n').length;
   }
 
-  // sizeOf describes the message without showing it: lines, or characters
-  // for a one-liner such as a password.
+  // sizeOf describes the message without showing it, as a message key and
+  // args: lines, or characters for a one-liner such as a password.
   function sizeOf(t) {
     const lines = lineCount(t);
-    if (lines > 1) return `${lines} lines`;
-    const n = Array.from(t).length;
-    return n === 1 ? '1 character' : `${n} characters`;
+    if (lines > 1) return { key: 'js.consume.lines', args: { count: lines } };
+    return { key: 'js.consume.characters', args: { count: Array.from(t).length } };
   }
 
   function setShown(shown) {
@@ -47,7 +46,7 @@
     dom.output.hidden = !shown;
     dom.cover.hidden = shown;
     if (dom.messagePanel) dom.messagePanel.classList.toggle('is-shown', shown);
-    if (dom.showLabel) dom.showLabel.textContent = shown ? 'Hide' : 'Show';
+    if (dom.showLabel) ctx.i18n.set(dom.showLabel, shown ? 'js.common.hide' : 'js.common.show');
   }
 
   function maskable() {
@@ -62,7 +61,8 @@
       if (dom.output) dom.output.textContent = t;
       return;
     }
-    ctx.util.setText(dom.size, sizeOf(t));
+    const size = sizeOf(t);
+    ctx.i18n.set(dom.size, size.key, size.args);
     if (dom.coverDots) dom.coverDots.textContent = ROWS.slice(0, Math.min(lineCount(t), ROWS.length)).join('\n');
     const always = remembered();
     if (dom.alwaysShow) dom.alwaysShow.checked = always;

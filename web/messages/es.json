@@ -1,0 +1,644 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"common.skip": "Saltar al contenido",
+	"common.home": "Gone, inicio",
+	"common.navSite": "Sitio",
+	"common.navSend": "Enviar{#long} un secreto{/long}",
+	"common.navRequest": "Pedir{#long} un secreto{/long}",
+	"common.navAbout": "Acerca de",
+	"common.language": "Idioma",
+	"common.darkMode": "Modo oscuro",
+	"common.footerTagline": "Cifrado en tu navegador. Este servidor solo guarda texto cifrado.",
+	"common.navFooter": "Pie de página",
+	"common.source": "Código fuente",
+	"common.report": "Informar de un problema",
+	"common.contribute": "Contribuir",
+	"common.copyright": "© 2025–2026 Los colaboradores del proyecto Gone",
+	"common.devBuild": "Versión de desarrollo",
+	"common.machine": "Esta traducción se hizo de forma automática. {#link}Ayúdanos a mejorarla.{/link}",
+	"common.size.b": "{n} B",
+	"common.size.kb": "{n} KB",
+	"common.size.mb": "{n} MB",
+	"common.size.gb": "{n} GB",
+	"common.size.tb": "{n} TB",
+	"common.size.pb": "{n} PB",
+	"common.duration.short.days": "{n} d",
+	"common.duration.short.hours": "{n} h",
+	"common.duration.short.minutes": "{n} min",
+	"common.duration.short.seconds": "{n} s",
+	"common.duration.long.days": [
+		{
+			"declarations": [
+				"input n",
+				"local nPlural = n: plural"
+			],
+			"selectors": [
+				"nPlural"
+			],
+			"match": {
+				"nPlural=one": "{n} día",
+				"nPlural=*": "{n} días",
+				"nPlural=many": "{n} de días"
+			}
+		}
+	],
+	"common.duration.long.hours": [
+		{
+			"declarations": [
+				"input n",
+				"local nPlural = n: plural"
+			],
+			"selectors": [
+				"nPlural"
+			],
+			"match": {
+				"nPlural=one": "{n} hora",
+				"nPlural=*": "{n} horas",
+				"nPlural=many": "{n} de horas"
+			}
+		}
+	],
+	"common.duration.long.minutes": [
+		{
+			"declarations": [
+				"input n",
+				"local nPlural = n: plural"
+			],
+			"selectors": [
+				"nPlural"
+			],
+			"match": {
+				"nPlural=one": "{n} minuto",
+				"nPlural=*": "{n} minutos",
+				"nPlural=many": "{n} de minutos"
+			}
+		}
+	],
+	"common.duration.long.seconds": [
+		{
+			"declarations": [
+				"input n",
+				"local nPlural = n: plural"
+			],
+			"selectors": [
+				"nPlural"
+			],
+			"match": {
+				"nPlural=one": "{n} segundo",
+				"nPlural=*": "{n} segundos",
+				"nPlural=many": "{n} de segundos"
+			}
+		}
+	],
+	"send.pageTitle": "Gone · Envía un secreto de un solo uso",
+	"compose.insecure": "{#strong}Esta página no es segura, así que el envío está desactivado.{/strong}Los navegadores solo cifran en páginas HTTPS. Pide a quien administra este servidor que lo ponga detrás de HTTPS.",
+	"send.eyebrow": "Cifrado en este navegador",
+	"send.title": "Envía un secreto que se abre {#accent}una vez.{/accent}",
+	"send.lead": "Tu mensaje y tus archivos se cifran en este navegador antes de enviarse. El servidor solo guarda una copia cifrada que no puede leer. El enlace funciona una vez y después se borra todo.",
+	"send.form": "Crear un secreto",
+	"compose.message": "Mensaje",
+	"compose.messageHint": "Se cifra en este dispositivo antes de enviarse.",
+	"send.messagePlaceholder": "Pega una contraseña, una nota o cualquier cosa privada.",
+	"compose.files": "Archivos {#opt}(opcional, hasta {max}){/opt}",
+	"compose.addFiles": "Añadir archivos",
+	"compose.dropFiles": "o suéltalos aquí",
+	"compose.attached": "Archivos adjuntos",
+	"js.meter.size": "{used} de {max}",
+	"compose.ttl": "Borrar sin abrir después de",
+	"compose.ttlHint": "Si nadie lo abre antes, se borra sin leer. Intervalo permitido: de {min} a {max}.",
+	"send.passAdd": "Añadir una frase de contraseña {#opt}(opcional){/opt}",
+	"common.passphrase": "Frase de contraseña",
+	"js.common.show": "Mostrar",
+	"send.passGenerate": "Generar",
+	"send.passHint": "El destinatario la escribe antes de que se abra el secreto. Envíasela por otro medio (por ejemplo, por teléfono o en otra aplicación), nunca junto con el enlace.",
+	"send.submit": "Crear enlace de un solo uso",
+	"compose.uploadProgress": "Progreso de la subida",
+	"compose.submitHint": "Nada sale de este dispositivo hasta que pulses el botón.",
+	"send.next": "Qué pasa después",
+	"send.life.sealed": "{#t}Sellado{/t}Cifrado aquí. El servidor nunca recibe la clave.",
+	"send.life.waiting": "{#t}En espera{/t}Hasta que se abra o caduque.",
+	"send.life.opened": "{#t}Abierto una vez{/t}La primera persona con el enlace lo ve.",
+	"send.life.gone": "{#t}Borrado{/t}Eliminado del servidor para siempre.",
+	"result.eyebrow": "Sellado en este navegador",
+	"result.title": "Tu enlace está {#accent}listo.{/accent}",
+	"result.lead": "Envíalo por cualquier canal de confianza. Se abre una vez.",
+	"result.link": "Enlace de un solo uso",
+	"result.qr": "Código QR",
+	"result.copy": "Copiar enlace",
+	"result.qrImage": "Código QR de tu enlace de un solo uso",
+	"result.qrCaption": "Escanéalo con el teléfono del destinatario. Cualquiera que vea este código puede abrir el secreto.",
+	"result.keyHint": "La clave es la parte que va después de {#strong}#{/strong}. Se queda en el enlace y nunca se envía al servidor, así que cualquiera que tenga el enlace completo puede abrirlo. No lo publiques en ningún sitio público.",
+	"result.passNote": "{#strong}Protegido con frase de contraseña.{/strong} El destinatario necesitará la frase que elegiste, y Gone no puede recuperarla. Envíasela por separado.",
+	"result.manage": "Gestionar este secreto {#opt}(solo para ti){/opt}",
+	"result.manageHint": "Un enlace privado para comprobar si el secreto ya se abrió o para borrarlo antes. Guárdalo para ti: no se vuelve a mostrar, y cualquiera que lo tenga puede borrar el secreto.",
+	"result.manageLink": "Enlace de gestión",
+	"result.copyManage": "Copiar enlace de gestión",
+	"result.another": "Enviar otro secreto",
+	"result.status": "Estado del secreto",
+	"result.life.sealed": "{#t}Sellado{/t}Ahora mismo",
+	"result.life.waiting": "En espera",
+	"result.life.until": "Hasta el {#time}{/time}",
+	"result.life.opened": "{#t}Abierto una vez{/t}Por quien lo abra primero",
+	"result.life.gone": "{#t}Borrado{/t}Eliminado para siempre",
+	"secret.pageTitle": "Gone · Alguien te ha enviado un secreto",
+	"secret.insecure": "{#strong}Esta página no es segura, así que el secreto no se puede abrir aquí.{/strong}Los navegadores solo descifran en páginas HTTPS. No se ha descargado nada y el enlace sigue funcionando. Pide al remitente un enlace https://.",
+	"secret.eyebrow": "Se descifra en este navegador",
+	"secret.title": "Alguien te ha enviado un {#accent}secreto.{/accent}",
+	"secret.lead": "Se abre una vez. Al abrirlo se borra del servidor, así que copia lo que necesites.",
+	"secret.passHint": "El remitente debería habértela dado por otro medio.",
+	"secret.open": "Abrir el secreto",
+	"secret.downloadProgress": "Progreso de la descarga",
+	"secret.passWarn": "Aunque la frase de contraseña sea incorrecta, el secreto se borra del servidor. Si es incorrecta, puedes seguir intentándolo en esta página. ¿Prefieres esperar? Cierra esta página; el enlace funciona hasta que caduque.",
+	"secret.openHint": "Al abrirlo se borra del servidor. ¿Prefieres esperar? Cierra esta página; el enlace funciona hasta que caduque.",
+	"secret.life.sealed": "{#t}Sellado{/t}Por el remitente",
+	"common.life.waiting": "En espera",
+	"secret.life.waitingNote": "Para ti",
+	"common.life.opened": "Abierto una vez",
+	"secret.life.openedNote": "Cuando pulses Abrir",
+	"common.life.gone": "Borrado",
+	"secret.life.goneNote": "Justo después",
+	"secret.ackWarning": "{#strong}No se pudo confirmar el borrado.{/strong}El servidor no confirmó que este secreto se borrara. Aun así, se borrará automáticamente en unos minutos y no se podrá volver a abrir. Guarda ahora lo que necesites.",
+	"secret.revealedEyebrow": "Descifrado en este dispositivo",
+	"secret.revealedTitle": "Aquí tienes tu {#accent}secreto.{/accent}",
+	"secret.revealedLead": "Gone lo está borrando del servidor ahora. Cuando salgas de esta página, desaparecerá para siempre.",
+	"secret.copy": "Copiar",
+	"secret.coverNote": "Oculto por si estás compartiendo pantalla.",
+	"secret.alwaysShow": "Mostrar siempre los secretos en este dispositivo",
+	"secret.files": "Archivos",
+	"secret.filesHint": "Ahora los archivos solo existen en esta pestaña. Si la cierras, los pierdes.",
+	"secret.downloadAll": "Descargar todo",
+	"secret.life.waitedDone": "{#t}En espera{/t}Listo",
+	"secret.life.openedByYou": "{#t}Abierto una vez{/t}Ahora mismo, por ti",
+	"secret.life.goneOnLeave": "{#t}Borrado{/t}Cuando salgas",
+	"secret.goneTitle": "Este secreto ya {#accent}no existe.{/accent}",
+	"secret.goneLead": "Ya se abrió, o caducó antes de que nadie lo abriera. Gone no puede recuperarlo.",
+	"secret.goneNext": "Qué puedes hacer",
+	"secret.goneNote": "Pide al remitente que cree un enlace nuevo. Si no abriste tú este enlace, díselo: puede que otra persona lo haya visto antes.",
+	"secret.sendOwn": "Envía tu propio secreto",
+	"manage.pageTitle": "Gone · Gestiona tu secreto",
+	"manage.eyebrow": "Solo para ti, el remitente",
+	"manage.checkTitle": "Comprobando tu secreto.",
+	"manage.checkLead": "Esta página es solo para ti, el remitente. Nunca abre el secreto.",
+	"js.common.checking": "Comprobando…",
+	"js.common.tryAgain": "Volver a intentarlo",
+	"manage.pendingTitle": "Nadie lo ha abierto {#accent}todavía.{/accent}",
+	"manage.pendingLead": "El enlace sigue funcionando. Se abre una vez y después desaparece.",
+	"manage.created": "Creado",
+	"manage.expires": "Caduca",
+	"manage.checked": "Comprobado",
+	"js.manage.checkAgain": "Volver a comprobar",
+	"manage.deleteHeading": "Borrarlo antes",
+	"manage.deleteNote": "¿Cambiaste de idea o lo enviaste a la persona equivocada? Bórralo ahora y el enlace dejará de funcionar al instante, incluso para quien esté a punto de abrirlo.",
+	"manage.deleteNow": "Borrar ahora",
+	"manage.deleteConfirm": "{#strong}¿Borrarlo ahora?{/strong}Quien todavía no lo haya abierto ya no podrá hacerlo. No se puede deshacer.",
+	"js.manage.deleteIt": "Borrarlo",
+	"manage.keepIt": "Conservarlo",
+	"manage.life.sealed": "{#t}Sellado{/t}Por ti",
+	"manage.life.waiting": "{#t}En espera{/t}Aún sin abrir",
+	"manage.deletedTitle": "Borrado.",
+	"manage.deletedLead": "El secreto ya no está en el servidor. El enlace que compartiste ya no se abrirá.",
+	"manage.deletedNext": "Y ahora",
+	"manage.deletedNote": "Si querías cambiar quién lo recibe, envía un secreto nuevo a la persona correcta. Este enlace de gestión ya no hace nada.",
+	"manage.goneLead": "Se abrió, se borró o caducó. Gone no guarda registros, así que no puede saber cuál de las tres.",
+	"manage.goneNote": "Pregunta a la persona a la que se lo enviaste si lo abrió. Si dice que no y aún no había caducado, puede que lo haya abierto otra persona, así que cambia todo lo que contenía el secreto.",
+	"request.pageTitle": "Gone · Pide un secreto",
+	"request.insecure": "{#strong}Esta página no es segura, así que las solicitudes están desactivadas.{/strong}Los navegadores solo cifran en páginas HTTPS. Pide a quien administra este servidor que lo ponga detrás de HTTPS.",
+	"request.eyebrow": "Solo se abre en este navegador",
+	"request.title": "Pide a alguien un {#accent}secreto.{/accent}",
+	"request.lead": "Crea un enlace para enviárselo a quien tiene el secreto. Lo que te devuelva se cifra para este navegador, así que solo tú puedes abrirlo, una vez.",
+	"request.form": "Crear una solicitud",
+	"request.label": "Etiqueta {#opt}(opcional){/opt}",
+	"request.labelHint": "Solo la ves tú. Se queda en este dispositivo.",
+	"request.labelPlaceholder": "Por ejemplo: contraseña de la base de datos de pruebas",
+	"request.ttl": "Esperar una respuesta durante",
+	"request.ttlHint": "Después de este tiempo el enlace deja de funcionar. La respuesta se guarda luego durante el mismo tiempo.",
+	"js.request.create": "Crear enlace de solicitud",
+	"request.keyHint": "Aquí se crea un par de claves. La clave privada nunca sale de este navegador.",
+	"request.storage": "Este navegador no puede guardar la clave que necesita una solicitud, así que no podría abrir la respuesta. Las ventanas privadas a menudo no pueden. Prueba con una ventana normal.",
+	"request.listHeading": "Tus solicitudes en este dispositivo",
+	"request.empty": "Las solicitudes que hagas aquí aparecen en esta lista. Puedes cerrar la página; seguirán esperando cuando vuelvas.",
+	"request.createdEyebrow": "Solicitud lista",
+	"request.createdTitle": "Envía este {#accent}enlace{/accent} de solicitud.",
+	"request.createdLead": "Escribirán el secreto en esa página y se cifrará para este navegador. Cuando llegue, aparecerá aquí.",
+	"request.link": "Enlace de solicitud",
+	"request.linkHint": "El enlace no puede abrir nada. Solo permite que alguien te envíe una respuesta, así que puedes mandarlo por chat o por correo. Asegúrate de que llegue a la persona correcta.",
+	"request.callout": "{#strong}Solo se abre en este navegador.{/strong} Puedes cerrar esta página. Vuelve a la página {#link}Pedir un secreto{/link} en este navegador para abrir la respuesta.",
+	"js.request.stateWaiting": "Esperando una respuesta",
+	"request.view": "Ver esta solicitud",
+	"request.another": "Hacer otra solicitud",
+	"request.status": "Estado de la solicitud",
+	"request.life.asked": "{#t}Pedido{/t}Ahora mismo",
+	"request.life.replied": "{#t}Respondido{/t}Cifrado para este navegador",
+	"request.life.opened": "{#t}Abierto una vez{/t}Por ti, y después desaparece",
+	"detail.pageTitle": "Gone · Tu solicitud",
+	"js.detail.yourRequest": "Tu solicitud",
+	"detail.checkTitle": "Comprobando tu solicitud.",
+	"detail.checkLead": "Solo este navegador puede abrir la respuesta.",
+	"detail.missingTitle": "Esta solicitud no está en este {#accent}navegador.{/accent}",
+	"detail.missingLead": "Puede que se haya abierto, cancelado o caducado, o que se hiciera en otro navegador. Una respuesta solo se puede abrir donde se hizo su solicitud.",
+	"detail.newRequestNote": "Si todavía necesitas el secreto, haz una solicitud nueva y envía el enlace nuevo.",
+	"detail.requestSecret": "Pedir un secreto",
+	"detail.waitingTitle": "Esperando una {#accent}respuesta.{/accent}",
+	"detail.waitingLead": "Puedes cerrar esta página. Vuelve en este navegador y la respuesta estará aquí.",
+	"detail.asked": "Pedido",
+	"detail.linkUntil": "El enlace funciona hasta",
+	"detail.cancelHeading": "Cancelar esta solicitud",
+	"detail.cancelNote": "¿Enviaste el enlace a la persona equivocada o ya no lo necesitas? Cancélala y el enlace dejará de funcionar al instante.",
+	"detail.cancelNow": "Cancelar la solicitud",
+	"detail.cancelConfirm": "{#strong}¿Cancelarla ahora?{/strong}Quien abra el enlace ya no podrá responder. No se puede deshacer.",
+	"js.detail.cancelIt": "Cancelarla",
+	"detail.keepWaiting": "Seguir esperando",
+	"detail.life.askedByYou": "{#t}Pedido{/t}Por ti",
+	"detail.life.waitingReply": "{#t}En espera{/t}De su respuesta",
+	"detail.cancelledTitle": "Cancelada.",
+	"detail.cancelledLead": "El enlace de solicitud ya no funciona y este navegador ha olvidado su clave.",
+	"detail.newRequest": "Hacer una solicitud nueva",
+	"detail.openTitle": "Tu respuesta ya está {#accent}aquí.{/accent}",
+	"detail.openLead": "Se abre una vez, en este navegador. Al abrirla se borra del servidor, así que copia lo que necesites.",
+	"js.detail.openReply": "Abrir la respuesta",
+	"detail.openHint": "¿Prefieres esperar? Déjala. Se guarda hasta el {#time}{/time}.",
+	"detail.life.repliedReady": "{#t}Respondido{/t}Lista para ti",
+	"detail.life.openOnPress": "{#t}Abierto una vez{/t}Cuando pulses Abrir",
+	"detail.ackWarning": "{#strong}No se pudo confirmar el borrado.{/strong}El servidor no confirmó que esta respuesta se borrara. Aun así, se borrará automáticamente en unos minutos y no se podrá volver a abrir. Guarda ahora lo que necesites.",
+	"detail.revealedLead": "Gone la está borrando del servidor ahora, y este navegador ha olvidado la solicitud. Cuando salgas de esta página, desaparecerá para siempre.",
+	"detail.back": "Volver a tus solicitudes",
+	"detail.life.repliedDone": "{#t}Respondido{/t}Listo",
+	"detail.goneTitle": "Esta solicitud ya {#accent}no existe.{/accent}",
+	"detail.goneLead": "Caducó, se canceló o su respuesta ya se abrió. Gone no guarda registros, así que no puede saber cuál de las tres.",
+	"reply.pageTitle": "Gone · Envía un secreto",
+	"reply.checkEyebrow": "Una solicitud de un secreto",
+	"reply.checkTitle": "Comprobando la solicitud.",
+	"reply.checkLead": "Comprobamos que todavía se puede responder antes de que escribas nada.",
+	"reply.eyebrow": "Alguien te ha pedido un secreto",
+	"reply.title": "Envía un {#accent}secreto.{/accent}",
+	"reply.lead": "Lo que envíes se cifra en este navegador para la persona que te dio este enlace. El servidor no puede leerlo, y esa persona puede abrirlo una vez.",
+	"reply.form": "Enviar el secreto",
+	"reply.trust": "{#strong}Envíalo solo si confías en quien te dio este enlace.{/strong} Cualquiera puede crear un enlace de solicitud, así que comprueba que viene de la persona que esperas.",
+	"reply.messagePlaceholder": "Pega la contraseña, una nota o cualquier cosa privada.",
+	"reply.submit": "Enviar de forma segura",
+	"reply.submitHint": "Nada sale de este dispositivo hasta que pulses el botón. Esta solicitud está abierta hasta el {#time}{/time}.",
+	"reply.life.asked": "{#t}Pedido{/t}Por esa persona",
+	"reply.life.reply": "{#t}Tu respuesta{/t}Cifrada aquí",
+	"reply.life.opened": "{#t}Abierto una vez{/t}Por esa persona, en su navegador",
+	"reply.sentTitle": "Enviado. Solo quien lo pidió puede {#accent}abrirlo.{/accent}",
+	"reply.sentLead": "Está cifrado para su navegador y se abre una vez. No necesitas enviarle nada más.",
+	"reply.sentNote": "Lo verá la próxima vez que revise su solicitud. Si no lo abre a tiempo, se borra sin leer.",
+	"reply.goneLead": "Ya se respondió, se canceló o caducó. Nada de lo que escribas aquí llegaría a nadie.",
+	"reply.goneNote": "Si todavía lo necesita, pídele que haga una solicitud nueva y te envíe el enlace nuevo.",
+	"about.eyebrow": "Cómo funciona",
+	"about.title": "Cómo guarda Gone un {#accent}secreto.{/accent}",
+	"about.lead": "Respuestas breves para quienes envían y abren secretos, y para quienes administran este servidor.",
+	"about.toc.what": "¿Qué es Gone?",
+	"about.toc.encryption": "Cifrado",
+	"about.toc.flow": "Cómo guarda Gone los secretos",
+	"about.toc.files": "Archivos adjuntos",
+	"about.toc.passphrase": "Frase de contraseña opcional",
+	"about.toc.requests": "Pedir un secreto",
+	"about.toc.why": "Por qué importa",
+	"about.toc.threats": "Notas sobre el modelo de amenazas",
+	"about.toc.license": "Licencia",
+	"about.what.heading": "¿Qué es Gone?",
+	"about.what.p1": "Go + One = {#strong}Gone{/strong}",
+	"about.what.p2": "Gone es una herramienta para compartir secretos de forma privada, que solo se pueden leer una vez. El servidor está escrito en {#link}Go{/link}, un lenguaje creado por Google pensando en la sencillez y la eficiencia. La aplicación del navegador usa JavaScript sin frameworks y las API modernas de WebCrypto para cifrar y descifrar directamente en tu navegador.",
+	"about.what.p3": "Gone es software de código abierto. El código fuente está disponible en {#link}GitHub{/link} bajo la licencia GNU Affero GPL v3.",
+	"about.encryption.heading": "¿Qué cifrado usa Gone?",
+	"about.encryption.p1": "Gone usa AES-256-GCM, de las API de WebCrypto, para cifrar en el navegador. Es el mismo cifrado en el que confían bancos, gobiernos y organizaciones preocupadas por la seguridad de todo el mundo.",
+	"about.flow.heading": "Cómo mantiene Gone los secretos en secreto",
+	"about.flow.p1": "Gone está diseñado para que el servidor nunca conozca tu secreto. La criptografía importante ocurre entera en tu navegador, antes de enviar nada por la red.",
+	"about.flow.subhead1": "El proceso, a grandes rasgos",
+	"about.flow.li1": "{#strong}Escribes un mensaje o adjuntas archivos{/strong} en el formulario. Antes de que nada salga de tu dispositivo, el navegador genera una clave de cifrado nueva y aleatoria.",
+	"about.flow.li2": "{#strong}El cifrado en el navegador{/strong} (con primitivas modernas de WebCrypto) junta el mensaje y los archivos y los convierte en un único bloque opaco. Los nombres y tipos de archivo también se cifran.",
+	"about.flow.li3": "{#strong}Solo el bloque cifrado{/strong} se envía al servidor de Gone. La clave nunca sale del navegador.",
+	"about.flow.li4": "{#strong}El servidor guarda{/strong} solo ese bloque y unos metadatos mínimos (la hora de caducidad y si ya se abrió).",
+	"about.flow.li5": "{#strong}Se genera una URL para compartir.{/strong} La clave secreta va en el fragmento de la URL (la parte que va después de {#code}#{/code}), que los navegadores nunca envían al servidor.",
+	"about.flow.li6": "{#strong}El destinatario abre la URL{/strong} y pulsa Abrir; su navegador extrae la clave localmente y descarga el bloque cifrado. Desde ese momento el secreto queda reservado solo para esa persona; cualquier otra que abra el enlace verá que ya no existe.",
+	"about.flow.li7": "{#strong}El descifrado ocurre en el navegador{/strong}; el navegador comprueba que han llegado intactos todos los bytes antes de mostrar nada. El servidor no ve el texto sin cifrar en ningún momento.",
+	"about.flow.li8": "{#strong}Borrado confirmado{/strong}: cuando el navegador del destinatario tiene el secreto completo, le pide al servidor que lo borre. Si esa confirmación nunca llega (pestaña cerrada, conexión perdida), el servidor lo borra automáticamente unos minutos después. En cualquier caso, nunca se puede leer dos veces.",
+	"about.files.heading": "Archivos adjuntos",
+	"about.files.li1": "Adjunta hasta 10 archivos de cualquier tipo. El mensaje y todos los archivos comparten un mismo límite de tamaño, que se muestra en el formulario.",
+	"about.files.li2": "Los archivos se cifran en tu navegador igual que el mensaje; el servidor no puede ver sus nombres, tipos ni contenido.",
+	"about.files.li3": "El destinatario descarga cada archivo por separado o todos a la vez. Gone le avisa antes de salir de la página si quedan archivos sin guardar, porque el secreto no se puede volver a abrir.",
+	"about.files.li4": "Los nombres de archivo se limpian (se quitan las carpetas y los caracteres de control ocultos), y los tipos de archivo poco comunes se guardan como descargas genéricas para que no puedan ejecutarse en el navegador.",
+	"about.passphrase.heading": "Frase de contraseña opcional",
+	"about.passphrase.li1": "El remitente puede añadir una frase de contraseña. Para abrir el secreto hacen falta entonces el enlace y la frase, así que un enlace filtrado no basta.",
+	"about.passphrase.li2": "Envía la frase de contraseña por separado del enlace, por ejemplo, el enlace por correo y la frase por teléfono. Gone nunca guarda la frase de contraseña y no puede recuperarla.",
+	"about.passphrase.li3": "Tu navegador refuerza la frase de contraseña con PBKDF2 (600.000 rondas) y la combina con la clave del enlace. Cada intento fallido cuesta tiempo de verdad, pero alguien que tenga el enlace todavía puede adivinar una frase corta o común. Usa {#strong}Generar{/strong} para obtener cinco palabras aleatorias.",
+	"about.passphrase.li4": "Mientras escribes, Gone muestra la entropía estimada de la frase de contraseña en bits y cuánto tardaría aproximadamente en adivinarse. La estimación supone que alguien ya tiene el enlace y puede probar un millón de intentos por segundo contra la frase reforzada. Es una guía, no una garantía: los nombres, las fechas y las frases conocidas caen antes de lo que indica.",
+	"about.passphrase.li5": "Si la frase de contraseña es incorrecta, el destinatario puede volver a intentarlo todas las veces que necesite sin volver a descargar el secreto.",
+	"about.passphrase.li6": "Abrir el enlace consume el secreto aunque la frase de contraseña sea incorrecta. Una frase de contraseña hace ilegible un secreto filtrado, pero no puede impedir que alguien con el enlace lo destruya.",
+	"about.passphrase.li7": "Las frases de contraseña generadas usan la {#link}lista corta de palabras de la EFF{/link}, de la Electronic Frontier Foundation, con licencia {#link2}CC BY 3.0 US{/link2}. Las palabras están en inglés.",
+	"about.requests.heading": "Pedir un secreto",
+	"about.requests.li1": "¿Necesitas un secreto de alguien? {#link}Pedir un secreto{/link} crea un enlace para que se lo envíes. Esa persona escribe el secreto en esa página y te llega a ti.",
+	"about.requests.li2": "Tu navegador crea un par de claves. La clave privada se guarda en este navegador de forma que ninguna página web puede leerla, así que la respuesta solo se puede abrir aquí, incluso después de cerrar y volver a abrir el navegador. La clave pública viaja en el fragmento del enlace, que nunca llega al servidor.",
+	"about.requests.li3": "Su navegador cifra la respuesta con tu clave pública (ECDH P-256 y después AES-256-GCM). El servidor solo guarda texto cifrado y no puede leerlo, y cada solicitud admite una sola respuesta.",
+	"about.requests.li4": "La etiqueta que le pones a una solicitud se queda en este navegador. El servidor solo sabe cuánto tiempo esperar.",
+	"about.requests.li5": "Cualquiera que tenga el enlace de solicitud puede enviar la única respuesta, así que envíalo solo a la persona correcta. Si estás respondiendo a una solicitud, comprueba que viene de quien esperas.",
+	"about.requests.li6": "Si borras los datos de este sitio o usas una ventana privada, pierdes tus solicitudes. Si ocurre, haz una nueva.",
+	"about.why.heading": "Por qué importa",
+	"about.why.li1": "{#strong}El servidor no sabe nada:{/strong} si se compromete el almacenamiento, solo se obtiene texto cifrado.",
+	"about.why.li2": "{#strong}Acceso efímero:{/strong} la lectura única reduce el margen para un ataque.",
+	"about.why.li3": "{#strong}Caducidad corta:{/strong} la caducidad automática limita aún más la exposición si un enlace queda olvidado.",
+	"about.why.li4": "{#strong}Sin riesgo de reutilizar contraseñas:{/strong} nunca envías credenciales existentes sin cifrar.",
+	"about.threats.heading": "Notas sobre el modelo de amenazas",
+	"about.threats.li1": "Comprueba siempre que estás en HTTPS (la aplicación avisa si no es así).",
+	"about.threats.li2": "La garantía de confidencialidad supone que los navegadores del remitente y del destinatario no están comprometidos.",
+	"about.threats.li3": "Cualquiera que obtenga la URL completa para compartir (incluida la parte de la clave) puede descifrar el secreto hasta la primera lectura o hasta que caduque, salvo que el remitente haya añadido una frase de contraseña.",
+	"about.threats.li4": "Si otra persona abre el enlace primero, el destinatario verá que el secreto ya no existe: una señal clara de que el enlace se interceptó.",
+	"about.threats.li5": "Los archivos adjuntos solo están tan seguros como el dispositivo donde se guardan; borra los archivos descargados cuando ya no los necesites.",
+	"about.license.heading": "¿Qué significa para ti la GNU Affero GPL v3?",
+	"about.license.p1": "Gone es software libre y de código abierto bajo la Licencia Pública General de GNU Affero, versión 3 (AGPLv3). Esto es lo que significa en palabras sencillas. Es un resumen, no asesoramiento legal; lo que cuenta es la propia licencia.",
+	"about.license.subhead1": "Si usas Gone para enviar o abrir secretos",
+	"about.license.li1": "{#strong}No tienes ninguna obligación.{/strong} Usar Gone no te impone condiciones de licencia ni a ti ni a lo que compartes.",
+	"about.license.li2": "Si alguien ejecuta una versión modificada de Gone, debe permitirte descargar su código fuente.",
+	"about.license.subhead2": "Si alojas o modificas Gone",
+	"about.license.li3": "Puedes ejecutar Gone sin modificar para cualquier fin. Deja en su sitio sus avisos de copyright y de licencia.",
+	"about.license.li4": "Puedes modificar Gone como quieras. Si otras personas usan tu versión modificada a través de una red, debes ofrecerles su código fuente completo, gratis y bajo la AGPLv3. Basta con un enlace en el pie de página.",
+	"about.license.li5": "Si modificas Gone, dale a tu versión su propio nombre y logotipo. El nombre y el logotipo de Gone son marcas registradas y no están cubiertos por la AGPLv3; consulta la {#link}política de marcas{/link}.",
+	"about.license.li6": "No tienes que enviar tus cambios a este proyecto, aunque las contribuciones son bienvenidas.",
+	"about.license.li7": "Los cambios que te guardas para ti, sin que nadie más los use, no te obligan a compartir nada.",
+	"about.license.li8": "Si das a alguien una copia de Gone, como una imagen de contenedor, incluye la licencia y el código fuente o indícale dónde conseguirlos.",
+	"about.license.subhead3": "Si eres una empresa",
+	"about.license.li9": "Puedes usar Gone con fines comerciales, incluso ofrecerlo como servicio de pago a tus clientes.",
+	"about.license.li10": "Se aplican las mismas reglas que para cualquiera. Sin modificar, no hay nada que compartir. Modificado, a quien use tu versión a través de una red se le debe ofrecer su código fuente bajo la AGPLv3.",
+	"about.license.li11": "No puedes cambiar la licencia de Gone ni de tus cambios a condiciones cerradas, ni quitar sus avisos de copyright o de licencia.",
+	"about.license.p2": "Para leer la licencia completa, visita el {#link}sitio web de GNU{/link}.",
+	"about.pageTitle": "Gone · Cómo guarda Gone un secreto",
+	"about.toc": "En esta página",
+	"about.sendSecret": "Enviar un secreto",
+	"error.status": "Error {status}",
+	"error.note": "Comprueba la dirección o vuelve a empezar desde la página de inicio.",
+	"error.home": "Volver al inicio",
+	"error.notFound.pageTitle": "Gone · No encontrado",
+	"error.notFound.title": "No encontrado",
+	"error.notFound.message": "No se encontró la página que buscas.",
+	"js.common.hide": "Ocultar",
+	"js.common.copied": "Copiado",
+	"js.common.copyFailed": "No se pudo copiar automáticamente. Está seleccionado: pulsa Ctrl+C (⌘C en Mac).",
+	"js.common.tooMany": "Demasiadas solicitudes en este momento. Espera un poco y vuelve a intentarlo.",
+	"js.common.busy": "El servidor está ocupado en este momento. Espera un poco y vuelve a intentarlo.",
+	"js.common.network": "No se pudo conectar con el servidor. Comprueba tu conexión.",
+	"js.lang.failed": "No se pudo cambiar el idioma. Comprueba tu conexión y vuelve a intentarlo.",
+	"js.consume.gone": "Este secreto ya no existe: nunca existió, ya se abrió, caducó o se abrió en otro sitio. Si se interrumpió tu propia descarga, pide al remitente que lo vuelva a compartir.",
+	"js.consume.invalidLink": "Este enlace no es válido. Comprueba que lo copiaste entero.",
+	"js.consume.incomplete": "La descarga se interrumpió.",
+	"js.consume.server": "El servidor tuvo un problema al recuperar este secreto.",
+	"js.consume.verify": "No se pudo verificar este secreto. Puede que el enlace esté incompleto o sea incorrecto; pide al remitente que te lo vuelva a enviar.",
+	"js.consume.passphrase": "Esa frase de contraseña no funcionó. El secreto ya no está en el servidor y este navegador tiene la única copia, todavía cifrada. Revisa la frase y vuelve a intentarlo aquí: si cierras o sales de esta página, el secreto se destruye para siempre.",
+	"js.consume.damaged": "El contenido de este secreto está dañado. Pide al remitente que lo vuelva a compartir.",
+	"js.consume.unsupportedVersion": "Este secreto se creó con una versión de Gone que esta página no puede abrir.",
+	"js.consume.blocked": "Esta página bloqueó una solicitud a una dirección inesperada. Recarga la página y vuelve a intentarlo.",
+	"js.consume.badFragment": "A este enlace le falta su clave, así que el secreto no se puede descifrar. Comprueba que copiaste el enlace entero, incluido todo lo que va después de #.",
+	"js.consume.noCrypto": "Este navegador solo descifra en páginas seguras (HTTPS), así que este secreto no se puede abrir aquí. No se descargó nada y el enlace sigue funcionando. Pide al remitente un enlace HTTPS.",
+	"js.consume.newerVersion": "Este enlace se creó con una versión más reciente de Gone y no se puede abrir aquí.",
+	"js.consume.unlocking": "Desbloqueando…",
+	"js.consume.decrypting": "Descifrando…",
+	"js.consume.unexpected": "Algo salió mal al abrir este secreto. Vuelve a intentarlo.",
+	"js.consume.erased": "Saliste de esta página, así que el secreto descargado se borró de ella. Pide al remitente que lo vuelva a compartir.",
+	"js.consume.retrieving": "Recuperando…",
+	"js.consume.retrievingPct": "Recuperando… {pct} %",
+	"js.consume.retrievingSize": "Recuperando… {size}",
+	"js.consume.opening": "Abriendo…",
+	"js.consume.stepDone": "Listo",
+	"js.consume.stepDownloaded": "Descargado; necesita la frase de contraseña",
+	"js.consume.stepGoneOnLeave": "Cuando salgas de esta página",
+	"js.consume.lines": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} línea",
+				"countPlural=*": "{count} líneas",
+				"countPlural=many": "{count} de líneas"
+			}
+		}
+	],
+	"js.consume.characters": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} carácter",
+				"countPlural=*": "{count} caracteres",
+				"countPlural=many": "{count} de caracteres"
+			}
+		}
+	],
+	"js.consume.titleRevealed": "Gone · Aquí tienes tu secreto",
+	"js.consume.titleGone": "Gone · Este secreto ya no existe",
+	"js.consume.messageCopied": "Mensaje copiado al portapapeles.",
+	"js.consume.headingSecretFiles": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "Aquí tienes tu secreto y {#accent}un archivo.{/accent}",
+				"countPlural=*": "Aquí tienes tu secreto y {#accent}{count} archivos.{/accent}",
+				"countPlural=many": "Aquí tienes tu secreto y {#accent}{count} de archivos.{/accent}"
+			}
+		}
+	],
+	"js.consume.headingFiles": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "Aquí tienes {#accent}un archivo.{/accent}",
+				"countPlural=*": "Aquí tienes {#accent}{count} archivos.{/accent}",
+				"countPlural=many": "Aquí tienes {#accent}{count} de archivos.{/accent}"
+			}
+		}
+	],
+	"js.consume.download": "Descargar",
+	"js.consume.downloadNamed": "Descargar {name}",
+	"js.common.unexpected": "Algo salió mal. Vuelve a intentarlo.",
+	"js.common.networkRetry": "No se pudo conectar con el servidor. Comprueba tu conexión y vuelve a intentarlo.",
+	"js.common.server": "El servidor tuvo un problema. Vuelve a intentarlo en un momento.",
+	"js.manage.invalidLink": "Este enlace de gestión no es válido. Comprueba que lo copiaste entero, incluido todo lo que va después de #.",
+	"js.manage.titlePending": "Gone · Tu secreto está en espera",
+	"js.manage.titleDeleted": "Gone · Secreto borrado",
+	"js.manage.checkFailed": "No se pudo comprobar tu secreto.",
+	"js.manage.stillWaiting": "Sigue en espera a las {time}. Nadie lo ha abierto.",
+	"js.manage.deleting": "Borrando…",
+	"js.request.rejected": "El servidor rechazó esta solicitud.",
+	"js.request.stateReady": "Respuesta lista",
+	"js.request.askedJustNow": "Pedida ahora mismo",
+	"js.request.asked": "Pedida {when}",
+	"js.request.untitled": "Solicitud sin título",
+	"js.request.noCrypto": "Desactivado: esta página no es HTTPS, así que este navegador no puede crear claves.",
+	"js.request.saveFailed": "Este navegador no pudo guardar la clave de la solicitud, así que se canceló. Prueba con una ventana normal (no privada).",
+	"js.request.unexpected": "Algo salió mal al crear la solicitud. Vuelve a intentarlo.",
+	"js.request.makingKeys": "Creando claves…",
+	"js.request.titleReady": "● Respuesta lista · {title}",
+	"js.request.arrived": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "Llegó una respuesta.",
+				"countPlural=*": "Llegaron {count} respuestas.",
+				"countPlural=many": "Llegaron {count} de respuestas."
+			}
+		}
+	],
+	"js.request.titleCreated": "Gone · Enlace de solicitud listo",
+	"js.request.arrivedOpen": "Llegó una respuesta. Ábrela desde esta solicitud.",
+	"js.request.gone": "Esta solicitud ya no existe.",
+	"js.request.openReply": "Abrir la respuesta",
+	"js.request.linkCopied": "Enlace de solicitud copiado al portapapeles.",
+	"js.detail.noCrypto": "Este navegador solo descifra en páginas seguras (HTTPS), así que la respuesta no se puede abrir aquí.",
+	"js.detail.verify": "No se pudo descifrar esta respuesta. Puede que se dañara por el camino. Pide que te la vuelvan a enviar con una solicitud nueva.",
+	"js.detail.titleMissing": "Gone · La solicitud no está en este navegador",
+	"js.detail.titleWaiting": "Gone · Esperando una respuesta",
+	"js.detail.titleCancelled": "Gone · Solicitud cancelada",
+	"js.detail.titleOpen": "Gone · Tu respuesta ya está aquí",
+	"js.detail.titleGone": "Gone · Esta solicitud ya no existe",
+	"js.detail.stillWaiting": "Sigue en espera a las {time}.",
+	"js.detail.cancelling": "Cancelando…",
+	"js.submit.noCryptoHint": "Desactivado: esta página no es HTTPS, así que este navegador no puede cifrar.",
+	"js.submit.noCrypto": "Este navegador solo cifra en páginas seguras (HTTPS), así que Gone no puede cifrar aquí. Pide a quien administra este servidor que active HTTPS.",
+	"js.submit.encrypting": "Cifrando…",
+	"js.submit.encryptFailed": "El cifrado falló: no se pudo leer un archivo.",
+	"js.submit.empty": "Añade un mensaje o al menos un archivo.",
+	"js.submit.uploading": "Subiendo {pct} %",
+	"js.upload.network": "No se pudo conectar con el servidor, así que no se envió nada. Comprueba tu conexión y vuelve a intentarlo.",
+	"js.upload.server": "El servidor tuvo un problema al crear el secreto. Vuelve a intentarlo en un momento.",
+	"js.upload.rejected": "El servidor rechazó el secreto.",
+	"js.upload.tooLarge": "Este secreto es demasiado grande para este servidor.",
+	"js.meter.tooMany": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "Demasiados archivos: quita {count} para no pasar de {max}.",
+				"countPlural=*": "Demasiados archivos: quita {count} para no pasar de {max}."
+			}
+		}
+	],
+	"js.meter.over": "Te pasas del límite en {size}. Quita un archivo o acorta el mensaje.",
+	"js.meter.sizeOver": "{used} de {max} (supera el límite)",
+	"js.files.remove": "Quitar",
+	"js.files.removeNamed": "Quitar {name}",
+	"js.result.manageCopied": "Enlace de gestión copiado al portapapeles.",
+	"js.result.linkCopied": "Enlace copiado al portapapeles.",
+	"js.result.title": "Gone · Tu enlace está listo",
+	"js.pass.seconds": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{n} segundo",
+				"countPlural=*": "{n} segundos",
+				"countPlural=many": "{n} de segundos"
+			}
+		}
+	],
+	"js.pass.minutes": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{n} minuto",
+				"countPlural=*": "{n} minutos",
+				"countPlural=many": "{n} de minutos"
+			}
+		}
+	],
+	"js.pass.hours": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{n} hora",
+				"countPlural=*": "{n} horas",
+				"countPlural=many": "{n} de horas"
+			}
+		}
+	],
+	"js.pass.days": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{n} día",
+				"countPlural=*": "{n} días",
+				"countPlural=many": "{n} de días"
+			}
+		}
+	],
+	"js.pass.years": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{n} año",
+				"countPlural=*": "{n} años",
+				"countPlural=many": "{n} de años"
+			}
+		}
+	],
+	"js.pass.short": "Demasiado corta: usa al menos {min} caracteres.",
+	"js.pass.guessTime": "Unos {bits} bits de entropía; se tardaría unos {time} en adivinarla.",
+	"js.pass.guessInstant": "Unos {bits} bits de entropía; se adivinaría casi al instante.",
+	"js.pass.guessUniverse": "Unos {bits} bits de entropía; se tardaría más que la edad del universo en adivinarla.",
+	"js.pass.weak": "{text} Cuanto más larga, mejor; o pulsa Generar.",
+	"js.pass.shortProblem": "Usa una frase de contraseña de al menos {min} caracteres, o déjala vacía.",
+	"js.reply.badLink": "Este enlace de solicitud no está completo. Comprueba que lo copiaste entero, incluido todo lo que va después de #.",
+	"js.reply.newer": "Este enlace se creó con una versión más reciente de Gone y no se puede responder aquí.",
+	"js.reply.badKey": "Este enlace de solicitud está dañado, así que no se puede cifrar nada para él. Pide un enlace nuevo.",
+	"js.reply.titleSent": "Gone · Enviado"
+}

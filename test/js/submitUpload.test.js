@@ -5,6 +5,9 @@ const assert = require('node:assert/strict');
 const { reset, load, captureConsole } = require('./harness');
 const { FakeXHR } = require('./fakes');
 
+// tr renders a message key (as carried by errors) in English.
+const tr = (k) => window.goneI18n.t(k);
+
 function setup(t) {
   reset('https://gone.test/?debug=timing');
   const logs = captureConsole(t);
@@ -44,7 +47,7 @@ test('encryptSelection returns a key that decrypts the envelope and logs timing'
 test('encryptSelection propagates file read failures', async (t) => {
   const { up } = setup(t);
   const bad = { name: 'x', type: '', arrayBuffer: () => Promise.reject(new Error('NotReadableError')) };
-  await assert.rejects(up.encryptSelection('', [bad]), /NotReadableError/);
+  await assert.rejects(up.encryptSelection('', [bad]), (e) => /NotReadableError/.test(tr(e.message)));
 });
 
 test('upload posts ciphertext with headers and reports progress', async (t) => {
@@ -74,13 +77,13 @@ test('upload accepts 200 and rejects bad statuses or bodies', async (t) => {
   const enc = { nonce: new Uint8Array(12), ciphertext: new Uint8Array(1) };
   const cases = [
     [200, { id: 'x' }, null],
-    [400, {}, 'The server rejected the secret'],
-    [413, undefined, 'Secret too large for this server'],
-    [429, undefined, 'Slow down: too many requests. Please wait and retry.'],
-    [503, undefined, 'The server is busy right now. Wait a moment, then try again.'],
-    [500, undefined, 'Server error creating secret'],
-    [201, undefined, 'Unexpected server response'],
-    [201, {}, 'Unexpected server response']
+    [400, {}, 'js.upload.rejected'],
+    [413, undefined, 'js.upload.tooLarge'],
+    [429, undefined, 'js.common.tooMany'],
+    [503, undefined, 'js.common.busy'],
+    [500, undefined, 'js.upload.server'],
+    [201, undefined, 'js.upload.server'],
+    [201, {}, 'js.upload.server']
   ];
   for (const [status, body, err] of cases) {
     await t.test(String(status) + ' ' + JSON.stringify(body), async (st) => {
@@ -101,7 +104,7 @@ test('upload rejects malformed JSON and transport failures', async (t) => {
   const enc = { nonce: new Uint8Array(12), ciphertext: new Uint8Array(1) };
   const { up } = setup(t);
   FakeXHR.onSend = (x) => { x.status = 201; x.responseText = '{oops'; x.onload(); };
-  await assert.rejects(up.upload(enc, '60', () => {}), /Unexpected server response/);
+  await assert.rejects(up.upload(enc, '60', () => {}), (e) => e.message === 'js.upload.server');
   for (const [hook, msg] of [['onerror', 'network error'], ['onabort', 'upload aborted'], ['ontimeout', 'upload timed out']]) {
     FakeXHR.onSend = (x) => x[hook]();
     await assert.rejects(up.upload(enc, '60', () => {}), { message: msg });
@@ -110,15 +113,16 @@ test('upload rejects malformed JSON and transport failures', async (t) => {
 
 test('error helpers', (t) => {
   const { up } = setup(t);
-  assert.equal(up.uploadErrorMessage(413), 'Secret too large for this server');
-  assert.equal(up.uploadErrorMessage(418), 'Server error creating secret');
+  assert.equal(up.uploadErrorMessage(413), 'js.upload.tooLarge');
+  assert.equal(up.uploadErrorMessage(418), 'js.upload.server');
   const cases = [
-    [new Error('network error'), 'Network error uploading secret'],
-    [new Error('upload aborted'), 'Network error uploading secret'],
-    [new Error('upload timed out'), 'Network error uploading secret'],
-    [new Error(''), 'Network error uploading secret'],
-    [null, 'Network error uploading secret'],
-    [new Error('Secret too large for this server'), 'Secret too large for this server']
+    [new Error('network error'), 'js.upload.network'],
+    [new Error('upload aborted'), 'js.upload.network'],
+    [new Error('upload timed out'), 'js.upload.network'],
+    [new Error(''), 'js.upload.network'],
+    [null, 'js.upload.network'],
+    [new Error('js.upload.tooLarge'), 'js.upload.tooLarge'],
+    [new Error('something unexpected'), 'js.upload.server']
   ];
   for (const [e, want] of cases) assert.equal(up.friendlyError(e), want);
 });

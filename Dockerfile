@@ -32,8 +32,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . .
 
 # Minify assets into web/dist (embedded via -tags=prod)
-RUN mkdir -p web/dist/css web/dist/js web/dist/fonts web/dist/img && \
+RUN mkdir -p web/dist/css web/dist/js web/dist/fonts web/dist/img web/dist/messages && \
     cp web/*.html web/dist/ && \
+    cp web/messages/*.json web/dist/messages/ && \
     cp web/fonts/* web/dist/fonts/ && \
     cp web/img/* web/dist/img/ && \
     minify -r -o web/dist/css/ web/css/ && \

@@ -52,6 +52,7 @@ Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`
 ## DOM & UI
 - Query elements once per flow; cache references.
 - Use `textContent` or DOM nodes; never parse HTML strings.
+- Never hardcode user-visible text. Use `goneI18n.set(node, 'js.key', args)` (and `setAttr`, `value`, `setTitle`) so the text follows a language change; use `goneI18n.plain` for text a person typed. Errors shown to people carry a message key. Never pass secret content as a message argument.
 - Avoid constructing large interpolated HTML strings with dynamic user input.
 - Manage focus after dynamic panel insertion.
 - Keep imperative DOM creation for auditability (explicit `createElement` sequence).

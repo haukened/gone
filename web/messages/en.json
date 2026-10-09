@@ -1,0 +1,630 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"common.skip": "Skip to content",
+	"common.home": "Gone, home",
+	"common.navSite": "Site",
+	"common.navSend": "Send{#long} a secret{/long}",
+	"common.navRequest": "Request{#long} a secret{/long}",
+	"common.navAbout": "About",
+	"common.language": "Language",
+	"common.darkMode": "Dark mode",
+	"common.footerTagline": "Encrypted in your browser. This server only ever stores ciphertext.",
+	"common.navFooter": "Footer",
+	"common.source": "Source",
+	"common.report": "Report a problem",
+	"common.contribute": "Contribute",
+	"common.copyright": "© 2025–2026 The Gone Project Contributors",
+	"common.devBuild": "Development build",
+	"common.machine": "This translation was made by machine. {#link}Help improve it.{/link}",
+	"common.size.b": "{n} B",
+	"common.size.kb": "{n} KB",
+	"common.size.mb": "{n} MB",
+	"common.size.gb": "{n} GB",
+	"common.size.tb": "{n} TB",
+	"common.size.pb": "{n} PB",
+	"common.duration.short.days": "{n}d",
+	"common.duration.short.hours": "{n}h",
+	"common.duration.short.minutes": "{n}m",
+	"common.duration.short.seconds": "{n}s",
+	"common.duration.long.days": [
+		{
+			"declarations": [
+				"input n",
+				"local nPlural = n: plural"
+			],
+			"selectors": [
+				"nPlural"
+			],
+			"match": {
+				"nPlural=one": "{n} day",
+				"nPlural=*": "{n} days"
+			}
+		}
+	],
+	"common.duration.long.hours": [
+		{
+			"declarations": [
+				"input n",
+				"local nPlural = n: plural"
+			],
+			"selectors": [
+				"nPlural"
+			],
+			"match": {
+				"nPlural=one": "{n} hour",
+				"nPlural=*": "{n} hours"
+			}
+		}
+	],
+	"common.duration.long.minutes": [
+		{
+			"declarations": [
+				"input n",
+				"local nPlural = n: plural"
+			],
+			"selectors": [
+				"nPlural"
+			],
+			"match": {
+				"nPlural=one": "{n} minute",
+				"nPlural=*": "{n} minutes"
+			}
+		}
+	],
+	"common.duration.long.seconds": [
+		{
+			"declarations": [
+				"input n",
+				"local nPlural = n: plural"
+			],
+			"selectors": [
+				"nPlural"
+			],
+			"match": {
+				"nPlural=one": "{n} second",
+				"nPlural=*": "{n} seconds"
+			}
+		}
+	],
+	"send.pageTitle": "Gone · Send a one-time secret",
+	"compose.insecure": "{#strong}This page isn’t secure, so sending is turned off.{/strong}Browsers only encrypt on HTTPS pages. Ask whoever runs this server to put it behind HTTPS.",
+	"send.eyebrow": "Encrypted in this browser",
+	"send.title": "Send a secret that opens {#accent}once.{/accent}",
+	"send.lead": "Your message and files are encrypted in this browser before they’re sent. The server only ever stores an encrypted copy it can’t read. The link works one time, then everything is deleted.",
+	"send.form": "Create a secret",
+	"compose.message": "Message",
+	"compose.messageHint": "Encrypted on this device before it’s sent.",
+	"send.messagePlaceholder": "Paste a password, a note, or anything private.",
+	"compose.files": "Files {#opt}(optional, up to {max}){/opt}",
+	"compose.addFiles": "Add files",
+	"compose.dropFiles": "or drop them here",
+	"compose.attached": "Attached files",
+	"js.meter.size": "{used} of {max}",
+	"compose.ttl": "Delete unopened after",
+	"compose.ttlHint": "If nobody opens it by then, it’s deleted unread. Allowed range: {min} to {max}.",
+	"send.passAdd": "Add a passphrase {#opt}(optional){/opt}",
+	"common.passphrase": "Passphrase",
+	"js.common.show": "Show",
+	"send.passGenerate": "Generate",
+	"send.passHint": "The recipient types this before the secret opens. Send it separately (for example by phone or a different app), never alongside the link.",
+	"send.submit": "Create one-time link",
+	"compose.uploadProgress": "Upload progress",
+	"compose.submitHint": "Nothing leaves this device until you press the button.",
+	"send.next": "What happens next",
+	"send.life.sealed": "{#t}Sealed{/t}Encrypted here. The server never gets the key.",
+	"send.life.waiting": "{#t}Waiting{/t}Until it’s opened or it expires.",
+	"send.life.opened": "{#t}Opened once{/t}The first person with the link sees it.",
+	"send.life.gone": "{#t}Gone{/t}Deleted from the server for good.",
+	"result.eyebrow": "Sealed in this browser",
+	"result.title": "Your link is {#accent}ready.{/accent}",
+	"result.lead": "Send it through any channel you trust. It opens once.",
+	"result.link": "One-time link",
+	"result.qr": "QR code",
+	"result.copy": "Copy link",
+	"result.qrImage": "QR code of your one-time link",
+	"result.qrCaption": "Scan with the recipient’s phone. Anyone who sees this code can open the secret.",
+	"result.keyHint": "The key is the part after {#strong}#{/strong}. It stays in the link and is never sent to the server, so anyone holding the full link can open it. Don’t post it anywhere public.",
+	"result.passNote": "{#strong}Passphrase protected.{/strong} The recipient will need the passphrase you set, and Gone can’t recover it. Send it to them separately.",
+	"result.manage": "Manage this secret {#opt}(for you only){/opt}",
+	"result.manageHint": "A private link for you to check whether the secret has been opened, or to delete it early. Keep it to yourself; it isn’t shown again, and anyone holding it can delete the secret.",
+	"result.manageLink": "Manage link",
+	"result.copyManage": "Copy manage link",
+	"result.another": "Send another secret",
+	"result.status": "Secret status",
+	"result.life.sealed": "{#t}Sealed{/t}Just now",
+	"result.life.waiting": "Waiting",
+	"result.life.until": "Until {#time}{/time}",
+	"result.life.opened": "{#t}Opened once{/t}By whoever opens it first",
+	"result.life.gone": "{#t}Gone{/t}Deleted for good",
+	"secret.pageTitle": "Gone · Someone sent you a secret",
+	"secret.insecure": "{#strong}This page isn’t secure, so the secret can’t be opened here.{/strong}Browsers only decrypt on HTTPS pages. Nothing has been downloaded and the link still works. Ask the sender for an https:// link.",
+	"secret.eyebrow": "Decrypts in this browser",
+	"secret.title": "Someone sent you a {#accent}secret.{/accent}",
+	"secret.lead": "It opens once. Opening it deletes it from the server, so copy anything you need.",
+	"secret.passHint": "The sender should have given you this separately.",
+	"secret.open": "Open secret",
+	"secret.downloadProgress": "Download progress",
+	"secret.passWarn": "Even if the passphrase is incorrect, the secret is deleted from the server. If it’s incorrect, you can keep trying on this page. Not ready? Close this page; the link keeps working until it expires.",
+	"secret.openHint": "Opening deletes it from the server. Not ready? Close this page; the link keeps working until it expires.",
+	"secret.life.sealed": "{#t}Sealed{/t}By the sender",
+	"common.life.waiting": "Waiting",
+	"secret.life.waitingNote": "For you",
+	"common.life.opened": "Opened once",
+	"secret.life.openedNote": "When you press Open",
+	"common.life.gone": "Gone",
+	"secret.life.goneNote": "Right after",
+	"secret.ackWarning": "{#strong}Couldn’t confirm deletion.{/strong}The server did not confirm this secret was deleted. It will still be deleted automatically within a few minutes and cannot be opened again. Save what you need now.",
+	"secret.revealedEyebrow": "Decrypted on this device",
+	"secret.revealedTitle": "Here’s your {#accent}secret.{/accent}",
+	"secret.revealedLead": "Gone is deleting it from the server now. Once you leave this page, it’s gone for good.",
+	"secret.copy": "Copy",
+	"secret.coverNote": "Hidden in case you’re sharing your screen.",
+	"secret.alwaysShow": "Always show secrets on this device",
+	"secret.files": "Files",
+	"secret.filesHint": "Files now exist only in this tab. Closing it loses them.",
+	"secret.downloadAll": "Download all",
+	"secret.life.waitedDone": "{#t}Waiting{/t}Done",
+	"secret.life.openedByYou": "{#t}Opened once{/t}Just now, by you",
+	"secret.life.goneOnLeave": "{#t}Gone{/t}When you leave",
+	"secret.goneTitle": "This secret is {#accent}gone.{/accent}",
+	"secret.goneLead": "It was already opened, or it expired before anyone opened it. Gone can’t recover it.",
+	"secret.goneNext": "What you can do",
+	"secret.goneNote": "Ask the sender to create a new link. If you didn’t open this link yourself, tell them; someone else may have seen it first.",
+	"secret.sendOwn": "Send a secret of your own",
+	"manage.pageTitle": "Gone · Manage your secret",
+	"manage.eyebrow": "Only for you, the sender",
+	"manage.checkTitle": "Checking on your secret.",
+	"manage.checkLead": "This page is only for you, the sender. It never opens the secret.",
+	"js.common.checking": "Checking…",
+	"js.common.tryAgain": "Try again",
+	"manage.pendingTitle": "Nobody has opened it {#accent}yet.{/accent}",
+	"manage.pendingLead": "The link still works. It opens once, then it’s gone.",
+	"manage.created": "Created",
+	"manage.expires": "Expires",
+	"manage.checked": "Checked",
+	"js.manage.checkAgain": "Check again",
+	"manage.deleteHeading": "Delete it early",
+	"manage.deleteNote": "Changed your mind, or sent it to the wrong person? Delete it now and the link stops working at once, even for someone about to open it.",
+	"manage.deleteNow": "Delete now",
+	"manage.deleteConfirm": "{#strong}Delete it now?{/strong}Anyone who hasn’t opened it yet won’t be able to. This can’t be undone.",
+	"js.manage.deleteIt": "Delete it",
+	"manage.keepIt": "Keep it",
+	"manage.life.sealed": "{#t}Sealed{/t}By you",
+	"manage.life.waiting": "{#t}Waiting{/t}Not opened yet",
+	"manage.deletedTitle": "Deleted.",
+	"manage.deletedLead": "The secret is gone from the server. The link you shared won’t open anymore.",
+	"manage.deletedNext": "What’s next",
+	"manage.deletedNote": "If you meant to change who gets it, send a fresh secret to the right person. This manage link no longer does anything.",
+	"manage.goneLead": "It was opened, deleted, or it expired. Gone doesn’t keep records, so it can’t tell which.",
+	"manage.goneNote": "Ask the person you sent it to whether they opened it. If they say they didn’t and it hadn’t expired yet, someone else may have, so change anything the secret contained.",
+	"request.pageTitle": "Gone · Request a secret",
+	"request.insecure": "{#strong}This page isn’t secure, so requests are turned off.{/strong}Browsers only encrypt on HTTPS pages. Ask whoever runs this server to put it behind HTTPS.",
+	"request.eyebrow": "Opens only in this browser",
+	"request.title": "Ask someone for a {#accent}secret.{/accent}",
+	"request.lead": "Make a link to send to the person who has it. What they send back is encrypted to this browser, so only you can open it, once.",
+	"request.form": "Create a request",
+	"request.label": "Label {#opt}(optional){/opt}",
+	"request.labelHint": "Only you see this. It stays on this device.",
+	"request.labelPlaceholder": "For example: staging database password",
+	"request.ttl": "Wait for a reply",
+	"request.ttlHint": "The link stops working after this. A reply is then kept for the same length of time.",
+	"js.request.create": "Create request link",
+	"request.keyHint": "A key pair is made here. The private key never leaves this browser.",
+	"request.storage": "This browser can’t save the key a request needs, so it couldn’t open the reply. Private windows often can’t. Try a normal window.",
+	"request.listHeading": "Your requests on this device",
+	"request.empty": "Requests you make here show up in this list. You can close the page; they’ll be waiting when you come back.",
+	"request.createdEyebrow": "Request ready",
+	"request.createdTitle": "Send this request {#accent}link.{/accent}",
+	"request.createdLead": "They type the secret on that page and it’s encrypted for this browser. When it arrives, it shows up here.",
+	"request.link": "Request link",
+	"request.linkHint": "The link can’t open anything. It only lets someone send you one reply, so it’s fine to send through chat or email. Make sure it reaches the right person.",
+	"request.callout": "{#strong}Opens only in this browser.{/strong} You can close this page. Come back to {#link}Request a secret{/link} in this browser to open the reply.",
+	"js.request.stateWaiting": "Waiting for a reply",
+	"request.view": "View this request",
+	"request.another": "Make another request",
+	"request.status": "Request status",
+	"request.life.asked": "{#t}Asked{/t}Just now",
+	"request.life.replied": "{#t}Replied{/t}Encrypted to this browser",
+	"request.life.opened": "{#t}Opened once{/t}By you, then gone",
+	"detail.pageTitle": "Gone · Your request",
+	"js.detail.yourRequest": "Your request",
+	"detail.checkTitle": "Checking on your request.",
+	"detail.checkLead": "Only this browser can open the reply.",
+	"detail.missingTitle": "This request isn’t in this {#accent}browser.{/accent}",
+	"detail.missingLead": "It may have been opened, cancelled or expired, or it was made in another browser. A reply can only be opened where its request was made.",
+	"detail.newRequestNote": "If you still need the secret, make a new request and send the new link.",
+	"detail.requestSecret": "Request a secret",
+	"detail.waitingTitle": "Waiting for a {#accent}reply.{/accent}",
+	"detail.waitingLead": "You can close this page. Come back in this browser and the reply will be here.",
+	"detail.asked": "Asked",
+	"detail.linkUntil": "Link works until",
+	"detail.cancelHeading": "Cancel this request",
+	"detail.cancelNote": "Sent the link to the wrong person, or don’t need it anymore? Cancel it and the link stops working at once.",
+	"detail.cancelNow": "Cancel request",
+	"detail.cancelConfirm": "{#strong}Cancel it now?{/strong}Anyone who opens the link won’t be able to reply. This can’t be undone.",
+	"js.detail.cancelIt": "Cancel it",
+	"detail.keepWaiting": "Keep waiting",
+	"detail.life.askedByYou": "{#t}Asked{/t}By you",
+	"detail.life.waitingReply": "{#t}Waiting{/t}For their reply",
+	"detail.cancelledTitle": "Cancelled.",
+	"detail.cancelledLead": "The request link doesn’t work anymore, and this browser has forgotten its key.",
+	"detail.newRequest": "Make a new request",
+	"detail.openTitle": "Your reply is {#accent}here.{/accent}",
+	"detail.openLead": "It opens once, in this browser. Opening it deletes it from the server, so copy anything you need.",
+	"js.detail.openReply": "Open reply",
+	"detail.openHint": "Not ready? Leave it. It’s kept until {#time}{/time}.",
+	"detail.life.repliedReady": "{#t}Replied{/t}Ready for you",
+	"detail.life.openOnPress": "{#t}Opened once{/t}When you press Open",
+	"detail.ackWarning": "{#strong}Couldn’t confirm deletion.{/strong}The server did not confirm this reply was deleted. It will still be deleted automatically within a few minutes and cannot be opened again. Save what you need now.",
+	"detail.revealedLead": "Gone is deleting it from the server now, and this browser has forgotten the request. Once you leave this page, it’s gone for good.",
+	"detail.back": "Back to your requests",
+	"detail.life.repliedDone": "{#t}Replied{/t}Done",
+	"detail.goneTitle": "This request is {#accent}gone.{/accent}",
+	"detail.goneLead": "It expired, was cancelled, or its reply was already opened. Gone doesn’t keep records, so it can’t tell which.",
+	"reply.pageTitle": "Gone · Send a secret",
+	"reply.checkEyebrow": "A request for a secret",
+	"reply.checkTitle": "Checking the request.",
+	"reply.checkLead": "Making sure it can still be answered before you type anything.",
+	"reply.eyebrow": "Someone asked you for a secret",
+	"reply.title": "Send a {#accent}secret.{/accent}",
+	"reply.lead": "What you send is encrypted in this browser to the person who gave you this link. The server can’t read it, and they can open it once.",
+	"reply.form": "Send the secret",
+	"reply.trust": "{#strong}Only send it if you trust who gave you this link.{/strong} Anyone can make a request link, so check it came from the person you expect.",
+	"reply.messagePlaceholder": "Paste the password, a note, or anything private.",
+	"reply.submit": "Send securely",
+	"reply.submitHint": "Nothing leaves this device until you press the button. This request is open until {#time}{/time}.",
+	"reply.life.asked": "{#t}Asked{/t}By them",
+	"reply.life.reply": "{#t}Your reply{/t}Encrypted here",
+	"reply.life.opened": "{#t}Opened once{/t}By them, in their browser",
+	"reply.sentTitle": "Sent. Only the requestor can {#accent}open it.{/accent}",
+	"reply.sentLead": "It’s encrypted to their browser and opens once. You don’t need to send them anything else.",
+	"reply.sentNote": "They’ll see it the next time they check their request. If they don’t open it in time, it’s deleted unread.",
+	"reply.goneLead": "It was already answered, cancelled, or it expired. Nothing you type here would reach anyone.",
+	"reply.goneNote": "If they still need it, ask them to make a new request and send you the new link.",
+	"about.eyebrow": "How it works",
+	"about.title": "How Gone keeps a {#accent}secret.{/accent}",
+	"about.lead": "Short answers for the people who send and open secrets, and for the people who run this server.",
+	"about.toc.what": "What is Gone?",
+	"about.toc.encryption": "Encryption",
+	"about.toc.flow": "How Gone keeps secrets",
+	"about.toc.files": "File attachments",
+	"about.toc.passphrase": "Optional passphrase",
+	"about.toc.requests": "Requesting a secret",
+	"about.toc.why": "Why this matters",
+	"about.toc.threats": "Threat model notes",
+	"about.toc.license": "License",
+	"about.what.heading": "What is Gone?",
+	"about.what.p1": "Go + One = {#strong}Gone{/strong}",
+	"about.what.p2": "Gone is a tool for sharing secrets privately, readable only one time. The server component is written in {#link}Go{/link}, a language designed for simplicity and efficiency by Google. The client-side application is built with vanilla JavaScript and modern WebCrypto APIs to perform encryption and decryption directly in your browser.",
+	"about.what.p3": "Gone is open source software. The source code is available on {#link}GitHub{/link} under the GNU Affero GPL v3.",
+	"about.encryption.heading": "What encryption does Gone use?",
+	"about.encryption.p1": "Gone uses AES-256-GCM provided by WebCrypto APIs for client-side encryption, which is the same encryption trusted by banks, governments, and security-conscious organizations worldwide.",
+	"about.flow.heading": "How Gone keeps secrets secret",
+	"about.flow.p1": "Gone is designed so the server never learns your secret. The critical cryptography happens entirely in your browser before anything is sent over the network.",
+	"about.flow.subhead1": "High-level flow",
+	"about.flow.li1": "{#strong}You type a message and/or attach files{/strong} in the form. Before anything leaves your device, the browser generates a fresh, random encryption key.",
+	"about.flow.li2": "{#strong}Client-side encryption{/strong} (using modern WebCrypto primitives) packs the message and files together and transforms them into a single opaque blob. File names and types are encrypted too.",
+	"about.flow.li3": "{#strong}Only the encrypted blob{/strong} is sent to the Gone server. The key never leaves the browser.",
+	"about.flow.li4": "{#strong}The server stores{/strong} just that blob plus minimal metadata (expiry time and one-time state).",
+	"about.flow.li5": "{#strong}A shareable URL{/strong} is produced. The secret key is embedded in the URL fragment (the part after {#code}#{/code}), which browsers never send to the server.",
+	"about.flow.li6": "{#strong}The recipient opens the URL{/strong} and presses Open; their browser extracts the key locally and downloads the encrypted blob. From that moment the secret is reserved for them alone; anyone else who opens the link sees that it is gone.",
+	"about.flow.li7": "{#strong}Decryption happens client-side{/strong}; the browser verifies every byte arrived intact before showing anything. The server remains blind to the plaintext the entire time.",
+	"about.flow.li8": "{#strong}Confirmed deletion{/strong}: once the recipient’s browser has the complete secret, it tells the server to delete it. If that confirmation never arrives (closed tab, dropped connection), the server deletes it automatically a few minutes later. Either way, it can never be read twice.",
+	"about.files.heading": "File attachments",
+	"about.files.li1": "Attach up to 10 files of any type. The message and all files share one size limit, shown on the form.",
+	"about.files.li2": "Files are encrypted in your browser exactly like the message; the server cannot see their names, types, or contents.",
+	"about.files.li3": "The recipient downloads each file individually or all at once. Gone warns them before leaving the page with files still unsaved, because the secret cannot be opened again.",
+	"about.files.li4": "File names are cleaned up (folders and hidden control characters removed), and uncommon file types are saved as generic downloads so they can’t run in the browser.",
+	"about.passphrase.heading": "Optional passphrase",
+	"about.passphrase.li1": "The sender can add a passphrase. Opening the secret then takes both the link and the passphrase, so a leaked link alone is not enough.",
+	"about.passphrase.li2": "Send the passphrase separately from the link, for example the link by email and the passphrase by phone. Gone never stores the passphrase and cannot recover it.",
+	"about.passphrase.li3": "Your browser stretches the passphrase with PBKDF2 (600,000 rounds) and mixes it with the link’s key. Every wrong guess costs real time, but a short or common passphrase can still be guessed by someone who has the link. Use {#strong}Generate{/strong} for five random words.",
+	"about.passphrase.li4": "As you type, Gone shows the passphrase’s estimated entropy in bits and roughly how long it would take to guess. The estimate assumes someone who already has the link and can make a million guesses a second against the stretched passphrase. It’s a guide, not a guarantee: names, dates, and well-known phrases fall faster than it shows.",
+	"about.passphrase.li5": "If the passphrase is wrong, the recipient can try again as many times as they need without downloading the secret again.",
+	"about.passphrase.li6": "Opening the link uses up the secret even if the passphrase is wrong. A passphrase keeps a leaked secret unreadable, but cannot stop someone with the link from destroying it.",
+	"about.passphrase.li7": "Generated passphrases use the {#link}EFF short wordlist{/link} by the Electronic Frontier Foundation, licensed under {#link2}CC BY 3.0 US{/link2}.",
+	"about.requests.heading": "Requesting a secret",
+	"about.requests.li1": "Need a secret from someone? {#link}Request a secret{/link} makes a link for you to send them. They type the secret on that page, and it comes back to you.",
+	"about.requests.li2": "Your browser makes a key pair. The private key is stored in this browser in a form no web page can read out, so the reply can only be opened here, even after you close and reopen the browser. The public key travels in the link’s fragment, which never reaches the server.",
+	"about.requests.li3": "Their browser encrypts the reply to your public key (ECDH P-256, then AES-256-GCM). The server stores only ciphertext and can’t read it, and each request takes one reply.",
+	"about.requests.li4": "Your label for a request stays in this browser. The server only learns how long to wait.",
+	"about.requests.li5": "Anyone with the request link can send the one reply, so send it only to the right person. If you’re answering a request, check it came from who you expect.",
+	"about.requests.li6": "Clearing this site’s data, or using a private window, loses your requests. Make a new one if that happens.",
+	"about.why.heading": "Why this matters",
+	"about.why.li1": "{#strong}Zero server knowledge:{/strong} Compromise of the storage tier yields only ciphertext.",
+	"about.why.li2": "{#strong}Ephemeral access:{/strong} One-time retrieval shrinks the attack window.",
+	"about.why.li3": "{#strong}Short TTLs:{/strong} Automatic expiry further limits exposure if a link lingers.",
+	"about.why.li4": "{#strong}No password reuse risk:{/strong} You never transmit existing credentials in the clear.",
+	"about.threats.heading": "Threat model notes",
+	"about.threats.li1": "Always verify you are on HTTPS (the app warns if not).",
+	"about.threats.li2": "The secrecy guarantee assumes the sender’s and recipient’s browsers are not compromised.",
+	"about.threats.li3": "Anyone who obtains the full share URL (including its key component) can decrypt the secret until first read or expiry, unless the sender added a passphrase.",
+	"about.threats.li4": "If someone else opens the link first, the intended recipient will see that the secret is gone, a clear sign the link was intercepted.",
+	"about.threats.li5": "Attachments are only as safe as the device they are saved to; delete downloaded files when you no longer need them.",
+	"about.license.heading": "What does the GNU Affero GPL v3 mean for you?",
+	"about.license.p1": "Gone is free, open source software under the GNU Affero General Public License version 3 (AGPLv3). Here is what that means in plain English. This is a summary, not legal advice; the license itself is what counts.",
+	"about.license.subhead1": "If you use Gone to send or open secrets",
+	"about.license.li1": "{#strong}You have no obligations.{/strong} Using Gone puts no license terms on you or on what you share.",
+	"about.license.li2": "If someone runs a modified version of Gone, they must let you download its source code.",
+	"about.license.subhead2": "If you host or change Gone",
+	"about.license.li3": "You may run Gone unmodified for any purpose. Leave its copyright and license notices in place.",
+	"about.license.li4": "You may change Gone however you like. If other people use your changed version over a network, you must offer them its complete source code, free of charge and under the AGPLv3. A link in the footer is enough.",
+	"about.license.li5": "If you change Gone, give your version its own name and logo. The Gone name and logo are trademarks and aren’t covered by the AGPLv3; see the {#link}trademark policy{/link}.",
+	"about.license.li6": "You don’t have to send your changes back to this project, though contributions are welcome.",
+	"about.license.li7": "Changes you keep to yourself, with nobody else using them, carry no obligation to share.",
+	"about.license.li8": "If you give someone a copy of Gone, such as a container image, include the license and the source code or tell them where to get it.",
+	"about.license.subhead3": "If you are a company",
+	"about.license.li9": "You may use Gone commercially, including running it as a paid service for customers.",
+	"about.license.li10": "The same rules apply as for anyone else. Unmodified, there is nothing to share. Modified, anyone who uses your version over a network must be offered its source code under the AGPLv3.",
+	"about.license.li11": "You can’t relicense Gone or your changes under closed terms, and you can’t remove its copyright or license notices.",
+	"about.license.p2": "To read the full license, visit the {#link}GNU website{/link}.",
+	"about.pageTitle": "Gone · How Gone keeps a secret",
+	"about.toc": "On this page",
+	"about.sendSecret": "Send a secret",
+	"error.status": "Error {status}",
+	"error.note": "Check the address, or start over from the home page.",
+	"error.home": "Back to home",
+	"error.notFound.pageTitle": "Gone · Not Found",
+	"error.notFound.title": "Not Found",
+	"error.notFound.message": "The page you requested was not found.",
+	"js.common.hide": "Hide",
+	"js.common.copied": "Copied",
+	"js.common.copyFailed": "Couldn’t copy automatically. It’s selected: press Ctrl+C (⌘C on Mac).",
+	"js.common.tooMany": "Too many requests right now. Wait a moment, then try again.",
+	"js.common.busy": "The server is busy right now. Wait a moment, then try again.",
+	"js.common.network": "Couldn’t reach the server. Check your connection.",
+	"js.lang.failed": "Couldn’t switch the language. Check your connection and try again.",
+	"js.consume.gone": "This secret is gone: it never existed, was already opened, has expired, or was opened elsewhere. If your own download was interrupted, ask the sender to share it again.",
+	"js.consume.invalidLink": "This link isn’t valid. Check that you copied all of it.",
+	"js.consume.incomplete": "The download was interrupted.",
+	"js.consume.server": "The server had a problem retrieving this secret.",
+	"js.consume.verify": "Couldn’t verify this secret. The link may be incomplete or wrong; ask the sender to resend it.",
+	"js.consume.passphrase": "That passphrase didn’t work. The secret is already gone from the server, and this browser holds the only copy, still encrypted. Check the passphrase and try again here: closing or leaving this page destroys the secret for good.",
+	"js.consume.damaged": "This secret’s contents are damaged. Ask the sender to share it again.",
+	"js.consume.unsupportedVersion": "This secret was made by a version of Gone that this page can’t open.",
+	"js.consume.blocked": "This page blocked a request to an unexpected address. Reload the page and try again.",
+	"js.consume.badFragment": "This link is missing its key, so the secret can’t be decrypted. Check that you copied the whole link, including everything after the #.",
+	"js.consume.noCrypto": "This browser only decrypts on secure (HTTPS) pages, so this secret can’t be opened here. Nothing was downloaded, and the link still works. Ask the sender for an HTTPS link.",
+	"js.consume.newerVersion": "This link was made by a newer version of Gone and can’t be opened here.",
+	"js.consume.unlocking": "Unlocking…",
+	"js.consume.decrypting": "Decrypting…",
+	"js.consume.unexpected": "Something went wrong opening this secret. Try again.",
+	"js.consume.erased": "You left this page, so the downloaded secret was erased from it. Ask the sender to share it again.",
+	"js.consume.retrieving": "Retrieving…",
+	"js.consume.retrievingPct": "Retrieving… {pct}%",
+	"js.consume.retrievingSize": "Retrieving… {size}",
+	"js.consume.opening": "Opening…",
+	"js.consume.stepDone": "Done",
+	"js.consume.stepDownloaded": "Downloaded; needs the passphrase",
+	"js.consume.stepGoneOnLeave": "When you leave this page",
+	"js.consume.lines": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} line",
+				"countPlural=*": "{count} lines"
+			}
+		}
+	],
+	"js.consume.characters": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} character",
+				"countPlural=*": "{count} characters"
+			}
+		}
+	],
+	"js.consume.titleRevealed": "Gone · Here’s your secret",
+	"js.consume.titleGone": "Gone · This secret is gone",
+	"js.consume.messageCopied": "Message copied to clipboard.",
+	"js.consume.headingSecretFiles": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "Here’s your secret and {#accent}a file.{/accent}",
+				"countPlural=*": "Here’s your secret and {#accent}{count} files.{/accent}"
+			}
+		}
+	],
+	"js.consume.headingFiles": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "Here’s {#accent}a file.{/accent}",
+				"countPlural=*": "Here’s {#accent}{count} files.{/accent}"
+			}
+		}
+	],
+	"js.consume.download": "Download",
+	"js.consume.downloadNamed": "Download {name}",
+	"js.common.unexpected": "Something went wrong. Try again.",
+	"js.common.networkRetry": "Couldn’t reach the server. Check your connection, then try again.",
+	"js.common.server": "The server had a problem. Try again in a moment.",
+	"js.manage.invalidLink": "This manage link isn’t valid. Check that you copied all of it, including everything after the #.",
+	"js.manage.titlePending": "Gone · Your secret is waiting",
+	"js.manage.titleDeleted": "Gone · Secret deleted",
+	"js.manage.checkFailed": "Couldn’t check your secret.",
+	"js.manage.stillWaiting": "Still waiting as of {time}. Nobody has opened it.",
+	"js.manage.deleting": "Deleting…",
+	"js.request.rejected": "The server rejected this request.",
+	"js.request.stateReady": "Reply ready",
+	"js.request.askedJustNow": "Asked just now",
+	"js.request.asked": "Asked {when}",
+	"js.request.untitled": "Untitled request",
+	"js.request.noCrypto": "Turned off: this page isn’t HTTPS, so this browser can’t make keys.",
+	"js.request.saveFailed": "This browser couldn’t save the request’s key, so it was cancelled. Try a normal (not private) window.",
+	"js.request.unexpected": "Something went wrong making the request. Try again.",
+	"js.request.makingKeys": "Making keys…",
+	"js.request.titleReady": "● Reply ready · {title}",
+	"js.request.arrived": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "A reply arrived.",
+				"countPlural=*": "{count} replies arrived."
+			}
+		}
+	],
+	"js.request.titleCreated": "Gone · Request link ready",
+	"js.request.arrivedOpen": "A reply arrived. Open it from this request.",
+	"js.request.gone": "This request is gone.",
+	"js.request.openReply": "Open the reply",
+	"js.request.linkCopied": "Request link copied to clipboard.",
+	"js.detail.noCrypto": "This browser only decrypts on secure (HTTPS) pages, so the reply can’t be opened here.",
+	"js.detail.verify": "Couldn’t decrypt this reply. It may have been damaged on the way. Ask them to send it again with a new request.",
+	"js.detail.titleMissing": "Gone · Request not in this browser",
+	"js.detail.titleWaiting": "Gone · Waiting for a reply",
+	"js.detail.titleCancelled": "Gone · Request cancelled",
+	"js.detail.titleOpen": "Gone · Your reply is here",
+	"js.detail.titleGone": "Gone · This request is gone",
+	"js.detail.stillWaiting": "Still waiting as of {time}.",
+	"js.detail.cancelling": "Cancelling…",
+	"js.submit.noCryptoHint": "Turned off: this page isn’t HTTPS, so this browser can’t encrypt.",
+	"js.submit.noCrypto": "This browser only encrypts on secure (HTTPS) pages, so Gone can’t encrypt here. Ask whoever runs this server to enable HTTPS.",
+	"js.submit.encrypting": "Encrypting…",
+	"js.submit.encryptFailed": "Encryption failed: a file could not be read.",
+	"js.submit.empty": "Add a message or at least one file.",
+	"js.submit.uploading": "Uploading {pct}%",
+	"js.upload.network": "Couldn’t reach the server, so nothing was sent. Check your connection, then try again.",
+	"js.upload.server": "The server had a problem creating the secret. Try again in a moment.",
+	"js.upload.rejected": "The server rejected the secret.",
+	"js.upload.tooLarge": "This secret is too large for this server.",
+	"js.meter.tooMany": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "Too many files: remove {count} to stay within {max}.",
+				"countPlural=*": "Too many files: remove {count} to stay within {max}."
+			}
+		}
+	],
+	"js.meter.over": "Over the limit by {size}. Remove a file or shorten the message.",
+	"js.meter.sizeOver": "{used} of {max} (over limit)",
+	"js.files.remove": "Remove",
+	"js.files.removeNamed": "Remove {name}",
+	"js.result.manageCopied": "Manage link copied to clipboard.",
+	"js.result.linkCopied": "Link copied to clipboard.",
+	"js.result.title": "Gone · Your link is ready",
+	"js.pass.seconds": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{n} second",
+				"countPlural=*": "{n} seconds"
+			}
+		}
+	],
+	"js.pass.minutes": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{n} minute",
+				"countPlural=*": "{n} minutes"
+			}
+		}
+	],
+	"js.pass.hours": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{n} hour",
+				"countPlural=*": "{n} hours"
+			}
+		}
+	],
+	"js.pass.days": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{n} day",
+				"countPlural=*": "{n} days"
+			}
+		}
+	],
+	"js.pass.years": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{n} year",
+				"countPlural=*": "{n} years"
+			}
+		}
+	],
+	"js.pass.short": "Too short: use at least {min} characters.",
+	"js.pass.guessTime": "About {bits} bits of entropy, about {time} to guess.",
+	"js.pass.guessInstant": "About {bits} bits of entropy, guessed almost instantly.",
+	"js.pass.guessUniverse": "About {bits} bits of entropy, longer than the age of the universe to guess.",
+	"js.pass.weak": "{text} Longer is better, or press Generate.",
+	"js.pass.shortProblem": "Make the passphrase at least {min} characters, or leave it empty.",
+	"js.reply.badLink": "This request link isn’t complete. Check that you copied all of it, including everything after the #.",
+	"js.reply.newer": "This link was made by a newer version of Gone and can’t be answered here.",
+	"js.reply.badKey": "This request link is damaged, so nothing can be encrypted for it. Ask them for a new link.",
+	"js.reply.titleSent": "Gone · Sent"
+}

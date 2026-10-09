@@ -10,7 +10,7 @@
   // stays off and the hint says why.
   if (!ctx.util.cryptoAvailable()) {
     ctx.els.primaryBtn.disabled = true;
-    ctx.util.setText(ctx.byId('submit-hint'), 'Turned off: this page isn\u2019t HTTPS, so this browser can\u2019t encrypt.');
+    window.goneI18n.set(ctx.byId('submit-hint'), 'js.submit.noCryptoHint');
   }
   ctx.form.addEventListener('submit', window.goneSubmitRun.handleSubmit);
   ctx.els.textarea.addEventListener('input', state.updateMeter);

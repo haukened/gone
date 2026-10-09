@@ -3,20 +3,18 @@
 // DOM side of the sender's manage page. The page has four server-rendered
 // views: #view-check (first load, link problems and load errors),
 // #view-pending (status facts, Check again, Delete with an inline confirm),
-// #view-deleted and #view-gone. Requires window.goneUtil. Exposed as
-// window.goneManageView.
+// #view-deleted and #view-gone. Text is set as goneI18n message keys.
+// Exposed as window.goneManageView.
 (function manageViewModule() {
-  if (window.goneManageView || !window.goneUtil) return;
-  const util = window.goneUtil;
+  if (window.goneManageView || !window.goneI18n) return;
+  const i18n = window.goneI18n;
 
   const VIEWS = ['check', 'pending', 'deleted', 'gone'];
   const TITLES = {
-    pending: 'Gone \u00b7 Your secret is waiting',
-    deleted: 'Gone \u00b7 Secret deleted',
-    gone: 'Gone \u00b7 This secret is gone'
+    pending: 'js.manage.titlePending',
+    deleted: 'js.manage.titleDeleted',
+    gone: 'js.consume.titleGone'
   };
-  const DATE_FMT = { dateStyle: 'medium', timeStyle: 'short' };
-  const TIME_FMT = { timeStyle: 'short' };
 
   function byId(id) {
     return document.getElementById(id);
@@ -49,42 +47,43 @@
   }
 
   // setLabel replaces a button's <span> label, or its text when it has none.
-  function setLabel(btn, text) {
+  function setLabel(btn, key) {
     if (!btn) return;
-    const span = btn.querySelector('span');
-    util.setText(span || btn, text);
+    i18n.set(btn.querySelector('span') || btn, key);
   }
 
   // switchTo shows the named view, hides the others, and moves focus to its
   // heading so screen readers announce the change.
   function switchTo(name) {
     VIEWS.forEach(function (v) { show(byId(`view-${v}`), v === name); });
-    if (TITLES[name]) document.title = TITLES[name];
+    if (TITLES[name]) i18n.setTitle(TITLES[name]);
     state.current = name;
     const heading = byId(`${name}-heading`);
     if (heading) heading.focus();
   }
 
-  // setTime writes a human time and the machine-readable datetime.
-  function setTime(node, when, fmt) {
+  // setTime writes a time in the page's language (style "datetime" or
+  // "time") and the machine-readable datetime.
+  function setTime(node, when, style) {
     if (!node) return;
-    node.textContent = when.toLocaleString(undefined, fmt);
+    i18n.value(node, { date: when.toISOString(), style: style });
     node.setAttribute('datetime', when.toISOString());
   }
 
   // showChecking resets the first-load view to its busy state.
   function showChecking() {
-    util.setText(dom.checkHeading, 'Checking on your secret.');
-    util.setText(dom.checkStatus, 'Checking\u2026');
+    i18n.set(dom.checkHeading, 'manage.checkTitle');
+    i18n.set(dom.checkStatus, 'js.common.checking');
     show(dom.checkError, false);
     show(dom.retry, false);
   }
 
-  // showCheckError reports a first-load problem. retryable shows Try again.
-  function showCheckError(msg, retryable) {
-    util.setText(dom.checkHeading, 'Couldn\u2019t check your secret.');
-    util.setText(dom.checkStatus, '');
-    util.setText(dom.checkErrorText, msg);
+  // showCheckError reports a first-load problem (a message key). retryable
+  // shows Try again.
+  function showCheckError(key, retryable) {
+    i18n.set(dom.checkHeading, 'js.manage.checkFailed');
+    i18n.clear(dom.checkStatus);
+    i18n.set(dom.checkErrorText, key);
     show(dom.checkError, true);
     show(dom.retry, retryable);
   }
@@ -92,14 +91,14 @@
   // showPending fills the status facts and shows the pending view. A repeat
   // check keeps focus on Check again and announces the result instead.
   function showPending(info, now) {
-    setTime(dom.created, info.createdAt, DATE_FMT);
-    setTime(dom.expires, info.expiresAt, DATE_FMT);
-    setTime(dom.checked, now, TIME_FMT);
+    setTime(dom.created, info.createdAt, 'datetime');
+    setTime(dom.expires, info.expiresAt, 'datetime');
+    setTime(dom.checked, now, 'time');
     if (state.current === 'pending') {
-      util.setText(dom.pendingStatus, `Still waiting as of ${dom.checked ? dom.checked.textContent : 'now'}. Nobody has opened it.`);
+      i18n.set(dom.pendingStatus, 'js.manage.stillWaiting', { time: { date: now.toISOString(), style: 'time' } });
       return;
     }
-    util.setText(dom.pendingStatus, '');
+    i18n.clear(dom.pendingStatus);
     switchTo('pending');
   }
 
@@ -107,8 +106,8 @@
   function setChecking(busy) {
     setDisabled(dom.again, busy);
     setDisabled(dom.deleteNow, busy);
-    setLabel(dom.again, busy ? 'Checking\u2026' : 'Check again');
-    if (busy) util.setText(dom.pendingStatus, 'Checking\u2026');
+    setLabel(dom.again, busy ? 'js.common.checking' : 'js.manage.checkAgain');
+    if (busy) i18n.set(dom.pendingStatus, 'js.common.checking');
   }
 
   // setDeleting shows the confirm buttons as busy.
@@ -116,12 +115,13 @@
     setDisabled(dom.yes, busy);
     setDisabled(dom.no, busy);
     setDisabled(dom.again, busy);
-    setLabel(dom.yes, busy ? 'Deleting\u2026' : 'Delete it');
+    setLabel(dom.yes, busy ? 'js.manage.deleting' : 'js.manage.deleteIt');
   }
 
-  function showPendingError(msg) {
-    util.setText(dom.pendingStatus, '');
-    util.setText(dom.pendingErrorText, msg);
+  // showPendingError shows an error message key on the pending view.
+  function showPendingError(key) {
+    i18n.clear(dom.pendingStatus);
+    i18n.set(dom.pendingErrorText, key);
     show(dom.pendingError, true);
   }
 

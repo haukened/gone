@@ -107,6 +107,13 @@ Guarantees (simple terms):
 * Your manage link can never reveal the secret, and once the secret is opened, deleted, or expired, the server keeps no record that it existed.
 * A request's reply can only be opened in the browser that asked for it; its private key never leaves that browser.
 
+### Languages
+The web pages are in English, Spanish (Español), French (Français), German (Deutsch) and Brazilian Portuguese (Português (Brasil)).
+
+* **Automatic:** the first visit uses the browser's preferred languages (`Accept-Language`). A regional variant falls back to its language, so `es-MX` gets Spanish and `pt-PT` gets Brazilian Portuguese; anything else gets English.
+* **Your choice:** the globe button next to the dark-mode toggle switches the language in place, without reloading. A link you just made, a secret you just opened and anything you've typed stay on the page. The choice is kept in a `gone_lang` cookie (one year, `SameSite=Lax`), which beats the browser's languages from then on. The cookie only holds the language.
+* Translations other than English were made by machine and say so in the footer. Corrections are welcome; see [Translations](CONTRIBUTING.md#translations).
+
 ### From the command line
 The `gone` CLI does the same from a terminal, and works with secrets sent from the browser and the other way round. Download a static binary from the [releases page](https://github.com/haukened/gone/releases) (verify it with `gh attestation verify <archive> --repo haukened/gone`), then:
 

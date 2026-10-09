@@ -12,7 +12,7 @@
     return ttl ? ttl.value : '';
   }
 
-  const NO_CRYPTO = 'This browser only encrypts on secure (HTTPS) pages, so Gone can\u2019t encrypt here. Ask whoever runs this server to enable HTTPS.';
+  const NO_CRYPTO = 'js.submit.noCrypto';
 
   // sendTarget is the default target: a new secret under a fresh key
   // (v1, or v2 with a passphrase), shown in the result panel. A page can
@@ -38,11 +38,11 @@
       ui.failSubmission('[gone] WebCrypto unavailable (insecure context)', new Error('crypto.subtle missing'), NO_CRYPTO);
       return null;
     }
-    ui.setButtonLabel('Encrypting\u2026');
+    ui.setButtonLabel('js.submit.encrypting');
     try {
       return await target.encrypt(message, state.selection.files(), pass);
     } catch (e) {
-      ui.failSubmission('[gone] encryption failed', e, (e && e.userMessage) || 'Encryption failed: a file could not be read.');
+      ui.failSubmission('[gone] encryption failed', e, (e && e.userMessage) || 'js.submit.encryptFailed');
       return null;
     }
   }
@@ -66,8 +66,9 @@
     }
   }
 
+  // submitProblem returns why the form can't be sent ({key, args}), or ''.
   function submitProblem() {
-    if (state.isEmpty()) return 'Add a message or at least one file.';
+    if (state.isEmpty()) return { key: 'js.submit.empty' };
     return state.currentProblem(state.currentSize());
   }
 

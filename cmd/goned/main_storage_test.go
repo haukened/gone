@@ -209,7 +209,7 @@ type pragmaQuerier interface {
 // Parameters:
 //   - t: the test handle.
 func TestLoadTemplatesFrom_Error(t *testing.T) {
-	if _, err := loadTemplatesFrom(fstest.MapFS{}, "v0.0.0-test"); err == nil {
+	if _, err := loadTemplatesFrom(fstest.MapFS{}, "v0.0.0-test", testBundle(t)); err == nil {
 		t.Fatalf("expected error due to missing partials template")
 	}
 }

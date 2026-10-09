@@ -1,10 +1,31 @@
 package main
 
 import (
+	"html/template"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/haukened/gone/v3/internal/httpx"
+	"github.com/haukened/gone/v3/internal/i18n"
+	wembed "github.com/haukened/gone/v3/web"
 )
+
+// testBundle loads the real message catalogs, with the pseudo-locale.
+//
+// Parameters:
+//   - t: the test handle.
+//
+// Returns:
+//   - *i18n.Bundle: the catalogs.
+func testBundle(t *testing.T) *i18n.Bundle {
+	t.Helper()
+	b, err := i18n.Load(wembed.Assets, "messages", i18n.Options{Pseudo: true})
+	if err != nil {
+		t.Fatalf("load messages: %v", err)
+	}
+	return b
+}
 
 // validPages returns a MapFS containing partials and every page template.
 func validPages() fstest.MapFS {
@@ -17,16 +38,25 @@ func validPages() fstest.MapFS {
 
 // TestLoadTemplatesFrom_Success verifies each page is parsed and assigned.
 func TestLoadTemplatesFrom_Success(t *testing.T) {
-	tmpls, err := loadTemplatesFrom(validPages(), "v0.0.0-test")
+	b := testBundle(t)
+	tmpls, err := loadTemplatesFrom(validPages(), "v0.0.0-test", b)
 	if err != nil {
 		t.Fatalf("loadTemplatesFrom: %v", err)
 	}
-	for name, tm := range map[string]interface{ Name() string }{
+	for name, lt := range map[string]httpx.LocalizedTemplate{
 		"index": tmpls.index, "about": tmpls.about, "secret": tmpls.secret, "manage": tmpls.manage, "error": tmpls.errorPage,
 	} {
-		if tm.Name() != name {
-			t.Fatalf("template %s has name %q", name, tm.Name())
+		if len(lt) != len(b.Locales()) {
+			t.Fatalf("template %s has %d clones, want %d", name, len(lt), len(b.Locales()))
 		}
+		for tag, tm := range lt {
+			if tm.Name() != name {
+				t.Fatalf("template %s/%s has name %q", name, tag, tm.Name())
+			}
+		}
+	}
+	if tmpls.bundle != b {
+		t.Fatal("bundle not kept")
 	}
 }
 
@@ -45,7 +75,7 @@ func TestLoadTemplatesFrom_PageErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fsys := validPages()
 			tt.mutate(fsys)
-			_, err := loadTemplatesFrom(fsys, "v0.0.0-test")
+			_, err := loadTemplatesFrom(fsys, "v0.0.0-test", testBundle(t))
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("err = %v, want containing %q", err, tt.want)
 			}
@@ -74,5 +104,36 @@ func TestTemplateFuncs(t *testing.T) {
 	}
 	if v := templateFuncs(fsys, "v1.2.3")["version"].(func() string)(); v != "v1.2.3" {
 		t.Fatalf("version = %q", v)
+	}
+}
+
+// TestTemplateArgHelpers covers the argument builders' error paths.
+func TestTemplateArgHelpers(t *testing.T) {
+	if args, err := pairArgs(); args != nil || err != nil {
+		t.Fatalf("empty = %v, %v", args, err)
+	}
+	if _, err := pairArgs("a"); err == nil {
+		t.Fatal("odd pairs accepted")
+	}
+	if _, err := pairArgs(1, 2); err == nil {
+		t.Fatal("non-string name accepted")
+	}
+	if b, err := toBytes(int64(5)); b != 5 || err != nil {
+		t.Fatalf("int64 = %v, %v", b, err)
+	}
+	if _, err := toBytes("5"); err == nil {
+		t.Fatal("string accepted as bytes")
+	}
+	funcs := localeFuncs(testBundle(t), "es")
+	rich := funcs["rich"].(func(string, i18n.Args, ...string) (template.HTML, error))
+	if _, err := rich("send.title", nil, "accent"); err == nil {
+		t.Fatal("odd slot list accepted")
+	}
+	tf := funcs["t"].(func(string, ...any) (string, error))
+	if _, err := tf("send.title", "x"); err == nil {
+		t.Fatal("odd t args accepted")
+	}
+	if code := funcs["langCode"].(func() string)(); code != "ES" {
+		t.Fatalf("langCode = %q", code)
 	}
 }

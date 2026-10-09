@@ -1,4 +1,4 @@
-/* global __dirname, setImmediate */
+/* global __dirname, setImmediate, document */
 'use strict';
 
 // Minimal browser environment for unit-testing the classic (non-module)
@@ -26,7 +26,34 @@ const GONE_GLOBALS = ['goneUtil', 'goneCrypto', 'goneCryptoEncoding', 'goneCrypt
   'goneTheme', 'goneManageApi', 'goneManageView', 'goneWordlist', 'gonePassgen', 'gonePassphraseField',
   'goneSubmitDom', 'goneSubmitState', 'goneSubmitUi', 'goneSubmitRun', 'goneSubmitPreview', 'goneConsumeOpener',
   'goneCryptoV3', 'goneRequestStore', 'goneRequestApi', 'goneRequestPoll', 'goneRequestList',
-  'goneRequestDetailView', 'goneSubmitTarget', 'goneQr', 'goneResultQr'];
+  'goneRequestDetailView', 'goneSubmitTarget', 'goneQr', 'goneResultQr', 'goneI18n', 'goneLangPicker'];
+
+const MESSAGES_FILE = path.join(__dirname, '..', '..', 'web', 'messages', 'en.json');
+
+// wireMessage converts one inlang catalog value to the form the server sends
+// the browser: a pattern string, or {$plural, <category>: pattern}.
+function wireMessage(value) {
+  if (typeof value === 'string') return value;
+  const v = value[0];
+  const selector = v.selectors[0];
+  const decl = v.declarations.find((d) => d.startsWith('local ' + selector));
+  const out = { $plural: decl.split('=')[1].split(':')[0].trim() };
+  Object.entries(v.match).forEach(([k, pattern]) => {
+    const cat = k.split('=')[1];
+    out[cat === '*' ? 'other' : cat] = pattern;
+  });
+  return out;
+}
+
+// englishMessages returns the whole English catalog in wire form.
+function englishMessages() {
+  const raw = JSON.parse(fs.readFileSync(MESSAGES_FILE, 'utf8'));
+  const out = {};
+  Object.entries(raw).forEach(([k, v]) => { if (k !== '$schema') out[k] = wireMessage(v); });
+  return out;
+}
+
+const EN_MESSAGES = englishMessages();
 
 const MODULE_DEPS = {
   crypto: ['cryptoEncoding', 'cryptoCore', 'cryptoCipher', 'cryptoV2Inputs', 'cryptoV2Key', 'cryptoV2'],
@@ -100,12 +127,37 @@ function selectionFor(env) {
   };
 }
 
-// load evaluates web/js/<name>.js in this realm.
+// loadI18n loads i18n.js with the English catalog (or the given page data)
+// the way the server inlines it, then removes the data block again so tests
+// see only the DOM they built.
+function loadI18n(data) {
+  const block = document.createElement('script');
+  block.id = 'gone-i18n';
+  block.textContent = JSON.stringify(data || { locale: 'en', dir: 'ltr', locales: [{ tag: 'en', name: 'English', dir: 'ltr' }], catalogs: {}, messages: EN_MESSAGES });
+  document.body.appendChild(block);
+  runFile('i18n');
+  block.remove();
+}
+
+function runFile(name) {
+  const file = path.join(JS_DIR, name + '.js');
+  vm.runInThisContext(fs.readFileSync(file, 'utf8'), { filename: file });
+}
+
+// loadRaw evaluates web/js/<name>.js alone, without loading i18n.js first,
+// to test how a module behaves when goneI18n is missing.
+function loadRaw(name) {
+  runFile(name);
+}
+
+// load evaluates web/js/<name>.js in this realm, after i18n.js unless that
+// is already loaded (call loadI18n first to give it other page data).
 function load(...names) {
   names.forEach((name) => {
+    if (!globalThis.goneI18n && name !== 'i18n') loadI18n();
     (MODULE_DEPS[name] || []).forEach((dep) => load(dep));
-    const file = path.join(JS_DIR, name + '.js');
-    vm.runInThisContext(fs.readFileSync(file, 'utf8'), { filename: file });
+    if (name === 'i18n' && globalThis.goneI18n) return;
+    runFile(name);
   });
 }
 
@@ -138,4 +190,5 @@ async function waitFor(cond, ms) {
   throw new Error('waitFor timed out');
 }
 
-module.exports = { FakeElement, h, reset, load, fastUtil, captureConsole, waitFor, matches };
+module.exports = {
+  loadI18n, loadRaw, EN_MESSAGES, FakeElement, h, reset, load, fastUtil, captureConsole, waitFor, matches };

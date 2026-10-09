@@ -2,17 +2,65 @@ package httpx
 
 import (
 	"bytes"
+	"errors"
+	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
+
+	"github.com/haukened/gone/v3/internal/i18n"
 )
 
-// errorPageData supplies fields for the generic error template.
-// Title and Message should be short and not leak internal state.
+// errorPageData supplies fields for the generic error template: the status
+// code and the message keys for the page title, heading, and explanation.
+// The messages should be short and not leak internal state.
 type errorPageData struct {
-	Status  int
-	Title   string
-	Message string
+	Status       int
+	PageTitleKey string
+	TitleKey     string
+	MessageKey   string
+}
+
+// executor renders a page template with data into w.
+type executor interface {
+	Execute(http.ResponseWriter, any) error
+}
+
+// LocaleRenderer is implemented by page templates that have one clone per
+// locale. Pages rendered through it carry Content-Language and Vary headers.
+type LocaleRenderer interface {
+	ExecuteLocale(w http.ResponseWriter, tag string, data any) error
+}
+
+// LocalizedTemplate holds one clone of a page template per locale tag.
+type LocalizedTemplate map[string]*template.Template
+
+// errNoTemplate is returned when a LocalizedTemplate has no clone to render.
+var errNoTemplate = errors.New("no template for locale")
+
+// Execute renders the base locale's clone.
+func (lt LocalizedTemplate) Execute(w http.ResponseWriter, data any) error {
+	return lt.ExecuteLocale(w, i18n.BaseLocale, data)
+}
+
+// ExecuteLocale renders the clone for tag, falling back to the base locale.
+//
+// Parameters:
+//   - w: destination.
+//   - tag: the request's locale.
+//   - data: template data.
+//
+// Returns:
+//   - error: the template error, or errNoTemplate when no clone exists.
+func (lt LocalizedTemplate) ExecuteLocale(w http.ResponseWriter, tag string, data any) error {
+	t := lt[tag]
+	if t == nil {
+		t = lt[i18n.BaseLocale]
+	}
+	if t == nil {
+		return errNoTemplate
+	}
+	return t.Execute(w, data)
 }
 
 // captureWriter buffers template output and any status the template might set.
@@ -34,22 +82,23 @@ func (c *captureWriter) WriteHeader(status int)      { c.status = status }
 // Parameters:
 //
 //	w: http.ResponseWriter to write headers and body
+//	r: the request, whose context carries the locale
 //	tmpl: value implementing Execute(http.ResponseWriter, any) error
 //	data: template data
-func renderTemplate(w http.ResponseWriter, tmpl interface {
-	Execute(http.ResponseWriter, any) error
-}, data any) {
-	execAndWriteTemplate(w, tmpl, data, http.StatusOK)
+func renderTemplate(w http.ResponseWriter, r *http.Request, tmpl executor, data any) {
+	execAndWriteTemplate(w, r, tmpl, data, http.StatusOK)
 }
 
 // renderErrorPage renders an HTML error page if an error template is configured; otherwise
 // falls back to plain text. It intentionally does not include correlation IDs in the body.
-func (h *Handler) renderErrorPage(w http.ResponseWriter, _ *http.Request, status int, title, message string) {
+// keyBase names the messages: keyBase+".pageTitle", ".title" and ".message".
+func (h *Handler) renderErrorPage(w http.ResponseWriter, r *http.Request, status int, keyBase string) {
 	if h.ErrorTmpl == nil {
 		writePlainStatus(w, status)
 		return
 	}
-	execAndWriteTemplate(w, h.ErrorTmpl, errorPageData{Status: status, Title: title, Message: message}, status)
+	data := errorPageData{Status: status, PageTitleKey: keyBase + ".pageTitle", TitleKey: keyBase + ".title", MessageKey: keyBase + ".message"}
+	execAndWriteTemplate(w, r, h.ErrorTmpl, data, status)
 }
 
 // Safe: bytes come solely from html/template (auto-escaped). We avoid direct
@@ -59,6 +108,18 @@ func writeUsingCopy(w http.ResponseWriter, cw *captureWriter) {
 	if cw.buf.Len() > 0 {
 		_, _ = io.Copy(w, bytes.NewReader(cw.buf.Bytes()))
 	}
+}
+
+// executePage renders tmpl into cw, in the request's locale when tmpl has
+// per-locale clones, marking the response's language on w.
+func executePage(w http.ResponseWriter, r *http.Request, cw *captureWriter, tmpl executor, data any) error {
+	lr, ok := tmpl.(LocaleRenderer)
+	if !ok || r == nil {
+		return tmpl.Execute(cw, data)
+	}
+	tag := i18n.FromContext(r.Context())
+	i18n.PageHeaders(w.Header(), tag)
+	return lr.ExecuteLocale(cw, tag, data)
 }
 
 // writePlainStatus writes a plain text status response with standard headers.
@@ -75,12 +136,11 @@ func writePlainStatus(w http.ResponseWriter, status int) {
 // execAndWriteTemplate centralizes template execution, buffering and error handling.
 // If tmpl execution fails, it emits a generic 500 without leaking partial output.
 // desiredStatus is used when the template does not set an explicit status.
-func execAndWriteTemplate(w http.ResponseWriter, tmpl interface {
-	Execute(http.ResponseWriter, any) error
-}, data any, desiredStatus int) {
+// A LocaleRenderer is rendered in the request's locale.
+func execAndWriteTemplate(w http.ResponseWriter, r *http.Request, tmpl executor, data any, desiredStatus int) {
 	w.Header().Set("Cache-Control", "no-store")
 	cw := newCaptureWriter()
-	if err := tmpl.Execute(cw, data); err != nil {
+	if err := executePage(w, r, cw, tmpl, data); err != nil {
 		slog.Error("render", "domain", "ui", "action", "error")
 		writePlainStatus(w, http.StatusInternalServerError)
 		return

@@ -5,6 +5,9 @@ const assert = require('node:assert/strict');
 const { fakeResponse, installFetch } = require('./fakes');
 const { URL_FOR_ID, setup } = require('./consumeApiHarness');
 
+// tr renders a message key (as carried by errors) in English.
+const tr = (k) => window.goneI18n.t(k);
+
 test('decrypt verifies version, nonce and key, then zeroes buffers', async (t) => {
   const { api } = setup(t);
   const gc = window.goneCrypto;
@@ -21,12 +24,12 @@ test('decrypt verifies version, nonce and key, then zeroes buffers', async (t) =
   assert.ok(ct.every((b) => b === 0));
   assert.ok(f.key.every((b) => b === 0));
 
-  const unsupported = (e) => e.message === 'Unsupported secret version' && !e.retryable;
+  const unsupported = (e) => e.message === 'js.consume.unsupportedVersion' && !e.retryable;
   for (const v of ['2', '01', '+1', '1.0']) {
     await assert.rejects(api.decrypt(headers(v, nonce), enc.ciphertext.slice(), frag()), unsupported, v);
   }
   await assert.rejects(api.decrypt(fakeResponse({}), enc.ciphertext.slice(), frag()), unsupported);
-  const verify = (e) => /Couldn.t verify/.test(e.message) && e.retryable === false;
+  const verify = (e) => /Couldn.t verify/.test(tr(e.message)) && e.retryable === false;
   for (const n of [undefined, '', nonce + '=', nonce.slice(0, -1) + '_', 'AAAA', '!'.repeat(16)]) {
     const g = frag();
     await assert.rejects(api.decrypt(headers('1', n), enc.ciphertext.slice(), g), verify, String(n));
@@ -44,8 +47,8 @@ test('decryptV2 retries a wrong passphrase in place and maps other failures', as
   const resp = (v, n) => fakeResponse({ headers: { 'X-Gone-Version': v, 'X-Gone-Nonce': n } });
   const zero = (b) => b.every((x) => x === 0);
   const intact = (b) => !zero(b);
-  const retry = (e) => e.passphrase === true && e.retryable === true && /passphrase didn.t work/.test(e.message);
-  const final = (re) => (e) => re.test(e.message) && e.retryable === false && !e.passphrase;
+  const retry = (e) => e.passphrase === true && e.retryable === true && /passphrase didn.t work/.test(tr(e.message));
+  const final = (re) => (e) => re.test(tr(e.message)) && e.retryable === false && !e.passphrase;
 
   // A wrong (or unencodable) passphrase keeps both buffers for a local retry.
   const ct = enc.ciphertext.slice();
@@ -63,7 +66,7 @@ test('decryptV2 retries a wrong passphrase in place and maps other failures', as
   const boom = fakeResponse({});
   boom.headers.get = () => { throw new Error('boom'); };
   const cases = [
-    ['v1 header', resp('1', nonce), enc.ciphertext.slice(), final(/^Unsupported secret version$/)],
+    ['v1 header', resp('1', nonce), enc.ciphertext.slice(), final(/made by a version of Gone/)],
     ['no nonce', fakeResponse({ headers: { 'X-Gone-Version': '2' } }), enc.ciphertext.slice(), final(/Couldn.t verify/)],
     ['bad nonce', resp('2', '!!'), enc.ciphertext.slice(), final(/Couldn.t verify/)],
     ['short nonce', resp('2', 'AAAA'), enc.ciphertext.slice(), final(/Couldn.t verify/)],

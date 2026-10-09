@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load } = require('./harness');
+const { reset, load, loadRaw } = require('./harness');
 const { managePage } = require('./managePage');
 
 const INFO = { createdAt: new Date('2030-01-01T00:00:00Z'), expiresAt: new Date('2030-01-02T00:00:00Z') };
@@ -17,9 +17,9 @@ function setup(opts) {
 
 const visible = ($) => ['check', 'pending', 'deleted', 'gone'].filter((v) => $(`view-${v}`) && !$(`view-${v}`).hidden);
 
-test('requires util; loads once; present reflects the page', () => {
+test('requires goneI18n; loads once; present reflects the page', () => {
   reset();
-  load('manageView');
+  loadRaw('manageView');
   assert.equal(window.goneManageView, undefined);
   const s = setup();
   load('manageView');

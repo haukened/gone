@@ -200,9 +200,11 @@ Depth comes from glass only:
   - `.pill-status[data-state="ready"]` has a firmer violet edge and a slowly breathing dot (still under `prefers-reduced-motion`); `data-state="gone"` is muted ink with no fill.
   - The request rail reads Asked, Waiting, Replied, Opened once. The reply page's reads Asked, Your reply, Opened once, Gone.
   - Opening a reply reuses the receive page's vault, Open button and covered message unchanged.
-- **Navigation:** **Send a secret**, **Request a secret** and About pills, centered on the page between the wordmark (left) and an icon-only theme toggle (right; moon in light mode, sun in dark) with an sr-only "Dark mode" label and `aria-pressed`. The toggle sits outside the `nav`.
+- **Navigation:** **Send a secret**, **Request a secret** and About pills, centered on the page between the wordmark (left) and, on the right, the language picker and an icon-only theme toggle (moon in light mode, sun in dark) with an sr-only "Dark mode" label and `aria-pressed`. Both sit outside the `nav`.
   - The page you're on carries `aria-current="page"` and holds the hover fill (`--color-accent-soft`).
-  - At 40rem and below the labels shorten to "Send" and "Request" (the rest stays for screen readers), the pills tighten, and they center in the space between the wordmark and the toggle. At 24rem and below About leaves the header; it is always in the footer.
+  - At 40rem and below the labels shorten to "Send" and "Request" (the rest stays for screen readers), the pills tighten, and they center in the space between the wordmark and the toggle. If a long language still doesn't fit, the links scroll sideways rather than push the picker and toggle off-screen. At 30rem and below About leaves the header; it is always in the footer.
+- **Language picker:** a pill like the theme toggle holding a globe icon and the language code ("EN"; globe only at 24rem and below), with a native `<select>` laid over it so the platform's own list does the picking. The list names each language in itself (Español, Français, Deutsch, Português (Brasil)), each option carries its `lang`, and there are no flags. Its sr-only name is "Language" in the page's language. Choosing one re-renders the page in place; nothing reloads.
+- **Machine-translation note:** in any language but English, one quiet footer line says the translation was made by machine and links to the translation guide.
 
 ## Do's and Don'ts
 

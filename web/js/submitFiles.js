@@ -2,10 +2,12 @@
 
 // File selection for the create form: picker/drag-and-drop input, duplicate
 // filtering, and the removable file list. Requires window.goneUtil,
-// window.goneFileMeta and window.goneIcons. Exposed as window.goneFileSelection.
+// window.goneI18n, window.goneFileMeta and window.goneIcons. Exposed as
+// window.goneFileSelection.
 (function fileSelectionModule() {
-  if (window.goneFileSelection || !window.goneUtil || !window.goneFileMeta || !window.goneIcons) return;
+  if (window.goneFileSelection || !window.goneUtil || !window.goneI18n || !window.goneFileMeta || !window.goneIcons) return;
   const util = window.goneUtil;
+  const i18n = window.goneI18n;
   const meta = window.goneFileMeta;
   const icons = window.goneIcons;
 
@@ -58,13 +60,16 @@
 
     function renderItem(file, index) {
       const name = meta.sanitizeFileName(file.name);
-      const remove = util.el('button', { type: 'button', className: 'linkbtn', textContent: 'Remove' });
-      remove.setAttribute('aria-label', `Remove ${name}`);
+      const remove = util.el('button', { type: 'button', className: 'linkbtn' });
+      i18n.set(remove, 'js.files.remove');
+      i18n.setAttr(remove, 'aria-label', 'js.files.removeNamed', { name: name });
       remove.addEventListener('click', function () { removeAt(index); });
+      const size = util.el('span', { className: 'size' });
+      i18n.value(size, { bytes: file.size });
       return util.el('li', {}, [
         icons.make('clip'),
         util.el('span', { className: 'name', textContent: name }),
-        util.el('span', { className: 'size', textContent: meta.formatBytes(file.size) }),
+        size,
         remove
       ]);
     }

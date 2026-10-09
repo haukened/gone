@@ -2,19 +2,19 @@
 
 // Size meter for the create form: validates the selection against the file
 // count and server size limits and renders the meter, label, and warning.
-// Requires window.goneFileMeta. Exposed as window.goneSizeMeter.
+// Text is set as goneI18n message keys. Exposed as window.goneSizeMeter.
 (function sizeMeterModule() {
-  if (window.goneSizeMeter || !window.goneFileMeta) return;
-  const formatBytes = window.goneFileMeta.formatBytes;
+  if (window.goneSizeMeter || !window.goneI18n) return;
+  const i18n = window.goneI18n;
 
-  // selectionProblem returns a user-facing reason the selection cannot be
-  // sent, or '' when it is acceptable. maxBytes of 0 means no size limit.
+  // selectionProblem returns why the selection cannot be sent, as
+  // {key, args}, or '' when it is acceptable. maxBytes of 0 means no limit.
   function selectionProblem(count, size, maxFiles, maxBytes) {
     if (count > maxFiles) {
-      return `Too many files: remove ${count - maxFiles} to stay within ${maxFiles}.`;
+      return { key: 'js.meter.tooMany', args: { count: count - maxFiles, max: maxFiles } };
     }
     if (maxBytes && size > maxBytes) {
-      return `Over the limit by ${formatBytes(size - maxBytes)}. Remove a file or shorten the message.`;
+      return { key: 'js.meter.over', args: { size: { bytes: size - maxBytes } } };
     }
     return '';
   }
@@ -29,12 +29,19 @@
 
   function renderLabel(label, size, maxBytes) {
     if (!label) return;
-    const over = maxBytes && size > maxBytes ? ' (over limit)' : '';
-    label.textContent = `${formatBytes(size)} of ${formatBytes(maxBytes)}${over}`;
+    const key = maxBytes && size > maxBytes ? 'js.meter.sizeOver' : 'js.meter.size';
+    i18n.set(label, key, { used: { bytes: size }, max: { bytes: maxBytes } });
   }
 
+  // renderWarning shows problem, rewriting the live region only when the
+  // problem changes so it isn't announced again on every keystroke.
   function renderWarning(els, problem) {
-    if (els.warningText && els.warningText.textContent !== problem) els.warningText.textContent = problem;
+    const sig = problem ? problem.key + JSON.stringify(problem.args || {}) : '';
+    if (els.warningText && els.warningText.dataset.problem !== sig) {
+      els.warningText.dataset.problem = sig;
+      if (problem) i18n.set(els.warningText, problem.key, problem.args);
+      else i18n.clear(els.warningText);
+    }
     if (els.warning) els.warning.hidden = !problem;
   }
 

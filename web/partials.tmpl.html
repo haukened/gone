@@ -12,7 +12,10 @@
 	<link rel="stylesheet" href="{{ asset "css/components.css" }}" />
 	<link rel="stylesheet" href="{{ asset "css/passphrase.css" }}" />
 	<link rel="stylesheet" href="{{ asset "css/pages.css" }}" />
+	<script type="application/json" id="gone-i18n">{{ i18nData }}</script>
+	<script src="{{ asset "js/i18n.js" }}"></script>
 	<script src="{{ asset "js/theme.js" }}"></script>
+	<script src="{{ asset "js/langPicker.js" }}" defer></script>
 {{ end }}
 
 {{ define "sprite" }}
@@ -33,27 +36,39 @@
 	<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" /></symbol>
 	<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5l1.5-3h5" /><path d="M5.5 4h13l2.5 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z" /></symbol>
 	<symbol id="i-qr" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5" /><rect x="14" y="4" width="6" height="6" rx="1.5" /><rect x="4" y="14" width="6" height="6" rx="1.5" /><path d="M14 14h2.5M19.5 14v.01M14 17.5v2.5h2.5M19.5 17v3" /></symbol>
-	<symbol id="i-sun"viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></symbol>
+	<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9M12 3c-2.5 2.6-3.8 5.6-3.8 9s1.3 6.4 3.8 9" /></symbol>
+	<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></symbol>
 </svg>
 {{ end }}
 
 {{/* header takes the current page's nav key: "send", "request", "about", or "". */}}
 {{ define "header" }}
 {{ template "sprite" }}
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#main" data-i18n="common.skip">{{ t "common.skip" }}</a>
 <header class="site">
 	<div class="wrap">
-		<a class="brand" href="/" aria-label="Gone, home"><span class="brand-g"></span>one</a>
-		<nav class="nav" aria-label="Site">
-			<a href="/"{{ if eq . "send" }} aria-current="page"{{ end }}><span>Send<span class="nav-long"> a secret</span></span></a>
-			<a href="/request"{{ if eq . "request" }} aria-current="page"{{ end }}><span>Request<span class="nav-long"> a secret</span></span></a>
-			<a class="nav-about" href="/about"{{ if eq . "about" }} aria-current="page"{{ end }}>About</a>
+		<a class="brand" href="/" aria-label="{{ t "common.home" }}" data-i18n-attr="aria-label:common.home"><span class="brand-g"></span>one</a>
+		<nav class="nav" aria-label="{{ t "common.navSite" }}" data-i18n-attr="aria-label:common.navSite">
+			<a href="/"{{ if eq . "send" }} aria-current="page"{{ end }}><span data-i18n="common.navSend">{{ rich "common.navSend" nil "long" `<span class="nav-long">` }}</span></a>
+			<a href="/request"{{ if eq . "request" }} aria-current="page"{{ end }}><span data-i18n="common.navRequest">{{ rich "common.navRequest" nil "long" `<span class="nav-long">` }}</span></a>
+			<a class="nav-about" href="/about"{{ if eq . "about" }} aria-current="page"{{ end }} data-i18n="common.navAbout">{{ t "common.navAbout" }}</a>
 		</nav>
-		<button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false" hidden>
-			<svg class="ico when-light" aria-hidden="true" focusable="false"><use href="#i-moon" /></svg>
-			<svg class="ico when-dark" aria-hidden="true" focusable="false"><use href="#i-sun" /></svg>
-			<span class="sr-only">Dark mode</span>
-		</button>
+		<div class="site-tools">
+			<label class="lang-pick" hidden>
+				<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-globe" /></svg>
+				<span class="lang-code" aria-hidden="true">{{ langCode }}</span>
+				<span class="sr-only" data-i18n="common.language">{{ t "common.language" }}</span>
+				<select id="lang-select" class="lang-select">
+					{{ range locales }}<option value="{{ .Tag }}" lang="{{ .Tag }}"{{ if eq .Tag lang }} selected{{ end }}>{{ .Name }}</option>{{ end }}
+				</select>
+			</label>
+			<span id="lang-status" class="sr-only" role="status"></span>
+			<button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false" hidden>
+				<svg class="ico when-light" aria-hidden="true" focusable="false"><use href="#i-moon" /></svg>
+				<svg class="ico when-dark" aria-hidden="true" focusable="false"><use href="#i-sun" /></svg>
+				<span class="sr-only" data-i18n="common.darkMode">{{ t "common.darkMode" }}</span>
+			</button>
+		</div>
 	</div>
 </header>
 {{ end }}
@@ -61,15 +76,16 @@
 {{ define "footer" }}
 <footer class="foot">
 	<div class="wrap">
-		<p><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg>Encrypted in your browser. This server only ever stores ciphertext.</p>
-		<nav aria-label="Footer">
-			<a href="/about">About</a>
-			<a href="https://github.com/haukened/gone" rel="noopener noreferrer">Source</a>
-			<a href="https://github.com/haukened/gone/issues/new/choose" rel="noopener noreferrer">Report a problem</a>
-			<a href="https://github.com/haukened/gone/blob/main/CONTRIBUTING.md" rel="noopener noreferrer">Contribute</a>
-			<a href="https://github.com/haukened/gone/graphs/contributors" rel="noopener noreferrer">&copy; 2025&ndash;2026 The Gone Project Contributors</a>
-			{{ with version }}{{ if eq . "dev" }}<span class="ver">Development build</span>{{ else }}<a class="ver" href="https://github.com/haukened/gone/releases/tag/{{ . }}" rel="noopener noreferrer">Gone {{ . }}</a>{{ end }}{{ end }}
+		<p><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span data-i18n="common.footerTagline">{{ t "common.footerTagline" }}</span></p>
+		<nav aria-label="{{ t "common.navFooter" }}" data-i18n-attr="aria-label:common.navFooter">
+			<a href="/about" data-i18n="common.navAbout">{{ t "common.navAbout" }}</a>
+			<a href="https://github.com/haukened/gone" rel="noopener noreferrer" data-i18n="common.source">{{ t "common.source" }}</a>
+			<a href="https://github.com/haukened/gone/issues/new/choose" rel="noopener noreferrer" data-i18n="common.report">{{ t "common.report" }}</a>
+			<a href="https://github.com/haukened/gone/blob/main/CONTRIBUTING.md" rel="noopener noreferrer" data-i18n="common.contribute">{{ t "common.contribute" }}</a>
+			<a href="https://github.com/haukened/gone/graphs/contributors" rel="noopener noreferrer" data-i18n="common.copyright">{{ t "common.copyright" }}</a>
+			{{ with version }}{{ if eq . "dev" }}<span class="ver" data-i18n="common.devBuild">{{ t "common.devBuild" }}</span>{{ else }}<a class="ver" href="https://github.com/haukened/gone/releases/tag/{{ . }}" rel="noopener noreferrer">Gone {{ . }}</a>{{ end }}{{ end }}
 		</nav>
+		<p class="machine" data-i18n="common.machine" data-i18n-hidden-in="en"{{ if eq lang "en" }} hidden{{ end }}>{{ rich "common.machine" nil "link" `<a href="https://github.com/haukened/gone/blob/main/CONTRIBUTING.md#translations" rel="noopener noreferrer">` }}</p>
 	</div>
 </footer>
 {{ end }}
