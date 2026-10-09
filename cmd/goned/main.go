@@ -27,6 +27,7 @@ import (
 
 	"github.com/haukened/gone/v3/internal/buildinfo"
 	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/metrics"
 	wembed "github.com/haukened/gone/v3/web"
 )
 
@@ -67,6 +68,7 @@ func loadConfig() (*config.Config, error) {
 // Returns:
 //   - error: non-nil if any startup step or the listener fails.
 func run(ctx context.Context) (err error) {
+	started := time.Now()
 	cfg, err := loadConfig()
 	if err != nil {
 		return err
@@ -83,7 +85,8 @@ func run(ctx context.Context) (err error) {
 	// Canceling on return also stops the metrics listener and janitor when
 	// the main listener fails rather than being signaled.
 	ctx, cancel := context.WithCancel(ctx)
-	mgr, err := startMetrics(ctx, db, cfg)
+	mgr, err := startMetrics(ctx, db, cfg,
+		metrics.BuildInfoSource(version), metrics.RuntimeSource(started), storageSource(idx, realClock{}))
 	if err != nil {
 		cancel()
 		return err

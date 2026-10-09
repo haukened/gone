@@ -16,6 +16,7 @@ import (
 	"github.com/haukened/gone/v3/internal/janitor"
 	"github.com/haukened/gone/v3/internal/metrics"
 	"github.com/haukened/gone/v3/internal/store"
+	"github.com/haukened/gone/v3/internal/store/sqlite"
 )
 
 // shutdownTimeout bounds how long in-flight requests may take to finish once
@@ -158,11 +159,12 @@ func shutdownServer(srv *http.Server) error {
 //   - ctx: context for schema initialization, the flush loop, and the listener.
 //   - db: database the metrics manager persists to.
 //   - cfg: configuration supplying the metrics address and token.
+//   - sources: metrics computed at scrape time for /metrics.
 //
 // Returns:
 //   - *metrics.Manager: the started manager; the caller must Stop it.
 //   - error: non-nil if schema initialization fails.
-func startMetrics(ctx context.Context, db *sql.DB, cfg *config.Config) (*metrics.Manager, error) {
+func startMetrics(ctx context.Context, db *sql.DB, cfg *config.Config, sources ...metrics.Source) (*metrics.Manager, error) {
 	mgr := metrics.New(db, metrics.Config{FlushInterval: 5 * time.Second, Logger: slog.Default()})
 	if err := mgr.InitSchema(ctx); err != nil {
 		return nil, err
@@ -174,7 +176,7 @@ func startMetrics(ctx context.Context, db *sql.DB, cfg *config.Config) (*metrics
 	if !cfg.MetricsEnabled() {
 		return mgr, nil
 	}
-	srv := &http.Server{Addr: cfg.MetricsAddr, Handler: metrics.Handler(mgr, cfg.MetricsToken), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
+	srv := &http.Server{Addr: cfg.MetricsAddr, Handler: metrics.NewMux(mgr, cfg.MetricsToken, sources...), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
 	go func() {
 		if err := listenAndServe(ctx, srv); err != nil {
 			slog.Error("metrics server error", "err", err)
@@ -182,6 +184,38 @@ func startMetrics(ctx context.Context, db *sql.DB, cfg *config.Config) (*metrics
 	}()
 	slog.Info("metrics server started", "addr", cfg.MetricsAddr)
 	return mgr, nil
+}
+
+// storageStats is the read-only counting the SQLite index provides.
+type storageStats interface {
+	Stats(ctx context.Context, now time.Time) (sqlite.Stats, error)
+}
+
+// storageSource reports live secrets, their total size, and open requests
+// on /metrics.
+//
+// Parameters:
+//   - idx: the index; one without Stats yields a nil source, which is skipped.
+//   - clock: time source deciding which rows are live.
+//
+// Returns:
+//   - metrics.Source: the storage gauges source, or nil.
+func storageSource(idx store.Index, clock app.Clock) metrics.Source {
+	st, ok := idx.(storageStats)
+	if !ok {
+		return nil
+	}
+	return func(ctx context.Context) ([]metrics.Metric, error) {
+		s, err := st.Stats(ctx, clock.Now())
+		if err != nil {
+			return nil, err
+		}
+		return []metrics.Metric{
+			{Name: "gone_secrets_stored", Help: "Live secrets, including request replies.", Value: float64(s.Secrets)},
+			{Name: "gone_secrets_stored_bytes", Help: "Total ciphertext size of live secrets, in bytes.", Value: float64(s.SecretBytes)},
+			{Name: "gone_requests_open", Help: "Secret requests waiting for a reply.", Value: float64(s.OpenRequests)},
+		}, nil
+	}
 }
 
 // components bundles the long-lived components assembled by run.

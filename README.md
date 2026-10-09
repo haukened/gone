@@ -78,9 +78,9 @@ docker run --rm \
 	ghcr.io/haukened/gone:latest
 ```
 
-Fetch metrics snapshot:
+Fetch metrics in the Prometheus format:
 ```sh
-curl -H 'Authorization: Bearer tok' http://localhost:9090/
+curl -H 'Authorization: Bearer tok' http://localhost:9090/metrics
 ```
 
 Health: the image has a Docker `HEALTHCHECK` that runs `goned healthcheck` every 30 seconds. It is a one-shot probe, not a second server: it calls the running server's `/readyz` on `GONE_ADDR` (loopback when the address is `:port` or unspecified) and exits `0` when ready, `1` otherwise. `docker ps` shows the result. Kubernetes can probe `/healthz` and `/readyz` directly.
@@ -157,9 +157,53 @@ Limits are kept in memory per process, so with several replicas the effective bu
 ---
 
 ## 4. Metrics (Optional)
-Disabled unless both `GONE_METRICS_ADDR` and `GONE_METRICS_TOKEN` are set (an address without a token logs a warning and leaves metrics off). When enabled, clients must supply `Authorization: Bearer <token>`.
+Disabled unless both `GONE_METRICS_ADDR` and `GONE_METRICS_TOKEN` are set (an address without a token logs a warning and leaves metrics off). Metrics get their own listener on `GONE_METRICS_ADDR` (for example port `9090`), separate from the app on `GONE_ADDR`; the public site never serves metrics. Every request to the metrics port must supply `Authorization: Bearer <token>`. It serves two paths:
 
-JSON snapshot example:
+| Path on the metrics port | Format |
+|------|--------|
+| `GET /metrics` | Prometheus text exposition format |
+| `GET /` | JSON snapshot of the counters and summaries |
+
+Other paths on the metrics port return `404`.
+
+### Prometheus
+Scrape config, with the token in a file Prometheus can read:
+```yaml
+scrape_configs:
+  - job_name: gone
+    authorization:
+      credentials_file: /etc/prometheus/gone_token
+    static_configs:
+      - targets: ['gone:9090']
+```
+
+Counters are stored in SQLite, so they survive restarts rather than resetting to zero. Every counter is listed from the first scrape, at `0` until it first increments.
+
+| Name | Type | Meaning |
+|------|------|---------|
+| `gone_secrets_created_total` | counter | Secrets stored |
+| `gone_secrets_consumed_total` | counter | Secrets consumed & deleted |
+| `gone_secrets_expired_deleted_total` | counter | Secrets the janitor removed: expired ones and opened ones whose claim lease lapsed |
+| `gone_secrets_claims_expired_total` | counter | Opened secrets deleted because the recipient never confirmed receipt within the claim lease (a subset of `gone_secrets_expired_deleted_total`) |
+| `gone_secrets_revoked_total` | counter | Secrets the sender deleted with the manage link before they were opened |
+| `gone_rate_limited_create_total` | counter | Create requests rejected with `429` by the per-client create budget |
+| `gone_rate_limited_read_total` | counter | Read, acknowledge, status, and revoke requests (`/api/secret/{id}` and its `/status` and `/revoke`) rejected with `429` |
+| `gone_requests_created_total` | counter | Secret requests opened |
+| `gone_requests_filled_total` | counter | Secret requests answered |
+| `gone_requests_opened_total` | counter | Request replies opened and deleted |
+| `gone_requests_cancelled_total` | counter | Requests (or unopened replies) the requester cancelled |
+| `gone_requests_expired_total` | counter | Requests the janitor removed because nobody answered in time |
+| `gone_janitor_deleted_per_cycle` | summary | Expirations per janitor run (`_sum` and `_count`; lifetime `_min` and `_max` as gauges) |
+| `gone_secrets_stored` | gauge | Live secrets right now, including request replies |
+| `gone_secrets_stored_bytes` | gauge | Total ciphertext size of those secrets |
+| `gone_requests_open` | gauge | Secret requests waiting for a reply |
+| `gone_build_info` | gauge | Always `1`; labels `version` and `goversion` |
+| `go_goroutines`, `go_memstats_heap_alloc_bytes`, `go_memstats_sys_bytes`, `go_gc_cycles_total`, `process_start_time_seconds` | gauge / counter | Go runtime and process basics, named as in the official Go client |
+
+The storage gauges are counted when scraped and include only live rows (not yet expired or past a lapsed claim). They never expose IDs or ciphertext.
+
+### JSON snapshot
+`GET /` on the metrics port returns the same counters and summaries without the `gone_` prefix:
 ```json
 {
 	"counters": {
@@ -173,23 +217,6 @@ JSON snapshot example:
 }
 ```
 
-Definitions:
-| Name | Type | Meaning |
-|------|------|---------|
-| `secrets_created_total` | counter | Secrets stored |
-| `secrets_consumed_total` | counter | Secrets consumed & deleted |
-| `secrets_expired_deleted_total` | counter | Secrets the janitor removed: expired ones and opened ones whose claim lease lapsed |
-| `secrets_claims_expired_total` | counter | Opened secrets deleted because the recipient never confirmed receipt within the claim lease (a subset of `secrets_expired_deleted_total`) |
-| `secrets_revoked_total` | counter | Secrets the sender deleted with the manage link before they were opened |
-| `rate_limited_create_total` | counter | Create requests rejected with `429` by the per-client create budget |
-| `rate_limited_read_total` | counter | Read, acknowledge, status, and revoke requests (`/api/secret/{id}` and its `/status` and `/revoke`) rejected with `429` |
-| `requests_created_total` | counter | Secret requests opened |
-| `requests_filled_total` | counter | Secret requests answered |
-| `requests_opened_total` | counter | Request replies opened and deleted |
-| `requests_cancelled_total` | counter | Requests (or unopened replies) the requester cancelled |
-| `requests_expired_total` | counter | Requests the janitor removed because nobody answered in time |
-| `janitor_deleted_per_cycle` | summary | Distribution of expirations per janitor run |
-
 Persistence notes:
 * In‑memory metrics flushed periodically to SQLite; snapshot merges persisted + current deltas.
 * Graceful stop attempts a final flush.
@@ -198,7 +225,7 @@ Enable + fetch quickly:
 ```sh
 GONE_METRICS_ADDR=127.0.0.1:9090 GONE_METRICS_TOKEN=tok \
 	go run ./cmd/goned &
-curl -H 'Authorization: Bearer tok' http://127.0.0.1:9090/
+curl -H 'Authorization: Bearer tok' http://127.0.0.1:9090/metrics
 ```
 
 ---

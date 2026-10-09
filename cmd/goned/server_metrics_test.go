@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/haukened/gone/v3/internal/config"
 	"github.com/haukened/gone/v3/internal/metrics"
+	"github.com/haukened/gone/v3/internal/store"
 )
 
 var metricDisabledCases = []struct {
@@ -47,13 +49,74 @@ func TestStartMetrics_Enabled(t *testing.T) {
 	addr := freeAddr(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	db, _, _ := testStorage(t)
-	mgr, err := startMetrics(ctx, db, &config.Config{MetricsAddr: addr, MetricsToken: "tok"})
+	db, idx, _ := testStorage(t)
+	mgr, err := startMetrics(ctx, db, &config.Config{MetricsAddr: addr, MetricsToken: "tok"},
+		metrics.BuildInfoSource("v9.9.9"), storageSource(idx, realClock{}))
 	if err != nil {
 		t.Fatalf("startMetrics: %v", err)
 	}
 	defer mgr.Stop(context.Background())
-	waitFor(t, "http://"+addr+"/", http.Header{"Authorization": {"Bearer " + "tok"}}, http.StatusOK)
+	auth := http.Header{"Authorization": {"Bearer " + "tok"}}
+	waitFor(t, "http://"+addr+"/", auth, http.StatusOK)
+	body := getBody(t, "http://"+addr+"/metrics", auth)
+	for _, want := range []string{`gone_build_info{version="v9.9.9"`, "gone_secrets_stored 0\n", "gone_requests_open 0\n", "gone_secrets_created_total 0\n"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("/metrics missing %q:\n%s", want, body)
+		}
+	}
+}
+
+// TestStorageSource covers the storage gauges, an index without Stats, and a
+// query failure.
+//
+// Parameters:
+//   - t: the test handle.
+func TestStorageSource(t *testing.T) {
+	if src := storageSource(struct{ store.Index }{}, realClock{}); src != nil {
+		t.Fatal("index without Stats should yield a nil source")
+	}
+	db, idx, _ := testStorage(t)
+	ms, err := storageSource(idx, realClock{})(context.Background())
+	if err != nil || len(ms) != 3 {
+		t.Fatalf("storage source = %+v, %v", ms, err)
+	}
+	for _, m := range ms {
+		if !strings.HasPrefix(m.Name, "gone_") || m.Value != 0 || m.Help == "" {
+			t.Errorf("unexpected metric %+v", m)
+		}
+	}
+	_ = db.Close()
+	if _, err := storageSource(idx, realClock{})(context.Background()); err == nil {
+		t.Fatal("expected an error on a closed database")
+	}
+}
+
+// getBody fetches url with header and returns the body of a 200 response.
+//
+// Parameters:
+//   - t: the test handle.
+//   - url: the URL to fetch.
+//   - header: request headers.
+//
+// Returns:
+//   - string: the response body.
+func getBody(t *testing.T, url string, header http.Header) string {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header = header
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET %s: %v", url, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET %s = %d, %v", url, resp.StatusCode, err)
+	}
+	return string(b)
 }
 
 // TestStartMetrics_ListenerFailureLogged verifies listener failures are logged.

@@ -94,3 +94,57 @@ func TestHandlerSnapshotError(t *testing.T) {
 	h := Handler(&fakeSnapshot{err: errors.New("snapshot failed")}, "tok")
 	assertMetricsHandlerStatus(t, h, "Bearer tok", http.StatusInternalServerError)
 }
+
+func TestNewMuxRoutes(t *testing.T) {
+	f := &fakeSnapshot{c: map[string]int64{"a": 1}, s: map[string]SummaryAgg{}}
+	h := NewMux(f, "tok", BuildInfoSource("v1"))
+	cases := []struct {
+		method, path string
+		want         int
+		contentType  string
+	}{
+		{http.MethodGet, "/", http.StatusOK, "application/json"},
+		{http.MethodGet, "/metrics", http.StatusOK, ContentType},
+		{http.MethodHead, "/metrics", http.StatusOK, ContentType},
+		{http.MethodGet, "/other", http.StatusNotFound, ""},
+		{http.MethodGet, "/metrics/", http.StatusNotFound, ""},
+		{http.MethodPost, "/metrics", http.StatusMethodNotAllowed, ""},
+		{http.MethodPost, "/", http.StatusMethodNotAllowed, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.method+" "+tc.path, func(t *testing.T) {
+			rw := muxRequest(h, tc.method, tc.path, "Bearer tok")
+			if rw.Code != tc.want {
+				t.Fatalf("status = %d, want %d", rw.Code, tc.want)
+			}
+			if tc.contentType != "" && rw.Header().Get("Content-Type") != tc.contentType {
+				t.Fatalf("Content-Type = %q, want %q", rw.Header().Get("Content-Type"), tc.contentType)
+			}
+		})
+	}
+}
+
+func TestNewMuxRequiresToken(t *testing.T) {
+	f := &fakeSnapshot{c: map[string]int64{}, s: map[string]SummaryAgg{}}
+	for _, token := range []string{"tok", ""} {
+		h := NewMux(f, token)
+		for _, path := range []string{"/", "/metrics", "/other"} {
+			for _, tc := range handlerUnauthorizedCases() {
+				if rw := muxRequest(h, http.MethodGet, path, tc.header); rw.Code != http.StatusUnauthorized {
+					t.Errorf("token %q %s %s: status = %d, want 401", token, path, tc.name, rw.Code)
+				}
+			}
+		}
+	}
+}
+
+// muxRequest sends one request with an optional Authorization header.
+func muxRequest(h http.Handler, method, path, auth string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, path, nil)
+	if auth != "" {
+		req.Header.Set("Authorization", auth)
+	}
+	rw := httptest.NewRecorder()
+	h.ServeHTTP(rw, req)
+	return rw
+}
