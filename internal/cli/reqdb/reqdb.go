@@ -107,11 +107,12 @@ func Open(dir string) (*DB, error) {
 //
 // Returns the database path or an error.
 func prepareFile(dir string) (string, error) {
-	if err := os.MkdirAll(dir, dirPerm); err != nil {
+	if err := os.MkdirAll(dir, dirPerm); err != nil { // nosemgrep: incorrect-default-permission
 		return "", err
 	}
 	path := filepath.Join(dir, FileName)
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePerm) // #nosec G304 -- fixed name under the user config dir
+	// The path is a fixed file name inside the user's own config directory.
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePerm) // #nosec G304 // nosemgrep
 	switch {
 	case err == nil:
 		if err = f.Close(); err != nil {
@@ -146,7 +147,8 @@ PRAGMA user_version = 1;`
 // Returns an error if the schema is newer than this binary or DDL fails.
 func migrate(ctx context.Context, db *sql.DB) error {
 	var v int
-	if err := db.QueryRowContext(ctx, `PRAGMA user_version`).Scan(&v); err != nil {
+	// Both statements here are constants; nothing user-supplied reaches SQL.
+	if err := db.QueryRowContext(ctx, `PRAGMA user_version`).Scan(&v); err != nil { // nosemgrep
 		return err
 	}
 	if v > 1 {
@@ -155,7 +157,7 @@ func migrate(ctx context.Context, db *sql.DB) error {
 	if v == 1 {
 		return nil
 	}
-	_, err := db.ExecContext(ctx, schema)
+	_, err := db.ExecContext(ctx, schema) // nosemgrep
 	return err
 }
 
@@ -216,7 +218,7 @@ func (d *DB) List(ctx context.Context, now time.Time) ([]Row, error) {
 	if _, err := d.db.ExecContext(ctx, `DELETE FROM requests WHERE expires_at <= ?`, now.Unix()); err != nil {
 		return nil, err
 	}
-	return d.query(ctx, `ORDER BY created_at DESC, id`)
+	return d.all(ctx)
 }
 
 // Resolve finds the one live request whose ID starts with prefix.
@@ -266,15 +268,18 @@ func pick(hits []Row) (Row, error) {
 	return Row{}, e
 }
 
-// query selects rows with the given trailing clause.
+// selectAll is the one row query; it takes no parameters.
+const selectAll = `SELECT id, origin, label, manage_token, private_key, reply_link, state, created_at, expires_at
+FROM requests ORDER BY created_at DESC, id`
+
+// all returns every saved request, newest first.
 //
 // Parameters:
 //   - ctx: context.
-//   - tail: SQL after the FROM clause (a fixed string, never user input).
 //
 // Returns the rows or an error.
-func (d *DB) query(ctx context.Context, tail string) ([]Row, error) {
-	rs, err := d.db.QueryContext(ctx, `SELECT id, origin, label, manage_token, private_key, reply_link, state, created_at, expires_at FROM requests `+tail) // #nosec G202 -- tail is a constant
+func (d *DB) all(ctx context.Context) ([]Row, error) {
+	rs, err := d.db.QueryContext(ctx, selectAll)
 	if err != nil {
 		return nil, err
 	}

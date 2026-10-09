@@ -178,7 +178,7 @@ func TestClosedDBErrors(t *testing.T) {
 	if _, err := d.Resolve(ctx, "dddd", time.Now()); err == nil {
 		t.Error("Resolve on closed db")
 	}
-	if _, err := d.query(ctx, ""); err == nil {
-		t.Error("query on closed db")
+	if _, err := d.all(ctx); err == nil {
+		t.Error("all on closed db")
 	}
 }
