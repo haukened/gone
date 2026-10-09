@@ -53,6 +53,31 @@ var pageContractCases = []pageContractCase{
 		"delete-start", "delete-now", "delete-confirm", "delete-confirm-text", "delete-yes",
 		"delete-no", "view-deleted", "deleted-heading", "view-gone", "gone-heading",
 	}},
+	{"/request", http.StatusOK, []string{
+		"view-compose", "create-request", "request-label", "create-request-btn", "request-hint",
+		"storage-alert", "request-error", "request-error-text", "request-list", "request-empty",
+		"request-list-status", "view-created", "created-heading", "reply-link", "copy-reply",
+		"copy-status", "created-state", "created-status", "created-open", "created-expiry",
+		"created-step-waiting", "created-step-replied", "i-inbox",
+	}},
+	{"/request/" + strings.Repeat("c", 32), http.StatusOK, []string{
+		"view-check", "check-heading", "check-status", "check-error", "check-error-text", "check-retry",
+		"view-missing", "missing-heading", "view-waiting", "waiting-heading", "waiting-label",
+		"request-created", "request-expires", "request-checked", "waiting-link", "copy-waiting-link",
+		"waiting-copy-status", "check-again", "waiting-status", "waiting-error", "waiting-error-text",
+		"cancel-start", "cancel-now", "cancel-confirm", "cancel-confirm-text", "cancel-yes", "cancel-no",
+		"view-cancelled", "cancelled-heading", "view-open", "open-heading", "open-label", "open-secret",
+		"download-progress", "consume-status", "open-expires", "consume-error", "consume-error-text",
+		"view-revealed", "revealed-heading", "ack-warning", "message-panel", "copy-secret",
+		"secret-output", "file-section", "file-output-list", "download-all", "view-gone", "gone-heading",
+	}},
+	{"/reply/" + strings.Repeat("d", 32), http.StatusOK, []string{
+		"view-check", "check-heading", "check-status", "check-error", "check-error-text", "check-retry",
+		"compose", "compose-heading", "create-secret", "secret", "drop-zone", "secret-files", "file-list",
+		"size-box", "size-label", "size-meter", "size-warning", "size-warning-text", "upload-progress",
+		"submit-hint", "reply-expires", "submit-error", "submit-error-content", "view-sent",
+		"sent-heading", "view-gone", "gone-heading",
+	}},
 	{"/about", http.StatusOK, nil},
 	{"/does-not-exist", http.StatusNotFound, nil},
 }
@@ -136,4 +161,26 @@ func TestPages_DOMContract(t *testing.T) {
 		})
 	}
 	checkReferencedAssets(t, h, assets)
+}
+
+// TestPages_NavCurrent checks the header marks the page you are on, and only
+// that page.
+func TestPages_NavCurrent(t *testing.T) {
+	h := pageRouter(t)
+	cases := []struct{ path, current string }{
+		{"/", `href="/" aria-current="page"`},
+		{"/request", `href="/request" aria-current="page"`},
+		{"/request/" + strings.Repeat("c", 32), `href="/request" aria-current="page"`},
+		{"/about", `href="/about" aria-current="page"`},
+		{"/secret/" + strings.Repeat("a", 32), ""},
+	}
+	for _, c := range cases {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, c.path, nil))
+		body := w.Body.String()
+		n := strings.Count(body, `aria-current="page"`)
+		if c.current == "" && n != 0 || c.current != "" && (n != 1 || !strings.Contains(body, c.current)) {
+			t.Errorf("%s: aria-current count=%d, want %q", c.path, n, c.current)
+		}
+	}
 }

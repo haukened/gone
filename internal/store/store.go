@@ -35,6 +35,11 @@ var _ app.SecretStore = (*Store)(nil)
 // acknowledged before their lease lapsed.
 const CounterClaimsExpired = "secrets_claims_expired_total"
 
+// CounterRequestsExpired counts secret requests whose reply window closed
+// without an answer. DeleteExpired reports them here rather than in its
+// returned count, which covers secrets only.
+const CounterRequestsExpired = "requests_expired_total"
+
 // WithMetrics attaches an optional metrics sink used to count lapsed claims
 // during DeleteExpired.
 //
@@ -156,14 +161,15 @@ func (s *Store) Revoke(ctx context.Context, id, manageHash string) error {
 }
 
 // DeleteExpired removes secrets whose expiry is <= t or whose claim lease has
-// lapsed without acknowledgement, and returns the count.
+// lapsed without acknowledgement, and returns the count. Expired open
+// requests are removed too and counted in CounterRequestsExpired.
 // Blob files for expired records are removed best-effort.
 func (s *Store) DeleteExpired(ctx context.Context, t time.Time) (int, error) {
 	expired, err := s.index.DeleteExpired(ctx, t)
 	if err != nil {
 		return 0, err
 	}
-	claimed := 0
+	claimed, requests := 0, 0
 	for _, rec := range expired {
 		if rec.External {
 			_ = s.blobs.Delete(rec.ID) // best-effort
@@ -171,11 +177,24 @@ func (s *Store) DeleteExpired(ctx context.Context, t time.Time) (int, error) {
 		if rec.Claimed {
 			claimed++
 		}
+		if rec.Request {
+			requests++
+		}
 	}
-	if s.metrics != nil && claimed > 0 {
-		s.metrics.Inc(CounterClaimsExpired, int64(claimed))
+	s.count(CounterClaimsExpired, claimed)
+	s.count(CounterRequestsExpired, requests)
+	return len(expired) - requests, nil
+}
+
+// count adds n to a counter when metrics are configured and n is positive.
+//
+// Parameters:
+//   - name: counter name.
+//   - n: amount to add.
+func (s *Store) count(name string, n int) {
+	if s.metrics != nil && n > 0 {
+		s.metrics.Inc(name, int64(n))
 	}
-	return len(expired), nil
 }
 
 // Reconcile scans for blob orphans and removes them. It can also be extended

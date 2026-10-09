@@ -24,17 +24,20 @@ const GONE_GLOBALS = ['goneUtil', 'goneCrypto', 'goneCryptoEncoding', 'goneCrypt
   'goneConsumeViewStatus', 'goneConsumeViewPassphrase', 'goneConsumeViewMask', 'goneConsumeViewMessages', 'goneConsumeViewFiles',
   'goneConsumeViewFinal', 'goneFileSelection', 'goneSizeMeter', 'goneUpload', 'goneResultPanel', 'goneIcons',
   'goneTheme', 'goneManageApi', 'goneManageView', 'goneWordlist', 'gonePassgen', 'gonePassphraseField',
-  'goneSubmitDom', 'goneSubmitState', 'goneSubmitUi', 'goneSubmitRun', 'goneSubmitPreview'];
+  'goneSubmitDom', 'goneSubmitState', 'goneSubmitUi', 'goneSubmitRun', 'goneSubmitPreview', 'goneConsumeOpener',
+  'goneCryptoV3', 'goneRequestStore', 'goneRequestApi', 'goneRequestPoll', 'goneRequestList',
+  'goneRequestDetailView', 'goneSubmitTarget'];
 
 const MODULE_DEPS = {
   crypto: ['cryptoEncoding', 'cryptoCore', 'cryptoCipher', 'cryptoV2Inputs', 'cryptoV2Key', 'cryptoV2'],
   consumeApi: ['consumeApiErrors', 'consumeApiEndpoint', 'consumeApiRead', 'consumeApiFetch', 'consumeApiCrypto', 'consumeApiAck'],
   consumeView: ['consumeViewBase', 'consumeViewPassphrase', 'consumeViewStatus', 'consumeViewMask', 'consumeViewMessages', 'consumeViewFiles', 'consumeViewFinal'],
-  submit: ['submitDom', 'submitState', 'submitUi', 'submitRun', 'submitPreview']
+  submit: ['submitDom', 'submitState', 'submitUi', 'submitRun', 'submitPreview'],
+  consume: ['consumeOpener']
 };
 
 // reset installs a fresh fake browser at url and removes loaded gone modules.
-// opts: {storage, storageThrows, readyState}.
+// opts: {storage, storageThrows, readyState, indexedDB}.
 // Returns {document, alerts, clipboard, storage, selection, windowListeners}.
 function reset(url, opts) {
   const o = opts || {};
@@ -63,6 +66,8 @@ function defineBrowserGlobals(url, env, opts) {
   define('requestAnimationFrame', (fn) => { fn(); return 1; });
   defineNavigator(env);
   define('localStorage', storageFor(env, opts));
+  if (opts.indexedDB) define('indexedDB', opts.indexedDB);
+  else delete globalThis.indexedDB;
   define('getSelection', () => selectionFor(env));
   delete globalThis.matchMedia;
   define('addEventListener', (type, fn) => { env.windowListeners[type] = fn; });

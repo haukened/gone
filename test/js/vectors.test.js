@@ -141,3 +141,60 @@ test('server header vectors match the client checks', () => {
   };
   v.nonces.forEach((c) => assert.equal(nonceOK(c.in), c.ok, JSON.stringify(c.in)));
 });
+
+// p256Key imports a raw P-256 scalar and its public point as a WebCrypto
+// ECDH private key (JWK), as the vectors fix both sides' keys.
+function p256Key(d, pub) {
+  const p = hex(pub);
+  const b64u = (b) => Buffer.from(b).toString('base64url');
+  const jwk = { kty: 'EC', crv: 'P-256', d: b64u(hex(d)), x: b64u(p.subarray(1, 33)), y: b64u(p.subarray(33)) };
+  return crypto.subtle.importKey('jwk', jwk, { name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
+}
+
+function v3Module() {
+  reset();
+  load('crypto', 'cryptoV3');
+  return window.goneCryptoV3;
+}
+
+test('AEAD v3 vectors', async (t) => {
+  const v3 = v3Module();
+  const v = readVectors('aead_v3');
+  assert.equal(v.aad, 'gone:v3');
+  assert.equal(v.hkdf_info, 'gone:v3 aead key');
+  for (const c of v.cases) {
+    await t.test(c.name, async () => {
+      const priv = await p256Key(c.priv_r, c.pub_r);
+      if (c.error) {
+        await assert.rejects(v3.decryptV3(hex(c.blob), hex(c.nonce), priv, hex(c.pub_r)), (e) => e.code === c.error);
+        return;
+      }
+      const pt = await v3.decryptV3(hex(c.blob), hex(c.nonce), priv, hex(c.pub_r));
+      assert.equal(toHex(pt), c.plaintext || '');
+      const pubE = await crypto.subtle.importKey('raw', hex(c.pub_e), { name: 'ECDH', namedCurve: 'P-256' }, true, []);
+      const eph = { privateKey: await p256Key(c.priv_e, c.pub_e), publicKey: pubE };
+      const enc = await v3.sealWith(hex(c.plaintext), hex(c.pub_r), eph, hex(c.nonce));
+      assert.equal(toHex(enc.ciphertext), c.blob);
+    });
+  }
+});
+
+test('reply fragment vectors', () => {
+  const v3 = v3Module();
+  for (const c of readVectors('fragment_v3')) {
+    if (c.error) {
+      assert.throws(() => v3.parseReplyFragment(c.input), (e) => e.code === c.error, c.input);
+      continue;
+    }
+    const f = v3.parseReplyFragment(c.input);
+    assert.equal(toHex(f.publicKey), c.key);
+    assert.equal(f.fill, c.fill);
+    assert.equal(v3.replyFragment(f.publicKey, f.fill), c.input);
+  }
+});
+
+test('secret links never accept the reply version', () => {
+  const { gc } = modules();
+  const reply = readVectors('fragment_v3').find((c) => !c.error);
+  assert.throws(() => gc.parseFragment(reply.input), (e) => e.code === 'invalid_fragment' || e.code === 'unsupported_version');
+});

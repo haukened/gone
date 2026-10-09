@@ -105,6 +105,64 @@ func ValidateProtocol(v uint8, nonce string) error {
 	if !Supported(v) {
 		return ErrInvalidVersion
 	}
+	return validateNonce(nonce)
+}
+
+// Protocol version 3 parameters (docs/protocol.md §4.3). v3 encrypts a reply
+// to a requester's ECDH P-256 public key. It is valid only on the request
+// reply route, never for a secret created with POST /api/secret, so it is
+// deliberately not in Supported.
+const (
+	// ProtocolV3 is the public-key reply protocol version.
+	ProtocolV3 uint8 = 3
+	// AADv3 is the AAD prefix for v3; the full AAD is AADv3 || header.
+	AADv3 = "gone:v3"
+	// V3HKDFInfo is the HKDF info prefix that derives the v3 AEAD key; the
+	// full info is V3HKDFInfo || pubE || pubR.
+	V3HKDFInfo = "gone:v3 aead key"
+	// V3PublicKeySize is the length of an uncompressed P-256 point.
+	V3PublicKeySize = 65
+	// V3HeaderSize is the v3 header length: the ephemeral public key.
+	V3HeaderSize = V3PublicKeySize
+)
+
+// ParseReplyVersion parses a protocol version like ParseVersion, but accepts
+// only the reply protocol (ProtocolV3).
+//
+// Parameters:
+//   - s: the version string from X-Gone-Version.
+//
+// Returns ProtocolV3, or ErrInvalidVersion.
+func ParseReplyVersion(s string) (uint8, error) {
+	n, ok := parseCanonicalDecimal(s, 3)
+	if !ok || n != int(ProtocolV3) {
+		return 0, ErrInvalidVersion
+	}
+	return ProtocolV3, nil
+}
+
+// ValidateReplyProtocol checks reply metadata: the version must be
+// ProtocolV3 and the nonce strict base64url of NonceSize bytes.
+//
+// Parameters:
+//   - v: protocol version.
+//   - nonce: base64url-encoded nonce.
+//
+// Returns ErrInvalidVersion, ErrInvalidNonce, or nil.
+func ValidateReplyProtocol(v uint8, nonce string) error {
+	if v != ProtocolV3 {
+		return ErrInvalidVersion
+	}
+	return validateNonce(nonce)
+}
+
+// validateNonce checks that nonce is strict base64url of NonceSize bytes.
+//
+// Parameters:
+//   - nonce: base64url-encoded nonce.
+//
+// Returns ErrInvalidNonce or nil.
+func validateNonce(nonce string) error {
 	b, err := DecodeB64URL(nonce)
 	if err != nil || len(b) != NonceSize {
 		return ErrInvalidNonce

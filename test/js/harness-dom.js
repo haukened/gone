@@ -82,6 +82,10 @@ class FakeElement {
     this.listeners.get(type).push(fn);
   }
 
+  removeEventListener(type, fn) {
+    this.listeners.set(type, (this.listeners.get(type) || []).filter((f) => f !== fn));
+  }
+
   dispatch(type, props) {
     const ev = eventFor(this, type, props);
     const results = (this.listeners.get(type) || []).map((fn) => fn.call(this, ev));
@@ -141,6 +145,7 @@ class FakeDocument {
     this.activeElement = null;
     this.readyState = readyState || 'complete';
     this.title = '';
+    this.visibilityState = 'visible';
     this.listeners = new Map();
   }
 
@@ -150,6 +155,7 @@ class FakeDocument {
   querySelector(sel) { return this.body.querySelector(sel); }
   querySelectorAll(sel) { return this.body.querySelectorAll(sel); }
   addEventListener(type, fn) { FakeElement.prototype.addEventListener.call(this, type, fn); }
+  removeEventListener(type, fn) { FakeElement.prototype.removeEventListener.call(this, type, fn); }
   dispatch(type, props) { return FakeElement.prototype.dispatch.call(this, type, props); }
   createTextNode(text) { return new FakeText(text); }
   getElementById(id) { return findById(this.body, id); }

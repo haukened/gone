@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	{{ template "assets" }}
+	<title>Gone · Send a secret</title>
+</head>
+<body>
+	{{ template "header" "" }}
+	<main id="main" tabindex="-1" class="main">
+		<div id="view-check" class="view">
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-inbox" /></svg>A request for a secret</p>
+				<h1 id="check-heading" tabindex="-1">Checking the request.</h1>
+				<p class="lead">Making sure it can still be answered before you type anything.</p>
+				<div class="form">
+					<span id="check-status" class="status" role="status">Checking…</span>
+					<div id="check-error" class="alert" hidden>
+						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+						<p id="check-error-text" role="alert"></p>
+					</div>
+					<div class="actions">
+						<button id="check-retry" class="btn btn-secondary" type="button" hidden>Try again</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="compose" class="view" hidden>
+			<div class="alert banner security-warning" role="alert" hidden>
+				<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+				<div><strong>This page isn't secure, so sending is turned off.</strong>Browsers only encrypt on HTTPS pages. Ask whoever runs this server to put it behind HTTPS.</div>
+			</div>
+			<div class="pane">
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-inbox" /></svg>Someone asked you for a secret</p>
+				<h1 id="compose-heading" tabindex="-1">Send a <span class="accent">secret.</span></h1>
+				<p class="lead">What you send is encrypted in this browser to the person who gave you this link. The server can't read it, and they can open it once.</p>
+				<form id="create-secret" class="form" aria-label="Send the secret" data-max-bytes="{{ .MaxBytes }}" data-overhead="65" novalidate>
+					<p class="callout"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg><span><strong>Only send it if you trust who gave you this link.</strong> Anyone can make a request link, so check it came from the person you expect.</span></p>
+					<div class="field">
+						<div class="label-row">
+							<label class="label" for="secret">Message</label>
+							<span class="hint" id="secret-hint">Encrypted on this device before it's sent.</span>
+						</div>
+						<textarea id="secret" name="secret" rows="6" placeholder="Paste the password, a note, or anything private." aria-describedby="secret-hint" spellcheck="false" autocomplete="off"></textarea>
+					</div>
+					<div class="field">
+						<span class="label" id="files-label">Files <span class="opt">(optional, up to 10)</span></span>
+						<div id="drop-zone" class="drop">
+							<input id="secret-files" name="secret-files" type="file" class="sr-only" multiple aria-describedby="files-label" />
+							<label for="secret-files" class="btn btn-secondary btn-small"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-clip" /></svg>Add files</label>
+							<span>or drop them here</span>
+						</div>
+						<ul id="file-list" class="files" aria-label="Attached files" hidden></ul>
+						<div id="size-box" class="meter">
+							<div class="meter-row"><span id="size-label">0 B of {{ .MaxBytesHuman }}</span></div>
+							<progress id="size-meter" class="bar" max="1" value="0" aria-labelledby="size-label"></progress>
+						</div>
+						<div id="size-warning" class="alert" hidden>
+							<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+							<p id="size-warning-text" role="status"></p>
+						</div>
+					</div>
+					<div class="field">
+						<button class="btn btn-primary btn-block" type="submit" aria-describedby="submit-hint"><span>Send securely</span><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg></button>
+						<progress id="upload-progress" class="bar" max="1" value="0" aria-label="Upload progress" hidden></progress>
+						<span class="hint fine" id="submit-hint">Nothing leaves this device until you press the button. This request is open until <time id="reply-expires"></time>.</span>
+					</div>
+					<div id="submit-error" class="alert" hidden>
+						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
+						<p id="submit-error-content" role="alert"></p>
+					</div>
+				</form>
+				<section class="rail" aria-label="Request status">
+					<ol class="life">
+						<li class="is-done"><span class="t">Asked</span>By them</li>
+						<li class="is-now" aria-current="step"><span class="t">Your reply</span>Encrypted here</li>
+						<li><span class="t">Opened once</span>By them, in their browser</li>
+						<li><span class="t">Gone</span>Deleted for good</li>
+					</ol>
+				</section>
+			</div>
+		</div>
+		<div id="view-sent" class="view" hidden>
+			<div class="pane gone-hero">
+				<span class="gone-g" aria-hidden="true"></span>
+				<h1 id="sent-heading" tabindex="-1">Sent. Only the requestor can <span class="accent">open it.</span></h1>
+				<p class="lead">It's encrypted to their browser and opens once. You don't need to send them anything else.</p>
+				<section class="next" aria-labelledby="sent-next">
+					<h2 id="sent-next">What happens next</h2>
+					<p class="note">They'll see it the next time they check their request. If they don't open it in time, it's deleted unread.</p>
+				</section>
+				<a class="btn btn-secondary" href="/">Send a secret of your own</a>
+			</div>
+		</div>
+		<div id="view-gone" class="view" hidden>
+			<div class="pane gone-hero">
+				<span class="gone-g" aria-hidden="true"></span>
+				<h1 id="gone-heading" tabindex="-1">This request is <span class="accent">gone.</span></h1>
+				<p class="lead">It was already answered, cancelled, or it expired. Nothing you type here would reach anyone.</p>
+				<section class="next" aria-labelledby="gone-next">
+					<h2 id="gone-next">What you can do</h2>
+					<p class="note">If they still need it, ask them to make a new request and send you the new link.</p>
+				</section>
+				<a class="btn btn-secondary" href="/">Send a secret of your own</a>
+			</div>
+		</div>
+	</main>
+	{{ template "footer" . }}
+	<script src="{{ asset "js/cryptoEncoding.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoCore.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoCipher.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoV2Inputs.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoV2Key.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoV2.js" }}" defer></script>
+	<script src="{{ asset "js/crypto.js" }}" defer></script>
+	<script src="{{ asset "js/cryptoV3.js" }}" defer></script>
+	<script src="{{ asset "js/util.js" }}" defer></script>
+	<script src="{{ asset "js/fileMeta.js" }}" defer></script>
+	<script src="{{ asset "js/envelope.js" }}" defer></script>
+	<script src="{{ asset "js/autoResize.js" }}" defer></script>
+	<script src="{{ asset "js/icons.js" }}" defer></script>
+	<script src="{{ asset "js/submitFiles.js" }}" defer></script>
+	<script src="{{ asset "js/submitMeter.js" }}" defer></script>
+	<script src="{{ asset "js/submitUpload.js" }}" defer></script>
+	<script src="{{ asset "js/reply.js" }}" defer></script>
+	<script src="{{ asset "js/submitDom.js" }}" defer></script>
+	<script src="{{ asset "js/submitState.js" }}" defer></script>
+	<script src="{{ asset "js/submitUi.js" }}" defer></script>
+	<script src="{{ asset "js/submitRun.js" }}" defer></script>
+	<script src="{{ asset "js/submitPreview.js" }}" defer></script>
+	<script src="{{ asset "js/submit.js" }}" defer></script>
+</body>
+</html>

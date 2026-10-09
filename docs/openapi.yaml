@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Gone Secret Sharing API
-  version: 3.0.0
+  version: 3.6.0
   description: |
     Minimal API for one-time secret creation and consumption.
     Secrets are created with a TTL and may be stored inline or in external blob storage.
@@ -13,6 +13,10 @@ info:
     sender check whether the secret is still pending, or revoke it before it is opened.
     There are no tombstones: opened, revoked, expired, unknown, and wrong-token secrets
     all return the same 404.
+    Secret requests run the other way (protocol v3, docs/protocol.md 4.3 and 8.6): a
+    requester opens a request and gets a manage token and a fill token; whoever holds the
+    reply link sends one reply encrypted to the requester's public key, which only the
+    requester can claim with the manage token. The server never sees either key.
     This spec enumerates all HTTP statuses the current implementation may emit.
     Every route also returns 400 `invalid correlation id` when an X-Correlation-ID request
     header is present but is not a UUID.
@@ -26,6 +30,10 @@ tags:
     description: Create, claim, and acknowledge one-time secrets. Anonymous.
   - name: manage
     description: Sender-only status and revoke, authorized by the manage token.
+  - name: requests
+    description: >-
+      Secret requests. Creating one is anonymous; the reply page uses the fill
+      token and the requester uses the manage token.
   - name: health
     description: Liveness and readiness probes.
 paths:
@@ -350,6 +358,218 @@ paths:
                 $ref: '#/components/schemas/Error'
         '503':
           $ref: '#/components/responses/Busy'
+  /api/request:
+    post:
+      summary: Open a secret request
+      operationId: createRequest
+      tags: [requests]
+      description: |
+        Carries no body. The requester's browser keeps its key pair; the server
+        learns only the TTL. Uses the create rate-limit budget.
+      parameters:
+        - in: header
+          name: X-Gone-TTL
+          required: true
+          schema:
+            type: string
+          description: >-
+            How long to wait for a reply (Go duration within [MinTTL, MaxTTL]).
+            A reply is then kept for the same length of time.
+      responses:
+        '201':
+          description: Request opened.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedRequest'
+        '400':
+          description: >-
+            `missing required headers`, `invalid ttl`, or `ttl invalid`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method not allowed (not POST). The Allow header lists POST.
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/Busy'
+  /api/request/{id}:
+    get:
+      summary: Check that a request can still be answered
+      operationId: requestOpen
+      tags: [requests]
+      security:
+        - fillToken: []
+      description: Read-only. Used by the reply page before anyone types a secret.
+      parameters:
+        - $ref: '#/components/parameters/SecretID'
+      responses:
+        '200':
+          description: The request is open.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [state, expires_at]
+                properties:
+                  state:
+                    type: string
+                    enum: [open]
+                  expires_at:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/RequestBadRequest'
+        '404':
+          $ref: '#/components/responses/RequestNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/request/{id}/reply:
+    put:
+      summary: Send the reply
+      operationId: fillRequest
+      tags: [requests]
+      security:
+        - fillToken: []
+      description: |
+        The body is a protocol v3 ciphertext (pubE || ct || tag). Exactly one reply
+        is accepted per request; a concurrent second reply gets 404. Uses the create
+        rate-limit budget.
+      parameters:
+        - $ref: '#/components/parameters/SecretID'
+        - in: header
+          name: X-Gone-Version
+          required: true
+          schema:
+            type: string
+            enum: ['3']
+        - in: header
+          name: X-Gone-Nonce
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_-]{16}$'
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '201':
+          description: Reply stored. It expires after the request's TTL, counted from now.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [expires_at]
+                properties:
+                  expires_at:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/RequestBadRequest'
+        '404':
+          $ref: '#/components/responses/RequestNotFound'
+        '411':
+          description: Content-Length required.
+        '413':
+          description: Size exceeded.
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/Busy'
+    get:
+      summary: Claim the reply
+      operationId: claimReply
+      tags: [requests]
+      security:
+        - manageToken: []
+      description: |
+        Requester-only. Behaves exactly like GET /api/secret/{id}: the response
+        carries X-Gone-Version (3), X-Gone-Nonce, X-Gone-Claim and
+        X-Gone-Claim-Expires, and a retry sends X-Gone-Claim.
+      parameters:
+        - $ref: '#/components/parameters/SecretID'
+      responses:
+        '200':
+          description: The reply ciphertext.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/ManageBadRequest'
+        '404':
+          $ref: '#/components/responses/RequestNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      summary: Acknowledge the reply
+      operationId: ackReply
+      tags: [requests]
+      description: Sends X-Gone-Claim. Permanently deletes the reply.
+      parameters:
+        - $ref: '#/components/parameters/SecretID'
+        - in: header
+          name: X-Gone-Claim
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Reply deleted.
+        '400':
+          description: '`invalid claim`.'
+        '404':
+          $ref: '#/components/responses/RequestNotFound'
+  /api/request/{id}/status:
+    get:
+      summary: Is the request waiting, or is its reply ready?
+      operationId: requestStatus
+      tags: [requests]
+      security:
+        - manageToken: []
+      description: Requester-only and read-only, so polling costs no writes.
+      parameters:
+        - $ref: '#/components/parameters/SecretID'
+      responses:
+        '200':
+          description: The request is waiting, or its reply is ready.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestStatus'
+        '400':
+          $ref: '#/components/responses/ManageBadRequest'
+        '404':
+          $ref: '#/components/responses/RequestNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/request/{id}/revoke:
+    post:
+      summary: Cancel a request, or delete an unopened reply
+      operationId: cancelRequest
+      tags: [requests]
+      security:
+        - manageToken: []
+      parameters:
+        - $ref: '#/components/parameters/SecretID'
+      responses:
+        '204':
+          description: Cancelled.
+        '400':
+          $ref: '#/components/responses/ManageBadRequest'
+        '404':
+          $ref: '#/components/responses/RequestNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/Busy'
   /healthz:
     get:
       summary: Liveness probe
@@ -390,6 +610,25 @@ components:
         Not pending. The secret was opened, revoked, or expired, never existed,
         or the manage token is wrong. These cases are deliberately
         indistinguishable.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: not found
+    RequestBadRequest:
+      description: >-
+        `invalid id`, `invalid fill token`, `missing required headers`,
+        `invalid version`, `invalid nonce`, or `invalid content length`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RequestNotFound:
+      description: >-
+        The request is not open (or, for the requester, not waiting or ready):
+        it expired, was cancelled or answered, its reply was opened, it never
+        existed, or the token is wrong. These cases are indistinguishable.
       content:
         application/json:
           schema:
@@ -452,6 +691,35 @@ components:
         expires_at:
           type: string
           format: date-time
+    CreatedRequest:
+      type: object
+      required: [id, expires_at, manage_token, fill_token]
+      properties:
+        id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        expires_at:
+          type: string
+          format: date-time
+        manage_token:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{43}$'
+        fill_token:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{43}$'
+    RequestStatus:
+      type: object
+      required: [state, created_at, expires_at]
+      properties:
+        state:
+          type: string
+          enum: [waiting, ready]
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
     Error:
       type: object
       required: [error]
@@ -468,6 +736,14 @@ components:
         (^[A-Za-z0-9_-]{43}$). Must appear exactly once. It is never logged.
         Because it is a custom header, cross-origin requests need a CORS
         preflight, which the server never grants.
+    fillToken:
+      type: apiKey
+      in: header
+      name: X-Gone-Fill
+      description: >-
+        The fill_token returned when a request is created, carried in the reply
+        link's fragment: 43 base64url characters. Must appear exactly once. It
+        authorizes one reply and is never logged.
 # Secret creation, claim, and acknowledgement are anonymous by design; only the
-# manage operations declare a security requirement.
+# manage and request operations declare a security requirement.
 security: []

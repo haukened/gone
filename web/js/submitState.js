@@ -52,7 +52,7 @@
   }
 
   function currentSize() {
-    return ctx.envelope.encryptedSize(ctx.els.textarea.value, selection.metas(), passOverhead());
+    return ctx.envelope.encryptedSize(ctx.els.textarea.value, selection.metas(), passOverhead() + ctx.overhead);
   }
 
   function currentProblem(size) {

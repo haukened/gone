@@ -21,6 +21,11 @@ const (
 	CounterSecretsExpiredDelete = "secrets_expired_deleted_total"
 	CounterRateLimitedCreate    = "rate_limited_create_total"
 	CounterRateLimitedRead      = "rate_limited_read_total"
+	CounterRequestsCreated      = "requests_created_total"
+	CounterRequestsFilled       = "requests_filled_total"
+	CounterRequestsOpened       = "requests_opened_total"
+	CounterRequestsCancelled    = "requests_cancelled_total"
+	CounterRequestsExpired      = "requests_expired_total"
 	// Future: CounterOrphanBlobsDeleted = "secrets_orphan_blobs_deleted_total"
 )
 

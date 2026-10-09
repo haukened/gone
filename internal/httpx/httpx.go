@@ -29,18 +29,22 @@ type ServicePort interface {
 // Handler wires HTTP endpoints to the application service.
 // It is safe for concurrent use. Zero-value is not valid; construct via New.
 type Handler struct {
-	Service    ServicePort
-	MaxBody    int64                       // mirror service.MaxBytes (defense-in-depth)
-	Readiness  func(context.Context) error // optional readiness probe
-	IndexTmpl  IndexRenderer               // optional renderer for index page
-	AboutTmpl  AboutRenderer               // optional renderer for about page
-	SecretTmpl SecretRenderer              // optional renderer for secret consumption page
-	ManageTmpl SecretRenderer              // optional renderer for the sender manage page
-	ErrorTmpl  IndexRenderer               // optional renderer for generic error pages (404, 500, etc.)
-	Assets     http.FileSystem             // static assets filesystem (optional)
-	MinTTL     time.Duration               // lower TTL bound (from config)
-	MaxTTL     time.Duration               // upper TTL bound (from config)
-	TTLOptions []domain.TTLOption          // explicit configured TTL options
+	Service           ServicePort
+	MaxBody           int64                       // mirror service.MaxBytes (defense-in-depth)
+	Readiness         func(context.Context) error // optional readiness probe
+	IndexTmpl         IndexRenderer               // optional renderer for index page
+	AboutTmpl         AboutRenderer               // optional renderer for about page
+	SecretTmpl        SecretRenderer              // optional renderer for secret consumption page
+	ManageTmpl        SecretRenderer              // optional renderer for the sender manage page
+	RequestTmpl       IndexRenderer               // optional renderer for the new-request page (/request)
+	RequestDetailTmpl SecretRenderer              // optional renderer for one request (/request/{id})
+	ReplyTmpl         IndexRenderer               // optional renderer for the reply page (/reply/{id})
+	Requests          RequestPort                 // optional secret-request service; nil serves 404
+	ErrorTmpl         IndexRenderer               // optional renderer for generic error pages (404, 500, etc.)
+	Assets            http.FileSystem             // static assets filesystem (optional)
+	MinTTL            time.Duration               // lower TTL bound (from config)
+	MaxTTL            time.Duration               // upper TTL bound (from config)
+	TTLOptions        []domain.TTLOption          // explicit configured TTL options
 
 	CreateLimiter  RateLimiter    // optional limiter for POST /api/secret (nil disables)
 	ReadLimiter    RateLimiter    // optional limiter for /api/secret/{id}[/status|/revoke] (nil disables)
@@ -66,8 +70,13 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("/about", h.handleAbout)
 	mux.HandleFunc("/secret/", h.handleSecret) // expect /secret/{id}
 	mux.HandleFunc("/manage/", h.handleManage) // expect /manage/{id}
+	mux.HandleFunc("/request", h.handleRequestPage)
+	mux.HandleFunc("/request/", h.handleRequestPage) // expect /request/{id}
+	mux.HandleFunc("/reply/", h.handleReplyPage)     // expect /reply/{id}
 	mux.HandleFunc("/api/secret", h.limit(h.CreateLimiter, scopeCreate, &xffWarn, h.handleCreateSecret))
 	mux.HandleFunc("/api/secret/", h.limit(h.ReadLimiter, scopeRead, &xffWarn, h.handleConsumeSecret)) // /api/secret/{id}[/status|/revoke]
+	mux.HandleFunc("/api/request", h.limit(h.CreateLimiter, scopeCreate, &xffWarn, h.handleCreateRequest))
+	mux.HandleFunc("/api/request/", h.limitBy(h.requestLimit, &xffWarn, h.handleRequestRoute)) // /api/request/{id}[/reply|/status|/revoke]
 	mux.HandleFunc("/healthz", h.handleHealth)
 	mux.HandleFunc("/readyz", h.handleReady)
 	if h.Assets != nil {

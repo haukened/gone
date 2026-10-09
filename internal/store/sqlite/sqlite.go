@@ -55,17 +55,38 @@ func (i *Index) init() error {
 //
 // Returns an error if the insert fails (e.g. duplicate id).
 func (i *Index) Insert(ctx context.Context, row store.NewRow) error {
-	const q = `INSERT INTO secrets (id, version, nonce_b64u, inline, external, size, created_at, expires_at, manage_hash) VALUES (?,?,?,?,?,?,?,?,?)`
-	ext := 0
-	if row.External {
-		ext = 1
-	}
 	release, err := i.acquireWrite(ctx)
 	if err != nil {
 		return err
 	}
 	defer release()
-	_, err = i.db.ExecContext(ctx, q, row.ID, row.Meta.Version, row.Meta.NonceB64u, row.Inline, ext, row.Size,
-		row.CreatedAt.Unix(), row.ExpiresAt.Unix(), row.ManageHash)
-	return busyError(err)
+	return busyError(insertSecret(ctx, i.db, row))
+}
+
+// insertSecret writes one secrets row.
+//
+// Parameters:
+//   - ctx: request context.
+//   - e: executor (database or open transaction).
+//   - row: the row to store.
+//
+// Returns the driver error, if any.
+func insertSecret(ctx context.Context, e execer, row store.NewRow) error {
+	const q = `INSERT INTO secrets (id, version, nonce_b64u, inline, external, size, created_at, expires_at, manage_hash, reply) VALUES (?,?,?,?,?,?,?,?,?,?)`
+	_, err := e.ExecContext(ctx, q, row.ID, row.Meta.Version, row.Meta.NonceB64u, row.Inline, boolInt(row.External), row.Size,
+		row.CreatedAt.Unix(), row.ExpiresAt.Unix(), row.ManageHash, boolInt(row.Reply))
+	return err
+}
+
+// boolInt converts b to the 0/1 integer SQLite stores for flags.
+//
+// Parameters:
+//   - b: flag value.
+//
+// Returns 1 for true and 0 for false.
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

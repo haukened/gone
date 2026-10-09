@@ -39,11 +39,12 @@ type migration struct {
 var migrations = []migration{
 	{apply: migrateClaimColumns, setVersion: `PRAGMA user_version = 1`},
 	{apply: migrateManageHash, setVersion: `PRAGMA user_version = 2`},
+	{apply: migrateRequests, setVersion: `PRAGMA user_version = 3`},
 }
 
 // SchemaVersion is the user_version a fully migrated database reports. It
 // must equal len(migrations); a unit test enforces this.
-const SchemaVersion = 2
+const SchemaVersion = 3
 
 // migrate applies every pending migration in order. Each step runs in its own
 // BEGIN IMMEDIATE transaction together with its user_version bump, and
@@ -136,6 +137,34 @@ func migrateClaimColumns(ctx context.Context, conn *sql.Conn) error {
 func migrateManageHash(ctx context.Context, conn *sql.Conn) error {
 	return addMissingColumns(ctx, conn, []columnDDL{
 		{"manage_hash", `ALTER TABLE secrets ADD COLUMN manage_hash TEXT`},
+	})
+}
+
+// requestsSchema is the open-request table added by migration 3. It never
+// holds ciphertext: a filled request becomes a reply row in secrets.
+const requestsSchema = `CREATE TABLE IF NOT EXISTS requests (
+id TEXT PRIMARY KEY,
+fill_hash TEXT NOT NULL,
+manage_hash TEXT NOT NULL,
+ttl_seconds INTEGER NOT NULL,
+created_at INTEGER NOT NULL,
+expires_at INTEGER NOT NULL
+);`
+
+// migrateRequests (migration 3) creates the requests table and adds the
+// secrets.reply flag. Existing rows are ordinary secrets (reply = 0).
+//
+// Parameters:
+//   - ctx: context for the statements.
+//   - conn: connection bound to the open transaction.
+//
+// Returns an error if DDL fails.
+func migrateRequests(ctx context.Context, conn *sql.Conn) error {
+	if _, err := conn.ExecContext(ctx, requestsSchema); err != nil {
+		return err
+	}
+	return addMissingColumns(ctx, conn, []columnDDL{
+		{"reply", `ALTER TABLE secrets ADD COLUMN reply INTEGER NOT NULL DEFAULT 0`},
 	})
 }
 

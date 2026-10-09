@@ -32,16 +32,62 @@ import (
 //
 // Returns the claimed row (with ClaimedUntil set) or an error.
 func (i *Index) Claim(ctx context.Context, id, claimHash string, retry bool, now, claimedUntil time.Time, openExternal store.ExternalOpener) (*store.IndexResult, error) {
+	return i.claimWhere(ctx, claimRequest{id: id, claimHash: claimHash, retry: retry, now: now, until: claimedUntil},
+		func(res *store.IndexResult) bool { return !res.Reply }, openExternal)
+}
+
+// ClaimReply reserves a request reply for the requester. It behaves exactly
+// like Claim, except that the row must be a reply whose manage hash matches;
+// ordinary secrets and mismatched hashes are reported as app.ErrNotFound.
+//
+// Parameters:
+//   - ctx: request context.
+//   - id: request identifier.
+//   - manageHash: hex SHA-256 of the requester's manage token.
+//   - claimHash: hex SHA-256 of the claim token.
+//   - retry: whether the caller is re-presenting an existing token.
+//   - now: current time used for expiry checks.
+//   - claimedUntil: lease deadline stored for a fresh claim.
+//   - openExternal: opener for blob payloads (required if the row is external).
+//
+// Returns the claimed row or an error.
+func (i *Index) ClaimReply(ctx context.Context, id, manageHash, claimHash string, retry bool, now, claimedUntil time.Time, openExternal store.ExternalOpener) (*store.IndexResult, error) {
+	return i.claimWhere(ctx, claimRequest{id: id, claimHash: claimHash, retry: retry, now: now, until: claimedUntil},
+		func(res *store.IndexResult) bool { return res.Reply && hashMatches(res.ManageHash, manageHash) }, openExternal)
+}
+
+// claimRequest bundles the inputs of one claim.
+type claimRequest struct {
+	id        string
+	claimHash string
+	retry     bool
+	now       time.Time
+	until     time.Time
+}
+
+// claimWhere runs the claim transaction for rows that allow accepts.
+//
+// Parameters:
+//   - ctx: request context.
+//   - c: claim inputs.
+//   - allow: reports whether a live row may be claimed on this route.
+//   - openExternal: opener for blob payloads.
+//
+// Returns the claimed row or an error.
+func (i *Index) claimWhere(ctx context.Context, c claimRequest, allow func(*store.IndexResult) bool, openExternal store.ExternalOpener) (*store.IndexResult, error) {
 	var res *store.IndexResult
 	err := i.immediateTx(ctx, func(conn *sql.Conn) error {
 		var err error
-		if res, err = loadLiveRow(ctx, conn, id, now); err != nil {
+		if res, err = loadLiveRow(ctx, conn, c.id, c.now); err != nil {
 			return err
 		}
-		if err = applyClaim(ctx, conn, res, id, claimHash, retry, claimedUntil); err != nil {
+		if !allow(res) {
+			return app.ErrNotFound
+		}
+		if err = applyClaim(ctx, conn, res, c.id, c.claimHash, c.retry, c.until); err != nil {
 			return err
 		}
-		return attachExternalReader(res, id, openExternal)
+		return attachExternalReader(res, c.id, openExternal)
 	})
 	if err != nil {
 		if res != nil && res.Reader != nil {

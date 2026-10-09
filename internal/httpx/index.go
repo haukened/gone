@@ -136,6 +136,14 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Standard HTML + no-store headers applied via shared helper.
+	renderTemplate(w, h.IndexTmpl, h.indexView())
+}
+
+// indexView builds the size and TTL values shared by the pages with a
+// compose form (send, request, and reply).
+//
+// Returns the view.
+func (h *Handler) indexView() IndexView {
 	view := IndexView{
 		MaxBytes:      h.MaxBody,
 		MaxBytesHuman: humanBytes(h.MaxBody),
@@ -145,7 +153,7 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 	view.MinTTLHuman = humanTTL(view.MinTTLSeconds)
 	view.MaxTTLHuman = humanTTL(view.MaxTTLSeconds)
 	view.TTLOptions = ttlOptionViews(h.TTLOptions)
-	renderTemplate(w, h.IndexTmpl, view)
+	return view
 }
 
 // ttlOptionViews converts TTL options to template views sorted shortest

@@ -12,6 +12,11 @@
 //     -> {"version","key","nonce","body"}     key is the base64url link key
 //   {"op":"open","version","key","nonce","body","passphrase"}
 //     -> {"message","files":[{"name","type","data"}]}
+//   {"op":"sealReply","key","message","files"}   key is the base64url pubR
+//     -> {"nonce","body"}                         protocol v3 (reply page)
+//   {"op":"requestKey"} -> {"key","private"}      private is a JWK (JSON)
+//   {"op":"openReply","key","private","nonce","body"}
+//     -> {"message","files":[...]}                protocol v3 (request page)
 
 const { reset, load } = require('../js/harness');
 
@@ -23,8 +28,8 @@ const bytes = (s) => new Uint8Array(Buffer.from(s || '', 'base64'));
 function modules() {
   console.log = (...args) => process.stderr.write(args.join(' ') + '\n');
   reset();
-  load('crypto', 'fileMeta', 'envelope');
-  return { gc: window.goneCrypto, env: window.goneEnvelope };
+  load('crypto', 'cryptoV3', 'fileMeta', 'envelope');
+  return { gc: window.goneCrypto, v3: window.goneCryptoV3, env: window.goneEnvelope };
 }
 
 // seal encodes and encrypts req as the browser's submit flow does: v2 when a
@@ -50,9 +55,41 @@ async function open(m, req) {
   const pt = frag.version === m.gc.versionV2
     ? await m.gc.decryptV2(bytes(req.body), bytes(req.nonce), frag.key, req.passphrase)
     : await m.gc.decrypt(bytes(req.body), bytes(req.nonce), frag.key);
+  return decoded(m, pt);
+}
+
+// decoded returns the bridge reply for decrypted plaintext.
+function decoded(m, pt) {
   const p = m.env.decode(new Uint8Array(pt));
   return { message: p.message, files: p.files.map((f) => ({ name: f.name, type: f.type, data: b64(f.bytes) })) };
 }
+
+// sealReply encrypts req to a requester's public key as the reply page does.
+async function sealReply(m, req) {
+  const files = (req.files || []).map((f) => ({ name: f.name, type: f.type, bytes: bytes(f.data) }));
+  const plaintext = m.env.encode(req.message || '', files);
+  const out = await m.v3.encryptV3(plaintext, m.gc.b64urlDecode(req.key));
+  return { nonce: b64(out.nonce), body: b64(out.ciphertext) };
+}
+
+// requestKey makes a requester key pair. The browser keeps its private key
+// non-extractable in IndexedDB; this one-shot bridge has no such store, so
+// the test key is exported as a JWK and re-imported by openReply.
+async function requestKey(m) {
+  const curve = { name: 'ECDH', namedCurve: 'P-256' };
+  const kp = await crypto.subtle.generateKey(curve, true, ['deriveBits']);
+  const pub = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
+  return { key: m.gc.b64urlEncode(pub), private: JSON.stringify(await crypto.subtle.exportKey('jwk', kp.privateKey)) };
+}
+
+// openReply decrypts and decodes a v3 reply as the request page does.
+async function openReply(m, req) {
+  const curve = { name: 'ECDH', namedCurve: 'P-256' };
+  const priv = await crypto.subtle.importKey('jwk', JSON.parse(req.private), curve, false, ['deriveBits']);
+  return decoded(m, await m.v3.decryptV3(bytes(req.body), bytes(req.nonce), priv, m.gc.b64urlDecode(req.key)));
+}
+
+const OPS = { seal: seal, open: open, sealReply: sealReply, requestKey: requestKey, openReply: openReply };
 
 // main dispatches one request read from stdin.
 async function main() {
@@ -60,17 +97,9 @@ async function main() {
   for await (const c of process.stdin) chunks.push(c);
   const req = JSON.parse(Buffer.concat(chunks).toString('utf8'));
   const m = modules();
-  let result;
-  switch (req.op) {
-    case 'seal':
-      result = await seal(m, req);
-      break;
-    case 'open':
-      result = await open(m, req);
-      break;
-    default:
-      throw new Error('unknown op');
-  }
+  const op = Object.hasOwn(OPS, req.op) ? OPS[req.op] : null;
+  if (!op) throw new Error('unknown op');
+  const result = await op(m, req);
   process.stdout.write(JSON.stringify(result));
 }
 

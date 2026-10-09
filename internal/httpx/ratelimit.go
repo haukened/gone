@@ -50,7 +50,27 @@ func (h *Handler) limit(l RateLimiter, scope rateScope, warn *sync.Once, next ht
 	if l == nil {
 		return next
 	}
+	return h.limitBy(func(*http.Request) (RateLimiter, rateScope) { return l, scope }, warn, next)
+}
+
+// limitBy is limit with the budget chosen per request, for route groups that
+// mix uploads and reads under one path prefix. A nil limiter from pick
+// admits the request.
+//
+// Parameters:
+//   - pick: returns the limiter and scope for a request.
+//   - warn: shared guard for the one-time untrusted X-Forwarded-For warning.
+//   - next: the handler to protect.
+//
+// Returns:
+//   - http.HandlerFunc: the protected handler.
+func (h *Handler) limitBy(pick func(*http.Request) (RateLimiter, rateScope), warn *sync.Once, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		l, scope := pick(r)
+		if l == nil {
+			next(w, r)
+			return
+		}
 		key, untrustedXFF := ratelimit.ClientKey(r.RemoteAddr, r.Header.Values("X-Forwarded-For"), h.TrustedProxies)
 		if untrustedXFF {
 			warn.Do(func() {

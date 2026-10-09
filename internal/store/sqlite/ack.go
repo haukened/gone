@@ -76,22 +76,24 @@ func ackRow(ctx context.Context, conn *sql.Conn, id, claimHash string) (bool, er
 func selectSecretForClaim(ctx context.Context, q interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }, id string) (*store.IndexResult, error) {
-	const sel = `SELECT version, nonce_b64u, inline, external, size, expires_at, claim_hash, claimed_until FROM secrets WHERE id=?`
+	const sel = `SELECT version, nonce_b64u, inline, external, size, expires_at, claim_hash, claimed_until, reply, manage_hash FROM secrets WHERE id=?`
 	var (
 		res          store.IndexResult
 		extInt       int
 		expiresUnix  int64
 		claimHash    sql.NullString
 		claimedUntil sql.NullInt64
+		manageHash   sql.NullString
 	)
 	row := q.QueryRowContext(ctx, sel, id)
-	if err := row.Scan(&res.Meta.Version, &res.Meta.NonceB64u, &res.Inline, &extInt, &res.Size, &expiresUnix, &claimHash, &claimedUntil); err != nil {
+	if err := row.Scan(&res.Meta.Version, &res.Meta.NonceB64u, &res.Inline, &extInt, &res.Size, &expiresUnix, &claimHash, &claimedUntil, &res.Reply, &manageHash); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, app.ErrNotFound
 		}
 		return nil, err
 	}
 	res.External = extInt == 1
+	res.ManageHash = manageHash.String
 	res.ExpiresAt = time.Unix(expiresUnix, 0).UTC()
 	if claimHash.Valid {
 		res.ClaimHash = claimHash.String

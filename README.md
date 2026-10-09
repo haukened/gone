@@ -97,6 +97,7 @@ Health: the image has a Docker `HEALTHCHECK` that runs `goned healthcheck` every
 7. A refresh or second visit won’t work—the secret is already gone.
 8. Want a second lock? Open **Add a passphrase** on the form, type one or press **Generate** for five random words, and send the passphrase to the recipient separately from the link. They need both to open the secret.
 9. Changed your mind? Before you leave the result page, open **Manage this secret** to get a private manage link. Keep it for yourself: it shows whether the secret is still waiting and lets you delete it before anyone opens it.
+10. Need a secret from someone else? Choose **Request a secret** in the header. Your browser makes a key pair and gives you a link to send them. They type the secret on that page and it's encrypted to your browser; it shows up on your **Request a secret** page, and opens once, only in the browser that made the request.
 
 Guarantees (simple terms):
 * Server never learns the plaintext.
@@ -104,6 +105,7 @@ Guarantees (simple terms):
 * Expired or used links are dead.
 * With a passphrase, a leaked link alone can't open the secret.
 * Your manage link can never reveal the secret, and once the secret is opened, deleted, or expired, the server keeps no record that it existed.
+* A request's reply can only be opened in the browser that asked for it; its private key never leaves that browser.
 
 ### From the command line
 The `gone` CLI does the same from a terminal, and works with secrets sent from the browser and the other way round. Download a static binary from the [releases page](https://github.com/haukened/gone/releases) (verify it with `gh attestation verify <archive> --repo haukened/gone`), then:
@@ -178,6 +180,11 @@ Definitions:
 | `secrets_revoked_total` | counter | Secrets the sender deleted with the manage link before they were opened |
 | `rate_limited_create_total` | counter | Create requests rejected with `429` by the per-client create budget |
 | `rate_limited_read_total` | counter | Read, acknowledge, status, and revoke requests (`/api/secret/{id}` and its `/status` and `/revoke`) rejected with `429` |
+| `requests_created_total` | counter | Secret requests opened |
+| `requests_filled_total` | counter | Secret requests answered |
+| `requests_opened_total` | counter | Request replies opened and deleted |
+| `requests_cancelled_total` | counter | Requests (or unopened replies) the requester cancelled |
+| `requests_expired_total` | counter | Requests the janitor removed because nobody answered in time |
 | `janitor_deleted_per_cycle` | summary | Distribution of expirations per janitor run |
 
 Persistence notes:
@@ -313,12 +320,21 @@ A sender can add a passphrase. The link keeps the same shape with a `v2:` prefix
 
 Generated passphrases are five words from the [EFF short wordlist](https://www.eff.org/dice) (about 51 bits of entropy), © Electronic Frontier Foundation, used under [CC BY 3.0 US](https://creativecommons.org/licenses/by/3.0/us/).
 
+### Secret Requests (Protocol v3)
+A request runs the other way. Full details are in [docs/protocol.md §4.3](docs/protocol.md#43-protocol-version-3-request-reply) and [§8.6](docs/protocol.md#86-secret-requests).
+
+1. The requester's browser makes an ECDH P-256 key pair and stores the private key in IndexedDB as a non-extractable WebCrypto key: it survives closing the browser, but no page script can read its bytes. The label they type stays in that browser too.
+2. The server gets only a TTL and returns a request ID plus two random tokens: a manage token (kept by the requester) and a fill token. It stores only their SHA-256 hashes.
+3. The reply link is `/reply/{id}#v3:<public key>.<fill token>`. The person holding the secret encrypts to that public key with a fresh ephemeral key (ECDH, then HKDF-SHA-256, then AES-256-GCM) and uploads one reply.
+4. The requester's page checks status (read-only, no writes), then claims the reply with the manage token, decrypts it locally, and acknowledges it, exactly like opening a secret. The local key is then forgotten.
+
 ### Threat Model Snapshot
 Defended:
 * TLS transport assumed.
 * No server knowledge of keys / plaintext.
 * Atomic single claim; deletion after confirmed receipt or lease expiry.
 * Sender revoke of a pending secret, authorised by a token only the sender holds.
+* A request reply readable by anyone but the requester: it is encrypted to a key that never leaves the requester's browser, and can only be claimed with the requester's manage token, so the request ID alone can't burn it.
 * A link that leaks before the recipient opens it, when the sender added a strong passphrase.
 * Timely expiry deletion.
 
@@ -332,6 +348,8 @@ Out of Scope (current):
 * Sophisticated timing side channels.
 * Burning a secret: a passphrase can't stop someone with the link from opening it, which uses it up even if they never learn the passphrase. The real recipient then finds it gone, a sign the link leaked.
 * URL hygiene / accidental fragment leakage (this includes the manage link: anyone holding it can revoke that secret, though never read it).
+* Who answers a request: anyone holding the reply link can send the one reply, so send it only to the person who has the secret. The person replying should check the link came from who they expect, since anyone can make one.
+* Losing the requester's browser storage (clearing site data, a private window) loses the request; the reply can't be opened anywhere else.
 * Revoking after the recipient has downloaded the ciphertext: revoke wins over an unacknowledged claim, but cannot recall bytes already delivered.
 * Large scale distributed DoS.
 
@@ -378,7 +396,7 @@ The full plan for Gone v3 is in [docs/ROADMAP.md](docs/ROADMAP.md). Highlights:
 * Command-line client, `gone` (done; see [docs/cli.md](docs/cli.md))
 * Web UI revamp (done)
 
-All six phases shipped in v3.0.0.
+All six phases shipped in v3.0.0. Since then: secret requests (protocol v3), so you can ask someone for a secret instead of sending one.
 
 Other ideas:
 * Optional Prometheus exposition

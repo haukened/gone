@@ -64,12 +64,17 @@
     }
   }
 
-  // xhrUpload posts the ciphertext with XMLHttpRequest because fetch has no
+  // xhrUpload sends the ciphertext with XMLHttpRequest because fetch has no
   // upload progress events. The URL is a fixed same-origin path.
-  function xhrUpload(ciphertext, headers, onProgress) {
+  //
+  // Returns {status, json}; rejects only on a transport failure.
+  // target is {method, path} for a same-origin path chosen by the caller;
+  // the default is POST /api/secret.
+  function xhrUpload(ciphertext, headers, onProgress, target) {
+    const t = target || { method: 'POST', path: UPLOAD_PATH };
     return new Promise(function (resolve, reject) {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', UPLOAD_PATH);
+      xhr.open(t.method, t.path);
       Object.keys(headers).forEach(function (k) { xhr.setRequestHeader(k, headers[k]); });
       xhr.upload.onprogress = function (e) {
         if (e.lengthComputable) onProgress(e.loaded, e.total);
@@ -140,6 +145,7 @@
     buildPlaintext: buildPlaintext,
     encryptSelection: encryptSelection,
     upload: upload,
+    send: xhrUpload,
     uploadErrorMessage: uploadErrorMessage,
     friendlyError: friendlyError,
     buildShareURL: buildShareURL,

@@ -10,7 +10,9 @@ import (
 )
 
 // templates holds the parsed page templates rendered by the HTTP handlers.
-type templates struct{ index, about, secret, manage, errorPage *template.Template }
+type templates struct {
+	index, about, secret, manage, request, requestDetail, reply, errorPage *template.Template
+}
 
 // pageFiles maps each page template name to its file in the assets FS.
 var pageFiles = []struct{ name, file string }{
@@ -18,6 +20,9 @@ var pageFiles = []struct{ name, file string }{
 	{"about", "about.tmpl.html"},
 	{"secret", "secret.tmpl.html"},
 	{"manage", "manage.tmpl.html"},
+	{"request", "request.tmpl.html"},
+	{"requestDetail", "request-detail.tmpl.html"},
+	{"reply", "reply.tmpl.html"},
 	{"error", "error.tmpl.html"},
 }
 
@@ -121,5 +126,9 @@ func loadTemplatesFrom(fsys fs.FS, ver string) (*templates, error) {
 		}
 		parsed[p.name] = t
 	}
-	return &templates{index: parsed["index"], about: parsed["about"], secret: parsed["secret"], manage: parsed["manage"], errorPage: parsed["error"]}, nil
+	return &templates{
+		index: parsed["index"], about: parsed["about"], secret: parsed["secret"], manage: parsed["manage"],
+		request: parsed["request"], requestDetail: parsed["requestDetail"], reply: parsed["reply"],
+		errorPage: parsed["error"],
+	}, nil
 }

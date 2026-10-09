@@ -5,7 +5,9 @@
   if (window.goneSubmitDom) return;
   const util = window.goneUtil;
   const form = document.getElementById('create-secret');
-  const deps = [window.goneCrypto, window.goneEnvelope, window.goneFileSelection, window.goneSizeMeter, window.goneUpload, window.goneResultPanel];
+  // The result panel is only needed by the default (send) target; the reply
+  // page supplies its own window.goneSubmitTarget.
+  const deps = [window.goneEnvelope, window.goneFileSelection, window.goneSizeMeter, window.goneUpload, window.goneSubmitTarget || window.goneResultPanel];
   if (!util || !util.allPresent([form].concat(deps))) return;
 
   function byId(id) {
@@ -44,6 +46,7 @@
     sizeMeter: window.goneSizeMeter,
     uploader: window.goneUpload,
     maxBytes: parsePositiveInt(form.dataset.maxBytes),
+    overhead: parsePositiveInt(form.dataset.overhead),
     idleLabel: labelText(els.primaryLabel, 'Encrypt'),
     fileInput: byId('secret-files'),
     busy: false,

@@ -69,3 +69,37 @@ func TestValidateProtocol(t *testing.T) {
 		}
 	}
 }
+
+func TestParseReplyVersion(t *testing.T) {
+	cases := []struct {
+		in   string
+		want uint8
+		err  error
+	}{
+		{"3", 3, nil},
+		{"1", 0, ErrInvalidVersion},
+		{"2", 0, ErrInvalidVersion},
+		{"03", 0, ErrInvalidVersion},
+		{"", 0, ErrInvalidVersion},
+		{"4", 0, ErrInvalidVersion},
+	}
+	for _, c := range cases {
+		got, err := ParseReplyVersion(c.in)
+		if got != c.want || !errors.Is(err, c.err) {
+			t.Errorf("ParseReplyVersion(%q) = %d, %v; want %d, %v", c.in, got, err, c.want, c.err)
+		}
+	}
+}
+
+func TestValidateReplyProtocol(t *testing.T) {
+	good := EncodeB64URL(make([]byte, NonceSize))
+	if err := ValidateReplyProtocol(3, good); err != nil {
+		t.Fatalf("v3 ok: %v", err)
+	}
+	if err := ValidateReplyProtocol(1, good); !errors.Is(err, ErrInvalidVersion) {
+		t.Fatalf("v1: %v", err)
+	}
+	if err := ValidateReplyProtocol(3, "short"); !errors.Is(err, ErrInvalidNonce) {
+		t.Fatalf("bad nonce: %v", err)
+	}
+}

@@ -194,7 +194,14 @@ Depth comes from glass only:
 - **Manage:**
   - Status details: a `.pill-status`, a `.facts` key/value list, and Check again.
   - Deleting: a `.zone` with Delete now, which expands into an inline rose `.confirm`.
-- **Navigation:** About link and an icon-only theme toggle (moon in light mode, sun in dark) with an sr-only "Dark mode" label and `aria-pressed`.
+- **Requests:**
+  - The list of requests saved in this browser sits under a hairline at the foot of the `/request` pane, not in a card of its own. Each row is a well (like `.files li`) linking to the request, with its label, age and a `.pill-status`.
+  - `.pill-status[data-state="ready"]` has a firmer violet edge and a slowly breathing dot (still under `prefers-reduced-motion`); `data-state="gone"` is muted ink with no fill.
+  - The request rail reads Asked, Waiting, Replied, Opened once. The reply page's reads Asked, Your reply, Opened once, Gone.
+  - Opening a reply reuses the receive page's vault, Open button and covered message unchanged.
+- **Navigation:** **Send a secret**, **Request a secret** and About pills, centered on the page between the wordmark (left) and an icon-only theme toggle (right; moon in light mode, sun in dark) with an sr-only "Dark mode" label and `aria-pressed`. The toggle sits outside the `nav`.
+  - The page you're on carries `aria-current="page"` and holds the hover fill (`--color-accent-soft`).
+  - At 40rem and below the labels shorten to "Send" and "Request" (the rest stays for screen readers), the pills tighten, and they center in the space between the wordmark and the toggle. At 24rem and below About leaves the header; it is always in the footer.
 
 ## Do's and Don'ts
 

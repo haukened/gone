@@ -15,6 +15,7 @@
     isFetchError: errs.isFetchError,
     isGone: errs.isGone,
     registerEndpoint: endpoint.registerEndpoint,
+    registerReplyEndpoint: endpoint.registerReplyEndpoint,
     fetchWithRetry: fetching.fetchWithRetry,
     decrypt: cryptoApi.decrypt,
     decryptV2: cryptoApi.decryptV2,

@@ -44,6 +44,11 @@ func deleteExpiredTxn(ctx context.Context, db *sql.DB, t time.Time) ([]store.Exp
 	if err = deleteExpired(ctx, tx, t); err != nil {
 		return nil, err
 	}
+	reqs, err := deleteExpiredRequests(ctx, tx, t)
+	if err != nil {
+		return nil, err
+	}
+	recs = append(recs, reqs...)
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -93,6 +98,31 @@ func deleteExpired(ctx context.Context, e interface {
 	const del = `DELETE FROM secrets WHERE ` + expiredWhere
 	_, err := e.ExecContext(ctx, del, t.Unix(), t.Unix())
 	return err
+}
+
+// deleteExpiredRequests removes open requests whose reply window has closed
+// and returns a record for each. Requests never hold a payload.
+//
+// Parameters:
+//   - ctx: request context.
+//   - tx: the open transaction.
+//   - t: expiration cutoff.
+//
+// Returns the deleted requests or a DB error.
+func deleteExpiredRequests(ctx context.Context, tx *sql.Tx, t time.Time) (recs []store.ExpiredRecord, err error) {
+	err = sqlrows.Query(ctx, tx, `SELECT id FROM requests WHERE expires_at <= ?`, func(r sqlrows.Rows) error {
+		rec := store.ExpiredRecord{Request: true}
+		if err := r.Scan(&rec.ID); err != nil {
+			return err
+		}
+		recs = append(recs, rec)
+		return nil
+	}, t.Unix())
+	if err != nil {
+		return nil, err
+	}
+	_, err = tx.ExecContext(ctx, `DELETE FROM requests WHERE expires_at <= ?`, t.Unix())
+	return recs, err
 }
 
 // ListExternalIDs returns IDs of secrets with external (blob) storage.

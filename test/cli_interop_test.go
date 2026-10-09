@@ -33,6 +33,7 @@ type jsMsg struct {
 	Key        string   `json:"key,omitempty"`
 	Nonce      []byte   `json:"nonce,omitempty"`
 	Body       []byte   `json:"body,omitempty"`
+	Private    string   `json:"private,omitempty"`
 }
 
 // interopCase is one message shape exercised in both directions.

@@ -7,7 +7,7 @@
 
   function previewResult() {
     const params = new URLSearchParams(location.search);
-    if (params.get('preview') !== 'result') return;
+    if (params.get('preview') !== 'result' || !window.goneResultPanel) return;
     const mockID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     const mockKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
     const v2 = params.has('passphrase');

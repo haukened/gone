@@ -42,6 +42,43 @@ type Index interface {
 	ListExternalIDs(ctx context.Context) ([]string, error)
 }
 
+// RequestIndex is the optional index extension for secret requests. An open
+// request lives in its own table and never holds ciphertext; filling it moves
+// it into the secrets table as a reply row, which only the request's manage
+// hash can claim.
+type RequestIndex interface {
+	// InsertRequest stores a new open request.
+	InsertRequest(ctx context.Context, row NewRequestRow) error
+	// RequestOpen returns the expiry of a live open request whose fill hash
+	// matches. It is read-only. Returns app.ErrNotFound otherwise.
+	RequestOpen(ctx context.Context, id, fillHash string, now time.Time) (time.Time, error)
+	// FillRequest atomically replaces a live open request whose fill hash
+	// matches with a reply row built from reply (ID, reply flag, manage hash
+	// and timestamps are set here). Returns the reply's expiry, or
+	// app.ErrNotFound if the request is not open.
+	FillRequest(ctx context.Context, id, fillHash string, now time.Time, reply NewRow) (time.Time, error)
+	// RequestStatus reports whether a request is waiting or its reply is
+	// ready, when manageHash matches. It is read-only. Returns
+	// app.ErrNotFound otherwise.
+	RequestStatus(ctx context.Context, id, manageHash string, now time.Time) (app.RequestStatus, error)
+	// ClaimReply behaves like Index.Claim but only for a reply row whose
+	// manage hash matches.
+	ClaimReply(ctx context.Context, id, manageHash, claimHash string, retry bool, now, claimedUntil time.Time, openExternal ExternalOpener) (*IndexResult, error)
+	// CancelRequest deletes an open request or an unopened reply whose manage
+	// hash matches, and reports whether a reply payload was external.
+	CancelRequest(ctx context.Context, id, manageHash string, now time.Time) (external bool, err error)
+}
+
+// NewRequestRow describes an open request for RequestIndex.InsertRequest.
+type NewRequestRow struct {
+	ID         string
+	FillHash   string        // hex SHA-256 of the fill token
+	ManageHash string        // hex SHA-256 of the requester's manage token
+	TTL        time.Duration // reply lifetime, counted again from the fill
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
+}
+
 // ExternalOpener opens an external payload without consuming or deleting it.
 type ExternalOpener func(id string) (io.ReadCloser, error)
 
@@ -53,6 +90,7 @@ type NewRow struct {
 	External   bool   // whether the ciphertext lives in blob storage
 	Size       int64  // ciphertext size in bytes
 	ManageHash string // hex SHA-256 of the sender's manage token
+	Reply      bool   // whether the row is a request reply (claimable only via ClaimReply)
 	CreatedAt  time.Time
 	ExpiresAt  time.Time
 }
@@ -67,6 +105,8 @@ type IndexResult struct {
 	ExpiresAt    time.Time
 	ClaimHash    string    // hex SHA-256 of the active claim token; empty if unclaimed
 	ClaimedUntil time.Time // lease deadline; zero if unclaimed
+	Reply        bool      // whether the row is a request reply
+	ManageHash   string    // hex SHA-256 of the manage token; empty if unmanaged
 }
 
 // BlobStorage abstracts large payload persistence (e.g. filesystem). Reads never
@@ -89,4 +129,5 @@ type ExpiredRecord struct {
 	ID       string
 	External bool // true if payload stored in blob storage
 	Claimed  bool // true if the row was claimed but never acknowledged
+	Request  bool // true if the row was an open request that was never answered
 }

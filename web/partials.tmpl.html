@@ -31,10 +31,12 @@
 	<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10" /></symbol>
 	<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13" /></symbol>
 	<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" /></symbol>
+	<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5l1.5-3h5" /><path d="M5.5 4h13l2.5 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z" /></symbol>
 	<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></symbol>
 </svg>
 {{ end }}
 
+{{/* header takes the current page's nav key: "send", "request", "about", or "". */}}
 {{ define "header" }}
 {{ template "sprite" }}
 <a class="skip" href="#main">Skip to content</a>
@@ -42,13 +44,15 @@
 	<div class="wrap">
 		<a class="brand" href="/" aria-label="Gone, home"><span class="brand-g"></span>one</a>
 		<nav class="nav" aria-label="Site">
-			<a href="/about">About</a>
-			<button type="button" id="theme-toggle" aria-pressed="false" hidden>
-				<svg class="ico when-light" aria-hidden="true" focusable="false"><use href="#i-moon" /></svg>
-				<svg class="ico when-dark" aria-hidden="true" focusable="false"><use href="#i-sun" /></svg>
-				<span class="sr-only">Dark mode</span>
-			</button>
+			<a href="/"{{ if eq . "send" }} aria-current="page"{{ end }}><span>Send<span class="nav-long"> a secret</span></span></a>
+			<a href="/request"{{ if eq . "request" }} aria-current="page"{{ end }}><span>Request<span class="nav-long"> a secret</span></span></a>
+			<a class="nav-about" href="/about"{{ if eq . "about" }} aria-current="page"{{ end }}>About</a>
 		</nav>
+		<button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false" hidden>
+			<svg class="ico when-light" aria-hidden="true" focusable="false"><use href="#i-moon" /></svg>
+			<svg class="ico when-dark" aria-hidden="true" focusable="false"><use href="#i-sun" /></svg>
+			<span class="sr-only">Dark mode</span>
+		</button>
 	</div>
 </header>
 {{ end }}
