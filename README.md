@@ -114,6 +114,9 @@ The `gone` CLI does the same from a terminal, and works with secrets sent from t
 printf 'hunter2' | gone send --ttl 30m              # prints the link and your manage link
 gone get 'https://gone.hauken.us/secret/AbC#v1:…'  # quote links in single quotes
 gone status '<manage-link>'                         # or: gone revoke '<manage-link>'
+gone request --label 'VPN key'                      # ask someone for a secret; prints a link to send them
+gone request list                                   # then: gone request open <id>
+printf 'hunter2' | gone reply '<request-link>'      # answer someone's request
 ```
 
 Messages are read from standard input, never from arguments. Add `-f FILE` for attachments, `--passphrase-prompt` or `--passphrase-generate` for a passphrase, and `--json` for scripts. Point it at your own server with `--server`, `GONE_SERVER`, or `gone set server <url>`. Like the browser, it only talks to `https://` servers; `--insecure` allows `http://` for a server on `localhost` and nowhere else. Scripts and AI agents can handle secrets by reference: `--message-file` sends a file's contents, `gone get - --message-out FILE` reads the link from standard input and writes the message to a new `0600` file, so the plaintext never appears in their output (see [Scripts and agents](docs/cli.md#scripts-and-agents)). The full guide, with exit codes and JSON formats, is [docs/cli.md](docs/cli.md).

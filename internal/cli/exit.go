@@ -27,6 +27,18 @@ const (
 // errWrongPassphrase is returned when every v2 decryption attempt failed.
 var errWrongPassphrase = errors.New("wrong passphrase")
 
+// Request messages for a 404: the server can't say which case it was.
+const (
+	msgRequestGone = "request not found: it expired, was cancelled, or its reply was already opened"
+	msgReplyGone   = "request not found: it was already answered or cancelled, or it expired"
+)
+
+// notFoundError is an exit-3 failure with its own message, for requests.
+type notFoundError struct{ msg string }
+
+// Error returns the message.
+func (e *notFoundError) Error() string { return e.msg }
+
 // msgIntegrity is the single message for every decryption or integrity
 // failure, so a tampered response cannot be told apart from a bad key.
 const msgIntegrity = "the secret could not be decrypted: the link is wrong or the data was altered"
@@ -105,12 +117,30 @@ var sentinelClasses = []sentinelClass{
 	{envelope.ErrMalformed, exitIntegrity, "integrity", msgIntegrity},
 	{envelope.ErrInvalidEnvelope, exitIntegrity, "integrity", msgIntegrity},
 	{envelope.ErrTooManyFiles, exitIntegrity, "integrity", msgIntegrity},
+	{envelope.ErrInvalidKey, exitIntegrity, "integrity", "the request link is damaged: its key is not valid"},
 	{client.ErrNetwork, exitNetwork, "network", ""},
 	{client.ErrTooLarge, exitNetwork, "too_large", "the secret is larger than the server accepts"},
 	{client.ErrServer, exitNetwork, "server", ""},
 	{client.ErrRejected, exitNetwork, "server", ""},
 	{client.ErrProtocol, exitNetwork, "server", ""},
 	{context.Canceled, exitInternal, "interrupted", "interrupted"},
+}
+
+// classifyRequest classifies the request-specific exit-3 failures.
+//
+// Parameters:
+//   - err: the error.
+//
+// Returns the failure and true, or false when err is not one of them.
+func classifyRequest(err error) (failure, bool) {
+	var nf *notFoundError
+	if errors.As(err, &nf) {
+		return failure{code: exitNotFound, kind: "not_found", msg: nf.msg}, true
+	}
+	if errors.Is(err, errNoReplyYet) {
+		return failure{code: exitNotFound, kind: "not_ready", msg: errNoReplyYet.Error()}, true
+	}
+	return failure{}, false
 }
 
 // classify maps an error to its exit code and report.
@@ -123,6 +153,9 @@ func classify(err error) failure {
 	var ae *ackError
 	if errors.As(err, &ae) {
 		return failure{code: exitNetwork, kind: "not_confirmed", msg: ae.Error()}
+	}
+	if f, ok := classifyRequest(err); ok {
+		return f
 	}
 	var ue *usageError
 	if errors.As(err, &ue) {

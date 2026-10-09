@@ -142,8 +142,10 @@ func newGoneHandler(t *testing.T) http.Handler {
 		MaxTTL:     cfg.MaxTTL,
 		ClaimLease: cfg.ClaimLease,
 	}
+	svc.Requests = svc.Store.(goneapp.RequestStore)
 	h := httpx.New(svc, cfg.MaxBytes, nil)
 	h.MinTTL, h.MaxTTL = cfg.MinTTL, cfg.MaxTTL
+	h.Requests = svc
 	return h.Router()
 }
 

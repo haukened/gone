@@ -17,6 +17,7 @@ const (
 	headerClaim        = "X-Gone-Claim"
 	headerClaimExpires = "X-Gone-Claim-Expires"
 	headerManage       = "X-Gone-Manage"
+	headerFill         = "X-Gone-Fill"
 )
 
 // Claimed is a fetched, not yet acknowledged, secret.
@@ -42,14 +43,27 @@ type Claimed struct {
 // Returns the claimed secret, or ErrVersionMismatch, ErrIntegrity,
 // ErrProtocol, ErrTooLarge, or a status or network error.
 func (c *Client) Claim(ctx context.Context, id domain.SecretID, version uint8) (Claimed, error) {
-	resp, err := c.do(ctx, http.MethodGet, "/api/secret/"+id.String(), nil, nil)
+	resp, err := c.do(ctx, http.MethodGet, secretPath+id.String(), nil, nil)
 	if err != nil {
 		return Claimed{}, err
 	}
 	if err = expect(resp, http.StatusOK); err != nil {
 		return Claimed{}, err
 	}
-	cl, err := parseClaimHeaders(resp.Header, version)
+	return readClaim(resp, version, domain.ValidateProtocol)
+}
+
+// readClaim checks a 200 claim response and reads its ciphertext.
+//
+// Parameters:
+//   - resp: the claim response (status already checked).
+//   - version: protocol version the caller expects.
+//   - validate: checks the version and nonce for this route.
+//
+// Returns the claimed ciphertext, or ErrVersionMismatch, ErrIntegrity,
+// ErrProtocol, ErrTooLarge, or a read error.
+func readClaim(resp *http.Response, version uint8, validate func(uint8, string) error) (Claimed, error) {
+	cl, err := parseClaimHeaders(resp.Header, version, validate)
 	if err != nil {
 		discard(resp)
 		return Claimed{}, err
@@ -69,13 +83,13 @@ func (c *Client) Claim(ctx context.Context, id domain.SecretID, version uint8) (
 //   - version: expected protocol version.
 //
 // Returns the claim metadata without a body, or an error.
-func parseClaimHeaders(h http.Header, version uint8) (Claimed, error) {
+func parseClaimHeaders(h http.Header, version uint8, validate func(uint8, string) error) (Claimed, error) {
 	v, ok := single(h, headerVersion)
 	if !ok || v != strconv.Itoa(int(version)) {
 		return Claimed{}, ErrVersionMismatch
 	}
 	n, ok := single(h, headerNonce)
-	if !ok || domain.ValidateProtocol(version, n) != nil {
+	if !ok || validate(version, n) != nil {
 		return Claimed{}, ErrIntegrity
 	}
 	nonce, _ := domain.DecodeB64URL(n) // validated above
@@ -104,16 +118,27 @@ func parseClaimHeaders(h http.Header, version uint8) (Claimed, error) {
 // because the lease lapsed or the secret was revoked), or another status or
 // network error.
 func (c *Client) Ack(ctx context.Context, id domain.SecretID, token domain.ClaimToken) error {
+	return c.ack(ctx, secretPath+id.String(), token)
+}
+
+// ack sends DELETE path with the claim token; a 404 means the ciphertext is
+// already deleted, which counts as success.
+//
+// Parameters:
+//   - ctx: request context.
+//   - path: secret or reply path.
+//   - token: claim token.
+//
+// Returns nil or a client error.
+func (c *Client) ack(ctx context.Context, path string, token domain.ClaimToken) error {
 	hdr := http.Header{}
 	hdr.Set(headerClaim, token.String())
-	resp, err := c.do(ctx, http.MethodDelete, "/api/secret/"+id.String(), hdr, nil)
+	resp, err := c.do(ctx, http.MethodDelete, path, hdr, nil)
 	if err != nil {
 		return err
 	}
 	err = expect(resp, http.StatusNoContent)
 	if errors.Is(err, ErrNotFound) {
-		// The claim's row is already deleted (lapsed lease swept, or
-		// revoked), so the secret is gone either way.
 		return nil
 	}
 	if err != nil {

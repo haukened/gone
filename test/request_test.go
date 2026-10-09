@@ -21,15 +21,22 @@ import (
 // secret requests enabled and no rate limits.
 func newRequestServer(t *testing.T) *httptest.Server {
 	t.Helper()
+	srv := httptest.NewServer(newRequestHandler(t))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// newRequestHandler is the real router over a temporary store with secret
+// requests enabled and no rate limits.
+func newRequestHandler(t *testing.T) http.Handler {
+	t.Helper()
 	cfg := config.DefaultAppConfig
 	svc := newService(t, &cfg)
 	svc.Requests = svc.Store.(app.RequestStore)
 	h := httpx.New(svc, cfg.MaxBytes, nil)
 	h.MinTTL, h.MaxTTL = cfg.MinTTL, cfg.MaxTTL
 	h.Requests = svc
-	srv := httptest.NewServer(h.Router())
-	t.Cleanup(srv.Close)
-	return srv
+	return h.Router()
 }
 
 type createdRequest struct {

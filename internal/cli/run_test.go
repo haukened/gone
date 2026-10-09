@@ -30,6 +30,12 @@ func TestRunHelpAndVersion(t *testing.T) {
 		{"status -h", []string{"status", "-h"}, usages["status"]},
 		{"revoke -h", []string{"revoke", "-h"}, usages["revoke"]},
 		{"set -h", []string{"set", "-h"}, usages["set"]},
+		{"request -h", []string{"request", "-h"}, usages["request"]},
+		{"request list -h", []string{"request", "list", "-h"}, usages["request"]},
+		{"request open -h", []string{"request", "open", "-h"}, usages["request"]},
+		{"request cancel -h", []string{"request", "cancel", "-h"}, usages["request"]},
+		{"help request", []string{"help", "request"}, usages["request"]},
+		{"reply -h", []string{"reply", "-h"}, usages["reply"]},
 		{"version", []string{"version"}, "gone test\n"},
 		{"--version", []string{"--version"}, "gone test\n"},
 	}
