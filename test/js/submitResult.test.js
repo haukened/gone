@@ -122,3 +122,41 @@ test('manage section hides without a manage link and tolerates missing nodes', (
     assert.equal(q.panel.show({ shareURL: 'u', manageURL: 'https://gone.test/manage/x#t', expiresAt: 0 }), q.view, id);
   }
 });
+
+// qrPage adds the QR button, figure and code box to page(); with loads the QR
+// modules before the result panel.
+function qrPage(withQr, omit) {
+  const p = page(omit);
+  const skip = new Set(omit || []);
+  const make = (id, tag, props) => (skip.has(id) ? null : h(tag, Object.assign({ id }, props)));
+  p.qrBtn = make('qr-toggle', 'button', { hidden: true, attrs: { 'aria-expanded': 'false' } });
+  p.qrCode = make('share-qr-code', 'div');
+  p.qrFigure = make('share-qr', 'figure', { hidden: true });
+  if (p.qrFigure && p.qrCode) p.qrFigure.appendChild(p.qrCode);
+  p.view.append(...[p.qrBtn, p.qrFigure].filter(Boolean));
+  if (withQr) load('qr', 'submitQr');
+  return p;
+}
+
+test('show offers the QR button, closed, for each new link', () => {
+  const p = qrPage(true);
+  p.panel.show({ shareURL: 'https://gone.test/s#k', expiresAt: 0 });
+  assert.equal(p.qrBtn.hidden, false);
+  p.qrBtn.click();
+  assert.equal(p.qrFigure.hidden, false);
+  assert.equal(p.qrCode.children.length, 1);
+  p.panel.show({ shareURL: 'https://gone.test/s#k2', expiresAt: 0 });
+  assert.equal(p.qrFigure.hidden, true);
+  assert.equal(p.qrBtn.getAttribute('aria-expanded'), 'false');
+});
+
+test('the QR button stays hidden without its module or markup', () => {
+  const p = qrPage(false);
+  p.panel.show({ shareURL: 'u', expiresAt: 0 });
+  assert.equal(p.qrBtn.hidden, true);
+  for (const id of ['qr-toggle', 'share-qr', 'share-qr-code']) {
+    const q = qrPage(true, [id]);
+    assert.equal(q.panel.show({ shareURL: 'u', expiresAt: 0 }), q.view, id);
+    if (q.qrBtn) assert.equal(q.qrBtn.hidden, true, id);
+  }
+});

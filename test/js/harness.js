@@ -26,7 +26,7 @@ const GONE_GLOBALS = ['goneUtil', 'goneCrypto', 'goneCryptoEncoding', 'goneCrypt
   'goneTheme', 'goneManageApi', 'goneManageView', 'goneWordlist', 'gonePassgen', 'gonePassphraseField',
   'goneSubmitDom', 'goneSubmitState', 'goneSubmitUi', 'goneSubmitRun', 'goneSubmitPreview', 'goneConsumeOpener',
   'goneCryptoV3', 'goneRequestStore', 'goneRequestApi', 'goneRequestPoll', 'goneRequestList',
-  'goneRequestDetailView', 'goneSubmitTarget'];
+  'goneRequestDetailView', 'goneSubmitTarget', 'goneQr', 'goneResultQr'];
 
 const MODULE_DEPS = {
   crypto: ['cryptoEncoding', 'cryptoCore', 'cryptoCipher', 'cryptoV2Inputs', 'cryptoV2Key', 'cryptoV2'],
