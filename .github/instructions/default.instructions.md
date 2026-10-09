@@ -33,7 +33,7 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - `internal/httpx/`: HTTP handlers, middleware, and security headers.
 - `internal/ratelimit/`: Per-client token-bucket rate limiting.
 - `internal/janitor/`: Background deletion of expired secrets and lapsed claims.
-- `internal/metrics/`: In-memory counters, persisted to SQLite and served on the optional metrics listener.
+- `internal/metrics/`: In-memory counters, persisted to SQLite and served on the optional token-protected metrics listener: Prometheus text at `/metrics`, a JSON snapshot at `/`. The Prometheus format is written by hand (no `client_golang`).
 - `internal/config/`: Environment variable parsing and validation.
 - `internal/cli/`, `internal/client/`, `internal/passgen/`: CLI commands, its HTTP API client, and the passphrase wordlist generator.
 - `internal/sqlrows/`: Small SQL row helpers.
@@ -114,7 +114,7 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 ## Observability
 - Structured logs with `log/slog` (default text handler, key=value pairs)
 - Do not log request bodies, client addresses, keys, or tokens
-- Metrics counters (see the README metrics table): created, consumed, revoked, expired/deleted by the janitor, lapsed claims, and rate-limited requests; plus a janitor deletions-per-cycle summary
+- Metrics (see the README metrics table): counters for created, consumed, revoked, expired/deleted by the janitor, lapsed claims, rate-limited requests, and the secret-request lifecycle; a janitor deletions-per-cycle summary; and, on `/metrics` only, live storage gauges, `gone_build_info`, and Go runtime metrics. Counters are prefixed `gone_` on `/metrics`. Metrics never include IDs, tokens, client addresses, or ciphertext
 
 ## Domain Logic
 - HTTP API endpoints (full reference: `docs/README.md` and `docs/openapi.yaml`):

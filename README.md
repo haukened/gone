@@ -426,10 +426,9 @@ The full plan for Gone v3 is in [docs/ROADMAP.md](docs/ROADMAP.md). Highlights:
 * Command-line client, `gone` (done; see [docs/cli.md](docs/cli.md))
 * Web UI revamp (done)
 
-All six phases shipped in v3.0.0. Since then: secret requests (protocol v3), so you can ask someone for a secret instead of sending one.
+All six phases shipped in v3.0.0. Since then: secret requests (protocol v3), so you can ask someone for a secret instead of sending one, an opt-in QR code for the share link, and Prometheus metrics.
 
 Other ideas:
-* Optional Prometheus exposition
 * CSP tightening & documentation
 * Graceful shutdown coordination improvements
 
