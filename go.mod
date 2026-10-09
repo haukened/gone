@@ -1,6 +1,6 @@
 module github.com/haukened/gone/v3
 
-go 1.27.0
+go 1.27.2
 
 require (
 	github.com/go-viper/mapstructure/v2 v2.5.0

@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 env:
-  GO_VERSION: '1.27'
+  GO_VERSION: '1.27.2'
   MINIFY_VERSION: v2.24.17
   TASK_VERSION: v3.54.0
   NODE_VERSION: '24'

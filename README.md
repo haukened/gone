@@ -263,7 +263,7 @@ Or just:
 task run
 ```
 
-Gone is pure Go (SQLite via [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite)), so it builds with `CGO_ENABLED=0` into a fully static binary; `task prod` does this by default. Requires Go 1.27+.
+Gone is pure Go (SQLite via [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite)), so it builds with `CGO_ENABLED=0` into a fully static binary; `task prod` does this by default. Requires Go 1.27.2+.
 
 Go linting is configured by `.golangci.yml`, including the revive rules. Run `task lint` and `task lint-web` before opening a PR; CI runs both.
 
