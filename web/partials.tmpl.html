@@ -54,14 +54,16 @@
 			<a class="nav-about" href="/about"{{ if eq . "about" }} aria-current="page"{{ end }} data-i18n="common.navAbout">{{ t "common.navAbout" }}</a>
 		</nav>
 		<div class="site-tools">
-			<label class="lang-pick" hidden>
-				<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-globe" /></svg>
-				<span class="lang-code" aria-hidden="true">{{ langCode }}</span>
-				<span class="sr-only" data-i18n="common.language">{{ t "common.language" }}</span>
-				<select id="lang-select" class="lang-select">
-					{{ range locales }}<option value="{{ .Tag }}" lang="{{ .Tag }}"{{ if eq .Tag lang }} selected{{ end }}>{{ .Name }}</option>{{ end }}
-				</select>
-			</label>
+			<div class="lang-pick" hidden>
+				<button type="button" id="lang-button" class="lang-button" aria-expanded="false" aria-controls="lang-menu">
+					<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-globe" /></svg>
+					<span class="lang-code" aria-hidden="true">{{ langCode }}</span>
+					<span class="sr-only" data-i18n="common.language">{{ t "common.language" }}</span>
+				</button>
+				<ul id="lang-menu" class="lang-menu" aria-label="{{ t "common.language" }}" data-i18n-attr="aria-label:common.language" hidden>
+					{{ range locales }}<li><button type="button" class="lang-option" data-lang="{{ .Tag }}" lang="{{ .Tag }}"{{ if eq .Tag lang }} aria-current="true"{{ end }}><span>{{ .Name }}</span><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg></button></li>{{ end }}
+				</ul>
+			</div>
 			<span id="lang-status" class="sr-only" role="status"></span>
 			<button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false" hidden>
 				<svg class="ico when-light" aria-hidden="true" focusable="false"><use href="#i-moon" /></svg>

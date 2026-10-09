@@ -118,7 +118,7 @@ var (
 	// stripped removes markup whose text is not translated: scripts (the
 	// inline catalog), icons, the picker (each language in its own name),
 	// and the decorative vault.
-	stripped  = regexp.MustCompile(`(?s)<script.*?</script>|<svg.*?</svg>|<select.*?</select>|<pre class="vault".*?</pre>|<title.*?</title>`)
+	stripped  = regexp.MustCompile(`(?s)<script.*?</script>|<svg.*?</svg>|<ul id="lang-menu".*?</ul>|<pre class="vault".*?</pre>|<title.*?</title>`)
 	tagRe     = regexp.MustCompile(`<[^>]*>`)
 	asciiWord = regexp.MustCompile(`[A-Za-z]{2,}`)
 )
