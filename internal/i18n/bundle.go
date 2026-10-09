@@ -8,7 +8,6 @@ import (
 	"html"
 	"html/template"
 	"io/fs"
-	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -44,31 +43,49 @@ type Options struct {
 //   - *Bundle: the loaded catalogs.
 //   - error: non-nil if the base catalog is missing or any catalog is invalid.
 func Load(fsys fs.FS, dir string, opts Options) (*Bundle, error) {
-	entries, err := fs.ReadDir(fsys, dir)
+	sub, err := fs.Sub(fsys, dir)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := fs.ReadDir(sub, ".")
 	if err != nil {
 		return nil, err
 	}
 	b := &Bundle{catalogs: map[string]map[string]*message{}, wire: map[string][]byte{}, sums: map[string]string{}}
 	for _, e := range entries {
-		tag := strings.TrimSuffix(e.Name(), ".json")
-		info, ok := lookupInfo(tag)
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || !ok || info.Tag != tag || tag == PseudoLocale {
+		tag, ok := catalogTag(e)
+		if !ok {
 			continue
 		}
-		raw, err := fs.ReadFile(fsys, path.Join(dir, e.Name()))
-		if err != nil {
+		if b.catalogs[tag], err = readCatalog(sub, e.Name()); err != nil {
 			return nil, err
 		}
-		cat, err := parseCatalog(raw)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", e.Name(), err)
-		}
-		b.catalogs[tag] = cat
 	}
 	if err := b.finish(opts); err != nil {
 		return nil, err
 	}
 	return b, nil
+}
+
+// catalogTag returns the locale tag a directory entry is the catalog for, or
+// false when it is not a "<tag>.json" file for a known, non-pseudo locale.
+func catalogTag(e fs.DirEntry) (string, bool) {
+	tag, isJSON := strings.CutSuffix(e.Name(), ".json")
+	info, ok := lookupInfo(tag)
+	return tag, isJSON && !e.IsDir() && ok && info.Tag == tag && tag != PseudoLocale
+}
+
+// readCatalog reads and parses one catalog file.
+func readCatalog(fsys fs.FS, name string) (map[string]*message, error) {
+	raw, err := fs.ReadFile(fsys, name)
+	if err != nil {
+		return nil, err
+	}
+	cat, err := parseCatalog(raw)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+	return cat, nil
 }
 
 // finish checks the catalogs against the base, adds the pseudo-locale when
@@ -300,7 +317,7 @@ func (b *Bundle) Rich(tag, key string, args Args, slots map[string]string) templ
 	info := b.info(tag)
 	m := b.lookup(info.Tag, key)
 	if m == nil {
-		return template.HTML(html.EscapeString(key)) // #nosec G203 -- escaped
+		return template.HTML(html.EscapeString(key)) // #nosec G203 -- escaped // nosemgrep
 	}
 	var sb strings.Builder
 	closing := ""
@@ -317,7 +334,7 @@ func (b *Bundle) Rich(tag, key string, args Args, slots map[string]string) templ
 			closing = ""
 		}
 	}
-	return template.HTML(sb.String()) // #nosec G203 -- text escaped; tags are template literals
+	return template.HTML(sb.String()) // #nosec G203 -- text escaped; tags are template literals // nosemgrep
 }
 
 // writeSlotOpen writes a slot's opening tag with its data-i18n-slot marker

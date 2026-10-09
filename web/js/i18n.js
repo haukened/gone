@@ -15,11 +15,6 @@
 
   const COOKIE = 'gone_lang';
   const TOKEN = /\{([#/]?)([A-Za-z_][A-Za-z0-9_]*)\}/g;
-  const DATE_STYLES = {
-    datetime: { dateStyle: 'medium', timeStyle: 'short' },
-    date: { dateStyle: 'medium' },
-    time: { timeStyle: 'short' },
-  };
   const DURATION_UNITS = [['days', 86400], ['hours', 3600], ['minutes', 60], ['seconds', 1]];
   const BYTE_UNITS = ['kb', 'mb', 'gb', 'tb', 'pb'];
 
@@ -85,16 +80,21 @@
     return tokens(pattern).map(function (p) { return partText(p, args); }).join('');
   }
 
-  // FORMATS render the object argument kinds the server also emits.
-  const FORMATS = [
-    ['num', function (v) { return fixed(v.num, v.digits); }],
-    ['bytes', function (v) { return bytes(v.bytes); }],
-    ['seconds', function (v) { return duration(v.seconds, v.style); }],
-    ['date', function (v) { return date(v.date, v.style); }],
-    ['rel', function (v) { return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(v.rel, v.unit); }],
-    ['compact', function (v) { return new Intl.NumberFormat(locale, { notation: 'compact', compactDisplay: 'long', maximumFractionDigits: 0 }).format(v.compact); }],
-    ['msg', function (v) { return t(v.msg, v.args); }],
-  ];
+  const FORMATS = formats();
+
+  // formats lists the object argument kinds the server also emits, each with
+  // its renderer.
+  function formats() {
+    return [
+      ['num', function (v) { return fixed(v.num, v.digits); }],
+      ['bytes', function (v) { return bytes(v.bytes); }],
+      ['seconds', function (v) { return duration(v.seconds, v.style); }],
+      ['date', function (v) { return date(v.date, v.style); }],
+      ['rel', function (v) { return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(v.rel, v.unit); }],
+      ['compact', function (v) { return new Intl.NumberFormat(locale, { notation: 'compact', compactDisplay: 'long', maximumFractionDigits: 0 }).format(v.compact); }],
+      ['msg', function (v) { return t(v.msg, v.args); }],
+    ];
+  }
 
   // format renders one argument value in the current locale.
   function format(v) {
@@ -130,10 +130,16 @@
     return t('common.duration.' + s + '.' + unit[0], { n: sec / unit[1] });
   }
 
+  // date renders an ISO time as "datetime" (the default), "date" or "time".
   function date(iso, style) {
+    const styles = {
+      datetime: { dateStyle: 'medium', timeStyle: 'short' },
+      date: { dateStyle: 'medium' },
+      time: { timeStyle: 'short' },
+    };
     const when = new Date(iso);
     if (Number.isNaN(when.getTime())) return '';
-    return when.toLocaleString(locale, DATE_STYLES[style] || DATE_STYLES.datetime);
+    return when.toLocaleString(locale, styles[style] || styles.datetime);
   }
 
   function readArgs(node) {
@@ -336,21 +342,26 @@
     listeners.push(fn);
   }
 
-  window.goneI18n = Object.freeze({
-    get locale() { return locale; },
-    locales: function () { return (data.locales || []).slice(); },
-    t: t,
-    format: format,
-    set: set,
-    setAttr: setAttr,
-    value: value,
-    plain: plain,
-    clear: clear,
-    snapshot: snapshot,
-    restore: restore,
-    setTitle: setTitle,
-    apply: apply,
-    setLocale: setLocale,
-    onChange: onChange,
-  });
+  // api is the public interface; locale is live.
+  function api() {
+    return {
+      get locale() { return locale; },
+      locales: function () { return (data.locales || []).slice(); },
+      t: t,
+      format: format,
+      set: set,
+      setAttr: setAttr,
+      value: value,
+      plain: plain,
+      clear: clear,
+      snapshot: snapshot,
+      restore: restore,
+      setTitle: setTitle,
+      apply: apply,
+      setLocale: setLocale,
+      onChange: onChange,
+    };
+  }
+
+  window.goneI18n = Object.freeze(api());
 })();

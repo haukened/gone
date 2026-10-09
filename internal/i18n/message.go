@@ -56,35 +56,52 @@ func parsePattern(s string) (pattern, error) {
 	var out pattern
 	open := ""
 	for len(s) > 0 {
-		i := strings.IndexAny(s, "{}")
-		if i < 0 {
-			out = append(out, token{kind: tokText, text: s})
-			break
-		}
-		if s[i] == '}' {
-			return nil, errors.New("stray }")
-		}
-		if i > 0 {
-			out = append(out, token{kind: tokText, text: s[:i]})
-		}
-		end := strings.IndexByte(s[i:], '}')
-		if end < 0 {
-			return nil, errors.New("unclosed {")
-		}
-		tok, err := parsePlaceholder(s[i+1 : i+end])
+		toks, rest, err := nextTokens(s)
 		if err != nil {
 			return nil, err
 		}
-		if open, err = trackSlot(open, tok); err != nil {
-			return nil, err
+		for _, tok := range toks {
+			if open, err = trackSlot(open, tok); err != nil {
+				return nil, err
+			}
 		}
-		out = append(out, tok)
-		s = s[i+end+1:]
+		out = append(out, toks...)
+		s = rest
 	}
 	if open != "" {
 		return nil, fmt.Errorf("slot %q is not closed", open)
 	}
 	return out, nil
+}
+
+// nextTokens reads the text up to the next placeholder and the placeholder
+// itself from the start of s.
+//
+// Returns:
+//   - []token: one or two tokens.
+//   - string: the rest of s.
+//   - error: non-nil for a stray or unclosed brace or a bad name.
+func nextTokens(s string) ([]token, string, error) {
+	i := strings.IndexAny(s, "{}")
+	if i < 0 {
+		return []token{{kind: tokText, text: s}}, "", nil
+	}
+	if s[i] == '}' {
+		return nil, "", errors.New("stray }")
+	}
+	var toks []token
+	if i > 0 {
+		toks = append(toks, token{kind: tokText, text: s[:i]})
+	}
+	end := strings.IndexByte(s[i:], '}')
+	if end < 0 {
+		return nil, "", errors.New("unclosed {")
+	}
+	tok, err := parsePlaceholder(s[i+1 : i+end])
+	if err != nil {
+		return nil, "", err
+	}
+	return append(toks, tok), s[i+end+1:], nil
 }
 
 // parsePlaceholder parses the text between braces.
@@ -164,26 +181,15 @@ func parseVariants(v variantMessage) (*message, error) {
 	if len(v.Selectors) != 1 {
 		return nil, errors.New("variants need exactly one selector")
 	}
-	input := ""
-	for _, d := range v.Declarations {
-		if m := localDeclRe.FindStringSubmatch(strings.TrimSpace(d)); m != nil && m[1] == v.Selectors[0] {
-			input = m[2]
-		}
-	}
+	input := pluralInput(v)
 	if input == "" {
 		return nil, fmt.Errorf("selector %q is not declared as a plural", v.Selectors[0])
 	}
 	msg := &message{input: input, variants: map[string]pattern{}}
 	for key, text := range v.Match {
-		sel, cat, ok := strings.Cut(key, "=")
-		if !ok || sel != v.Selectors[0] {
-			return nil, fmt.Errorf("bad match key %q", key)
-		}
-		if cat == "*" {
-			cat = "other"
-		}
-		if !pluralCategories[cat] {
-			return nil, fmt.Errorf("unknown plural category %q", cat)
+		cat, err := matchCategory(key, v.Selectors[0])
+		if err != nil {
+			return nil, err
 		}
 		p, err := parsePattern(text)
 		if err != nil {
@@ -195,6 +201,41 @@ func parseVariants(v variantMessage) (*message, error) {
 		return nil, errors.New("variants need an \"other\" (*) case")
 	}
 	return msg, nil
+}
+
+// pluralInput returns the input variable a variant object's selector is
+// declared over ("local <selector> = <input>: plural"), or "".
+func pluralInput(v variantMessage) string {
+	for _, d := range v.Declarations {
+		if m := localDeclRe.FindStringSubmatch(strings.TrimSpace(d)); m != nil && m[1] == v.Selectors[0] {
+			return m[2]
+		}
+	}
+	return ""
+}
+
+// matchCategory returns the plural category a match key names, with "*"
+// meaning "other".
+//
+// Parameters:
+//   - key: the match key, "<selector>=<category>".
+//   - selector: the variant object's selector.
+//
+// Returns:
+//   - string: the category.
+//   - error: non-nil for another selector or an unknown category.
+func matchCategory(key, selector string) (string, error) {
+	sel, cat, ok := strings.Cut(key, "=")
+	if !ok || sel != selector {
+		return "", fmt.Errorf("bad match key %q", key)
+	}
+	if cat == "*" {
+		cat = "other"
+	}
+	if !pluralCategories[cat] {
+		return "", fmt.Errorf("unknown plural category %q", cat)
+	}
+	return cat, nil
 }
 
 // signature lists a message's argument and slot names, sorted, so catalogs

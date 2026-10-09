@@ -104,23 +104,30 @@ func parseAcceptLanguage(header string) []acceptEntry {
 		if tag == "" || tag == "*" || len(tag) > 35 {
 			continue
 		}
-		q := 1.0
-		for _, f := range fields[1:] {
-			name, val, ok := strings.Cut(strings.TrimSpace(f), "=")
-			if ok && strings.EqualFold(strings.TrimSpace(name), "q") {
-				parsed, err := strconv.ParseFloat(strings.TrimSpace(val), 64)
-				if err != nil {
-					parsed = 0
-				}
-				q = parsed
-			}
-		}
-		if q > 0 {
+		if q := quality(fields[1:]); q > 0 {
 			out = append(out, acceptEntry{tag: tag, q: q})
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].q > out[j].q })
 	return out
+}
+
+// quality returns a language range's q parameter: 1 when absent, 0 when
+// malformed.
+func quality(params []string) float64 {
+	q := 1.0
+	for _, f := range params {
+		name, val, ok := strings.Cut(strings.TrimSpace(f), "=")
+		if !ok || !strings.EqualFold(strings.TrimSpace(name), "q") {
+			continue
+		}
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(val), 64)
+		if err != nil {
+			return 0
+		}
+		q = parsed
+	}
+	return q
 }
 
 // baseLanguage returns the language subtag of tag, lowercased.
