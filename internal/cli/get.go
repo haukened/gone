@@ -127,7 +127,9 @@ func openOutputs(o getOpts) (outputs, error) {
 
 // close releases the opened destinations.
 func (out outputs) close() {
-	_ = out.root.Close()
+	if out.root != nil {
+		_ = out.root.Close()
+	}
 	out.msg.close()
 }
 

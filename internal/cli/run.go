@@ -19,11 +19,13 @@ type command func(a *app, ctx context.Context, args []string) error
 
 // commands maps subcommand names to implementations.
 var commands = map[string]command{
-	"send":   (*app).runSend,
-	"get":    (*app).runGet,
-	"status": (*app).runStatus,
-	"revoke": (*app).runRevoke,
-	"set":    func(a *app, _ context.Context, args []string) error { return a.runSet(args) },
+	"send":    (*app).runSend,
+	"get":     (*app).runGet,
+	"status":  (*app).runStatus,
+	"revoke":  (*app).runRevoke,
+	"request": (*app).runRequest,
+	"reply":   (*app).runReply,
+	"set":     func(a *app, _ context.Context, args []string) error { return a.runSet(args) },
 }
 
 // Run executes the gone CLI.

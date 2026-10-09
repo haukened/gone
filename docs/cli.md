@@ -1,6 +1,6 @@
 # The `gone` CLI
 
-`gone` sends and opens one-time secrets from a terminal. It speaks the same protocol as the web UI ([protocol.md](protocol.md)), so a secret sent from the browser can be opened with the CLI and the other way round.
+`gone` sends and opens one-time secrets from a terminal, and can ask someone for a secret or answer such a request. It speaks the same protocol as the web UI ([protocol.md](protocol.md)), so a secret sent from the browser can be opened with the CLI and the other way round, and a request made in either can be answered from the other.
 
 Everything is encrypted and decrypted on your machine. The server only ever stores ciphertext, and the key travels in the link's `#fragment`, which is never sent to the server.
 
@@ -66,6 +66,19 @@ gone get 'https://gone.hauken.us/secret/AbC…#v1:…'
 ```
 
 Send the **link** to the recipient. Keep the **manage link** yourself: it lets you check on the secret or delete it, but it cannot open it.
+
+Need a secret from someone instead?
+
+```sh
+gone request --label "staging DB"
+#   Link:    https://gone.hauken.us/reply/3f9a…#v3:…
+#   ID:      3f9a1c2e…
+#   Expires: 2026-08-10T18:30:00Z
+
+# They answer in a browser, or with: printf 'hunter2' | gone reply '<link>'
+gone request list             # see which requests have a reply
+gone request open 3f9a        # print the reply, then delete it
+```
 
 ---
 
@@ -145,6 +158,68 @@ gone revoke <manage-link|-> [--json] [--insecure] [--timeout DURATION]
 
 Deletes the secret. Revoking an already-gone secret exits 3. Revoke is reliable only before the recipient opens the link: someone who has already downloaded the ciphertext keeps it.
 
+### `gone request`
+
+```text
+gone request [-l TEXT] [-t DURATION] [-s URL] [--wait [-o DIR] [--message-out PATH] [--raw]] [--json]
+```
+
+Asks someone for a secret and prints a **request link** to send them, then exits. A key pair is made on this machine: the private key and the request's manage token are saved on this device (see [Requests on this device](#requests-on-this-device)) and never leave it. The server learns only how long to wait. The person with the secret answers on that link in a browser, or with [`gone reply`](#gone-reply), and only this device can open the reply, once.
+
+- `-l, --label TEXT` is a note so you can tell requests apart (up to 80 characters). It stays on this device and is never sent.
+- `-t, --ttl` is how long the link works (default `1h`). A reply is then kept for the same length of time, counted from when it arrives.
+- `-s, --server` picks the server as for `send`.
+- `--wait` waits for the reply and opens it, taking the same output flags as `request open`. The request is saved first, so Ctrl-C stops waiting but keeps it; resume with `gone request open ID --wait`.
+- The request link can't open anything; it only lets someone send you one reply. Send it to the right person.
+
+### `gone request list`
+
+```text
+gone request list [--offline] [--json] [--insecure] [--timeout DURATION]
+```
+
+Lists the requests saved on this device, newest first, and asks each one's server for its state:
+
+```text
+ID        LABEL       STATE        ASKED                 EXPIRES
+3f9a1c2e  staging DB  reply ready  2026-08-10 17:30 UTC  2026-08-10 19:30 UTC
+b7d0e411  -           waiting      2026-08-10 17:12 UTC  2026-08-10 18:12 UTC
+```
+
+A request the server no longer has (expired, cancelled, or already opened) is shown once as `gone` and then forgotten. If a server can't be reached the state is `unknown`. `--offline` shows the last known state without contacting any server. Checking state is read-only on the server.
+
+### `gone request open`
+
+```text
+gone request open <id> [--wait] [-o DIR] [--message-out PATH] [--raw] [--json] [--insecure] [--timeout DURATION]
+```
+
+Downloads the reply, decrypts it with the saved key, and prints the message and saves attachments exactly like [`gone get`](#gone-get). It then deletes the reply from the server and forgets the request here. `<id>` is the full ID or a unique prefix of at least 4 characters. Without `--wait`, a request that has no reply yet exits 3 (`not_ready`); with it, `gone` checks every 10 seconds until the reply arrives or the request expires.
+
+### `gone request cancel`
+
+```text
+gone request cancel <id> [--json] [--insecure] [--timeout DURATION]
+```
+
+Cancels the request, or deletes a reply before you open it, and forgets it here. The link stops working at once. Cancelling a request that is already gone exits 3.
+
+### `gone reply`
+
+```text
+gone reply <request-link|-> [-f FILE]... [--message-file PATH] [--json] [--insecure] [--timeout DURATION]
+```
+
+Answers someone's request. The link is checked with the server first, so if the request was already answered, cancelled, or has expired, `gone` exits 3 without reading the message. The message comes from standard input or `--message-file`, plus up to 10 attachments, exactly as for `send`. It is encrypted to the requester's public key from the link: not even you can open it afterwards. Prints `Sent. Only the requester can open it.` A request link of `-` is read from standard input.
+
+Only answer a request link you trust: anyone can make one, so check it came from the person you expect.
+
+### Requests on this device
+
+Requests are saved in `requests.gob` in the `gone` config directory (`~/.config/gone` on Linux, `~/Library/Application Support/gone` on macOS, `%AppData%\gone` on Windows), readable only by you (`0600`, in a `0700` directory). Each entry holds the request ID, its server, your label, the manage token, the private key, the request link and the last known state. That is as private as a browser's site storage, which is where the web UI keeps its requests: anyone who can read the file as you can open a reply that arrives.
+
+The file is internal to `gone`: it is a binary (Go gob) file, not meant to be opened, edited or copied. Use `gone request list` to see what's in it. Every change takes a lock (`requests.lock`), writes a new file and renames it into place, so several `gone` commands running at once never lose a request and the file is never half-written. Like ssh with a private key, `gone` refuses to use the file (exit 8) if other users can read or write it, if it belongs to someone else, or if it is a symlink, and refuses a config directory that others can write to. It says why and prints the `chmod` that fixes it, rather than fixing it silently, because the keys may already have been exposed. (Windows protects your profile with ACLs instead, so these checks don't apply there.) An entry is removed when its reply is opened, the request is cancelled, or it expires. A request made here can only be opened here, and one made in a browser can only be opened in that browser.
+
 ### `gone set server`
 
 ```text
@@ -190,6 +265,23 @@ Guidelines:
 - **Exit codes** are listed in [Exit codes](#exit-codes); with `--json`, errors are JSON on standard error.
 - **Clean up.** Delete the received file when it has been used.
 
+**Ask a person for a secret and wait for it.** A script or agent that needs a credential it doesn't have can request it and block:
+
+```sh
+gone request --label "prod DB for migration" --wait --message-out ./db.pw --json </dev/null > events.json &
+# The first line appears at once: hand its link to the person who has the secret.
+head -1 events.json | jq -r .link
+wait   # the second line appears once they answer: {"message_file":{"path":"./db.pw","size":24},"files":[]}
+```
+
+The secret lands in a new `0600` file and never passes through output. If the wait is interrupted, `gone request open ID --wait --message-out ./db.pw` picks it up again.
+
+**Answer a request** without the secret passing through a pipe:
+
+```sh
+gone reply - --message-file /root/.db-password --json < request-link.txt
+```
+
 ---
 
 ## Server selection and transport
@@ -211,14 +303,14 @@ The standard proxy variables (`HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`) are honor
 | 0    | Success                                                                |
 | 1    | Internal error, or interrupted (Ctrl-C)                                |
 | 2    | Usage error: bad flag, bad link, bad server URL, weak passphrase       |
-| 3    | Not found: already opened, revoked, expired, or never existed          |
+| 3    | Not found: already opened, revoked, expired, or never existed; for `request open` without `--wait`, no reply yet |
 | 4    | Wrong passphrase (or the link is damaged)                              |
 | 5    | Rate limited by the server                                             |
 | 6    | Integrity failure: the ciphertext or payload failed authentication     |
 | 7    | Network or server error, response too large, or deletion not confirmed |
 | 8    | Local I/O error: reading input files, writing attachments or config    |
 
-The server cannot tell "already opened", "revoked" and "expired" apart from the outside, so they share code 3.
+The server cannot tell "already opened", "revoked" and "expired" apart from the outside, so they share code 3. A request with no reply yet is also exit 3, with error kind `not_ready` in JSON, so a script can tell it from `not_found`.
 
 If `get` decrypts a secret but the server does not confirm its deletion, `gone` prints the message and attachments and then exits 7. The server's claim lease expires on its own and the secret is removed by the janitor.
 
@@ -260,6 +352,22 @@ This contains the plaintext. Anything that captures standard output (a log, a CI
 {"revoked":true}
 ```
 
+`request`:
+
+```json
+{"id":"ID","link":"https://…/reply/ID#v3:PUBLIC_KEY.FILL_TOKEN","label":"staging DB","expires_at":"2026-08-10T18:30:00Z"}
+```
+
+`request --wait` prints **two lines**: the line above as soon as the request is made, then the `request open` result once the reply arrives.
+
+`request list` (an array, newest first; `state` is `waiting`, `ready`, `gone` or `unknown`):
+
+```json
+[{"id":"ID","label":"staging DB","state":"ready","server":"https://gone.hauken.us","created_at":"…","expires_at":"…","link":"https://…/reply/ID#v3:…"}]
+```
+
+`request open`: the same as `get` (or `get --message-out`). `request cancel`: `{"cancelled":true}`. `reply`: `{"sent":true,"expires_at":"…"}`.
+
 Errors are one line of JSON on **standard error**, and the exit code is still set:
 
 ```json
@@ -272,6 +380,7 @@ Errors are one line of JSON on **standard error**, and the exit code is still se
 | `interrupted`      | 1    |
 | `usage`            | 2    |
 | `not_found`        | 3    |
+| `not_ready`        | 3    |
 | `wrong_passphrase` | 4    |
 | `rate_limited`     | 5    |
 | `integrity`        | 6    |
@@ -305,4 +414,4 @@ The key is after the `#`. Some shells treat `#` or other characters specially, a
 - **Untrusted content.** Messages and file names come from the sender. On a terminal, `gone` escapes control characters and bidirectional-override characters in messages and in the file names it prints, and attachments are never written outside `--out`. Review attachments before opening them.
 - **Memory.** Keys, passphrases and plaintext are wiped from memory after use where Go makes that possible. This is best effort: the Go runtime can copy data (for example when converting to strings), and the garbage collector does not zero freed memory.
 - **Plaintext on disk.** Attachments and `--message-out` files are written in plaintext, readable only by you (`0600`). Delete them when you are done.
-- **What `gone` never prints.** Error messages and reports never contain the plaintext, a passphrase, a link's key or `#fragment`, a manage token, or the secret ID. Network errors name the server's origin, not the request path. The only exceptions are the outputs you ask for: the message from `get` without `--message-out`, the links from `send`, and a `--passphrase-generate` passphrase. Values you type as arguments are your own exposure (they are already in `ps` and history), and `gone` may repeat a mistyped flag value in a usage error.
+- **What `gone` never prints.** Error messages and reports never contain the plaintext, a passphrase, a link's key or `#fragment`, a manage token, a request's private key, or the secret ID. Network errors name the server's origin, not the request path. The only exceptions are the outputs you ask for: the message from `get` or `request open` without `--message-out`, the links from `send`, the request link from `request` and `request list --json` (it can't open anything), and a `--passphrase-generate` passphrase. Values you type as arguments are your own exposure (they are already in `ps` and history), and `gone` may repeat a mistyped flag value in a usage error.

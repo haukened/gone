@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/haukened/gone/v3/internal/domain"
 	"github.com/haukened/gone/v3/internal/envelope"
 )
 
@@ -233,6 +234,143 @@ var leakCases = []leakCase{
 	}},
 }
 
+// request makes a request on origin and records everything about it that
+// must never be printed afterwards: the reply link's fill token and public
+// key, the request ID, and the saved manage token and private key.
+//
+// Parameters:
+//   - origin: server URL.
+//
+// Returns the reply link and request ID.
+func (l *leakEnv) request(origin string) (string, string) {
+	l.t.Helper()
+	l.te.reset()
+	raw := runJSON(l.t, l.te, exitOK, "request", "--json", "-s", origin)
+	u, err := url.Parse(raw["link"])
+	if err != nil {
+		l.t.Fatal(err)
+	}
+	n := len(l.secrets)
+	frag, _ := strings.CutPrefix(u.Fragment, "v3:")
+	pub, fill, _ := strings.Cut(frag, ".")
+	l.secrets[key("reply public key", n)] = pub
+	l.secrets[key("fill token", n)] = fill
+	l.secrets[key("request id", n)] = raw["id"]
+	for _, r := range savedRows(l.t, l.te) {
+		if r.ID == raw["id"] {
+			l.secrets[key("request manage token", n)] = r.ManageToken
+			l.secrets[key("private key hex", n)] = fmt.Sprintf("%x", r.PrivateKey)
+			l.secrets[key("private key b64", n)] = domain.EncodeB64URL(r.PrivateKey)
+		}
+	}
+	return raw["link"], raw["id"]
+}
+
+// replyArgs answers a request link read from stdin with the sentinel
+// message and attachment.
+//
+// Returns the arguments.
+func (l *leakEnv) replyArgs() []string {
+	return []string{"reply", "-", "--message-file", l.msgFile, "-f", l.attFile}
+}
+
+// answered makes a request on the leak server and answers it.
+//
+// Returns the request ID.
+func (l *leakEnv) answered() string {
+	l.t.Helper()
+	link, id := l.request(l.url)
+	l.te.reset()
+	l.te.stdin.WriteString(link)
+	if code := l.te.run(l.replyArgs()...); code != exitOK {
+		l.t.Fatalf("reply exit %d: %s", code, l.te.stderr)
+	}
+	return id
+}
+
+// openArgs opens a request's reply into fresh files.
+//
+// Parameters:
+//   - id: request ID.
+//
+// Returns the arguments.
+func (l *leakEnv) openArgs(id string) []string {
+	return []string{"request", "open", id, "-o", l.t.TempDir(), "--message-out", filepath.Join(l.t.TempDir(), "m")}
+}
+
+// requestLeakCases cover request and reply failures and successes.
+var requestLeakCases = []leakCase{
+	{"reply to a cancelled request", func(l *leakEnv) (string, []string, int) {
+		link, id := l.request(l.url)
+		if code := l.te.run("request", "cancel", id); code != exitOK {
+			l.t.Fatalf("cancel exit %d", code)
+		}
+		return link, l.replyArgs(), exitNotFound
+	}},
+	{"reply upload error", func(l *leakEnv) (string, []string, int) {
+		link, _ := l.request(l.url)
+		l.fault.Store(&fault{http.MethodPut, http.StatusInternalServerError})
+		return link, l.replyArgs(), exitNetwork
+	}},
+	{"reply truncated link", func(l *leakEnv) (string, []string, int) {
+		link, _ := l.request(l.url)
+		return link[:len(link)-6], l.replyArgs(), exitUsage
+	}},
+	{"reply success", func(l *leakEnv) (string, []string, int) {
+		link, _ := l.request(l.url)
+		return link, l.replyArgs(), exitOK
+	}},
+	{"open claim error", func(l *leakEnv) (string, []string, int) {
+		id := l.answered()
+		l.fault.Store(&fault{http.MethodGet, http.StatusInternalServerError})
+		return "", l.openArgs(id), exitNetwork
+	}},
+	{"open ack failure", func(l *leakEnv) (string, []string, int) {
+		id := l.answered()
+		l.fault.Store(&fault{http.MethodDelete, http.StatusInternalServerError})
+		return "", l.openArgs(id), exitNetwork
+	}},
+	{"open success", func(l *leakEnv) (string, []string, int) {
+		return "", l.openArgs(l.answered()), exitOK
+	}},
+	{"open not ready", func(l *leakEnv) (string, []string, int) {
+		_, id := l.request(l.url)
+		return "", l.openArgs(id), exitNotFound
+	}},
+	{"cancel server down", func(l *leakEnv) (string, []string, int) {
+		srv := newTLS(l.t, l.te, newGoneHandler(l.t))
+		_, id := l.request(srv.URL)
+		srv.Close()
+		return "", []string{"request", "cancel", id}, exitNetwork
+	}},
+}
+
+// TestRequestListNeverPrintsKeys checks the request list: the text table
+// shows no part of the reply link, and the JSON (which includes the link on
+// purpose; it can't open anything) never shows the manage token or key.
+//
+// Parameters:
+//   - t: the test.
+func TestRequestListNeverPrintsKeys(t *testing.T) {
+	l := newLeakEnv(t)
+	l.answered()
+	l.te.reset()
+	if code := l.te.run("request", "list"); code != exitOK {
+		t.Fatalf("list exit %d", code)
+	}
+	requireNoLeak(t, "list text", l)
+	for k := range l.secrets {
+		if strings.HasPrefix(k, "reply public key") || strings.HasPrefix(k, "fill token") || strings.HasPrefix(k, "request id") {
+			delete(l.secrets, k)
+		}
+	}
+	l.te.reset()
+	if code := l.te.run("request", "list", "--json"); code != exitOK {
+		t.Fatalf("list --json exit %d", code)
+	}
+	requireNoLeak(t, "list json", l)
+}
+
 // sendArgs returns send arguments that take every secret from files.
 //
 // Returns the arguments.
@@ -247,7 +385,7 @@ func (l *leakEnv) sendArgs() []string {
 // Parameters:
 //   - t: the test.
 func TestNoSecretInOutput(t *testing.T) {
-	for _, tc := range leakCases {
+	for _, tc := range append(append([]leakCase{}, leakCases...), requestLeakCases...) {
 		for _, asJSON := range []bool{false, true} {
 			l := newLeakEnv(t)
 			stdin, args, want := tc.setup(l)

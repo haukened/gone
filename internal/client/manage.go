@@ -38,7 +38,7 @@ type statusResponse struct {
 // or another status, protocol, or network error.
 func (c *Client) Status(ctx context.Context, id domain.SecretID, token domain.ManageToken) (Status, error) {
 	//nolint:bodyclose // readBounded closes the successful response body.
-	resp, err := c.manage(ctx, http.MethodGet, id, "/status", token, http.StatusOK)
+	resp, err := c.manage(ctx, http.MethodGet, secretPath, id, "/status", token, http.StatusOK)
 	if err != nil {
 		return Status{}, err
 	}
@@ -64,7 +64,7 @@ func (c *Client) Status(ctx context.Context, id domain.SecretID, token domain.Ma
 // Returns nil on success, ErrNotFound when the secret is already gone, or
 // another status or network error.
 func (c *Client) Revoke(ctx context.Context, id domain.SecretID, token domain.ManageToken) error {
-	resp, err := c.manage(ctx, http.MethodPost, id, "/revoke", token, http.StatusNoContent)
+	resp, err := c.manage(ctx, http.MethodPost, secretPath, id, "/revoke", token, http.StatusNoContent)
 	if err != nil {
 		return err
 	}
@@ -72,21 +72,28 @@ func (c *Client) Revoke(ctx context.Context, id domain.SecretID, token domain.Ma
 	return nil
 }
 
+// secretPath and requestPath prefix the per-secret and per-request routes.
+const (
+	secretPath  = "/api/secret/"
+	requestPath = "/api/request/"
+)
+
 // manage sends a manage-token request and checks its status.
 //
 // Parameters:
 //   - ctx: request context.
 //   - method: HTTP method.
+//   - prefix: secretPath or requestPath.
 //   - id: secret ID.
 //   - suffix: path suffix after the ID.
 //   - token: manage token.
 //   - want: expected status code.
 //
 // Returns the open response on success, or an error.
-func (c *Client) manage(ctx context.Context, method string, id domain.SecretID, suffix string, token domain.ManageToken, want int) (*http.Response, error) {
+func (c *Client) manage(ctx context.Context, method, prefix string, id domain.SecretID, suffix string, token domain.ManageToken, want int) (*http.Response, error) {
 	hdr := http.Header{}
 	hdr.Set(headerManage, token.String())
-	resp, err := c.do(ctx, method, "/api/secret/"+id.String()+suffix, hdr, nil)
+	resp, err := c.do(ctx, method, prefix+id.String()+suffix, hdr, nil)
 	if err != nil {
 		return nil, err
 	}
