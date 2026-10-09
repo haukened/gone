@@ -13,10 +13,6 @@
 (function i18nModule() {
   if (window.goneI18n) return;
 
-  const COOKIE = 'gone_lang';
-  const TOKEN = /\{([#/]?)([A-Za-z_][A-Za-z0-9_]*)\}/g;
-  const DURATION_UNITS = [['days', 86400], ['hours', 3600], ['minutes', 60], ['seconds', 1]];
-  const BYTE_UNITS = ['kb', 'mb', 'gb', 'tb', 'pb'];
 
   const data = readData();
   const catalogs = {};
@@ -50,6 +46,7 @@
 
   // tokens splits a pattern into text, {var}, {#slot} and {/slot} parts.
   function tokens(pattern) {
+    const TOKEN = /\{([#/]?)([A-Za-z_][A-Za-z0-9_]*)\}/g;
     const out = [];
     let last = 0;
     pattern.replace(TOKEN, function (m, kind, name, at) {
@@ -112,6 +109,7 @@
 
   // bytes renders a size in the largest unit below 1024 of the next.
   function bytes(n) {
+    const BYTE_UNITS = ['kb', 'mb', 'gb', 'tb', 'pb'];
     if (n < 1024) return t('common.size.b', { n: n });
     let f = n;
     let i = -1;
@@ -124,8 +122,9 @@
 
   // duration renders seconds in their largest whole unit.
   function duration(sec, style) {
+    const units = [['days', 86400], ['hours', 3600], ['minutes', 60], ['seconds', 1]];
     const s = style === 'short' ? 'short' : 'long';
-    const unit = DURATION_UNITS.find(function (u) { return sec > 0 && sec % u[1] === 0; });
+    const unit = units.find(function (u) { return sec > 0 && sec % u[1] === 0; });
     if (!unit) return t('common.duration.' + s + '.seconds', { n: 0 });
     return t('common.duration.' + s + '.' + unit[0], { n: sec / unit[1] });
   }
@@ -296,7 +295,7 @@
 
   function writeCookie(tag) {
     const secure = window.location && window.location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = COOKIE + '=' + encodeURIComponent(tag) + '; Path=/; Max-Age=31536000; SameSite=Lax' + secure;
+    document.cookie = 'gone_lang=' + encodeURIComponent(tag) + '; Path=/; Max-Age=31536000; SameSite=Lax' + secure;
   }
 
   // loadCatalog fetches tag's full catalog once.
