@@ -140,24 +140,31 @@ func (h *Handler) handleRequestRoute(w http.ResponseWriter, r *http.Request) {
 	if !h.requestsEnabled(w, r) {
 		return
 	}
-	switch route.action {
-	case "":
-		if h.allowMethod(w, r, http.MethodGet) {
-			h.handleRequestOpen(w, r, route.id)
-		}
-	case "reply":
+	if route.action == "reply" {
 		h.dispatchReply(w, r, route.id)
-	case "status":
-		if h.allowMethod(w, r, http.MethodGet) {
-			h.handleRequestStatus(w, r, route.id)
-		}
-	case "revoke":
-		if h.allowMethod(w, r, http.MethodPost) {
-			h.handleCancelRequest(w, r, route.id)
-		}
-	default:
-		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
+		return
 	}
+	a, ok := requestActions[route.action]
+	if !ok {
+		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
+		return
+	}
+	if h.allowMethod(w, r, a.method) {
+		a.handle(h, w, r, route.id)
+	}
+}
+
+// requestAction is a single-method request route.
+type requestAction struct {
+	method string
+	handle func(h *Handler, w http.ResponseWriter, r *http.Request, id string)
+}
+
+// requestActions maps the single-method actions under /api/request/{id}.
+var requestActions = map[string]requestAction{
+	"":       {http.MethodGet, (*Handler).handleRequestOpen},
+	"status": {http.MethodGet, (*Handler).handleRequestStatus},
+	"revoke": {http.MethodPost, (*Handler).handleCancelRequest},
 }
 
 // dispatchReply routes /api/request/{id}/reply by method.

@@ -122,14 +122,39 @@ func (i *Index) FillRequest(ctx context.Context, id, fillHash string, now time.T
 func (i *Index) RequestStatus(ctx context.Context, id, manageHash string, now time.Time) (app.RequestStatus, error) {
 	row, err := selectRequest(ctx, i.db, id)
 	if err == nil {
-		if !row.live(now) || !hashMatches(row.manageHash, manageHash) {
-			return app.RequestStatus{}, app.ErrNotFound
-		}
-		return app.RequestStatus{CreatedAt: row.createdAt, ExpiresAt: row.expiresAt}, nil
+		return waitingStatus(row, manageHash, now)
 	}
 	if !errors.Is(err, app.ErrNotFound) {
 		return app.RequestStatus{}, err
 	}
+	return i.replyStatus(ctx, id, manageHash, now)
+}
+
+// waitingStatus reports an open request whose manage hash matches.
+//
+// Parameters:
+//   - row: the open request.
+//   - manageHash: hex SHA-256 of the presented manage token.
+//   - now: current time.
+//
+// Returns the waiting status or app.ErrNotFound.
+func waitingStatus(row *requestRow, manageHash string, now time.Time) (app.RequestStatus, error) {
+	if !row.live(now) || !hashMatches(row.manageHash, manageHash) {
+		return app.RequestStatus{}, app.ErrNotFound
+	}
+	return app.RequestStatus{CreatedAt: row.createdAt, ExpiresAt: row.expiresAt}, nil
+}
+
+// replyStatus reports a live reply row whose manage hash matches.
+//
+// Parameters:
+//   - ctx: request context.
+//   - id: request identifier.
+//   - manageHash: hex SHA-256 of the presented manage token.
+//   - now: current time.
+//
+// Returns the ready status, app.ErrNotFound, or a DB error.
+func (i *Index) replyStatus(ctx context.Context, id, manageHash string, now time.Time) (app.RequestStatus, error) {
 	reply, err := selectManageRow(ctx, i.db, id)
 	if err != nil {
 		return app.RequestStatus{}, err

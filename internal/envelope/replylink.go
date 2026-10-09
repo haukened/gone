@@ -62,21 +62,36 @@ func ParseReplyFragment(s string) (ReplyFragment, error) {
 // Returns the two payload parts; domain.ErrInvalidVersion for another
 // canonical version; or ErrInvalidFragment.
 func splitReplyFragment(s string) (string, string, error) {
-	if len(s) > maxFragmentLen || !strings.HasPrefix(s, "v") {
-		return "", "", ErrInvalidFragment
-	}
-	verStr, payload, found := strings.Cut(s[1:], ":")
-	if !found || !isCanonicalDecimal(verStr) {
-		return "", "", ErrInvalidFragment
-	}
-	if verStr != "3" {
-		return "", "", domain.ErrInvalidVersion
+	payload, err := replyPayload(s)
+	if err != nil {
+		return "", "", err
 	}
 	pubStr, fillStr, found := strings.Cut(payload, ".")
 	if !found || pubStr == "" || !isAlphabet(pubStr) || !isAlphabet(fillStr) {
 		return "", "", ErrInvalidFragment
 	}
 	return pubStr, fillStr, nil
+}
+
+// replyPayload checks the "v" version ":" prefix of a reply fragment.
+//
+// Parameters:
+//   - s: fragment text without '#'.
+//
+// Returns the text after the prefix; domain.ErrInvalidVersion for another
+// canonical version; or ErrInvalidFragment.
+func replyPayload(s string) (string, error) {
+	if len(s) > maxFragmentLen || !strings.HasPrefix(s, "v") {
+		return "", ErrInvalidFragment
+	}
+	verStr, payload, found := strings.Cut(s[1:], ":")
+	if !found || !isCanonicalDecimal(verStr) {
+		return "", ErrInvalidFragment
+	}
+	if verStr != "3" {
+		return "", domain.ErrInvalidVersion
+	}
+	return payload, nil
 }
 
 // ReplyLink is a parsed reply link: the link a requester gives to the person
