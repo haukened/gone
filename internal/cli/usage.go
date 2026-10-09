@@ -105,7 +105,7 @@ const usageRequest = `Usage: gone request [flags]
        gone request cancel <id> [flags]
 
 Asks someone for a secret. A key pair is made here and the request is saved
-on this device (requests.db in the gone config directory, readable only
+on this device (requests.gob in the gone config directory, readable only
 by you); the server never sees the private key. Send the printed link to the
 person who has the secret; they answer with "gone reply" or in a browser.
 Only this device can open the reply, once.

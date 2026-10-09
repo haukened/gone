@@ -372,7 +372,7 @@ fill       = 43( ALPHA / DIGIT / "-" / "_" )
 
 ### 7.5 No requester link
 
-The requester has no link of their own. The `manage_token` and private key stay on the device that created the request and are never put in a URL: the web client keeps them in IndexedDB (the key as a non-extractable `CryptoKey`), and the `gone` CLI in an owner-only SQLite file in its config directory. Losing that storage loses the request; the requester makes a new one.
+The requester has no link of their own. The `manage_token` and private key stay on the device that created the request and are never put in a URL: the web client keeps them in IndexedDB (the key as a non-extractable `CryptoKey`), and the `gone` CLI in an owner-only file in its config directory. Losing that storage loses the request; the requester makes a new one.
 
 ## 8. HTTP exchange
 

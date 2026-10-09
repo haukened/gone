@@ -216,7 +216,9 @@ Only answer a request link you trust: anyone can make one, so check it came from
 
 ### Requests on this device
 
-Requests are saved in `requests.db` in the `gone` config directory (`~/.config/gone` on Linux, `~/Library/Application Support/gone` on macOS, `%AppData%\gone` on Windows). It is a SQLite database, readable only by you (`0600`, in a `0700` directory). Each row holds the request ID, its server, your label, the manage token, the private key, the request link and the last known state. That is as private as a browser's site storage, which is where the web UI keeps its requests: anyone who can read the file as you can open a reply that arrives. Rows are deleted, and overwritten on disk, when a reply is opened, a request is cancelled, or it expires. A request made here can only be opened here, and one made in a browser can only be opened in that browser.
+Requests are saved in `requests.gob` in the `gone` config directory (`~/.config/gone` on Linux, `~/Library/Application Support/gone` on macOS, `%AppData%\gone` on Windows), readable only by you (`0600`, in a `0700` directory). Each entry holds the request ID, its server, your label, the manage token, the private key, the request link and the last known state. That is as private as a browser's site storage, which is where the web UI keeps its requests: anyone who can read the file as you can open a reply that arrives.
+
+The file is internal to `gone`: it is a binary (Go gob) file, not meant to be opened, edited or copied. Use `gone request list` to see what's in it. Every change takes a lock (`requests.lock`), writes a new file and renames it into place, so several `gone` commands running at once never lose a request and the file is never half-written. An entry is removed when its reply is opened, the request is cancelled, or it expires. A request made here can only be opened here, and one made in a browser can only be opened in that browser.
 
 ### `gone set server`
 
