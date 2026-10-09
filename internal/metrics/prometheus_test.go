@@ -121,6 +121,9 @@ func TestPrometheusOutputGrammar(t *testing.T) {
 	if ct := rw.Header().Get("Content-Type"); ct != ContentType {
 		t.Fatalf("Content-Type = %q", ct)
 	}
+	if got := rw.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Fatalf("X-Content-Type-Options = %q", got)
+	}
 	body := rw.Body.String()
 	if !strings.HasSuffix(body, "\n") {
 		t.Fatal("body must end with a newline")

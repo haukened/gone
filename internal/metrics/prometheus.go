@@ -88,7 +88,8 @@ func PrometheusHandler(provider SnapshotProvider, sources ...Source) http.Handle
 			return
 		}
 		w.Header().Set("Content-Type", ContentType)
-		_, _ = w.Write(b.Bytes())
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		_, _ = b.WriteTo(w)
 	}
 }
 
