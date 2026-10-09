@@ -30,7 +30,7 @@ This directory contains the OpenAPI specification (`openapi.yaml`) for the Gone 
 
 Other methods on `/api/secret/{id}` return `405` with `Allow: GET, DELETE`. The same applies to `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`), and to `/api/request/{id}/reply` (`Allow: GET, PUT, DELETE`). Unknown `/api/` paths return a JSON `404`.
 
-Metrics are **not** served on the public listener. When both `GONE_METRICS_ADDR` and `GONE_METRICS_TOKEN` are set, a separate listener serves a JSON snapshot that requires `Authorization: Bearer <token>`. If either is missing, metrics are disabled.
+Metrics are **not** served on the public listener. When both `GONE_METRICS_ADDR` and `GONE_METRICS_TOKEN` are set, a separate listener requires `Authorization: Bearer <token>` on every request and serves `GET /metrics` in the Prometheus text exposition format (version 0.0.4) and `GET /` as a JSON snapshot; other paths return `404`. If either variable is missing, metrics are disabled.
 
 ## Creation Workflow
 1. The client builds the plaintext (see [Payload Format](#payload-format)) and encrypts it locally with AES-256-GCM, producing ciphertext, a version, and a nonce.
@@ -117,7 +117,7 @@ Each client address has two token buckets: one for creating secrets (`POST /api/
 - The client address is the TCP peer. `X-Forwarded-For` is honored only when the peer is in `GONE_TRUSTED_PROXIES`; it is then walked right to left, skipping trusted hops, and the first untrusted address is used.
 - Counters are per process. With several replicas, the effective budget is multiplied by the replica count.
 - Each IPv6 `/48` (or IPv4 `/24`) may hold at most 256 tracked clients, and the table holds at most 100,000. Beyond either cap, clients share overflow buckets grouped by that parent network, so one large allocation cannot crowd out other users.
-- Rejections are counted in the `rate_limited_create_total` and `rate_limited_read_total` metrics.
+- Rejections are counted in the `gone_rate_limited_create_total` and `gone_rate_limited_read_total` metrics (`rate_limited_create_total` and `rate_limited_read_total` in the JSON snapshot).
 - Request activity is counted in `requests_created_total`, `requests_filled_total`, `requests_opened_total`, `requests_cancelled_total` and `requests_expired_total`.
 - Client addresses are never logged; only the correlation ID and scope are.
 
@@ -132,7 +132,6 @@ Responses default to `Cache-Control: no-store` and `Pragma: no-cache`; static as
 
 ## Future Extensions (Non-Breaking)
 - Optional JSON POST mode with metadata wrapper.
-- Prometheus exposition format for metrics.
 
 ## Non-Goals
 - Secret re-use or updates.

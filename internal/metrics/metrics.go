@@ -19,6 +19,7 @@ const (
 	CounterSecretsConsumed      = "secrets_consumed_total"
 	CounterSecretsRevoked       = "secrets_revoked_total"
 	CounterSecretsExpiredDelete = "secrets_expired_deleted_total"
+	CounterClaimsExpired        = "secrets_claims_expired_total"
 	CounterRateLimitedCreate    = "rate_limited_create_total"
 	CounterRateLimitedRead      = "rate_limited_read_total"
 	CounterRequestsCreated      = "requests_created_total"
