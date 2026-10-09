@@ -379,3 +379,22 @@ func TestCleanLabel(t *testing.T) {
 		t.Fatal("tableTime passthrough")
 	}
 }
+
+func TestRequestLooseFileRefused(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permissions")
+	}
+	te := newTestEnv(t)
+	srv := newGoneServer(t, te)
+	requestJSON(t, te, srv.URL)
+	path := filepath.Join(te.configDir, configDirName, reqdb.FileName)
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"request", "list"}, {"request", "-s", srv.URL}} {
+		te.reset()
+		if code := te.run(args...); code != exitIO || !strings.Contains(te.stderr.String(), "chmod 600 "+path) {
+			t.Fatalf("%v: exit %d: %s", args, code, te.stderr)
+		}
+	}
+}

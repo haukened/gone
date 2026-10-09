@@ -56,24 +56,6 @@ func TestFileIsOwnerOnly(t *testing.T) {
 	}
 }
 
-func TestWriteReplacesALooseFile(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("POSIX modes")
-	}
-	d, dir := openTest(t)
-	path := filepath.Join(dir, FileName)
-	raw, _ := encode(nil)
-	if err := os.WriteFile(path, raw, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := d.Put(context.Background(), row(hexID(1), time.Now())); err != nil {
-		t.Fatal(err)
-	}
-	if fi, _ := os.Stat(path); fi.Mode().Perm() != filePerm {
-		t.Fatalf("mode = %v", fi.Mode().Perm())
-	}
-}
-
 func TestPutListResolveDelete(t *testing.T) {
 	d, dir := openTest(t)
 	ctx := context.Background()

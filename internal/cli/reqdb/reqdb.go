@@ -7,7 +7,8 @@
 // only through this package, and not meant to be opened or edited by hand
 // ("gone request list" is the way to see it). It is owner-only (0600) in an
 // owner-only directory and is rewritten atomically. A lock file serializes
-// changes, so two gone processes never lose each other's requests.
+// changes, so two gone processes never lose each other's requests. Like ssh
+// with a private key, a file or directory with loose permissions is refused.
 package reqdb
 
 import (
@@ -105,7 +106,8 @@ type file struct {
 type DB struct{ dir string }
 
 // Open prepares dir (owner-only) for the request file. The file itself is
-// created on the first change.
+// created on the first change. On Unix a directory that others can write to,
+// or that belongs to another user, is refused (*UnsafeError).
 //
 // Parameters:
 //   - dir: the CLI config directory (…/gone).
@@ -115,12 +117,8 @@ func Open(dir string) (*DB, error) {
 	if err := os.MkdirAll(dir, dirPerm); err != nil { // nosemgrep: incorrect-default-permission
 		return nil, err
 	}
-	fi, err := os.Stat(dir)
-	if err != nil {
+	if err := checkDir(dir); err != nil {
 		return nil, err
-	}
-	if !fi.IsDir() {
-		return nil, fmt.Errorf("%s is not a directory", dir)
 	}
 	return &DB{dir: dir}, nil
 }
@@ -304,10 +302,15 @@ func (d *DB) update(ctx context.Context, change func([]Row) []Row) error {
 // Returns the path.
 func (d *DB) path() string { return filepath.Join(d.dir, FileName) }
 
-// read decodes the request file. A missing file is empty.
+// read decodes the request file. A missing file is empty. On Unix a file
+// that others can read or write, that belongs to another user, or that is a
+// symlink is refused before it is opened (*UnsafeError).
 //
 // Returns the rows, the raw bytes, or an error.
 func (d *DB) read() ([]Row, []byte, error) {
+	if err := checkFile(d.path()); err != nil {
+		return nil, nil, err
+	}
 	// A fixed file name inside the user's own config directory.
 	f, err := os.Open(d.path()) // #nosec G304 // nosemgrep
 	if errors.Is(err, fs.ErrNotExist) {
