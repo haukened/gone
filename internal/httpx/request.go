@@ -386,7 +386,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 //   - r: incoming request.
 func (h *Handler) handleRequestPage(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/request" {
-		h.renderRequestPage(w)
+		h.renderRequestPage(w, r)
 		return
 	}
 	h.serveIDPage(w, r, "/request/", h.RequestDetailTmpl, "request template unavailable")
@@ -396,12 +396,13 @@ func (h *Handler) handleRequestPage(w http.ResponseWriter, r *http.Request) {
 //
 // Parameters:
 //   - w: response writer.
-func (h *Handler) renderRequestPage(w http.ResponseWriter) {
+//   - r: incoming request.
+func (h *Handler) renderRequestPage(w http.ResponseWriter, r *http.Request) {
 	if h.RequestTmpl == nil {
 		http.Error(w, "request template unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	renderTemplate(w, h.RequestTmpl, h.indexView())
+	renderTemplate(w, r, h.RequestTmpl, h.indexView())
 }
 
 // handleReplyPage serves the reply page at /reply/{id}. The page reads the
@@ -420,5 +421,5 @@ func (h *Handler) handleReplyPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "reply template unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	renderTemplate(w, h.ReplyTmpl, h.indexView())
+	renderTemplate(w, r, h.ReplyTmpl, h.indexView())
 }

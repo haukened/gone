@@ -41,5 +41,5 @@ func (h *Handler) serveIDPage(w http.ResponseWriter, r *http.Request, prefix str
 		http.Error(w, unavailable, http.StatusServiceUnavailable)
 		return
 	}
-	renderTemplate(w, tmpl, struct{}{})
+	renderTemplate(w, r, tmpl, struct{}{})
 }

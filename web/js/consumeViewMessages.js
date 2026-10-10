@@ -7,7 +7,7 @@
   const dom = ctx.dom;
   const mask = window.goneConsumeViewMask;
   const VIEWS = ['open', 'revealed', 'gone'];
-  const TITLES = { revealed: 'Gone \u00b7 Here\u2019s your secret', gone: 'Gone \u00b7 This secret is gone' };
+  const TITLES = { revealed: 'js.consume.titleRevealed', gone: 'js.consume.titleGone' };
 
   function onOpen(handler) {
     if (dom.open) dom.open.addEventListener('click', handler);
@@ -18,7 +18,7 @@
       const node = ctx.byId(`view-${v}`);
       if (node) node.hidden = v !== name;
     });
-    if (TITLES[name]) document.title = TITLES[name];
+    if (TITLES[name]) ctx.i18n.setTitle(TITLES[name]);
     const heading = ctx.byId(`${name}-heading`);
     if (heading) heading.focus();
   }
@@ -39,7 +39,7 @@
     if (!btn) return;
     btn.addEventListener('click', async function () {
       const ok = await ctx.util.copyText(text, selectOutput, dom.copyStatus);
-      if (ok) ctx.util.flashCopied(btn, dom.copyStatus, 'Message copied to clipboard.');
+      if (ok) ctx.util.flashCopied(btn, dom.copyStatus, 'js.consume.messageCopied');
     });
   }
 

@@ -33,5 +33,5 @@ func (h *Handler) handleAbout(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("about unavailable"))
 		return
 	}
-	renderTemplate(w, h.AboutTmpl, struct{}{})
+	renderTemplate(w, r, h.AboutTmpl, struct{}{})
 }

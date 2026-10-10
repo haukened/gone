@@ -17,9 +17,9 @@
   const consumeApi = window.goneConsumeApi;
   const consumeView = window.goneConsumeView;
 
-  const UNEXPECTED = 'Something went wrong. Try again.';
-  const NO_CRYPTO = 'This browser only decrypts on secure (HTTPS) pages, so the reply can\u2019t be opened here.';
-  const VERIFY_ERROR = 'Couldn\u2019t decrypt this reply. It may have been damaged on the way. Ask them to send it again with a new request.';
+  const UNEXPECTED = 'js.common.unexpected';
+  const NO_CRYPTO = 'js.detail.noCrypto';
+  const VERIFY_ERROR = 'js.detail.verify';
   const NONCE_BYTES = 12;
 
   function message(e) {
@@ -43,7 +43,7 @@
   function source(entry) {
     return {
       decrypt: async function (fetched) {
-        consumeView.setStatus('Decrypting\u2026');
+        consumeView.setStatus('js.consume.decrypting');
         try {
           return await window.goneCryptoV3.decryptV3(fetched.body, readNonce(fetched.resp), entry.privateKey, entry.publicKey);
         } catch {
@@ -142,7 +142,7 @@
     const input = view.byId('waiting-link');
     const status = view.byId('waiting-copy-status');
     const ok = await util.copyText(input.value, function () { input.focus(); input.select(); }, status);
-    if (ok) util.flashCopied(view.byId('copy-waiting-link'), status, 'Request link copied to clipboard.');
+    if (ok) util.flashCopied(view.byId('copy-waiting-link'), status, 'js.request.linkCopied');
   }
 
   async function load(id) {

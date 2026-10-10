@@ -14,10 +14,10 @@
   const opener = window.goneConsumeOpener;
   if (!util || !util.allPresent([window.goneCrypto, api, view, opener]) || !view.present) return;
 
-  const BAD_FRAGMENT = 'This link is missing its key, so the secret can\u2019t be decrypted. Check that you copied the whole link, including everything after the #.';
-  const NO_CRYPTO = 'This browser only decrypts on secure (HTTPS) pages, so this secret can\u2019t be opened here. Nothing was downloaded, and the link still works. Ask the sender for an HTTPS link.';
-  const BAD_ID = 'This link isn\u2019t valid. Check that you copied all of it.';
-  const FRAGMENT_PROBLEMS = new Map([['unsupported_version', 'This link was made by a newer version of Gone and can\u2019t be opened here.']]);
+  const BAD_FRAGMENT = 'js.consume.badFragment';
+  const NO_CRYPTO = 'js.consume.noCrypto';
+  const BAD_ID = 'js.consume.invalidLink';
+  const FRAGMENT_PROBLEMS = new Map([['unsupported_version', 'js.consume.newerVersion']]);
   const PREVIEW_TEXT = 'This is a preview of a decrypted secret. Customize via ?text=...';
 
   // source tells the shared opener how to decrypt this link: v1 with the
@@ -26,10 +26,10 @@
     return {
       decrypt: function (fetched) {
         if (frag.version === window.goneCrypto.versionV2) {
-          view.setStatus('Unlocking\u2026');
+          view.setStatus('js.consume.unlocking');
           return api.decryptV2(fetched.resp, fetched.body, frag, view.passphrase());
         }
-        view.setStatus('Decrypting\u2026');
+        view.setStatus('js.consume.decrypting');
         return api.decrypt(fetched.resp, fetched.body, frag);
       },
       wipe: function () { frag.key.fill(0); }
@@ -37,7 +37,7 @@
   }
 
   // readFragment validates location.hash (one leading "#" removed) before
-  // any network request. Returns {frag, problem}; problem is a user message.
+  // any network request. Returns {frag, problem}; problem is a message key.
   function readFragment(hash) {
     try {
       return { frag: window.goneCrypto.parseFragment(String(hash).replace(/^#/, '')), problem: '' };

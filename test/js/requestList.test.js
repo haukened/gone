@@ -28,7 +28,7 @@ test('render shows one linked row per entry', () => {
   const link = first.children[0];
   assert.equal(link.href, '/request/' + 'a'.repeat(32));
   assert.equal(link.children[0].textContent, 'DB password');
-  assert.equal(link.children[1].textContent, 'Asked 5 min ago');
+  assert.equal(link.children[1].textContent, 'Asked 5 minutes ago');
   assert.equal(link.children[2].dataset.state, 'waiting');
   assert.equal(second.children[0].children[0].textContent, 'Untitled request');
   assert.equal(second.children[0].children[2].textContent, 'Reply ready');
@@ -41,10 +41,12 @@ test('render shows one linked row per entry', () => {
 
 test('since uses the largest whole unit', () => {
   const l = boot();
-  assert.equal(l.since(1000, 30000), 'just now');
-  assert.equal(l.since(0, 2 * 3600000), '2 h ago');
-  assert.equal(l.since(0, 3 * 86400000), '3 d ago');
-  assert.equal(l.since(5000, 0), 'just now');
+  const since = (a, b) => { const r = l.since(a, b); return window.goneI18n.t(r.key, r.args); };
+  assert.equal(since(1000, 30000), 'Asked just now');
+  assert.equal(since(0, 2 * 3600000), 'Asked 2 hours ago');
+  assert.equal(since(0, 3 * 86400000), 'Asked 3 days ago');
+  assert.equal(since(0, 86400000), 'Asked yesterday');
+  assert.equal(since(5000, 0), 'Asked just now');
 });
 
 test('announce and missing elements', () => {

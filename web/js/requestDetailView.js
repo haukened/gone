@@ -4,22 +4,21 @@
 // (loading and load errors), #view-missing (not saved in this browser),
 // #view-waiting (facts, Check again, Cancel with an inline confirm),
 // #view-cancelled, and the receive page's #view-open, #view-revealed and
-// #view-gone, which consumeView drives once the reply is opened. Requires
-// window.goneUtil. Exposed as window.goneRequestDetailView.
+// #view-gone, which consumeView drives once the reply is opened. Text is set
+// as goneI18n message keys; the requester's own label is shown as typed.
+// Exposed as window.goneRequestDetailView.
 (function requestDetailViewModule() {
-  if (window.goneRequestDetailView || !window.goneUtil) return;
-  const util = window.goneUtil;
+  if (window.goneRequestDetailView || !window.goneI18n) return;
+  const i18n = window.goneI18n;
 
   const VIEWS = ['check', 'missing', 'waiting', 'cancelled', 'open', 'revealed', 'gone'];
   const TITLES = {
-    missing: 'Gone \u00b7 Request not in this browser',
-    waiting: 'Gone \u00b7 Waiting for a reply',
-    cancelled: 'Gone \u00b7 Request cancelled',
-    open: 'Gone \u00b7 Your reply is here',
-    gone: 'Gone \u00b7 This request is gone'
+    missing: 'js.detail.titleMissing',
+    waiting: 'js.detail.titleWaiting',
+    cancelled: 'js.detail.titleCancelled',
+    open: 'js.detail.titleOpen',
+    gone: 'js.detail.titleGone'
   };
-  const DATE_FMT = { dateStyle: 'medium', timeStyle: 'short' };
-  const TIME_FMT = { timeStyle: 'short' };
 
   function byId(id) {
     return document.getElementById(id);
@@ -33,31 +32,33 @@
   // heading so screen readers announce the change.
   function switchTo(name) {
     VIEWS.forEach(function (v) { show(byId(`view-${v}`), v === name); });
-    if (TITLES[name]) document.title = TITLES[name];
+    if (TITLES[name]) i18n.setTitle(TITLES[name]);
     const heading = byId(`${name}-heading`);
     if (heading) heading.focus();
   }
 
-  // setTime writes a human time and the machine-readable datetime.
-  function setTime(id, when, fmt) {
+  // setTime writes a time in the page's language (style "datetime" unless
+  // given) and the machine-readable datetime.
+  function setTime(id, when, style) {
     const node = byId(id);
     if (!node) return;
-    node.textContent = when.toLocaleString(undefined, fmt || DATE_FMT);
+    i18n.value(node, { date: when.toISOString(), style: style || 'datetime' });
     node.setAttribute('datetime', when.toISOString());
   }
 
-  function showCheckError(message, retryable) {
-    util.setText(byId('check-status'), '');
-    util.setText(byId('check-error-text'), message);
+  // showCheckError shows a load error message key.
+  function showCheckError(key, retryable) {
+    i18n.clear(byId('check-status'));
+    i18n.set(byId('check-error-text'), key);
     show(byId('check-error'), true);
     show(byId('check-retry'), retryable);
   }
 
   // showEntry fills what this browser knows about the request.
   function showEntry(entry) {
-    const label = entry.label || 'Your request';
-    util.setText(byId('waiting-label'), label);
-    util.setText(byId('open-label'), label);
+    ['waiting-label', 'open-label'].forEach(function (id) {
+      if (entry.label) i18n.plain(byId(id), entry.label);
+    });
     const link = byId('waiting-link');
     if (link) link.value = entry.replyLink;
   }
@@ -67,8 +68,8 @@
   function showWaiting(status, checkedAt, repeat) {
     setTime('request-created', status.createdAt);
     setTime('request-expires', status.expiresAt);
-    setTime('request-checked', checkedAt, TIME_FMT);
-    if (repeat) util.setText(byId('waiting-status'), `Still waiting as of ${checkedAt.toLocaleTimeString(undefined, TIME_FMT)}.`);
+    setTime('request-checked', checkedAt, 'time');
+    if (repeat) i18n.set(byId('waiting-status'), 'js.detail.stillWaiting', { time: { date: checkedAt.toISOString(), style: 'time' } });
     else switchTo('waiting');
   }
 
@@ -77,16 +78,18 @@
     switchTo('open');
   }
 
-  function setBusyButton(id, busy, busyText, idleText) {
+  function setBusyButton(id, busy, busyKey, idleKey) {
     const btn = byId(id);
     if (!btn) return;
     btn.setAttribute('aria-disabled', String(busy));
-    util.setText(btn.querySelector('span') || btn, busy ? busyText : idleText);
+    i18n.set(btn.querySelector('span') || btn, busy ? busyKey : idleKey);
   }
 
-  function showWaitingError(message) {
-    util.setText(byId('waiting-error-text'), message);
-    show(byId('waiting-error'), Boolean(message));
+  // showWaitingError shows an error message key, or hides it when key is ''.
+  function showWaitingError(key) {
+    if (key) i18n.set(byId('waiting-error-text'), key);
+    else i18n.clear(byId('waiting-error-text'));
+    show(byId('waiting-error'), Boolean(key));
   }
 
   function openConfirm() {
@@ -128,8 +131,8 @@
     showWaiting: showWaiting,
     showReady: showReady,
     showWaitingError: showWaitingError,
-    setChecking: function (busy) { setBusyButton('check-again', busy, 'Checking\u2026', 'Check again'); },
-    setCancelling: function (busy) { setBusyButton('cancel-yes', busy, 'Cancelling\u2026', 'Cancel it'); },
+    setChecking: function (busy) { setBusyButton('check-again', busy, 'js.common.checking', 'js.manage.checkAgain'); },
+    setCancelling: function (busy) { setBusyButton('cancel-yes', busy, 'js.detail.cancelling', 'js.detail.cancelIt'); },
     openConfirm: openConfirm,
     closeConfirm: closeConfirm,
     bind: bind

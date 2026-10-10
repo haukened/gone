@@ -13,7 +13,7 @@
 
   function setShown(shown) {
     dom.pass.type = shown ? 'text' : 'password';
-    ctx.util.setText(dom.passToggle ? dom.passToggle.querySelector('span') : null, shown ? 'Hide' : 'Show');
+    ctx.i18n.set(dom.passToggle ? dom.passToggle.querySelector('span') : null, shown ? 'js.common.hide' : 'js.common.show');
   }
 
   function onPassKey(ev) {
@@ -50,14 +50,14 @@
     s.waiting.removeAttribute('aria-current');
     s.opened.classList.add('is-now');
     s.opened.setAttribute('aria-current', 'step');
-    ctx.util.setText(s.waitingNote, 'Done');
-    ctx.util.setText(s.openedNote, 'Downloaded; needs the passphrase');
-    ctx.util.setText(s.goneNote, 'When you leave this page');
+    ctx.i18n.set(s.waitingNote, 'js.consume.stepDone');
+    ctx.i18n.set(s.openedNote, 'js.consume.stepDownloaded');
+    ctx.i18n.set(s.goneNote, 'js.consume.stepGoneOnLeave');
   }
 
   function failed() {
-    ctx.state.openLabel = 'Try again';
-    ctx.util.setText(dom.openLabel, ctx.state.openLabel);
+    ctx.state.openLabel = { key: 'js.common.tryAgain' };
+    ctx.i18n.set(dom.openLabel, 'js.common.tryAgain');
     // The error now says the server copy is gone and this page holds the
     // only one, so the before-opening hint would only contradict it.
     if (dom.passWarn) dom.passWarn.hidden = true;

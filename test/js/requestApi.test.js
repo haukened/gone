@@ -48,7 +48,7 @@ test('create rejects bad responses', async () => {
   assert.equal(results[4].retryable, false);
   assert.equal(results[5].retryAfter, 7);
   assert.equal(results[6].retryAfter, 0);
-  assert.match(results[8].message, /reach the server/);
+  assert.match(window.goneI18n.t(results[8].message), /reach the server/);
 });
 
 test('status maps waiting, ready and gone', async () => {

@@ -14,21 +14,22 @@
     if (total > 0) {
       bar.max = total;
       bar.value = Math.min(received, total);
-      ctx.setStatus(`Retrieving\u2026 ${Math.floor((received / total) * 100)}%`);
+      ctx.setStatus('js.consume.retrievingPct', { pct: Math.floor((received / total) * 100) });
       return;
     }
     bar.removeAttribute('value');
-    ctx.setStatus(`Retrieving\u2026 ${ctx.formatBytes(received)}`);
+    ctx.setStatus('js.consume.retrievingSize', { size: { bytes: received } });
   }
 
   function hideProgress() {
     if (dom.progress) dom.progress.hidden = true;
   }
 
-  function showError(msg) {
+  // showError shows an error message key.
+  function showError(key) {
     hideProgress();
     ctx.setStatus('');
-    ctx.util.setText(dom.errorText, msg);
+    ctx.i18n.set(dom.errorText, key);
     if (dom.errorBox) dom.errorBox.hidden = false;
   }
 
@@ -38,7 +39,8 @@
     ctx.syncOpen();
     if (dom.open && busy) dom.open.setAttribute('aria-busy', 'true');
     else if (dom.open) dom.open.removeAttribute('aria-busy');
-    ctx.util.setText(dom.openLabel, busy ? 'Opening\u2026' : state.openLabel);
+    if (busy) ctx.i18n.set(dom.openLabel, 'js.consume.opening');
+    else ctx.i18n.restore(dom.openLabel, state.openLabel);
   }
 
   function disableOpen() {

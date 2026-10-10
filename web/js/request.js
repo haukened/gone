@@ -8,30 +8,32 @@
 // is visible; status is read-only on the server.
 (function requestFlow() {
   const util = window.goneUtil;
+  const i18n = window.goneI18n;
   const deps = [window.goneCryptoV3, window.goneRequestStore, window.goneRequestApi, window.goneRequestPoll, window.goneRequestList];
   const form = document.getElementById('create-request');
-  if (!util || !form || !util.allPresent(deps)) return;
+  if (!util || !i18n || !form || !util.allPresent(deps)) return;
   const v3 = window.goneCryptoV3;
   const store = window.goneRequestStore;
   const api = window.goneRequestApi;
   const list = window.goneRequestList;
 
   const MAX_POLLED = 5;
-  const NO_CRYPTO = 'Turned off: this page isn\u2019t HTTPS, so this browser can\u2019t make keys.';
-  const SAVE_FAILED = 'This browser couldn\u2019t save the request\u2019s key, so it was cancelled. Try a normal (not private) window.';
-  const UNEXPECTED = 'Something went wrong making the request. Try again.';
-  const READY_TITLE = '\u25cf Reply ready \u00b7 ';
+  const NO_CRYPTO = 'js.request.noCrypto';
+  const SAVE_FAILED = 'js.request.saveFailed';
+  const UNEXPECTED = 'js.request.unexpected';
 
   const byId = function (id) { return document.getElementById(id); };
   const btn = byId('create-request-btn');
   const btnLabel = btn ? btn.querySelector('span') : null;
-  const idleLabel = btnLabel ? btnLabel.textContent : '';
-  const flags = { busy: false, blocked: false };
-  const page = { entries: [], title: document.title, listPoll: null, created: false };
+  const idleLabel = i18n.snapshot(btnLabel);
+  const flags = { busy: false, blocked: false, ready: false };
+  const page = { entries: [], titleKey: 'request.pageTitle', listPoll: null, created: false };
 
-  function showError(msg) {
-    util.setText(byId('request-error-text'), msg);
-    byId('request-error').hidden = !msg;
+  // showError shows an error message key, or hides the error when key is ''.
+  function showError(key) {
+    if (key) i18n.set(byId('request-error-text'), key);
+    else i18n.clear(byId('request-error-text'));
+    byId('request-error').hidden = !key;
   }
 
   function setBusy(busy) {
@@ -39,13 +41,14 @@
     btn.setAttribute('aria-disabled', String(busy || flags.blocked));
     if (busy) btn.setAttribute('aria-busy', 'true');
     else btn.removeAttribute('aria-busy');
-    util.setText(btnLabel, busy ? 'Making keys\u2026' : idleLabel);
+    if (busy) i18n.set(btnLabel, 'js.request.makingKeys');
+    else i18n.restore(btnLabel, idleLabel);
   }
 
   function block(hint) {
     flags.blocked = true;
     btn.setAttribute('aria-disabled', 'true');
-    if (hint) util.setText(byId('request-hint'), hint);
+    if (hint) i18n.set(byId('request-hint'), hint);
   }
 
   function selectedTTL() {
@@ -59,11 +62,15 @@
 
   // flagReady marks the tab title when a reply arrives while it is hidden.
   function flagReady() {
-    if (document.visibilityState === 'hidden' && !document.title.startsWith(READY_TITLE)) document.title = READY_TITLE + page.title;
+    if (document.visibilityState !== 'hidden' || flags.ready) return;
+    flags.ready = true;
+    i18n.setTitle('js.request.titleReady', { title: i18n.t(page.titleKey) });
   }
 
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') document.title = page.title;
+    if (document.visibilityState !== 'visible' || !flags.ready) return;
+    flags.ready = false;
+    i18n.setTitle(page.titleKey);
   });
 
   // refresh asks the server about one entry and saves what changed.
@@ -90,7 +97,7 @@
     page.entries = await store.list();
     list.render(page.entries);
     if (arrived) {
-      list.announce(arrived === 1 ? 'A reply arrived.' : `${arrived} replies arrived.`);
+      list.announce('js.request.arrived', { count: arrived });
       flagReady();
     }
     return page.entries.some(isWaiting) ? 'continue' : 'stop';
@@ -122,11 +129,12 @@
     byId('created-open').href = `/request/${entry.id}`;
     const expiry = byId('created-expiry');
     const when = new Date(entry.expiresAt);
-    expiry.textContent = when.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    i18n.value(expiry, { date: when.toISOString(), style: 'datetime' });
     expiry.setAttribute('datetime', when.toISOString());
     byId('view-compose').hidden = true;
     byId('view-created').hidden = false;
-    document.title = page.title = 'Gone \u00b7 Request link ready';
+    page.titleKey = 'js.request.titleCreated';
+    i18n.setTitle(page.titleKey);
     byId('created-heading').focus();
     window.goneRequestPoll.create(function () { return checkCreated(entry); }).start();
   }
@@ -137,8 +145,8 @@
     const ready = state === 'ready';
     const pillEl = byId('created-state');
     pillEl.dataset.state = ready ? 'ready' : 'gone';
-    util.setText(pillEl, ready ? 'Reply ready' : 'Gone');
-    util.setText(byId('created-status'), ready ? 'A reply arrived. Open it from this request.' : 'This request is gone.');
+    i18n.set(pillEl, ready ? 'js.request.stateReady' : 'common.life.gone');
+    i18n.set(byId('created-status'), ready ? 'js.request.arrivedOpen' : 'js.request.gone');
     if (ready) markReplied();
     return 'stop';
   }
@@ -154,7 +162,7 @@
     repliedStep.classList.add('is-now');
     repliedStep.setAttribute('aria-current', 'step');
     byId('created-open').className = 'btn btn-primary';
-    util.setText(byId('created-open'), 'Open the reply');
+    i18n.set(byId('created-open'), 'js.request.openReply');
     flagReady();
   }
 
@@ -205,7 +213,7 @@
     copy.addEventListener('click', async function () {
       const status = byId('copy-status');
       const ok = await util.copyText(input.value, function () { input.focus(); input.select(); }, status);
-      if (ok) util.flashCopied(copy, status, 'Request link copied to clipboard.');
+      if (ok) util.flashCopied(copy, status, 'js.request.linkCopied');
     });
   }
 

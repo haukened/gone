@@ -12,13 +12,13 @@
   const API_PATH = '/api/secret/';
   const SECRET_ID_RE = /^[0-9a-f]{32}$/;
   const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
-  const INVALID_LINK = 'This manage link isn\u2019t valid. Check that you copied all of it, including everything after the #.';
-  const NETWORK_ERROR = 'Couldn\u2019t reach the server. Check your connection, then try again.';
-  const SERVER_ERROR = 'The server had a problem. Try again in a moment.';
+  const INVALID_LINK = 'js.manage.invalidLink';
+  const NETWORK_ERROR = 'js.common.networkRetry';
+  const SERVER_ERROR = 'js.common.server';
   const STATUS_MESSAGES = new Map([
     [400, INVALID_LINK],
-    [429, 'Too many requests right now. Wait a moment, then try again.'],
-    [503, 'The server is busy right now. Wait a moment, then try again.']
+    [429, 'js.common.tooMany'],
+    [503, 'js.common.busy']
   ]);
 
   // endpoints holds the URLs pinned by registerEndpoint; allowed is the
@@ -26,7 +26,8 @@
   const endpoints = { status: '', revoke: '' };
   const allowed = new Set();
 
-  // ManageError carries a user-facing message and whether retrying may help.
+  // ManageError carries a user-facing message key and whether retrying may
+  // help.
   function ManageError(message, retryable) {
     const e = new Error(message);
     e.retryable = retryable;
@@ -66,7 +67,7 @@
   // URL, and refuses to send unless the token and endpoint are valid.
   async function apiFetch(name, method, token) {
     const url = endpoints[name];
-    if (!allowed.has(url)) throw ManageError('Blocked request to an unexpected URL', false);
+    if (!allowed.has(url)) throw ManageError('js.consume.blocked', false);
     if (!isToken(token)) throw ManageError(INVALID_LINK, false);
     try {
       // Browser fetch to an allowlisted same-origin URL; not a server-side SSRF sink.

@@ -5,6 +5,9 @@ const assert = require('node:assert/strict');
 const { fakeResponse, installFetch } = require('./fakes');
 const { ID, URL_FOR_ID, setup, bytes, ok, reset, load } = require('./consumeApiHarness');
 
+// tr renders a message key (as carried by errors) in English.
+const tr = (k) => window.goneI18n.t(k);
+
 test('requires crypto and util; loads once', (t) => {
   reset();
   load('consumeApi');
@@ -40,7 +43,7 @@ test('registerEndpoint accepts only 32-char lowercase hex ids', (t) => {
   const bad = ['', 'x', ID.toUpperCase(), ID + '0', ID.slice(1), '../' + ID.slice(3), ID.slice(0, 31) + '/', 42, null,
     '//evil.example/' + ID.slice(15)];
   for (const id of bad) {
-    assert.throws(() => api.registerEndpoint(id), (e) => /isn.t valid/.test(e.message) && e.retryable === false, String(id));
+    assert.throws(() => api.registerEndpoint(id), (e) => /isn.t valid/.test(tr(e.message)) && e.retryable === false, String(id));
   }
 });
 
@@ -48,13 +51,13 @@ test('registerEndpoint rejects a non-pinned origin', (t) => {
   const { api } = setup(t, { register: false });
   const RealURL = globalThis.URL;
   t.mock.method(globalThis, 'URL', function (p) { return new RealURL(p, 'https://evil.example'); });
-  assert.throws(() => api.registerEndpoint(ID), /isn.t valid/);
+  assert.throws(() => api.registerEndpoint(ID), (e) => /isn.t valid/.test(tr(e.message)));
 });
 
 test('requests are blocked before an endpoint is registered', async (t) => {
   const { api, delays } = setup(t, { register: false });
   const calls = installFetch([]);
-  await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => /Couldn.t reach the server/.test(e.message) && e.retryable);
+  await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => /Couldn.t reach the server/.test(tr(e.message)) && e.retryable);
   assert.equal(await api.acknowledge({ token: 't' }), false);
   assert.equal(calls.length, 0);
   // One GET retry (no claim token yet), then three ack backoffs.
@@ -110,7 +113,7 @@ test('status codes map to messages and retryability', async (t) => {
     await t.test(String(status), async (st) => {
       const { api } = setup(st);
       const calls = installFetch([() => fakeResponse({ status })]);
-      await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => msg.test(e.message) && e.retryable === retryable && e.status === status);
+      await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => msg.test(tr(e.message)) && e.retryable === retryable && e.status === status);
       assert.equal(calls.length, 1);
     });
   }
@@ -119,7 +122,7 @@ test('status codes map to messages and retryability', async (t) => {
 test('a server error without a claim is retried once then stops', async (t) => {
   const { api, delays, logs } = setup(t);
   const calls = installFetch([() => fakeResponse({ status: 500 }), () => fakeResponse({ status: 503 })]);
-  await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => /server is busy/.test(e.message) && e.retryable && e.status === 503);
+  await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => /server is busy/.test(tr(e.message)) && e.retryable && e.status === 503);
   assert.equal(calls.length, 2);
   assert.deepEqual(delays, [500]);
   assert.equal(logs.warn.length, 1);
@@ -144,7 +147,7 @@ test('gives up after three attempts with the last error', async (t) => {
   const { api } = setup(t);
   const trunc = ok({ headers: { 'Content-Length': '9', 'X-Gone-Claim': 'tok' } });
   const calls = installFetch([trunc, trunc, trunc]);
-  await assert.rejects(api.fetchWithRetry({}, () => {}), /download was interrupted/);
+  await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => /download was interrupted/.test(tr(e.message)));
   assert.equal(calls.length, 3);
 });
 
@@ -160,7 +163,7 @@ test('Content-Length must be canonical and match exactly when present', async (t
       const responses = [];
       const once = () => { const r = ok({ headers })(); responses.push(r); return r; };
       installFetch([once, once, once]);
-      await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => e.message === 'The download was interrupted.' && e.retryable);
+      await assert.rejects(api.fetchWithRetry({}, () => {}), (e) => tr(e.message) === 'The download was interrupted.' && e.retryable);
       assert.equal(Boolean(responses[0].cancelled), cancels);
     });
   }

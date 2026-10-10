@@ -5,6 +5,9 @@ const assert = require('node:assert/strict');
 const { reset, load } = require('./harness');
 const { installFetch } = require('./fakes');
 
+// tr renders a message key (as carried by errors) in English.
+const tr = (k) => window.goneI18n.t(k);
+
 const ID = '0123456789abcdef0123456789abcdef';
 const TOKEN = 'aZ09_-'.repeat(7) + 'x';
 const STATUS_URL = `https://gone.test/api/secret/${ID}/status`;
@@ -33,7 +36,7 @@ test('loads once and exposes a frozen API', () => {
   load('manageApi');
   assert.equal(window.goneManageApi, api);
   assert.ok(Object.isFrozen(api));
-  assert.match(api.INVALID_LINK, /isn\u2019t valid/);
+  assert.match(tr(api.INVALID_LINK), /isn\u2019t valid/);
 });
 
 test('isToken accepts only 43-char base64url', () => {
@@ -70,7 +73,7 @@ test('registerEndpoint rejects malformed ids and pins same-origin URLs', async (
 test('requests are refused before registration or with a bad token', async () => {
   const api = setup();
   const calls = installFetch([]);
-  await assert.rejects(api.status(TOKEN), /unexpected URL/);
+  await assert.rejects(api.status(TOKEN), (e) => /unexpected address/.test(tr(e.message)));
   api.registerEndpoint(ID);
   await assert.rejects(api.revoke('nope'), (e) => e.message === api.INVALID_LINK && !e.retryable);
   assert.equal(calls.length, 0);
@@ -117,7 +120,7 @@ test('status maps 404 to gone and validates the pending body', async () => {
   ];
   installFetch(bodies.map((b) => resp(200, b)));
   for (const b of bodies) {
-    await assert.rejects(api.status(TOKEN), (e) => e.retryable && /server had a problem/.test(e.message), String(b));
+    await assert.rejects(api.status(TOKEN), (e) => e.retryable && /server had a problem/.test(tr(e.message)), String(b));
   }
 });
 
@@ -127,8 +130,8 @@ test('status and revoke map failure statuses', async () => {
   const cases = [[400, /isn\u2019t valid/, false], [429, /Too many requests/, true], [503, /server is busy/, true], [500, /server had a problem/, true], [403, /server had a problem/, true]];
   installFetch(cases.flatMap(([s]) => [resp(s), resp(s)]));
   for (const [s, re, retryable] of cases) {
-    await assert.rejects(api.status(TOKEN), (e) => re.test(e.message) && e.retryable === retryable, `status ${s}`);
-    await assert.rejects(api.revoke(TOKEN), (e) => re.test(e.message) && e.retryable === retryable, `revoke ${s}`);
+    await assert.rejects(api.status(TOKEN), (e) => re.test(tr(e.message)) && e.retryable === retryable, `status ${s}`);
+    await assert.rejects(api.revoke(TOKEN), (e) => re.test(tr(e.message)) && e.retryable === retryable, `revoke ${s}`);
   }
 });
 
@@ -137,8 +140,8 @@ test('network failures are retryable', async () => {
   api.registerEndpoint(ID);
   const boom = () => { throw new TypeError('Failed to fetch'); };
   installFetch([boom, boom]);
-  await assert.rejects(api.status(TOKEN), (e) => e.retryable && /Couldn\u2019t reach/.test(e.message));
-  await assert.rejects(api.revoke(TOKEN), (e) => e.retryable && /Couldn\u2019t reach/.test(e.message));
+  await assert.rejects(api.status(TOKEN), (e) => e.retryable && /Couldn\u2019t reach/.test(tr(e.message)));
+  await assert.rejects(api.revoke(TOKEN), (e) => e.retryable && /Couldn\u2019t reach/.test(tr(e.message)));
 });
 
 test('revoke posts with keepalive and maps 204 and 404', async () => {

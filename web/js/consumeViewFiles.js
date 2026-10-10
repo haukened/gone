@@ -32,9 +32,13 @@
   }
 
   function renderFileEntry(file) {
-    const btn = ctx.util.el('button', { type: 'button', className: 'btn btn-secondary btn-small' }, [ctx.icons.make('down'), ctx.util.el('span', { textContent: 'Download' })]);
-    btn.setAttribute('aria-label', `Download ${file.name}`);
-    const li = ctx.util.el('li', {}, [ctx.icons.make('clip'), ctx.util.el('span', { className: 'name', textContent: file.name }), ctx.util.el('span', { className: 'size', textContent: ctx.formatBytes(file.size) }), btn]);
+    const label = ctx.util.el('span');
+    ctx.i18n.set(label, 'js.consume.download');
+    const btn = ctx.util.el('button', { type: 'button', className: 'btn btn-secondary btn-small' }, [ctx.icons.make('down'), label]);
+    ctx.i18n.setAttr(btn, 'aria-label', 'js.consume.downloadNamed', { name: file.name });
+    const size = ctx.util.el('span', { className: 'size' });
+    ctx.i18n.value(size, { bytes: file.size });
+    const li = ctx.util.el('li', {}, [ctx.icons.make('clip'), ctx.util.el('span', { className: 'name', textContent: file.name }), size, btn]);
     const entry = { file: file, url: '', done: false, li: li };
     btn.addEventListener('click', function () { downloadEntry(entry); });
     return entry;

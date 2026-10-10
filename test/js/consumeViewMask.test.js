@@ -77,7 +77,7 @@ test('blocked storage leaves the message covered and the box still works', (t) =
 
 test('sizeOf counts lines, or characters for a single line', (t) => {
   const { view } = masked(t);
-  const sizeOf = window.goneConsumeViewMask.sizeOf;
+  const sizeOf = (s) => { const r = window.goneConsumeViewMask.sizeOf(s); return window.goneI18n.t(r.key, r.args); };
   assert.ok(view);
   assert.equal(sizeOf('a'), '1 character');
   assert.equal(sizeOf('päss🔑'), '5 characters');

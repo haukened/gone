@@ -12,6 +12,7 @@ import (
 
 	"github.com/haukened/gone/v3/internal/config"
 	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/httpx"
 	"github.com/haukened/gone/v3/internal/store/sqlite"
 	wembed "github.com/haukened/gone/v3/web"
 )
@@ -69,10 +70,10 @@ func openTestDB(t *testing.T, path string) *sql.DB {
 //   - *templates: a complete template bundle.
 func minimalTemplates() *templates {
 	return &templates{
-		index:     template.Must(template.New("index").Parse("<html>index</html>")),
-		about:     template.Must(template.New("about").Parse("about")),
-		secret:    template.Must(template.New("secret").Parse("secret")),
-		manage:    template.Must(template.New("manage").Parse("manage")),
-		errorPage: template.Must(template.New("error").Parse("error")),
+		index:     httpx.LocalizedTemplate{"en": template.Must(template.New("index").Parse("<html>index</html>"))},
+		about:     httpx.LocalizedTemplate{"en": template.Must(template.New("about").Parse("about"))},
+		secret:    httpx.LocalizedTemplate{"en": template.Must(template.New("secret").Parse("secret"))},
+		manage:    httpx.LocalizedTemplate{"en": template.Must(template.New("manage").Parse("manage"))},
+		errorPage: httpx.LocalizedTemplate{"en": template.Must(template.New("error").Parse("error"))},
 	}
 }

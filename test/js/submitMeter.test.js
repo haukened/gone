@@ -2,13 +2,14 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load, h } = require('./harness');
+const { reset, load, loadRaw, h } = require('./harness');
 
 reset();
-load('submitMeter');
+loadRaw('submitMeter');
 assert.equal(window.goneSizeMeter, undefined);
-load('fileMeta', 'submitMeter');
+load('submitMeter');
 const meter = window.goneSizeMeter;
+const text = (p) => (p ? window.goneI18n.t(p.key, p.args) : p);
 
 test('loads once', () => {
   load('submitMeter');
@@ -23,7 +24,7 @@ test('selectionProblem', () => {
     [[1, 2148, 10, 100], 'Over the limit by 2.0 KB. Remove a file or shorten the message.'],
     [[1, 10 ** 12, 10, 0], '']
   ];
-  for (const [args, want] of cases) assert.equal(meter.selectionProblem(...args), want, args.join());
+  for (const [args, want] of cases) assert.equal(text(meter.selectionProblem(...args)), want, args.join());
 });
 
 test('render updates box, meter, label and warning', () => {
@@ -36,18 +37,19 @@ test('render updates box, meter, label and warning', () => {
   assert.equal(els.warning.hidden, true);
   assert.equal(els.warningText.textContent, '');
 
-  meter.render(els, 150, 100, 'too big');
+  const tooBig = meter.selectionProblem(1, 150, 10, 100);
+  meter.render(els, 150, 100, tooBig);
   assert.equal(els.meter.value, 100);
   assert.ok(els.box.classList.contains('over'));
   assert.equal(els.label.textContent, '150 B of 100 B (over limit)');
-  assert.equal(els.warningText.textContent, 'too big');
+  assert.equal(els.warningText.textContent, 'Over the limit by 50 B. Remove a file or shorten the message.');
   assert.equal(els.warning.hidden, false);
 
   // Unchanged text is not rewritten, so the live region does not re-announce.
   let writes = 0;
   const node = els.warningText;
-  Object.defineProperty(node, 'textContent', { get() { return 'too big'; }, set() { writes++; }, configurable: true });
-  meter.render(els, 160, 100, 'too big');
+  Object.defineProperty(node, 'textContent', { get() { return 'x'; }, set() { writes++; }, configurable: true });
+  meter.render(els, 150, 100, meter.selectionProblem(1, 150, 10, 100));
   assert.equal(writes, 0);
   delete node.textContent;
 
@@ -59,5 +61,5 @@ test('render updates box, meter, label and warning', () => {
 });
 
 test('render tolerates missing elements', () => {
-  assert.doesNotThrow(() => meter.render({}, 1, 2, 'x'));
+  assert.doesNotThrow(() => meter.render({}, 1, 2, { key: 'js.submit.empty' }));
 });

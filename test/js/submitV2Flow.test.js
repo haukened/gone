@@ -8,9 +8,9 @@ const { KDF_WAIT, PASS_MODULES, boot, submit, type, typePass, waitFor } = requir
 test('a passphrase seals protocol v2 and marks the result', async (t) => {
   const b = boot(t, { pass: true, modules: PASS_MODULES });
   type(b, 'my secret');
-  assert.equal(b.$('size-label').textContent, '25 B of 1000 B');
+  assert.equal(b.$('size-label').textContent, '25 B of 1,000 B');
   typePass(b, 'abc');
-  assert.equal(b.$('size-label').textContent, '46 B of 1000 B');
+  assert.equal(b.$('size-label').textContent, '46 B of 1,000 B');
   assert.equal(b.blocked(), true);
   b.$('pass-disclosure').open = false;
   submit(b);

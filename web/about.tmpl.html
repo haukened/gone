@@ -1,133 +1,133 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}" dir="{{ dir }}">
 <head>
 	{{ template "assets" }}
-	<title>Gone · How Gone keeps a secret</title>
+	<title data-i18n="about.pageTitle">{{ t "about.pageTitle" }}</title>
 </head>
 <body>
 	{{ template "header" "about" }}
 	<main id="main" tabindex="-1" class="main">
 		<div class="view">
 		<div class="pane">
-			<p class="eyebrow">How it works</p>
-			<h1>How Gone keeps a <span class="accent">secret.</span></h1>
-			<p class="lead">Short answers for the people who send and open secrets, and for the people who run this server.</p>
-		<nav class="toc" aria-label="On this page">
+			<p class="eyebrow" data-i18n="about.eyebrow">{{ t "about.eyebrow" }}</p>
+			<h1 data-i18n="about.title">{{ rich "about.title" nil "accent" `<span class="accent">` }}</h1>
+			<p class="lead" data-i18n="about.lead">{{ t "about.lead" }}</p>
+		<nav class="toc" aria-label="{{ t "about.toc" }}" data-i18n-attr="aria-label:about.toc">
 			<ol>
-				<li><a href="#what">What is Gone?</a></li>
-				<li><a href="#encryption">Encryption</a></li>
-				<li><a href="#flow">How Gone keeps secrets</a></li>
-				<li><a href="#files">File attachments</a></li>
-				<li><a href="#passphrase">Optional passphrase</a></li>
-				<li><a href="#requests">Requesting a secret</a></li>
-				<li><a href="#why">Why this matters</a></li>
-				<li><a href="#threats">Threat model notes</a></li>
-				<li><a href="#license">License</a></li>
+				<li><a href="#what" data-i18n="about.toc.what">{{ t "about.toc.what" }}</a></li>
+				<li><a href="#encryption" data-i18n="about.toc.encryption">{{ t "about.toc.encryption" }}</a></li>
+				<li><a href="#flow" data-i18n="about.toc.flow">{{ t "about.toc.flow" }}</a></li>
+				<li><a href="#files" data-i18n="about.toc.files">{{ t "about.toc.files" }}</a></li>
+				<li><a href="#passphrase" data-i18n="about.toc.passphrase">{{ t "about.toc.passphrase" }}</a></li>
+				<li><a href="#requests" data-i18n="about.toc.requests">{{ t "about.toc.requests" }}</a></li>
+				<li><a href="#why" data-i18n="about.toc.why">{{ t "about.toc.why" }}</a></li>
+				<li><a href="#threats" data-i18n="about.toc.threats">{{ t "about.toc.threats" }}</a></li>
+				<li><a href="#license" data-i18n="about.toc.license">{{ t "about.toc.license" }}</a></li>
 			</ol>
 		</nav>
 		<article class="prose">
 			<section aria-labelledby="what">
-				<h2 id="what">What is Gone?</h2>
-				<p>Go + One = <strong>Gone</strong></p>
-				<p>Gone is a tool for sharing secrets privately, readable only one time. The server component is written in <a href="https://go.dev">Go</a>, a language designed for simplicity and efficiency by Google. The client-side application is built with vanilla JavaScript and modern WebCrypto APIs to perform encryption and decryption directly in your browser.</p>
-				<p>Gone is open source software. The source code is available on <a href="https://github.com/haukened/gone">GitHub</a> under the GNU Affero GPL v3.</p>
+				<h2 id="what" data-i18n="about.what.heading">{{ t "about.what.heading" }}</h2>
+				<p data-i18n="about.what.p1">{{ rich "about.what.p1" nil "strong" `<strong>` }}</p>
+				<p data-i18n="about.what.p2">{{ rich "about.what.p2" nil "link" `<a href="https://go.dev">` }}</p>
+				<p data-i18n="about.what.p3">{{ rich "about.what.p3" nil "link" `<a href="https://github.com/haukened/gone">` }}</p>
 			</section>
 			<section aria-labelledby="encryption">
-				<h2 id="encryption">What encryption does Gone use?</h2>
-				<p>Gone uses AES-256-GCM provided by WebCrypto APIs for client-side encryption, which is the same encryption trusted by banks, governments, and security-conscious organizations worldwide.</p>
+				<h2 id="encryption" data-i18n="about.encryption.heading">{{ t "about.encryption.heading" }}</h2>
+				<p data-i18n="about.encryption.p1">{{ t "about.encryption.p1" }}</p>
 			</section>
 			<section aria-labelledby="flow">
-				<h2 id="flow">How Gone keeps secrets secret</h2>
-				<p>Gone is designed so the server never learns your secret. The critical cryptography happens entirely in your browser before anything is sent over the network.</p>
-				<h3>High-level flow</h3>
+				<h2 id="flow" data-i18n="about.flow.heading">{{ t "about.flow.heading" }}</h2>
+				<p data-i18n="about.flow.p1">{{ t "about.flow.p1" }}</p>
+				<h3 data-i18n="about.flow.subhead1">{{ t "about.flow.subhead1" }}</h3>
 				<ol>
-					<li><strong>You type a message and/or attach files</strong> in the form. Before anything leaves your device, the browser generates a fresh, random encryption key.</li>
-					<li><strong>Client-side encryption</strong> (using modern WebCrypto primitives) packs the message and files together and transforms them into a single opaque blob. File names and types are encrypted too.</li>
-					<li><strong>Only the encrypted blob</strong> is sent to the Gone server. The key never leaves the browser.</li>
-					<li><strong>The server stores</strong> just that blob plus minimal metadata (expiry time and one-time state).</li>
-					<li><strong>A shareable URL</strong> is produced. The secret key is embedded in the URL fragment (the part after <code>#</code>), which browsers never send to the server.</li>
-					<li><strong>The recipient opens the URL</strong> and presses Open; their browser extracts the key locally and downloads the encrypted blob. From that moment the secret is reserved for them alone; anyone else who opens the link sees that it is gone.</li>
-					<li><strong>Decryption happens client-side</strong>; the browser verifies every byte arrived intact before showing anything. The server remains blind to the plaintext the entire time.</li>
-					<li><strong>Confirmed deletion</strong>: once the recipient's browser has the complete secret, it tells the server to delete it. If that confirmation never arrives (closed tab, dropped connection), the server deletes it automatically a few minutes later. Either way, it can never be read twice.</li>
+					<li data-i18n="about.flow.li1">{{ rich "about.flow.li1" nil "strong" `<strong>` }}</li>
+					<li data-i18n="about.flow.li2">{{ rich "about.flow.li2" nil "strong" `<strong>` }}</li>
+					<li data-i18n="about.flow.li3">{{ rich "about.flow.li3" nil "strong" `<strong>` }}</li>
+					<li data-i18n="about.flow.li4">{{ rich "about.flow.li4" nil "strong" `<strong>` }}</li>
+					<li data-i18n="about.flow.li5">{{ rich "about.flow.li5" nil "strong" `<strong>` "code" `<code>` }}</li>
+					<li data-i18n="about.flow.li6">{{ rich "about.flow.li6" nil "strong" `<strong>` }}</li>
+					<li data-i18n="about.flow.li7">{{ rich "about.flow.li7" nil "strong" `<strong>` }}</li>
+					<li data-i18n="about.flow.li8">{{ rich "about.flow.li8" nil "strong" `<strong>` }}</li>
 				</ol>
 			</section>
 			<section aria-labelledby="files">
-				<h2 id="files">File attachments</h2>
+				<h2 id="files" data-i18n="about.files.heading">{{ t "about.files.heading" }}</h2>
 				<ul>
-					<li>Attach up to 10 files of any type. The message and all files share one size limit, shown on the form.</li>
-					<li>Files are encrypted in your browser exactly like the message; the server cannot see their names, types, or contents.</li>
-					<li>The recipient downloads each file individually or all at once. Gone warns them before leaving the page with files still unsaved, because the secret cannot be opened again.</li>
-					<li>File names are cleaned up (folders and hidden control characters removed), and uncommon file types are saved as generic downloads so they can't run in the browser.</li>
+					<li data-i18n="about.files.li1">{{ t "about.files.li1" }}</li>
+					<li data-i18n="about.files.li2">{{ t "about.files.li2" }}</li>
+					<li data-i18n="about.files.li3">{{ t "about.files.li3" }}</li>
+					<li data-i18n="about.files.li4">{{ t "about.files.li4" }}</li>
 				</ul>
 			</section>
 			<section aria-labelledby="passphrase">
-				<h2 id="passphrase">Optional passphrase</h2>
+				<h2 id="passphrase" data-i18n="about.passphrase.heading">{{ t "about.passphrase.heading" }}</h2>
 				<ul>
-					<li>The sender can add a passphrase. Opening the secret then takes both the link and the passphrase, so a leaked link alone is not enough.</li>
-					<li>Send the passphrase separately from the link, for example the link by email and the passphrase by phone. Gone never stores the passphrase and cannot recover it.</li>
-					<li>Your browser stretches the passphrase with PBKDF2 (600,000 rounds) and mixes it with the link's key. Every wrong guess costs real time, but a short or common passphrase can still be guessed by someone who has the link. Use <strong>Generate</strong> for five random words.</li>
-					<li>As you type, Gone shows the passphrase's estimated entropy in bits and roughly how long it would take to guess. The estimate assumes someone who already has the link and can make a million guesses a second against the stretched passphrase. It's a guide, not a guarantee: names, dates, and well-known phrases fall faster than it shows.</li>
-					<li>If the passphrase is wrong, the recipient can try again as many times as they need without downloading the secret again.</li>
-					<li>Opening the link uses up the secret even if the passphrase is wrong. A passphrase keeps a leaked secret unreadable, but cannot stop someone with the link from destroying it.</li>
-					<li>Generated passphrases use the <a href="https://www.eff.org/dice">EFF short wordlist</a> by the Electronic Frontier Foundation, licensed under <a href="https://creativecommons.org/licenses/by/3.0/us/">CC BY 3.0 US</a>.</li>
+					<li data-i18n="about.passphrase.li1">{{ t "about.passphrase.li1" }}</li>
+					<li data-i18n="about.passphrase.li2">{{ t "about.passphrase.li2" }}</li>
+					<li data-i18n="about.passphrase.li3">{{ rich "about.passphrase.li3" nil "strong" `<strong>` }}</li>
+					<li data-i18n="about.passphrase.li4">{{ t "about.passphrase.li4" }}</li>
+					<li data-i18n="about.passphrase.li5">{{ t "about.passphrase.li5" }}</li>
+					<li data-i18n="about.passphrase.li6">{{ t "about.passphrase.li6" }}</li>
+					<li data-i18n="about.passphrase.li7">{{ rich "about.passphrase.li7" nil "link" `<a href="https://www.eff.org/dice">` "link2" `<a href="https://creativecommons.org/licenses/by/3.0/us/">` }}</li>
 				</ul>
 			</section>
 			<section aria-labelledby="requests">
-				<h2 id="requests">Requesting a secret</h2>
+				<h2 id="requests" data-i18n="about.requests.heading">{{ t "about.requests.heading" }}</h2>
 				<ul>
-					<li>Need a secret from someone? <a href="/request">Request a secret</a> makes a link for you to send them. They type the secret on that page, and it comes back to you.</li>
-					<li>Your browser makes a key pair. The private key is stored in this browser in a form no web page can read out, so the reply can only be opened here, even after you close and reopen the browser. The public key travels in the link's fragment, which never reaches the server.</li>
-					<li>Their browser encrypts the reply to your public key (ECDH P-256, then AES-256-GCM). The server stores only ciphertext and can't read it, and each request takes one reply.</li>
-					<li>Your label for a request stays in this browser. The server only learns how long to wait.</li>
-					<li>Anyone with the request link can send the one reply, so send it only to the right person. If you're answering a request, check it came from who you expect.</li>
-					<li>Clearing this site's data, or using a private window, loses your requests. Make a new one if that happens.</li>
+					<li data-i18n="about.requests.li1">{{ rich "about.requests.li1" nil "link" `<a href="/request">` }}</li>
+					<li data-i18n="about.requests.li2">{{ t "about.requests.li2" }}</li>
+					<li data-i18n="about.requests.li3">{{ t "about.requests.li3" }}</li>
+					<li data-i18n="about.requests.li4">{{ t "about.requests.li4" }}</li>
+					<li data-i18n="about.requests.li5">{{ t "about.requests.li5" }}</li>
+					<li data-i18n="about.requests.li6">{{ t "about.requests.li6" }}</li>
 				</ul>
 			</section>
 			<section aria-labelledby="why">
-				<h2 id="why">Why this matters</h2>
+				<h2 id="why" data-i18n="about.why.heading">{{ t "about.why.heading" }}</h2>
 				<ul>
-					<li><strong>Zero server knowledge:</strong> Compromise of the storage tier yields only ciphertext.</li>
-					<li><strong>Ephemeral access:</strong> One-time retrieval shrinks the attack window.</li>
-					<li><strong>Short TTLs:</strong> Automatic expiry further limits exposure if a link lingers.</li>
-					<li><strong>No password reuse risk:</strong> You never transmit existing credentials in the clear.</li>
+					<li data-i18n="about.why.li1">{{ rich "about.why.li1" nil "strong" `<strong>` }}</li>
+					<li data-i18n="about.why.li2">{{ rich "about.why.li2" nil "strong" `<strong>` }}</li>
+					<li data-i18n="about.why.li3">{{ rich "about.why.li3" nil "strong" `<strong>` }}</li>
+					<li data-i18n="about.why.li4">{{ rich "about.why.li4" nil "strong" `<strong>` }}</li>
 				</ul>
 			</section>
 			<section aria-labelledby="threats">
-				<h2 id="threats">Threat model notes</h2>
+				<h2 id="threats" data-i18n="about.threats.heading">{{ t "about.threats.heading" }}</h2>
 				<ul>
-					<li>Always verify you are on HTTPS (the app warns if not).</li>
-					<li>The secrecy guarantee assumes the sender's and recipient's browsers are not compromised.</li>
-					<li>Anyone who obtains the full share URL (including its key component) can decrypt the secret until first read or expiry, unless the sender added a passphrase.</li>
-					<li>If someone else opens the link first, the intended recipient will see that the secret is gone, a clear sign the link was intercepted.</li>
-					<li>Attachments are only as safe as the device they are saved to; delete downloaded files when you no longer need them.</li>
+					<li data-i18n="about.threats.li1">{{ t "about.threats.li1" }}</li>
+					<li data-i18n="about.threats.li2">{{ t "about.threats.li2" }}</li>
+					<li data-i18n="about.threats.li3">{{ t "about.threats.li3" }}</li>
+					<li data-i18n="about.threats.li4">{{ t "about.threats.li4" }}</li>
+					<li data-i18n="about.threats.li5">{{ t "about.threats.li5" }}</li>
 				</ul>
 			</section>
 			<section aria-labelledby="license">
-				<h2 id="license">What does the GNU Affero GPL v3 mean for you?</h2>
-				<p>Gone is free, open source software under the GNU Affero General Public License version 3 (AGPLv3). Here is what that means in plain English. This is a summary, not legal advice; the license itself is what counts.</p>
-				<h3>If you use Gone to send or open secrets</h3>
+				<h2 id="license" data-i18n="about.license.heading">{{ t "about.license.heading" }}</h2>
+				<p data-i18n="about.license.p1">{{ t "about.license.p1" }}</p>
+				<h3 data-i18n="about.license.subhead1">{{ t "about.license.subhead1" }}</h3>
 				<ul>
-					<li><strong>You have no obligations.</strong> Using Gone puts no license terms on you or on what you share.</li>
-					<li>If someone runs a modified version of Gone, they must let you download its source code.</li>
+					<li data-i18n="about.license.li1">{{ rich "about.license.li1" nil "strong" `<strong>` }}</li>
+					<li data-i18n="about.license.li2">{{ t "about.license.li2" }}</li>
 				</ul>
-				<h3>If you host or change Gone</h3>
+				<h3 data-i18n="about.license.subhead2">{{ t "about.license.subhead2" }}</h3>
 				<ul>
-					<li>You may run Gone unmodified for any purpose. Leave its copyright and license notices in place.</li>
-					<li>You may change Gone however you like. If other people use your changed version over a network, you must offer them its complete source code, free of charge and under the AGPLv3. A link in the footer is enough.</li>
-					<li>If you change Gone, give your version its own name and logo. The Gone name and logo are trademarks and aren't covered by the AGPLv3; see the <a href="https://github.com/haukened/gone/blob/main/TRADEMARKS.md">trademark policy</a>.</li>
-					<li>You don't have to send your changes back to this project, though contributions are welcome.</li>
-					<li>Changes you keep to yourself, with nobody else using them, carry no obligation to share.</li>
-					<li>If you give someone a copy of Gone, such as a container image, include the license and the source code or tell them where to get it.</li>
+					<li data-i18n="about.license.li3">{{ t "about.license.li3" }}</li>
+					<li data-i18n="about.license.li4">{{ t "about.license.li4" }}</li>
+					<li data-i18n="about.license.li5">{{ rich "about.license.li5" nil "link" `<a href="https://github.com/haukened/gone/blob/main/TRADEMARKS.md">` }}</li>
+					<li data-i18n="about.license.li6">{{ t "about.license.li6" }}</li>
+					<li data-i18n="about.license.li7">{{ t "about.license.li7" }}</li>
+					<li data-i18n="about.license.li8">{{ t "about.license.li8" }}</li>
 				</ul>
-				<h3>If you are a company</h3>
+				<h3 data-i18n="about.license.subhead3">{{ t "about.license.subhead3" }}</h3>
 				<ul>
-					<li>You may use Gone commercially, including running it as a paid service for customers.</li>
-					<li>The same rules apply as for anyone else. Unmodified, there is nothing to share. Modified, anyone who uses your version over a network must be offered its source code under the AGPLv3.</li>
-					<li>You can't relicense Gone or your changes under closed terms, and you can't remove its copyright or license notices.</li>
+					<li data-i18n="about.license.li9">{{ t "about.license.li9" }}</li>
+					<li data-i18n="about.license.li10">{{ t "about.license.li10" }}</li>
+					<li data-i18n="about.license.li11">{{ t "about.license.li11" }}</li>
 				</ul>
-				<p>To read the full license, visit the <a href="https://www.gnu.org/licenses/agpl-3.0.en.html">GNU website</a>.</p>
+				<p data-i18n="about.license.p2">{{ rich "about.license.p2" nil "link" `<a href="https://www.gnu.org/licenses/agpl-3.0.en.html">` }}</p>
 			</section>
-			<p><a class="btn btn-primary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg>Send a secret</a></p>
+			<p><a class="btn btn-primary" href="/"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-back" /></svg><span data-i18n="about.sendSecret">{{ t "about.sendSecret" }}</span></a></p>
 		</article>
 		</div>
 		</div>

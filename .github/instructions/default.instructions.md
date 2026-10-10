@@ -34,6 +34,7 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - `internal/ratelimit/`: Per-client token-bucket rate limiting.
 - `internal/janitor/`: Background deletion of expired secrets and lapsed claims.
 - `internal/metrics/`: In-memory counters, persisted to SQLite and served on the optional token-protected metrics listener: Prometheus text at `/metrics`, a JSON snapshot at `/`. The Prometheus format is written by hand (no `client_golang`).
+- `internal/i18n/`: Web page translations: loads `web/messages/*.json`, picks a request's language (the `gone_lang` cookie, then `Accept-Language`), renders messages with placeholders, plurals and rich-text slots, and serves catalogs at `/i18n/<tag>.json`. `web/js/i18n.js` renders the same messages in the browser and switches language in place.
 - `internal/config/`: Environment variable parsing and validation.
 - `internal/cli/`, `internal/client/`, `internal/passgen/`: CLI commands, its HTTP API client, and the passphrase wordlist generator.
 - `internal/sqlrows/`: Small SQL row helpers.

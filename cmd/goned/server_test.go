@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/haukened/gone/v3/internal/config"
+	"github.com/haukened/gone/v3/internal/httpx"
 	"github.com/haukened/gone/v3/internal/store"
 	wembed "github.com/haukened/gone/v3/web"
 )
@@ -135,10 +136,10 @@ func TestBuildHandler_NilErrorPage(t *testing.T) {
 	db, idx, blobDir := testStorage(t)
 	cfg := &config.Config{MaxBytes: 1024, MinTTL: time.Minute, MaxTTL: time.Hour}
 	tmpls := &templates{
-		index:  template.Must(template.New("index").Parse("i")),
-		about:  template.Must(template.New("about").Parse("a")),
-		secret: template.Must(template.New("secret").Parse("s")),
-		manage: template.Must(template.New("manage").Parse("m")),
+		index:  httpx.LocalizedTemplate{"en": template.Must(template.New("index").Parse("i"))},
+		about:  httpx.LocalizedTemplate{"en": template.Must(template.New("about").Parse("a"))},
+		secret: httpx.LocalizedTemplate{"en": template.Must(template.New("secret").Parse("s"))},
+		manage: httpx.LocalizedTemplate{"en": template.Must(template.New("manage").Parse("m"))},
 	}
 	h := buildHandler(cfg, buildService(idx, stubBlobStorage{}, cfg, realClock{}), db, blobDir, tmpls, wembed.Assets).Router()
 	rr := httptest.NewRecorder()
@@ -183,7 +184,7 @@ func TestListenAndServe_ClosedReturnsNil(t *testing.T) {
 	}
 }
 
-// TestServe_SetupErrors covers blob storage and template failures.
+// TestServe_SetupErrors covers blob storage, translation and template failures.
 func TestServe_SetupErrors(t *testing.T) {
 	db, idx, blobDir := testStorage(t)
 	tests := []struct {
@@ -193,7 +194,8 @@ func TestServe_SetupErrors(t *testing.T) {
 		want    string
 	}{
 		{"missing blob dir", filepath.Join(blobDir, "missing"), nil, "init blob storage"},
-		{"missing templates", blobDir, fstest.MapFS{}, "partials.tmpl.html"},
+		{"missing translations", blobDir, fstest.MapFS{}, "load translations"},
+		{"missing templates", blobDir, fstest.MapFS{"messages/en.json": {Data: []byte(`{"common.skip": "Skip"}`)}}, "partials.tmpl.html"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

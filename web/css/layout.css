@@ -6,8 +6,8 @@
   padding-inline: clamp(1rem, 4vw, 2.5rem);
 }
 
-/* Brand left, the page links centered on the page, the theme toggle right.
-   The equal side columns keep the links truly centered. */
+/* Brand left, the page links centered on the page, the language picker and
+   theme toggle right. The equal side columns keep the links truly centered. */
 .site .wrap {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -20,8 +20,11 @@
   justify-self: start;
 }
 
-.site .theme-toggle {
+.site-tools {
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 /* The wordmark: the eroding G stands in for the capital, cap-height tall on
@@ -58,6 +61,7 @@
 .nav a,
 .theme-toggle {
   display: inline-flex;
+  white-space: nowrap;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
@@ -95,6 +99,132 @@
 .theme-toggle .ico {
   width: 1.2rem;
   height: 1.2rem;
+}
+
+/* The language picker: a globe and the language code on a pill that opens a
+   small glass list of the languages, each in its own name. */
+.lang-pick {
+  position: relative;
+}
+
+.lang-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  color: var(--color-ink-2);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.lang-button:hover,
+.lang-button[aria-expanded="true"] {
+  color: var(--color-ink);
+  background: var(--color-accent-soft);
+}
+
+.lang-button[aria-busy="true"] {
+  cursor: progress;
+}
+
+.lang-button .ico {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+/* The list: a small pane of the same glass, under the pill's end edge. It
+   sits on a solid base: a blur can't soften the glass pane beneath it, and
+   the page text showing through would muddle the names. */
+.lang-menu {
+  position: absolute;
+  inset-block-start: calc(100% + 0.5rem);
+  inset-inline-end: 0;
+  z-index: 10;
+  display: grid;
+  gap: 2px;
+  min-width: 12.5rem;
+  margin: 0;
+  padding: 0.375rem;
+  list-style: none;
+  background: linear-gradient(160deg, var(--pane-hi), var(--pane-lo)), var(--pane-solid);
+  border: 1px solid var(--edge);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 1px 0 var(--spec),
+    inset 0 -1px 0 var(--edge-lo),
+    0 24px 48px -20px var(--shadow),
+    0 2px 6px -2px var(--shadow);
+  transform-origin: top right;
+  animation: lang-menu-in 0.16s var(--ease-out);
+}
+
+.lang-menu[hidden] {
+  display: none;
+}
+
+@keyframes lang-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0 0.7rem 0 0.9rem;
+  color: var(--color-ink-2);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-align: start;
+  white-space: nowrap;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.lang-option:hover {
+  color: var(--color-ink);
+  background: var(--color-accent-soft);
+}
+
+.lang-option:focus-visible {
+  outline-offset: -1px;
+}
+
+/* The language in use: the raised lens of the segmented controls, ticked. */
+.lang-option[aria-current="true"] {
+  color: var(--color-ink);
+  background: var(--lens);
+  border-color: var(--edge);
+  box-shadow: inset 0 1px 0 var(--spec), 0 4px 14px -6px var(--shadow);
+}
+
+.lang-option .ico {
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-accent);
+  stroke-width: 2.2;
+  visibility: hidden;
+}
+
+.lang-option[aria-current="true"] .ico {
+  visibility: visible;
 }
 
 /* Show the moon while light, the sun while dark. */
@@ -230,26 +360,48 @@
     background: CanvasText;
   }
 
-  .pane {
+  .pane,
+  .lang-menu {
     border-color: CanvasText;
+  }
+
+  .lang-option[aria-current="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
   }
 }
 
 @media (max-width: 40rem) {
-  /* Too narrow for equal sides: the links center in the space between. */
+  /* Too narrow for equal sides: the links center in the space between, and
+     may scroll sideways rather than push the picker and toggle off-screen
+     in a language with long link names. */
   .site .wrap {
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     min-height: 4rem;
     gap: var(--space-2);
   }
 
   .nav {
     justify-self: center;
+    justify-content: safe center;
+    max-width: 100%;
     gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
   .nav a {
     padding: 0 0.6rem;
+  }
+
+  .site-tools {
+    gap: 0;
+  }
+
+  .lang-button {
+    gap: 0.25rem;
+    padding: 0 0.5rem;
   }
 
   /* "Send" and "Request" on phones; the full label stays for screen readers. */
@@ -272,9 +424,42 @@
   }
 }
 
-/* The narrowest phones: About is always in the footer. */
-@media (max-width: 24rem) {
-  .nav-about {
+/* Phones: About is always in the footer, which leaves the header room for
+   the language picker in every language. */
+@media (max-width: 30rem) {
+  .nav .nav-about {
     display: none;
   }
+}
+
+/* The narrowest phones: the picker shows only its globe; the language
+   names are in its list and its accessible name. */
+@media (max-width: 24rem) {
+  .lang-pick .lang-code {
+    display: none;
+  }
+
+  .lang-button {
+    padding: 0 0.4rem;
+  }
+
+  .nav a {
+    padding: 0 0.4rem;
+  }
+
+  .brand {
+    font-size: 1.45rem;
+  }
+}
+
+/* The note under machine-made translations: one quiet line with a link. */
+.foot .machine {
+  display: block;
+  max-width: 40rem;
+}
+
+.foot .machine a {
+  display: inline;
+  min-height: 0;
+  text-decoration: underline;
 }

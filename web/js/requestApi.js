@@ -12,15 +12,15 @@
   const ID_RE = /^[0-9a-f]{32}$/;
   const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
   const RETRY_AFTER_RE = /^[0-9]{1,6}$/;
-  const NETWORK_ERROR = 'Couldn\u2019t reach the server. Check your connection, then try again.';
-  const SERVER_ERROR = 'The server had a problem. Try again in a moment.';
+  const NETWORK_ERROR = 'js.common.networkRetry';
+  const SERVER_ERROR = 'js.common.server';
   const STATUS_MESSAGES = new Map([
-    [400, 'The server rejected this request.'],
-    [429, 'Too many requests right now. Wait a moment, then try again.'],
-    [503, 'The server is busy right now. Wait a moment, then try again.']
+    [400, 'js.request.rejected'],
+    [429, 'js.common.tooMany'],
+    [503, 'js.common.busy']
   ]);
 
-  // RequestError carries a user-facing message, whether retrying may help,
+  // RequestError carries a user-facing message key, whether retrying may help,
   // and the server's Retry-After in seconds (0 when absent).
   function RequestError(message, retryable, retryAfter) {
     const e = new Error(message);

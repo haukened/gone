@@ -9,22 +9,23 @@
 (function replyFlow() {
   if (window.goneSubmitTarget) return;
   const util = window.goneUtil;
+  const i18n = window.goneI18n;
   const v3 = window.goneCryptoV3;
   const uploader = window.goneUpload;
-  if (!util || !util.allPresent([v3, uploader, window.goneCrypto]) || !document.getElementById('view-sent')) return;
+  if (!util || !util.allPresent([i18n, v3, uploader, window.goneCrypto]) || !document.getElementById('view-sent')) return;
 
   const ID_RE = /^[0-9a-f]{32}$/;
   const VIEWS = ['check', 'compose', 'sent', 'gone'];
-  const BAD_LINK = 'This request link isn\u2019t complete. Check that you copied all of it, including everything after the #.';
-  const NEWER = 'This link was made by a newer version of Gone and can\u2019t be answered here.';
-  const BAD_KEY = 'This request link is damaged, so nothing can be encrypted for it. Ask them for a new link.';
-  const NETWORK_ERROR = 'Couldn\u2019t reach the server. Check your connection, then try again.';
+  const BAD_LINK = 'js.reply.badLink';
+  const NEWER = 'js.reply.newer';
+  const BAD_KEY = 'js.reply.badKey';
+  const NETWORK_ERROR = 'js.common.networkRetry';
   const CHECK_ERRORS = new Map([
     [400, BAD_LINK],
-    [429, 'Too many requests right now. Wait a moment, then try again.'],
-    [503, 'The server is busy right now. Wait a moment, then try again.']
+    [429, 'js.common.tooMany'],
+    [503, 'js.common.busy']
   ]);
-  const TITLES = { compose: 'Gone \u00b7 Send a secret', sent: 'Gone \u00b7 Sent', gone: 'Gone \u00b7 This request is gone' };
+  const TITLES = { compose: 'reply.pageTitle', sent: 'js.reply.titleSent', gone: 'js.detail.titleGone' };
 
   const byId = function (id) { return document.getElementById(id); };
 
@@ -33,14 +34,15 @@
       const node = byId(v === 'compose' ? 'compose' : `view-${v}`);
       if (node) node.hidden = v !== name;
     });
-    if (TITLES[name]) document.title = TITLES[name];
+    if (TITLES[name]) i18n.setTitle(TITLES[name]);
     const heading = byId(`${name}-heading`);
     if (heading) heading.focus();
   }
 
-  function showCheckError(message, retryable) {
-    util.setText(byId('check-status'), '');
-    util.setText(byId('check-error-text'), message);
+  // showCheckError shows a link or network problem's message key.
+  function showCheckError(key, retryable) {
+    i18n.clear(byId('check-status'));
+    i18n.set(byId('check-error-text'), key);
     byId('check-error').hidden = false;
     byId('check-retry').hidden = !retryable;
   }
@@ -61,13 +63,13 @@
     const node = byId('reply-expires');
     const when = new Date(value);
     if (!node || Number.isNaN(when.getTime())) return;
-    node.textContent = when.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    i18n.value(node, { date: when.toISOString(), style: 'datetime' });
     node.setAttribute('datetime', when.toISOString());
   }
 
   // checkOpen asks whether the request can still be answered.
   async function checkOpen(link) {
-    util.setText(byId('check-status'), 'Checking\u2026');
+    i18n.set(byId('check-status'), 'js.common.checking');
     byId('check-error').hidden = true;
     let resp;
     try {
@@ -83,7 +85,7 @@
       return;
     }
     if (resp.status !== 200) {
-      showCheckError(CHECK_ERRORS.get(resp.status) || 'The server had a problem. Try again in a moment.', resp.status !== 400);
+      showCheckError(CHECK_ERRORS.get(resp.status) || 'js.common.server', resp.status !== 400);
       return;
     }
     const body = await resp.json().catch(function () { return {}; });
@@ -116,7 +118,7 @@
         onProgress(0, enc.encResult.ciphertext.length);
         const res = await uploader.send(enc.encResult.ciphertext, headers, onProgress, { method: 'PUT', path: `/api/request/${link.id}/reply` });
         if (res.status === 404) switchTo('gone');
-        if (res.status !== 201) throw new Error(res.status === 404 ? 'This request is gone.' : uploader.uploadErrorMessage(res.status));
+        if (res.status !== 201) throw new Error(res.status === 404 ? 'js.request.gone' : uploader.uploadErrorMessage(res.status));
         return res.json || {};
       },
       show: function () { switchTo('sent'); },

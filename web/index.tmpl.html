@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}" dir="{{ dir }}">
 <head>
 	{{ template "assets" }}
-	<title>Gone · Send a one-time secret</title>
+	<title data-i18n="send.pageTitle">{{ t "send.pageTitle" }}</title>
 </head>
 <body>
 	{{ template "header" "send" }}
@@ -10,30 +10,30 @@
 		<div id="compose" class="view">
 			<div class="alert banner security-warning" role="alert" hidden>
 				<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
-				<div><strong>This page isn't secure, so sending is turned off.</strong>Browsers only encrypt on HTTPS pages. Ask whoever runs this server to put it behind HTTPS.</div>
+				<div data-i18n="compose.insecure">{{ rich "compose.insecure" nil "strong" `<strong>` }}</div>
 			</div>
 			<div class="pane">
-				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg>Encrypted in this browser</p>
-				<h1>Send a secret that opens <span class="accent">once.</span></h1>
-				<p class="lead">Your message and files are encrypted in this browser before they're sent. The server only ever stores an encrypted copy it can't read. The link works one time, then everything is deleted.</p>
-				<form id="create-secret" class="form" aria-label="Create a secret" data-max-bytes="{{ .MaxBytes }}" novalidate>
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span data-i18n="send.eyebrow">{{ t "send.eyebrow" }}</span></p>
+				<h1 data-i18n="send.title">{{ rich "send.title" nil "accent" `<span class="accent">` }}</h1>
+				<p class="lead" data-i18n="send.lead">{{ t "send.lead" }}</p>
+				<form id="create-secret" class="form" aria-label="{{ t "send.form" }}" data-i18n-attr="aria-label:send.form" data-max-bytes="{{ .MaxBytes }}" novalidate>
 					<div class="field">
 						<div class="label-row">
-							<label class="label" for="secret">Message</label>
-							<span class="hint" id="secret-hint">Encrypted on this device before it's sent.</span>
+							<label class="label" for="secret" data-i18n="compose.message">{{ t "compose.message" }}</label>
+							<span class="hint" id="secret-hint" data-i18n="compose.messageHint">{{ t "compose.messageHint" }}</span>
 						</div>
-						<textarea id="secret" name="secret" rows="6" placeholder="Paste a password, a note, or anything private." aria-describedby="secret-hint" spellcheck="false" autocomplete="off"></textarea>
+						<textarea id="secret" name="secret" rows="6" placeholder="{{ t "send.messagePlaceholder" }}" data-i18n-attr="placeholder:send.messagePlaceholder" aria-describedby="secret-hint" spellcheck="false" autocomplete="off"></textarea>
 					</div>
 					<div class="field">
-						<span class="label" id="files-label">Files <span class="opt">(optional, up to 10)</span></span>
+						<span class="label" id="files-label" data-i18n="compose.files" data-i18n-args="{{ json (args "max" 10) }}">{{ rich "compose.files" (args "max" 10) "opt" `<span class="opt">` }}</span>
 						<div id="drop-zone" class="drop">
 							<input id="secret-files" name="secret-files" type="file" class="sr-only" multiple aria-describedby="files-label" />
-							<label for="secret-files" class="btn btn-secondary btn-small"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-clip" /></svg>Add files</label>
-							<span>or drop them here</span>
+							<label for="secret-files" class="btn btn-secondary btn-small"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-clip" /></svg><span data-i18n="compose.addFiles">{{ t "compose.addFiles" }}</span></label>
+							<span data-i18n="compose.dropFiles">{{ t "compose.dropFiles" }}</span>
 						</div>
-						<ul id="file-list" class="files" aria-label="Attached files" hidden></ul>
+						<ul id="file-list" class="files" aria-label="{{ t "compose.attached" }}" data-i18n-attr="aria-label:compose.attached" hidden></ul>
 						<div id="size-box" class="meter">
-							<div class="meter-row"><span id="size-label">0 B of {{ .MaxBytesHuman }}</span></div>
+							<div class="meter-row">{{ with args "used" (bytes 0) "max" (bytes .MaxBytes) }}<span id="size-label" data-i18n="js.meter.size" data-i18n-args="{{ json . }}">{{ ta "js.meter.size" . }}</span>{{ end }}</div>
 							<progress id="size-meter" class="bar" max="1" value="0" aria-labelledby="size-label"></progress>
 						</div>
 						<div id="size-warning" class="alert" hidden>
@@ -42,33 +42,33 @@
 						</div>
 					</div>
 					<fieldset class="seg field" aria-describedby="ttl-hint">
-						<legend>Delete unopened after</legend>
+						<legend data-i18n="compose.ttl">{{ t "compose.ttl" }}</legend>
 						<div class="seg-track">
-							{{ range .TTLOptions }}<input type="radio" class="sr-only" name="ttl" id="ttl-{{ .Label }}" value="{{ .Label }}" data-seconds="{{ .DurationSeconds }}"{{ if .Default }} checked{{ end }} /><label for="ttl-{{ .Label }}">{{ .Short }}<span class="sr-only"> ({{ .Display }})</span></label>{{ end }}
+							{{ range .TTLOptions }}<input type="radio" class="sr-only" name="ttl" id="ttl-{{ .Label }}" value="{{ .Label }}" data-seconds="{{ .DurationSeconds }}"{{ if .Default }} checked{{ end }} /><label for="ttl-{{ .Label }}"><span aria-hidden="true" data-i18n-value="{{ json (dur .DurationSeconds "short") }}">{{ fmt (dur .DurationSeconds "short") }}</span><span class="sr-only" data-i18n-value="{{ json (dur .DurationSeconds "long") }}">{{ fmt (dur .DurationSeconds "long") }}</span></label>{{ end }}
 						</div>
-						<span class="hint" id="ttl-hint">If nobody opens it by then, it's deleted unread. Allowed range: {{ .MinTTLHuman }} to {{ .MaxTTLHuman }}.</span>
+						{{ with args "min" (dur .MinTTLSeconds "short") "max" (dur .MaxTTLSeconds "short") }}<span class="hint" id="ttl-hint" data-i18n="compose.ttlHint" data-i18n-args="{{ json . }}">{{ ta "compose.ttlHint" . }}</span>{{ end }}
 					</fieldset>
 					<details id="pass-disclosure" class="disclosure">
-						<summary>Add a passphrase <span class="opt">(optional)</span></summary>
+						<summary data-i18n="send.passAdd">{{ rich "send.passAdd" nil "opt" `<span class="opt">` }}</summary>
 						<div class="disclosure-body">
 							<div class="field">
-								<label class="label" for="passphrase">Passphrase</label>
+								<label class="label" for="passphrase" data-i18n="common.passphrase">{{ t "common.passphrase" }}</label>
 								<div class="passbox">
 									<div class="input-wrap">
 										<input id="passphrase" class="input" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" aria-describedby="pass-strength pass-hint" />
-										<button id="pass-toggle" class="reveal" type="button" aria-controls="passphrase"><svg class="ico when-masked" aria-hidden="true" focusable="false"><use href="#i-eye" /></svg><svg class="ico when-shown" aria-hidden="true" focusable="false"><use href="#i-eye-off" /></svg><span class="sr-only">Show</span></button>
+										<button id="pass-toggle" class="reveal" type="button" aria-controls="passphrase"><svg class="ico when-masked" aria-hidden="true" focusable="false"><use href="#i-eye" /></svg><svg class="ico when-shown" aria-hidden="true" focusable="false"><use href="#i-eye-off" /></svg><span class="sr-only" data-i18n="js.common.show">{{ t "js.common.show" }}</span></button>
 									</div>
-									<button id="pass-generate" class="btn btn-secondary" type="button" aria-controls="passphrase"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-dice" /></svg>Generate</button>
+									<button id="pass-generate" class="btn btn-secondary" type="button" aria-controls="passphrase"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-dice" /></svg><span data-i18n="send.passGenerate">{{ t "send.passGenerate" }}</span></button>
 								</div>
 								<span id="pass-strength" class="hint strength" role="status"></span>
-								<span class="hint" id="pass-hint">The recipient types this before the secret opens. Send it separately (for example by phone or a different app), never alongside the link.</span>
+								<span class="hint" id="pass-hint" data-i18n="send.passHint">{{ t "send.passHint" }}</span>
 							</div>
 						</div>
 					</details>
 					<div class="field">
-						<button class="btn btn-primary btn-block" type="submit" aria-describedby="submit-hint"><span>Create one-time link</span><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg></button>
-						<progress id="upload-progress" class="bar" max="1" value="0" aria-label="Upload progress" hidden></progress>
-						<span class="hint fine" id="submit-hint">Nothing leaves this device until you press the button.</span>
+						<button class="btn btn-primary btn-block" type="submit" aria-describedby="submit-hint"><span data-i18n="send.submit">{{ t "send.submit" }}</span><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg></button>
+						<progress id="upload-progress" class="bar" max="1" value="0" aria-label="{{ t "compose.uploadProgress" }}" data-i18n-attr="aria-label:compose.uploadProgress" hidden></progress>
+						<span class="hint fine" id="submit-hint" data-i18n="compose.submitHint">{{ t "compose.submitHint" }}</span>
 					</div>
 					<div id="submit-error" class="alert" hidden>
 						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
@@ -76,59 +76,59 @@
 					</div>
 				</form>
 				<section class="rail" aria-labelledby="next-heading">
-					<h2 id="next-heading">What happens next</h2>
+					<h2 id="next-heading" data-i18n="send.next">{{ t "send.next" }}</h2>
 					<ol class="life">
-						<li><span class="t">Sealed</span>Encrypted here. The server never gets the key.</li>
-						<li><span class="t">Waiting</span>Until it's opened or it expires.</li>
-						<li><span class="t">Opened once</span>The first person with the link sees it.</li>
-						<li><span class="t">Gone</span>Deleted from the server for good.</li>
+						<li data-i18n="send.life.sealed">{{ rich "send.life.sealed" nil "t" `<span class="t">` }}</li>
+						<li data-i18n="send.life.waiting">{{ rich "send.life.waiting" nil "t" `<span class="t">` }}</li>
+						<li data-i18n="send.life.opened">{{ rich "send.life.opened" nil "t" `<span class="t">` }}</li>
+						<li data-i18n="send.life.gone">{{ rich "send.life.gone" nil "t" `<span class="t">` }}</li>
 					</ol>
 				</section>
 			</div>
 		</div>
 		<div id="result" class="view" hidden>
 			<div class="pane">
-				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg>Sealed in this browser</p>
-				<h1 id="result-heading" tabindex="-1">Your link is <span class="accent">ready.</span></h1>
-				<p class="lead">Send it through any channel you trust. It opens once.</p>
+				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-check" /></svg><span data-i18n="result.eyebrow">{{ t "result.eyebrow" }}</span></p>
+				<h1 id="result-heading" tabindex="-1" data-i18n="result.title">{{ rich "result.title" nil "accent" `<span class="accent">` }}</h1>
+				<p class="lead" data-i18n="result.lead">{{ t "result.lead" }}</p>
 				<div class="form">
 					<div class="field">
-						<label class="label" for="share-link">One-time link</label>
+						<label class="label" for="share-link" data-i18n="result.link">{{ t "result.link" }}</label>
 						<div class="linkbox">
 							<input id="share-link" class="input" type="text" readonly spellcheck="false" autocomplete="off" />
-							<button id="qr-toggle" class="btn btn-secondary btn-qr" type="button" aria-expanded="false" aria-controls="share-qr" hidden><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-qr" /></svg><span class="qr-label" aria-hidden="true">QR</span><span class="sr-only">QR code</span></button>
-							<button id="copy-link" class="btn btn-primary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy link</span></button>
+							<button id="qr-toggle" class="btn btn-secondary btn-qr" type="button" aria-expanded="false" aria-controls="share-qr" hidden><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-qr" /></svg><span class="qr-label" aria-hidden="true">QR</span><span class="sr-only" data-i18n="result.qr">{{ t "result.qr" }}</span></button>
+							<button id="copy-link" class="btn btn-primary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span data-i18n="result.copy">{{ t "result.copy" }}</span></button>
 						</div>
 						<span id="copy-status" class="status" role="status"></span>
 						<figure id="share-qr" class="qr" hidden>
-							<div id="share-qr-code" class="qr-code" role="img" aria-label="QR code of your one-time link"></div>
-							<figcaption class="hint">Scan with the recipient's phone. Anyone who sees this code can open the secret.</figcaption>
+							<div id="share-qr-code" class="qr-code" role="img" aria-label="{{ t "result.qrImage" }}" data-i18n-attr="aria-label:result.qrImage"></div>
+							<figcaption class="hint" data-i18n="result.qrCaption">{{ t "result.qrCaption" }}</figcaption>
 						</figure>
-						<p class="hint">The key is the part after <strong>#</strong>. It stays in the link and is never sent to the server, so anyone holding the full link can open it. Don't post it anywhere public.</p>
+						<p class="hint" data-i18n="result.keyHint">{{ rich "result.keyHint" nil "strong" `<strong>` }}</p>
 					</div>
-					<p id="result-pass-note" class="callout" hidden><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span><strong>Passphrase protected.</strong> The recipient will need the passphrase you set, and Gone can't recover it. Send it to them separately.</span></p>
+					<p id="result-pass-note" class="callout" hidden><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span data-i18n="result.passNote">{{ rich "result.passNote" nil "strong" `<strong>` }}</span></p>
 					<details id="manage-disclosure" class="disclosure">
-						<summary>Manage this secret <span class="opt">(for you only)</span></summary>
+						<summary data-i18n="result.manage">{{ rich "result.manage" nil "opt" `<span class="opt">` }}</summary>
 						<div class="disclosure-body">
-							<p class="note" id="manage-hint">A private link for you to check whether the secret has been opened, or to delete it early. Keep it to yourself; it isn't shown again, and anyone holding it can delete the secret.</p>
+							<p class="note" id="manage-hint" data-i18n="result.manageHint">{{ t "result.manageHint" }}</p>
 							<div class="field">
-								<label class="label" for="manage-link">Manage link</label>
+								<label class="label" for="manage-link" data-i18n="result.manageLink">{{ t "result.manageLink" }}</label>
 								<div class="linkbox">
 									<input id="manage-link" class="input" type="text" readonly spellcheck="false" autocomplete="off" aria-describedby="manage-hint" />
-									<button id="copy-manage" class="btn btn-secondary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span>Copy manage link</span></button>
+									<button id="copy-manage" class="btn btn-secondary" type="button"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-copy" /></svg><span data-i18n="result.copyManage">{{ t "result.copyManage" }}</span></button>
 								</div>
 								<span id="manage-copy-status" class="status" role="status"></span>
 							</div>
 						</div>
 					</details>
-					<a class="btn btn-secondary btn-block" href="/">Send another secret</a>
+					<a class="btn btn-secondary btn-block" href="/" data-i18n="result.another">{{ t "result.another" }}</a>
 				</div>
-				<section class="rail" aria-label="Secret status">
+				<section class="rail" aria-label="{{ t "result.status" }}" data-i18n-attr="aria-label:result.status">
 					<ol class="life">
-						<li class="is-done"><span class="t">Sealed</span>Just now</li>
-						<li class="is-now" aria-current="step"><span class="t">Waiting</span><span>Until <time id="result-expiry"></time></span></li>
-						<li><span class="t">Opened once</span>By whoever opens it first</li>
-						<li><span class="t">Gone</span>Deleted for good</li>
+						<li class="is-done" data-i18n="result.life.sealed">{{ rich "result.life.sealed" nil "t" `<span class="t">` }}</li>
+						<li class="is-now" aria-current="step"><span class="t" data-i18n="result.life.waiting">{{ t "result.life.waiting" }}</span><span data-i18n="result.life.until">{{ rich "result.life.until" nil "time" `<time id="result-expiry">` }}</span></li>
+						<li data-i18n="result.life.opened">{{ rich "result.life.opened" nil "t" `<span class="t">` }}</li>
+						<li data-i18n="result.life.gone">{{ rich "result.life.gone" nil "t" `<span class="t">` }}</li>
 					</ol>
 				</section>
 			</div>

@@ -48,8 +48,24 @@ task lint        # golangci-lint
 task lint-web    # ESLint and stylelint
 ```
 
+### Text in the web pages
+Never write user-visible text straight into a template or script. Add a message to [web/messages/en.json](web/messages/en.json) and to every other catalog, then use its key: `{{ t "key" }}` with a matching `data-i18n="key"` in templates, and `goneI18n.set(node, 'js.key', args)` in scripts. The tests fail on a key that is missing or unused, or on a catalog whose placeholders differ from English. See [Translations](#translations).
+
 ### Documentation
-Update the docs in the same PR when behavior changes: the README (configuration, metrics), [docs/README.md](docs/README.md) and [docs/openapi.yaml](docs/openapi.yaml) (HTTP API), [docs/protocol.md](docs/protocol.md) (wire format), and [docs/cli.md](docs/cli.md) (CLI).
+Update the docs in the same PR when behavior changes: the message catalogs (any wording), the README (configuration, metrics), [docs/README.md](docs/README.md) and [docs/openapi.yaml](docs/openapi.yaml) (HTTP API), [docs/protocol.md](docs/protocol.md) (wire format), and [docs/cli.md](docs/cli.md) (CLI).
+
+## Translations
+
+The web pages are translated through one catalog per language in [web/messages/](web/messages/): `en.json` (the source), `es.json`, `fr.json`, `de.json` and `pt-BR.json`. They use the [inlang](https://inlang.com) message format, so inlang tools such as Fink can edit them. The translations other than English were made by machine, so native speakers' fixes are very welcome.
+
+**Fix a translation:** edit the message in that language's file and open a PR. [web/messages/README.md](web/messages/README.md) has the conventions and each language's glossary. Keep:
+- every `{placeholder}` exactly as in English, such as `{count}` or `{max}`;
+- every `{#slot}…{/slot}` pair, which wraps a link, emphasis or code. Translate the words inside it, and move it to wherever it reads naturally;
+- the plural cases: `one` and `*` (other), plus `many` where the language uses it.
+
+**Add a language:** add the locale (BCP 47 tag, its own name, text direction, number separators and plural rule) to `known` in [internal/i18n/locale.go](internal/i18n/locale.go), then add `<tag>.json` with every key from `en.json`. Run `task test`: it checks every catalog against English and renders every page in every language.
+
+**Check the layout:** development builds (`task run`) have a pseudo-language, `en-XA`, in the language picker. It shows every message accented, bracketed and about a third longer, so untranslated text stands out and layouts that would clip a longer language show it.
 
 ## Releases
 

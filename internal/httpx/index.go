@@ -1,7 +1,6 @@
 package httpx
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 	"path"
@@ -26,103 +25,23 @@ func (tr TemplateRenderer) Execute(w http.ResponseWriter, data any) error {
 	return tr.T.Execute(w, data)
 }
 
-// IndexView supplies dynamic config values to the index template.
+// IndexView supplies dynamic config values to the compose templates. Sizes
+// and durations are raw numbers; the templates format them for the locale.
 type IndexView struct {
 	MaxBytes      int64
-	MaxBytesHuman string
 	MinTTLSeconds int
 	MaxTTLSeconds int
 	TTLOptions    []TTLOptionView
-	MinTTLHuman   string
-	MaxTTLHuman   string
 }
 
 // TTLOptionView is the subset of a domain TTLOption needed by the template.
-// Label is the canonical value submitted to the API, Short is the compact
-// visible text (for example "1d"), Display is the spelled-out text announced
-// to assistive technology, DurationSeconds is provided for client-side
-// scripting, and Default marks the preselected option.
+// Label is the canonical value submitted to the API, DurationSeconds is shown
+// in the visitor's language and provided for client-side scripting, and
+// Default marks the preselected option.
 type TTLOptionView struct {
 	Label           string
-	Short           string
-	Display         string
 	DurationSeconds int
 	Default         bool
-}
-
-// friendlyTTL renders a duration in seconds as short, readable English using
-// the largest whole unit among days, hours, minutes, and seconds.
-//
-// Parameters:
-//   - sec: the duration in seconds; values <= 0 render as "0 sec".
-//
-// Returns text such as "1 day", "2 hours", "30 min", or "45 sec".
-func friendlyTTL(sec int) string {
-	switch {
-	case sec <= 0:
-		return "0 sec"
-	case sec%86400 == 0:
-		return plural(sec/86400, "day")
-	case sec%3600 == 0:
-		return plural(sec/3600, "hour")
-	case sec%60 == 0:
-		return fmt.Sprintf("%d min", sec/60)
-	default:
-		return fmt.Sprintf("%d sec", sec)
-	}
-}
-
-// plural formats n with unit, adding an "s" when n is not 1.
-//
-// Parameters:
-//   - n: the count.
-//   - unit: the singular unit name.
-//
-// Returns:
-//   - string: for example "1 day" or "3 days".
-func plural(n int, unit string) string {
-	if n == 1 {
-		return fmt.Sprintf("1 %s", unit)
-	}
-	return fmt.Sprintf("%d %ss", n, unit)
-}
-
-func humanBytes(n int64) string {
-	if n < 1024 {
-		return fmt.Sprintf("%d B", n)
-	}
-	suffixes := []string{"KB", "MB", "GB", "TB"}
-	f := float64(n)
-	for _, s := range suffixes {
-		f /= 1024
-		if f < 1024 {
-			return fmt.Sprintf("%.1f %s", f, s)
-		}
-	}
-	return fmt.Sprintf("%.1f PB", f/1024)
-}
-
-// humanTTL renders a duration compactly in the largest whole unit among days,
-// hours, minutes, and seconds.
-//
-// Parameters:
-//   - sec: the duration in seconds; values <= 0 render as "0s".
-//
-// Returns text such as "1d", "2h", "3m", or "45s".
-func humanTTL(sec int) string {
-	if sec <= 0 {
-		return "0s"
-	}
-	if sec%86400 == 0 { // whole days
-		return fmt.Sprintf("%dd", sec/86400)
-	}
-	if sec%3600 == 0 { // whole hours
-		return fmt.Sprintf("%dh", sec/3600)
-	}
-	if sec%60 == 0 { // whole minutes
-		return fmt.Sprintf("%dm", sec/60)
-	}
-	return fmt.Sprintf("%ds", sec)
 }
 
 // handleIndex renders the root HTML page.
@@ -136,7 +55,7 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Standard HTML + no-store headers applied via shared helper.
-	renderTemplate(w, h.IndexTmpl, h.indexView())
+	renderTemplate(w, r, h.IndexTmpl, h.indexView())
 }
 
 // indexView builds the size and TTL values shared by the pages with a
@@ -146,12 +65,9 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) indexView() IndexView {
 	view := IndexView{
 		MaxBytes:      h.MaxBody,
-		MaxBytesHuman: humanBytes(h.MaxBody),
 		MinTTLSeconds: int(h.MinTTL.Seconds()),
 		MaxTTLSeconds: int(h.MaxTTL.Seconds()),
 	}
-	view.MinTTLHuman = humanTTL(view.MinTTLSeconds)
-	view.MaxTTLHuman = humanTTL(view.MaxTTLSeconds)
 	view.TTLOptions = ttlOptionViews(h.TTLOptions)
 	return view
 }
@@ -174,7 +90,7 @@ func ttlOptionViews(opts []domain.TTLOption) []TTLOptionView {
 	views := make([]TTLOptionView, 0, len(tmp))
 	for _, opt := range tmp {
 		sec := int(opt.Duration.Seconds())
-		views = append(views, TTLOptionView{Label: opt.Label, Short: humanTTL(sec), Display: friendlyTTL(sec), DurationSeconds: sec})
+		views = append(views, TTLOptionView{Label: opt.Label, DurationSeconds: sec})
 	}
 	views[len(views)-1].Default = true
 	return views

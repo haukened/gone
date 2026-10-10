@@ -19,9 +19,7 @@
     return n > 0 ? n : 0;
   }
 
-  function labelText(node, fallback) {
-    return node ? node.textContent : fallback;
-  }
+
 
   function lookupElements() {
     const btn = form.querySelector('button[type="submit"]');
@@ -47,7 +45,7 @@
     uploader: window.goneUpload,
     maxBytes: parsePositiveInt(form.dataset.maxBytes),
     overhead: parsePositiveInt(form.dataset.overhead),
-    idleLabel: labelText(els.primaryLabel, 'Encrypt'),
+    idleLabel: window.goneI18n ? window.goneI18n.snapshot(els.primaryLabel) : null,
     fileInput: byId('secret-files'),
     busy: false,
     els: els

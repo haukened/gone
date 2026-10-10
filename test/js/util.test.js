@@ -87,26 +87,40 @@ test('flashCopied relabels and announces, then restores both', (t) => {
   reset();
   load('util');
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const label = h('span', { textContent: 'Copy link' });
+  const label = h('span', { textContent: 'Copy link', attrs: { 'data-i18n': 'result.copy' } });
   const btn = h('button', {}, [h('svg'), label]);
   const status = h('span');
   const u = window.goneUtil;
-  u.flashCopied(btn, status, 'Link copied.');
+  u.flashCopied(btn, status, 'js.result.linkCopied');
   assert.equal(label.textContent, 'Copied');
-  assert.equal(status.textContent, 'Link copied.');
+  assert.equal(status.textContent, 'Link copied to clipboard.');
   assert.equal(btn.disabled, false);
   t.mock.timers.tick(1000);
-  u.flashCopied(btn, status, 'Again.');
-  assert.equal(status.textContent, 'Again.');
+  u.flashCopied(btn, status, 'js.result.manageCopied');
+  assert.equal(status.textContent, 'Manage link copied to clipboard.');
   t.mock.timers.tick(2199);
   assert.equal(label.textContent, 'Copied');
   t.mock.timers.tick(1);
   assert.equal(label.textContent, 'Copy link');
+  assert.equal(label.getAttribute('data-i18n'), 'result.copy');
   assert.equal(status.textContent, '');
-  u.flashCopied(btn, null, 'x');
+  u.flashCopied(btn, null, 'js.result.linkCopied');
   assert.equal(label.textContent, 'Copied');
   t.mock.timers.tick(2200);
   assert.equal(label.textContent, 'Copy link');
+});
+
+test('flashCopied restores an untranslated label as text', (t) => {
+  reset();
+  load('util');
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const label = h('span', { textContent: 'Copy' });
+  const btn = h('button', {}, [label]);
+  window.goneUtil.flashCopied(btn, null, 'js.result.linkCopied');
+  assert.equal(label.textContent, 'Copied');
+  t.mock.timers.tick(2200);
+  assert.equal(label.textContent, 'Copy');
+  assert.equal(label.hasAttribute('data-i18n'), false);
 });
 
 test('copyText reports success, and on failure selects and explains', async () => {

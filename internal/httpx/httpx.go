@@ -14,6 +14,7 @@ import (
 
 	"github.com/haukened/gone/v3/internal/app"
 	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/i18n"
 )
 
 // ServicePort abstracts the subset of app.Service used by the HTTP layer.
@@ -45,6 +46,7 @@ type Handler struct {
 	MinTTL            time.Duration               // lower TTL bound (from config)
 	MaxTTL            time.Duration               // upper TTL bound (from config)
 	TTLOptions        []domain.TTLOption          // explicit configured TTL options
+	I18n              *i18n.Bundle                // optional catalogs; nil renders every page in English
 
 	CreateLimiter  RateLimiter    // optional limiter for POST /api/secret (nil disables)
 	ReadLimiter    RateLimiter    // optional limiter for /api/secret/{id}[/status|/revoke] (nil disables)
@@ -82,6 +84,9 @@ func (h *Handler) Router() http.Handler {
 	if h.Assets != nil {
 		mux.Handle("/static/", http.StripPrefix("/static/", h.staticHandler()))
 	}
+	if h.I18n != nil {
+		mux.Handle("GET "+i18n.CatalogPath, h.I18n.CatalogHandler())
+	}
 	// We can't set a NotFoundHandler on net/http ServeMux; instead wrap the constructed mux
 	// with a fallback that checks for 404 responses after attempting routing.
 	wrapped := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -96,10 +101,14 @@ func (h *Handler) Router() http.Handler {
 			h.writeError(r.Context(), w, http.StatusNotFound, "not found")
 			return
 		}
-		h.renderErrorPage(w, r, http.StatusNotFound, "Not Found", "The page you requested was not found.")
+		h.renderErrorPage(w, r, http.StatusNotFound, "error.notFound")
 	})
-	// Order: correlation ID -> security headers -> fallback wrapper
-	return h.secureHeaders(CorrelationIDMiddleware(wrapped))
+	var root http.Handler = wrapped
+	if h.I18n != nil {
+		root = i18n.Middleware(h.I18n, wrapped)
+	}
+	// Order: security headers -> correlation ID -> locale -> fallback wrapper
+	return h.secureHeaders(CorrelationIDMiddleware(root))
 }
 
 // probeWriter records whether a downstream handler wrote headers/body.

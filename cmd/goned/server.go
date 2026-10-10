@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -13,10 +14,12 @@ import (
 	"github.com/haukened/gone/v3/internal/app"
 	"github.com/haukened/gone/v3/internal/config"
 	"github.com/haukened/gone/v3/internal/httpx"
+	"github.com/haukened/gone/v3/internal/i18n"
 	"github.com/haukened/gone/v3/internal/janitor"
 	"github.com/haukened/gone/v3/internal/metrics"
 	"github.com/haukened/gone/v3/internal/store"
 	"github.com/haukened/gone/v3/internal/store/sqlite"
+	wembed "github.com/haukened/gone/v3/web"
 )
 
 // shutdownTimeout bounds how long in-flight requests may take to finish once
@@ -76,17 +79,18 @@ func readinessCheck(db *sql.DB, blobDir string) func(context.Context) error {
 //   - *httpx.Handler: the configured handler; call Router to mount routes.
 func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir string, tmpls *templates, assets fs.FS) *httpx.Handler {
 	h := httpx.New(svc, cfg.MaxBytes, readinessCheck(db, blobDir))
-	h.IndexTmpl = httpx.TemplateRenderer{T: tmpls.index}
-	h.AboutTmpl = httpx.AboutTemplateRenderer{T: tmpls.about}
-	h.SecretTmpl = httpx.TemplateRenderer{T: tmpls.secret}
-	h.ManageTmpl = httpx.TemplateRenderer{T: tmpls.manage}
-	h.RequestTmpl = httpx.TemplateRenderer{T: tmpls.request}
-	h.RequestDetailTmpl = httpx.TemplateRenderer{T: tmpls.requestDetail}
-	h.ReplyTmpl = httpx.TemplateRenderer{T: tmpls.reply}
+	h.IndexTmpl = tmpls.index
+	h.AboutTmpl = tmpls.about
+	h.SecretTmpl = tmpls.secret
+	h.ManageTmpl = tmpls.manage
+	h.RequestTmpl = tmpls.request
+	h.RequestDetailTmpl = tmpls.requestDetail
+	h.ReplyTmpl = tmpls.reply
 	h.Requests = svc
 	if tmpls.errorPage != nil {
-		h.ErrorTmpl = httpx.TemplateRenderer{T: tmpls.errorPage}
+		h.ErrorTmpl = tmpls.errorPage
 	}
+	h.I18n = tmpls.bundle
 	h.Assets = http.FS(assets)
 	h.MinTTL = cfg.MinTTL
 	h.MaxTTL = cfg.MaxTTL
@@ -241,7 +245,11 @@ func (c *components) serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	tmpls, err := loadTemplatesFrom(c.assets, version)
+	bundle, err := i18n.Load(c.assets, "messages", i18n.Options{Pseudo: wembed.Dev})
+	if err != nil {
+		return fmt.Errorf("load translations: %w", err)
+	}
+	tmpls, err := loadTemplatesFrom(c.assets, version, bundle)
 	if err != nil {
 		return err
 	}

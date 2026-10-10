@@ -4,8 +4,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { setup, file, reset, load } = require('./consumeViewHarness');
 
-test('requires util, fileMeta and icons; loads once; reports presence', (t) => {
-  for (const deps of [[], ['util', 'fileMeta'], ['util', 'icons'], ['fileMeta', 'icons']]) {
+test('requires util and icons; loads once; reports presence', (t) => {
+  for (const deps of [[], ['util'], ['icons']]) {
     reset();
     load(...deps, 'consumeView');
     assert.equal(window.goneConsumeView, undefined, deps.join());
@@ -99,7 +99,10 @@ test('headingFor', () => {
     [{ message: '', files: f(1) }, 'Here\u2019s a file.'],
     [{ message: '', files: f(2) }, 'Here\u2019s 2 files.']
   ];
-  for (const [d, want] of cases) assert.equal(window.goneConsumeView.headingFor(d), want);
+  for (const [d, want] of cases) {
+    const h = window.goneConsumeView.headingFor(d);
+    assert.equal(window.goneI18n.t(h.key, h.args), want);
+  }
 });
 
 test('showDecoded with a message reveals it, titles the page and focuses the heading', async (t) => {

@@ -125,7 +125,7 @@ func TestStaticHandler(t *testing.T) {
 // TestNotFoundHTML ensures non-API unknown routes return an HTML 404 page (not JSON).
 func TestNotFoundHTML(t *testing.T) {
 	indexTmpl := template.Must(template.New("index").Parse(`<html><body>Index</body></html>`))
-	errorTmpl := template.Must(template.New("error").Parse(`<!DOCTYPE html><html><body>Error {{ .Status }} - {{ .Title }} :: {{ .Message }}</body></html>`))
+	errorTmpl := template.Must(template.New("error").Parse(`<!DOCTYPE html><html><body>Error {{ .Status }} - {{ .TitleKey }} :: {{ .MessageKey }}</body></html>`))
 	h := httpx.New(noopService{}, 100, nil)
 	h.IndexTmpl = httpx.TemplateRenderer{T: indexTmpl}
 	h.ErrorTmpl = httpx.TemplateRenderer{T: errorTmpl}

@@ -4,12 +4,12 @@
 (function consumeApiCryptoModule() {
   if (window.goneConsumeApiCrypto || !window.goneConsumeApiErrors || !window.goneCrypto) return;
   const errs = window.goneConsumeApiErrors;
-  const PASSPHRASE_ERROR = 'That passphrase didn\u2019t work. The secret is already gone from the server, and this browser holds the only copy, still encrypted. Check the passphrase and try again here: closing or leaving this page destroys the secret for good.';
-  const DAMAGED_ERROR = 'This secret\u2019s contents are damaged. Ask the sender to share it again.';
+  const PASSPHRASE_ERROR = 'js.consume.passphrase';
+  const DAMAGED_ERROR = 'js.consume.damaged';
   const NONCE_BYTES = 12;
 
   function readNonce(resp, frag) {
-    if (resp.headers.get('X-Gone-Version') !== String(frag.version)) throw errs.FetchError('Unsupported secret version', false);
+    if (resp.headers.get('X-Gone-Version') !== String(frag.version)) throw errs.FetchError('js.consume.unsupportedVersion', false);
     let nonce;
     try {
       nonce = window.goneCrypto.b64urlDecode(resp.headers.get('X-Gone-Nonce') || '');

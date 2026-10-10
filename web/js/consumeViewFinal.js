@@ -10,18 +10,19 @@
   const messages = window.goneConsumeViewMessages;
   const files = window.goneConsumeViewFiles;
 
+  // headingFor returns the revealed heading as a message key and args.
   function headingFor(decoded) {
     const n = decoded.files.length;
-    const label = n === 1 ? 'a file' : `${n} files`;
-    if (decoded.message && n) return `Here\u2019s your secret and ${label}.`;
-    if (n) return `Here\u2019s ${label}.`;
-    return 'Here\u2019s your secret.';
+    if (decoded.message && n) return { key: 'js.consume.headingSecretFiles', args: { count: n } };
+    if (n) return { key: 'js.consume.headingFiles', args: { count: n } };
+    return { key: 'secret.revealedTitle' };
   }
 
   function showDecoded(decoded) {
     status.hideProgress();
     ctx.pass.clear();
-    ctx.util.setText(dom.revealedHeading, headingFor(decoded));
+    const heading = headingFor(decoded);
+    ctx.i18n.set(dom.revealedHeading, heading.key, heading.args);
     messages.showMessage(decoded.message);
     files.showFiles(decoded.files);
     messages.switchTo('revealed');
