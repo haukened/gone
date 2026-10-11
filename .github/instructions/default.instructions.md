@@ -19,7 +19,7 @@ Gone is a minimal Go service for one-time secret sharing. Its goal is to provide
   - `go fmt ./...` to format the code.
   - `task test` to run the Go and JavaScript tests.
   - `task lint` (golangci-lint: vet, staticcheck, revive, errcheck and more) and `task lint-web` (ESLint and stylelint). CI runs all three.
-  - gosec, which golangci-lint does not run here: `go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 ./...` (the same scan CI runs weekly in `sec.yaml`).
+  - gosec, which golangci-lint does not run here: `go tool -modfile=tools/gosec/go.mod gosec ./...` (the same scan CI runs weekly in `sec.yaml`; the version is pinned in `tools/gosec/go.mod`).
 
 ## Project Structure
 The project follows a minimal Go layout to keep code organized and maintainable:

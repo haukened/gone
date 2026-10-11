@@ -8,6 +8,15 @@ updates:
     schedule:
       interval: "weekly"
 
+  # The gosec scanner the weekly Security Scan builds (tools/gosec/go.mod).
+  - package-ecosystem: "gomod"
+    directory: "/tools/gosec"
+    schedule:
+      interval: "weekly"
+    groups:
+      gosec:
+        patterns: ["*"]
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
