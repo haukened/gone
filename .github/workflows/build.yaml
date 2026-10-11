@@ -56,15 +56,15 @@ jobs:
     # Skip when we're building tagged releases (handled by build_release)
     if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
     env:
-      # Whether to upload coverage to Codacy: for main and same-repo PRs. Fork
-      # PRs lack the CODACY_PROJECT_TOKEN secret, and so do Dependabot's, which
-      # only get Dependabot secrets; a version bump moves no coverage, and main
-      # uploads once it merges.
+      # Whether to upload coverage to Codacy: for main and same-repo PRs, which
+      # have the CODACY_PROJECT_TOKEN secret. Dependabot's runs read it from
+      # the Dependabot secrets, so it must be set there too: Codacy's required
+      # checks wait for these uploads and never report without them. Fork PRs
+      # can't have the secret.
       CODACY_UPLOAD: >-
         ${{ github.ref == 'refs/heads/main' ||
         (github.event_name == 'pull_request' &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        github.event.pull_request.user.login != 'dependabot[bot]') }}
+        github.event.pull_request.head.repo.full_name == github.repository) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
