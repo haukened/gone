@@ -30,7 +30,9 @@ test('decrypt verifies version, nonce and key, then zeroes buffers', async (t) =
   }
   await assert.rejects(api.decrypt(fakeResponse({}), enc.ciphertext.slice(), frag()), unsupported);
   const verify = (e) => /Couldn.t verify/.test(tr(e.message)) && e.retryable === false;
-  for (const n of [undefined, '', nonce + '=', nonce.slice(0, -1) + '_', 'AAAA', '!'.repeat(16)]) {
+  // A changed last character: never the one the random nonce already ends in.
+  const tampered = nonce.slice(0, -1) + (nonce.endsWith('_') ? '-' : '_');
+  for (const n of [undefined, '', nonce + '=', tampered, 'AAAA', '!'.repeat(16)]) {
     const g = frag();
     await assert.rejects(api.decrypt(headers('1', n), enc.ciphertext.slice(), g), verify, String(n));
     assert.ok(g.key.every((b) => b === 0));
