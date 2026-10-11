@@ -27,8 +27,10 @@ jobs:
 
     # Built with the Go from setup-go: the gosec action's container ships its own
     # older Go with GOTOOLCHAIN=local and cannot load a module that needs a newer one.
+    # The version is pinned in tools/gosec/go.mod, with a golang.org/x/tools new
+    # enough to read this Go's export data; Dependabot keeps both current.
     - name: Run Gosec Security Scanner
-      run: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 ./...
+      run: go tool -modfile=tools/gosec/go.mod gosec ./...
 
   # Fuzz each target for a short time. Regular `go test` only replays the
   # seed corpus; this explores new inputs. A crash fails the job, and the
