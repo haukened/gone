@@ -121,12 +121,15 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
 
       - name: Upload coverage to Codacy
-        # Upload for main and same-repo PRs (fork PRs lack the secret).
+        # Upload for main and same-repo PRs. Fork PRs lack the secret, and so do
+        # Dependabot's, which only get Dependabot secrets; a version bump moves
+        # no coverage, and main gets the upload once it merges.
         # On PRs the reporter attributes coverage to the PR head commit.
         if: >-
           github.ref == 'refs/heads/main' ||
           (github.event_name == 'pull_request' &&
-           github.event.pull_request.head.repo.full_name == github.repository)
+           github.event.pull_request.head.repo.full_name == github.repository &&
+           github.event.pull_request.user.login != 'dependabot[bot]')
         uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1.3.0
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}

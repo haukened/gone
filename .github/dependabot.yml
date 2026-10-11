@@ -2,6 +2,17 @@
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
+
+# dhi.io (Docker Hardened Images) needs a Docker Hub login. These are
+# Dependabot secrets (Settings > Secrets > Dependabot), separate from the
+# Actions secrets of the same name that release.yaml uses.
+registries:
+  dhi:
+    type: docker-registry
+    url: dhi.io
+    username: ${{secrets.DOCKERHUB_USERNAME}}
+    password: ${{secrets.DOCKERHUB_TOKEN}}
+
 updates:
   - package-ecosystem: "gomod"
     directory: "/"
@@ -28,6 +39,8 @@ updates:
   # Keeps the digest-pinned Docker Hardened Images in the Dockerfile current.
   - package-ecosystem: "docker"
     directory: "/"
+    registries:
+      - dhi
     schedule:
       interval: "weekly"
     groups:

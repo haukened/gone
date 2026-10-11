@@ -30,8 +30,13 @@ env:
 jobs:
   upload:
     runs-on: ubuntu-latest
-    # Repository secrets are unavailable to fork PRs.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Repository secrets are unavailable to fork PRs and to Dependabot's PRs,
+    # which only get Dependabot secrets. Codacy's own analysis still runs on
+    # them, and main gets these results once they merge.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.login != 'dependabot[bot]')
     env:
       PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
       # Codacy analyzes the PR head commit, not the synthetic merge commit.
