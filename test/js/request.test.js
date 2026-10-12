@@ -3,7 +3,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load, waitFor, captureConsole } = require('./harness');
+const { reset, load, loadRaw, waitFor, captureConsole } = require('./harness');
 const { fakeIndexedDB } = require('./fakeIdb');
 const { fakeResponse, installFetch } = require('./fakes');
 const { requestPage } = require('./requestPage');
@@ -223,4 +223,16 @@ test('a list that cannot be read renders empty', async (t) => {
   await waitFor(() => b.$('request-empty').hidden === false && b.$('request-list').hidden === true);
   await new Promise((r) => setImmediate(r));
   assert.equal(b.calls.length, 0);
+});
+
+test('each part waits for the parts it needs', () => {
+  reset('https://gone.test/request');
+  ['requestSync', 'requestCreated', 'request'].forEach((name) => loadRaw(name));
+  assert.equal(window.goneRequestSync, undefined);
+  assert.equal(window.goneRequestCreated, undefined);
+  load('util');
+  window.goneRequestDom = {};
+  loadRaw('requestCreated');
+  loadRaw('request');
+  assert.equal(window.goneRequestCreated, undefined);
 });

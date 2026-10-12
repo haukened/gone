@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load } = require('./harness');
+const { reset, load, loadRaw } = require('./harness');
 const { fakeIndexedDB } = require('./fakeIdb');
 
 function boot(idbOpts, extra) {
@@ -64,4 +64,16 @@ test('loads once', () => {
   const s = boot({});
   load('requestStore');
   assert.equal(window.goneRequestStore, s);
+});
+
+test('needs its database helpers', () => {
+  reset('https://gone.test/request', { indexedDB: fakeIndexedDB({}) });
+  loadRaw('requestStore');
+  assert.equal(window.goneRequestStore, undefined);
+});
+
+test('needs its database helpers', () => {
+  reset('https://gone.test/request', { indexedDB: fakeIndexedDB({}) });
+  loadRaw('requestStore');
+  assert.equal(window.goneRequestStore, undefined);
 });

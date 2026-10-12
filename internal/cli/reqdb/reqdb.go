@@ -12,15 +12,10 @@
 package reqdb
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"errors"
 	"fmt"
-	"io"
-	"io/fs"
 	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -29,9 +24,6 @@ import (
 
 // FileName is the request file inside the CLI config directory.
 const FileName = "requests.gob"
-
-// lockName is the lock file that serializes changes to FileName.
-const lockName = "requests.lock"
 
 // States a request can be in.
 const (
@@ -50,24 +42,11 @@ const (
 	maxFileBytes = 4 << 20
 )
 
-// Lock timing: changes take milliseconds, so a lock older than staleLock
-// was left by a process that died, and waiting longer than lockWait means
-// something is wrong.
-var (
-	lockWait  = 5 * time.Second
-	staleLock = 30 * time.Second
-	lockPoll  = 10 * time.Millisecond
-)
-
 // ErrNoMatch reports that no saved request matches an ID or prefix.
 var ErrNoMatch = errors.New("no saved request matches")
 
 // ErrBadPrefix reports an ID argument that is not 4 to 32 hex characters.
 var ErrBadPrefix = errors.New("a request ID is 4 to 32 lowercase hex characters")
-
-// ErrLocked reports that another gone process held the request file for
-// longer than lockWait.
-var ErrLocked = errors.New("the request file is in use by another gone process")
 
 // prefixRE accepts 4 to 32 lowercase hex characters.
 var prefixRE = regexp.MustCompile(`^[0-9a-f]{4,32}$`)
@@ -94,12 +73,6 @@ type Row struct {
 	State       string    // StateWaiting or StateReady, as last seen
 	CreatedAt   time.Time // when the request was made
 	ExpiresAt   time.Time // reply deadline, or the reply's own expiry once ready
-}
-
-// file is the encoded layout of FileName.
-type file struct {
-	Version  int
-	Requests []Row
 }
 
 // DB is the request file in one directory.
@@ -266,199 +239,4 @@ func without(rows []Row, id string) []Row {
 		}
 	}
 	return out
-}
-
-// update reads the file under the lock, applies change, and writes the
-// result back atomically when it differs.
-//
-// Parameters:
-//   - ctx: context; waiting for the lock stops when it is done.
-//   - change: transforms the rows.
-//
-// Returns an I/O, lock, or format error.
-func (d *DB) update(ctx context.Context, change func([]Row) []Row) error {
-	unlock, err := d.lock(ctx)
-	if err != nil {
-		return err
-	}
-	defer unlock()
-	rows, raw, err := d.read()
-	if err != nil {
-		return err
-	}
-	changed := change(rows)
-	if raw == nil && len(changed) == 0 {
-		return nil // nothing saved yet, and nothing to save
-	}
-	next, err := encode(changed)
-	if err != nil || bytes.Equal(next, raw) {
-		return err
-	}
-	return d.write(next)
-}
-
-// path returns the request file's path.
-//
-// Returns the path.
-func (d *DB) path() string { return filepath.Join(d.dir, FileName) }
-
-// read decodes the request file. A missing file is empty. On Unix a file
-// that others can read or write, that belongs to another user, or that is a
-// symlink is refused before it is opened (*UnsafeError).
-//
-// Returns the rows, the raw bytes, or an error.
-func (d *DB) read() ([]Row, []byte, error) {
-	if err := checkFile(d.path()); err != nil {
-		return nil, nil, err
-	}
-	// A fixed file name inside the user's own config directory.
-	f, err := os.Open(d.path()) // #nosec G304 // nosemgrep
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil, nil
-	}
-	if err != nil {
-		return nil, nil, err
-	}
-	defer func() { _ = f.Close() }()
-	raw, err := io.ReadAll(io.LimitReader(f, maxFileBytes+1))
-	if err != nil {
-		return nil, nil, err
-	}
-	rows, err := decode(raw)
-	return rows, raw, err
-}
-
-// decode parses the file contents.
-//
-// Parameters:
-//   - raw: file bytes.
-//
-// Returns the rows or an error.
-func decode(raw []byte) ([]Row, error) {
-	if len(raw) > maxFileBytes {
-		return nil, errors.New("the request file is too large")
-	}
-	var f file
-	if err := gob.NewDecoder(bytes.NewReader(raw)).Decode(&f); err != nil {
-		return nil, fmt.Errorf("the request file is damaged: %w", err)
-	}
-	if f.Version != formatVersion {
-		return nil, fmt.Errorf("the request file has format %d; this gone understands %d", f.Version, formatVersion)
-	}
-	return f.Requests, nil
-}
-
-// encode serializes rows.
-//
-// Parameters:
-//   - rows: rows to store.
-//
-// Returns the bytes or an encoding error.
-func encode(rows []Row) ([]byte, error) {
-	var buf bytes.Buffer
-	err := gob.NewEncoder(&buf).Encode(file{Version: formatVersion, Requests: rows})
-	return buf.Bytes(), err
-}
-
-// write replaces the request file atomically: a 0600 temp file in the same
-// directory is written and synced, renamed over the old one, and the
-// directory is synced so the rename itself survives a crash. A reader sees
-// either the old file or the new one, never a partial write.
-//
-// Parameters:
-//   - data: new contents.
-//
-// Returns an I/O error.
-func (d *DB) write(data []byte) error {
-	tmp, err := os.CreateTemp(d.dir, ".requests-*.tmp")
-	if err != nil {
-		return err
-	}
-	name := tmp.Name()
-	defer func() { _ = os.Remove(name) }()
-	err = errors.Join(tmp.Chmod(filePerm), writeAll(tmp, data), tmp.Sync())
-	if err = errors.Join(err, tmp.Close()); err != nil {
-		return err
-	}
-	if err = os.Rename(name, d.path()); err != nil {
-		return err
-	}
-	syncDir(d.dir)
-	return nil
-}
-
-// syncDir flushes a directory entry change to disk. Best effort: some
-// platforms (Windows) cannot open a directory for syncing.
-//
-// Parameters:
-//   - dir: directory.
-func syncDir(dir string) {
-	if f, err := os.Open(dir); err == nil { // #nosec G304 // nosemgrep
-		_ = f.Sync()
-		_ = f.Close()
-	}
-}
-
-// writeAll writes data to w.
-//
-// Parameters:
-//   - w: destination.
-//   - data: bytes.
-//
-// Returns the write error.
-func writeAll(w io.Writer, data []byte) error {
-	_, err := w.Write(data)
-	return err
-}
-
-// lock takes the lock file, waiting up to lockWait. A lock older than
-// staleLock is removed: its process died mid-change.
-//
-// Parameters:
-//   - ctx: context.
-//
-// Returns the unlock function, or ErrLocked, the context error, or an I/O
-// error.
-func (d *DB) lock(ctx context.Context) (func(), error) {
-	path := filepath.Join(d.dir, lockName)
-	deadline := time.Now().Add(lockWait)
-	for {
-		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePerm) // #nosec G304 // nosemgrep
-		if err == nil {
-			_ = f.Close()
-			return func() { _ = os.Remove(path) }, nil
-		}
-		if !errors.Is(err, fs.ErrExist) {
-			return nil, err
-		}
-		if err = waitForLock(ctx, path, deadline); err != nil {
-			return nil, err
-		}
-	}
-}
-
-// waitForLock clears a stale lock or sleeps briefly before the next try.
-//
-// Parameters:
-//   - ctx: context.
-//   - path: lock file.
-//   - deadline: when to give up.
-//
-// Returns ErrLocked past the deadline, the context error, or nil to retry.
-func waitForLock(ctx context.Context, path string, deadline time.Time) error {
-	if fi, err := os.Stat(path); err == nil && time.Since(fi.ModTime()) > staleLock {
-		_ = os.Remove(path)
-		return nil
-	}
-	if time.Now().After(deadline) {
-		return ErrLocked
-	}
-	t := time.NewTimer(lockPoll)
-	defer t.Stop()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-t.C:
-		return nil
-	}
 }

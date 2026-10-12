@@ -6,32 +6,18 @@
 // match the 32-hex pattern, on this page's origin. Claiming and acknowledging
 // the reply go through consumeApi. Exposed as window.goneRequestApi.
 (function requestApiModule() {
-  if (window.goneRequestApi) return;
+  if (window.goneRequestApi || !window.goneRequestApiFetch) return;
 
   const API_PATH = '/api/request';
   const ID_RE = /^[0-9a-f]{32}$/;
   const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
-  const RETRY_AFTER_RE = /^[0-9]{1,6}$/;
-  const NETWORK_ERROR = 'js.common.networkRetry';
-  const SERVER_ERROR = 'js.common.server';
-  const STATUS_MESSAGES = new Map([
-    [400, 'js.request.rejected'],
-    [429, 'js.common.tooMany'],
-    [503, 'js.common.busy']
-  ]);
-
-  // RequestError carries a user-facing message key, whether retrying may help,
-  // and the server's Retry-After in seconds (0 when absent).
-  function RequestError(message, retryable, retryAfter) {
-    const e = new Error(message);
-    e.retryable = retryable;
-    e.retryAfter = retryAfter || 0;
-    return e;
-  }
-
-  function isRequestError(e) {
-    return Boolean(e) && e.retryable !== undefined;
-  }
+  const http = window.goneRequestApiFetch;
+  const RequestError = http.RequestError;
+  const SERVER_ERROR = http.SERVER_ERROR;
+  const send = http.send;
+  const failure = http.failure;
+  const readJSON = http.readJSON;
+  const parseDate = http.parseDate;
 
   function isID(id) {
     return typeof id === 'string' && ID_RE.test(id);
@@ -45,47 +31,6 @@
   function actionURL(id, action) {
     if (!isID(id)) throw RequestError(SERVER_ERROR, false);
     return new URL(`${API_PATH}/${id}/${action}`, window.location.origin).href;
-  }
-
-  async function send(url, method, headers) {
-    try {
-      // Browser fetch to a same-origin URL built from a validated ID; not a server-side SSRF sink.
-      return await fetch(url, { // nosemgrep
-        method: method,
-        headers: headers,
-        mode: 'same-origin',
-        credentials: 'same-origin',
-        redirect: 'error',
-        cache: 'no-store',
-        keepalive: method === 'POST'
-      });
-    } catch {
-      throw RequestError(NETWORK_ERROR, true);
-    }
-  }
-
-  function readRetryAfter(resp) {
-    const raw = resp.headers.get('Retry-After') || '';
-    return RETRY_AFTER_RE.test(raw) ? Number(raw) : 0;
-  }
-
-  // failure maps an unexpected HTTP status to a RequestError.
-  function failure(resp) {
-    return RequestError(STATUS_MESSAGES.get(resp.status) || SERVER_ERROR, resp.status !== 400, readRetryAfter(resp));
-  }
-
-  async function readJSON(resp) {
-    try {
-      return await resp.json();
-    } catch {
-      throw RequestError(SERVER_ERROR, true);
-    }
-  }
-
-  function parseDate(value) {
-    const when = new Date(typeof value === 'string' ? value : NaN);
-    if (Number.isNaN(when.getTime())) throw RequestError(SERVER_ERROR, true);
-    return when;
   }
 
   function checkCreated(body) {
@@ -127,5 +72,5 @@
     throw failure(resp);
   }
 
-  window.goneRequestApi = Object.freeze({ RequestError, isRequestError, isID, isToken, create, status, cancel });
+  window.goneRequestApi = Object.freeze({ RequestError, isRequestError: http.isRequestError, isID, isToken, create, status, cancel });
 })();

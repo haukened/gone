@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load } = require('./harness');
+const { reset, load, loadRaw } = require('./harness');
 const { fakeResponse, installFetch } = require('./fakes');
 
 const ID = 'a'.repeat(32);
@@ -91,4 +91,16 @@ test('loads once', () => {
   const a = api();
   load('requestApi');
   assert.equal(window.goneRequestApi, a);
+});
+
+test('needs its fetch helpers', () => {
+  reset('https://gone.test/request');
+  loadRaw('requestApi');
+  assert.equal(window.goneRequestApi, undefined);
+});
+
+test('needs its fetch helpers', () => {
+  reset('https://gone.test/request');
+  loadRaw('requestApi');
+  assert.equal(window.goneRequestApi, undefined);
 });

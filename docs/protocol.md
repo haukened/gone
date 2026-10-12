@@ -1,7 +1,7 @@
 # Gone Protocol Specification
 
 Status: **normative** for protocol versions 1, 2 and 3 and plaintext envelope GONE2.
-Reference implementations: the browser client (`web/js/crypto*.js` for encryption and links, `envelope.js` and `fileMeta.js` for GONE2, `consumeApi*.js` for the claim/acknowledge exchange, `request*.js` and `reply*.js` for secret requests) and the Go package `internal/envelope`, used by the `gone` CLI. Both are tested against the shared vectors in [`test/vectors/`](../test/vectors/).
+Reference implementations: the browser client (`web/js/crypto*.js` for encryption and links, `envelope*.js` and `fileMeta.js` for GONE2, `consumeApi*.js` for the claim/acknowledge exchange, `request*.js` and `reply*.js` for secret requests) and the Go package `internal/envelope`, used by the `gone` CLI. Both are tested against the shared vectors in [`test/vectors/`](../test/vectors/).
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** are used as described in RFC 2119.
 

@@ -53,11 +53,7 @@ func parseGet(args []string) (getOpts, string, error) {
 	fs := newFlagSet("get")
 	o.register(fs)
 	o.pass.register(fs, false)
-	for _, name := range []string{"o", "out"} {
-		fs.StringVar(&o.out, name, ".", "")
-	}
-	fs.BoolVar(&o.raw, "raw", false, "")
-	fs.StringVar(&o.messageOut, "message-out", "", "")
+	registerOutputs(&o, fs)
 	raw, err := onePositional(fs, args, "link")
 	if err != nil {
 		return o, "", err
@@ -78,15 +74,9 @@ func (a *app) runGet(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	a.json = o.json
-	if raw, err = a.readLinkArg(raw); err != nil {
-		return err
-	}
-	link, err := envelope.ParseLink(raw)
-	if err != nil {
-		return usagef("not a valid gone link (quote it in single quotes so the shell keeps the #fragment)")
-	}
-	cl, err := newClient(a.env, link.Origin, "the link", o.common)
+	link, cl, err := openLinkArg(a, o.common, raw, envelope.ParseLink,
+		func(l envelope.Link) string { return l.Origin },
+		"not a valid gone link (quote it in single quotes so the shell keeps the #fragment)")
 	if err != nil {
 		return err
 	}

@@ -12,23 +12,24 @@
 //
 // Plaintext without the magic prefix is treated as a legacy text-only secret.
 // The normative format is docs/protocol.md section 5.
-// Requires window.goneFileMeta (fileMeta.js).
+// Requires window.goneFileMeta (fileMeta.js) and window.goneEnvelopeHeader
+// (envelopeHeader.js).
 (function envelopeModule() {
-  if (window.goneEnvelope || !window.goneFileMeta) return;
+  if (window.goneEnvelope || !window.goneFileMeta || !window.goneEnvelopeHeader) return;
   const meta = window.goneFileMeta;
-
-  const MAGIC = new Uint8Array([0x47, 0x4f, 0x4e, 0x45, 0x32, 0x00, 0x00, 0x00]);
-  const PREFIX_BYTES = MAGIC.length + 4;
-  const MAX_HEADER_BYTES = 16 * 1024;
-  const MAX_FILES = 10;
+  const framing = window.goneEnvelopeHeader;
+  const MAGIC = framing.MAGIC;
+  const PREFIX_BYTES = framing.PREFIX_BYTES;
+  const MAX_HEADER_BYTES = framing.MAX_HEADER_BYTES;
+  const MAX_FILES = framing.MAX_FILES;
   const GCM_TAG_BYTES = 16;
+  const sumSizes = framing.sumSizes;
+  const viewOf = framing.viewOf;
+  const hasMagic = framing.hasMagic;
+  const readHeader = framing.readHeader;
 
   function utf8(s) {
     return new TextEncoder().encode(s || '');
-  }
-
-  function sumSizes(entries, start) {
-    return entries.reduce(function (sum, f) { return sum + f.size; }, start);
   }
 
   // headerBytes encodes the JSON header for a message length and file
@@ -58,11 +59,6 @@
     return sumSizes(fileMetas, PREFIX_BYTES + header.length + msgLen + fixed);
   }
 
-  // Big-endian u32 helpers (DataView defaults to big-endian).
-  function viewOf(buf) {
-    return new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-  }
-
   // concatParts writes each part sequentially into a new buffer of length total.
   function concatParts(parts, total) {
     const out = new Uint8Array(total);
@@ -90,45 +86,6 @@
     const out = concatParts(parts, sumSizes(metas, PREFIX_BYTES + header.length + msgBytes.length));
     msgBytes.fill(0);
     return out;
-  }
-
-  function hasMagic(bytes) {
-    return Boolean(bytes) && bytes.length >= MAGIC.length && MAGIC.every(function (b, i) { return bytes[i] === b; });
-  }
-
-  function isSize(n) {
-    return Number.isSafeInteger(n) && n >= 0;
-  }
-
-  function isObject(v) {
-    return typeof v === 'object' && v !== null && !Array.isArray(v);
-  }
-
-  function isValidFile(f) {
-    return isObject(f) && typeof f.name === 'string' && typeof f.type === 'string' && isSize(f.size);
-  }
-
-  function isValidShape(h) {
-    return isObject(h) && h.v === 2 && isSize(h.msg) && Array.isArray(h.files);
-  }
-
-  // validateHeader checks the header shape and that its sizes exactly
-  // account for the available body bytes.
-  function validateHeader(h, available) {
-    if (!isValidShape(h)) throw new Error('invalid envelope header');
-    if (h.files.length > MAX_FILES) throw new Error('too many files');
-    if (!h.files.every(isValidFile)) throw new Error('invalid file entry');
-    if (sumSizes(h.files, h.msg) !== available) throw new Error('envelope size mismatch');
-  }
-
-  function readHeader(bytes) {
-    if (bytes.length < PREFIX_BYTES) throw new Error('truncated envelope');
-    const headerLen = viewOf(bytes).getUint32(MAGIC.length);
-    if (headerLen > Math.min(MAX_HEADER_BYTES, bytes.length - PREFIX_BYTES)) throw new Error('invalid header length');
-    const bodyStart = PREFIX_BYTES + headerLen;
-    const header = JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes.subarray(PREFIX_BYTES, bodyStart)));
-    validateHeader(header, bytes.length - bodyStart);
-    return { header: header, bodyStart: bodyStart };
   }
 
   // decode parses plaintext into {message, files:[{name, type, size, bytes}]}.

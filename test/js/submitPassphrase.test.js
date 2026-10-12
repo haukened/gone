@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load, h } = require('./harness');
+const { reset, load, loadRaw, h } = require('./harness');
 
 // fields builds the passphrase controls; skip omits named keys.
 function fields(skip) {
@@ -40,6 +40,13 @@ test('module needs its dependencies and loads once', () => {
   assert.equal(window.gonePassphraseField, mod);
   assert.equal(mod.create({}, () => {}), null);
   assert.ok(b.field);
+});
+
+test('module needs submitStrength', () => {
+  reset();
+  load('util', 'crypto', 'wordlist', 'passgen');
+  loadRaw('submitPassphrase');
+  assert.equal(window.gonePassphraseField, undefined);
 });
 
 test('typing rates strength, validates length and reports overhead', () => {

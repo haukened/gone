@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/haukened/gone/v3/internal/client"
 	"github.com/haukened/gone/v3/internal/envelope"
 )
 
@@ -137,6 +138,37 @@ func readRegularFile(path string, budget int64, what string) ([]byte, error) {
 		return nil, tooLargeInput()
 	}
 	return data, nil
+}
+
+// openLinkArg switches output to JSON when asked, so stdin and link errors
+// are reported in the requested format, then reads and parses a link
+// argument and makes a client for the link's server.
+//
+// Parameters:
+//   - a: the running command.
+//   - c: shared flags (--json, --insecure, --timeout).
+//   - raw: positional link argument ("-" reads stdin).
+//   - parse: link parser for the expected kind of link.
+//   - origin: returns the server origin of a parsed link.
+//   - bad: usage message when parse fails; the input is never echoed.
+//
+// Returns the parsed link and its client, or a usage/I/O/client error.
+func openLinkArg[L any](a *app, c common, raw string, parse func(string) (L, error), origin func(L) string, bad string) (L, *client.Client, error) {
+	var zero L
+	a.json = c.json
+	raw, err := a.readLinkArg(raw)
+	if err != nil {
+		return zero, nil, err
+	}
+	link, err := parse(raw)
+	if err != nil {
+		return zero, nil, usagef("%s", bad)
+	}
+	cl, err := newClient(a.env, origin(link), "the link", c)
+	if err != nil {
+		return zero, nil, err
+	}
+	return link, cl, nil
 }
 
 // readLinkArg resolves a link argument: "-" reads the link from stdin

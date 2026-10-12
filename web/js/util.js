@@ -95,6 +95,25 @@
     }
   }
 
+  function viewId(v) {
+    return `view-${v}`;
+  }
+
+  // showView shows the named view among views and hides the others, sets the
+  // page title from titles (when it has one), and moves focus to the view's
+  // heading so screen readers announce the change. idOf maps a view name to
+  // its element id (default "view-<name>").
+  function showView(views, name, titles, idOf) {
+    const idFor = idOf || viewId;
+    views.forEach(function (v) {
+      const node = document.getElementById(idFor(v));
+      if (node) node.hidden = v !== name;
+    });
+    if (titles[name]) window.goneI18n.setTitle(titles[name]);
+    const heading = document.getElementById(`${name}-heading`);
+    if (heading) heading.focus();
+  }
+
   window.goneUtil = Object.freeze({
     logTiming: logTiming,
     sleep: sleep,
@@ -103,6 +122,7 @@
     setText: setText,
     el: el,
     flashCopied: flashCopied,
-    copyText: copyText
+    copyText: copyText,
+    showView: showView
   });
 })();

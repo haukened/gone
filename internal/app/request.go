@@ -142,16 +142,9 @@ func (s *Service) ClaimReply(ctx context.Context, idStr, manageStr, claimStr str
 	if err != nil {
 		return ClaimResult{}, err
 	}
-	tok, retry, err := claimToken(claimStr)
-	if err != nil {
-		return ClaimResult{}, err
-	}
-	until := s.Clock.Now().Add(s.claimLease())
-	c, err := s.Requests.ClaimReply(ctx, idStr, manage.Hash(), tok.Hash(), retry, until)
-	if err != nil {
-		return ClaimResult{}, err
-	}
-	return ClaimResult{Claimed: c, Token: tok}, nil
+	return s.claim(claimStr, func(claimHash string, retry bool, until time.Time) (Claimed, error) {
+		return s.Requests.ClaimReply(ctx, idStr, manage.Hash(), claimHash, retry, until)
+	})
 }
 
 // AckReply confirms the requester opened the reply, permanently deleting it.
@@ -164,18 +157,7 @@ func (s *Service) ClaimReply(ctx context.Context, idStr, manageStr, claimStr str
 // Returns nil on deletion, or domain.ErrInvalidID, domain.ErrInvalidClaim,
 // ErrNotFound, or a storage error.
 func (s *Service) AckReply(ctx context.Context, idStr, claimStr string) error {
-	if _, err := domain.ParseID(idStr); err != nil {
-		return domain.ErrInvalidID
-	}
-	tok, err := domain.ParseClaimToken(claimStr)
-	if err != nil {
-		return err
-	}
-	if err = s.Store.Ack(ctx, idStr, tok.Hash()); err != nil {
-		return err
-	}
-	s.inc("requests_opened_total")
-	return nil
+	return s.ack(ctx, idStr, claimStr, "requests_opened_total")
 }
 
 // CancelRequest deletes an open request or an unopened reply for the

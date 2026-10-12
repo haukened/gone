@@ -139,16 +139,9 @@ func (s *Service) Claim(ctx context.Context, idStr, tokenStr string) (ClaimResul
 	if _, err := domain.ParseID(idStr); err != nil {
 		return ClaimResult{}, domain.ErrInvalidID
 	}
-	tok, retry, err := claimToken(tokenStr)
-	if err != nil {
-		return ClaimResult{}, err
-	}
-	until := s.Clock.Now().Add(s.claimLease())
-	c, err := s.Store.Claim(ctx, idStr, tok.Hash(), retry, until)
-	if err != nil {
-		return ClaimResult{}, err
-	}
-	return ClaimResult{Claimed: c, Token: tok}, nil
+	return s.claim(tokenStr, func(claimHash string, retry bool, until time.Time) (Claimed, error) {
+		return s.Store.Claim(ctx, idStr, claimHash, retry, until)
+	})
 }
 
 // Ack confirms the client received and decrypted the secret, permanently
@@ -162,17 +155,53 @@ func (s *Service) Claim(ctx context.Context, idStr, tokenStr string) (ClaimResul
 // Returns nil on deletion, or domain.ErrInvalidID, domain.ErrInvalidClaim,
 // ErrNotFound, or a storage error.
 func (s *Service) Ack(ctx context.Context, idStr, tokenStr string) error {
+	return s.ack(ctx, idStr, tokenStr, "secrets_consumed_total")
+}
+
+// claim issues or parses a claim token, sets the lease deadline and runs the
+// store call that reserves the ciphertext.
+//
+// Parameters:
+//   - claimStr: existing claim token for a retry, or "" for a fresh claim.
+//   - reserve: store call taking the token hash, retry flag and lease deadline.
+//
+// Returns the claimed ciphertext with its token, or domain.ErrInvalidClaim, an
+// RNG error, or the store's error.
+func (s *Service) claim(claimStr string, reserve func(claimHash string, retry bool, until time.Time) (Claimed, error)) (ClaimResult, error) {
+	tok, retry, err := claimToken(claimStr)
+	if err != nil {
+		return ClaimResult{}, err
+	}
+	c, err := reserve(tok.Hash(), retry, s.Clock.Now().Add(s.claimLease()))
+	if err != nil {
+		return ClaimResult{}, err
+	}
+	return ClaimResult{Claimed: c, Token: tok}, nil
+}
+
+// ack validates an ID and claim token, deletes the claimed ciphertext and
+// counts it under metric.
+//
+// Parameters:
+//   - ctx: request context.
+//   - idStr: secret or request ID.
+//   - claimStr: claim token.
+//   - metric: counter to increment on deletion.
+//
+// Returns nil on deletion, or domain.ErrInvalidID, domain.ErrInvalidClaim,
+// ErrNotFound, or a storage error.
+func (s *Service) ack(ctx context.Context, idStr, claimStr, metric string) error {
 	if _, err := domain.ParseID(idStr); err != nil {
 		return domain.ErrInvalidID
 	}
-	tok, err := domain.ParseClaimToken(tokenStr)
+	tok, err := domain.ParseClaimToken(claimStr)
 	if err != nil {
 		return err
 	}
 	if err = s.Store.Ack(ctx, idStr, tok.Hash()); err != nil {
 		return err
 	}
-	s.inc("secrets_consumed_total")
+	s.inc(metric)
 	return nil
 }
 

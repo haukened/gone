@@ -2,11 +2,6 @@
 
 package reqdb
 
-import (
-	"fmt"
-	"os"
-)
-
 // checkDir only checks that dir is a directory: Windows protects the
 // user's profile with ACLs, not Unix permission bits.
 //
@@ -15,14 +10,8 @@ import (
 //
 // Returns a stat error or nil.
 func checkDir(dir string) error {
-	fi, err := os.Stat(dir)
-	if err != nil {
-		return err
-	}
-	if !fi.IsDir() {
-		return fmt.Errorf("%s is not a directory", dir)
-	}
-	return nil
+	_, err := statDir(dir)
+	return err
 }
 
 // checkFile does nothing on Windows; see checkDir.

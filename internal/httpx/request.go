@@ -3,7 +3,6 @@ package httpx
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/haukened/gone/v3/internal/app"
-	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // HeaderFill carries a request's fill token on the open check and the reply.
@@ -202,155 +200,22 @@ func (h *Handler) requestsEnabled(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 
-// handleRequestOpen implements GET /api/request/{id}: 200 while the request
-// can be answered, the uniform 404 otherwise. It changes nothing.
+// finishNoContent ends a request action that has no response body: it maps
+// err to an error response, or replies 204 and logs event as a success.
 //
 // Parameters:
 //   - w: response writer.
 //   - r: incoming request.
-//   - id: request ID.
-func (h *Handler) handleRequestOpen(w http.ResponseWriter, r *http.Request, id string) {
-	expires, err := h.Requests.RequestOpen(r.Context(), id, singleValue(r, HeaderFill))
+//   - err: the action's result.
+//   - event: log message for a success.
+func (h *Handler) finishNoContent(w http.ResponseWriter, r *http.Request, err error, event string) {
 	if err != nil {
-		h.mapServiceError(r.Context(), w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, struct {
-		State     string    `json:"state"`
-		ExpiresAt time.Time `json:"expires_at"`
-	}{"open", expires.UTC()})
-}
-
-// handleFillRequest implements PUT /api/request/{id}/reply. Size and protocol
-// headers follow POST /api/secret, except the version must be 3 and there is
-// no TTL.
-//
-// Parameters:
-//   - w: response writer.
-//   - r: incoming request.
-//   - id: request ID.
-func (h *Handler) handleFillRequest(w http.ResponseWriter, r *http.Request, id string) {
-	clog := requestLog(r)
-	clog.Info("request fill", "action", "start")
-	cl, version, nonce, err := h.parseFillHeaders(r)
-	if err != nil {
-		code, msg := classifyCreateError(err)
-		h.writeError(r.Context(), w, code, msg)
-		clog.Info("request fill", "action", "error", "kind", "validation")
-		return
-	}
-	body := http.MaxBytesReader(w, r.Body, cl)
-	defer func() { _ = body.Close() }()
-	expires, err := h.Requests.Fill(r.Context(), id, singleValue(r, HeaderFill), body, cl, version, nonce)
-	if err != nil {
-		h.mapServiceError(r.Context(), w, err)
-		clog.Info("request fill", "action", "error", "kind", "service")
-		return
-	}
-	writeJSON(w, http.StatusCreated, struct {
-		ExpiresAt time.Time `json:"expires_at"`
-	}{expires.UTC()})
-	clog.Info("request fill", "action", "success")
-}
-
-// parseFillHeaders validates the size and protocol headers of a reply.
-//
-// Parameters:
-//   - r: incoming request.
-//
-// Returns the content length, version and nonce, or an error whose message
-// is a key of classifyCreateError's lookup table.
-func (h *Handler) parseFillHeaders(r *http.Request) (int64, uint8, string, error) {
-	cl, err := h.parseContentLength(r)
-	if err != nil {
-		return 0, 0, "", err
-	}
-	versionStr, okV := singleHeader(r, "X-Gone-Version")
-	nonce, okN := singleHeader(r, "X-Gone-Nonce")
-	if !okV || !okN {
-		return 0, 0, "", errors.New("missing required headers")
-	}
-	version, err := domain.ParseReplyVersion(versionStr)
-	if err != nil {
-		return 0, 0, "", err
-	}
-	if err = domain.ValidateReplyProtocol(version, nonce); err != nil {
-		return 0, 0, "", err
-	}
-	return cl, version, nonce, nil
-}
-
-// handleRequestStatus implements GET /api/request/{id}/status for the
-// requester: waiting or ready, or the uniform 404. It changes nothing, so
-// polling costs no writes.
-//
-// Parameters:
-//   - w: response writer.
-//   - r: incoming request.
-//   - id: request ID.
-func (h *Handler) handleRequestStatus(w http.ResponseWriter, r *http.Request, id string) {
-	st, err := h.Requests.RequestStatus(r.Context(), id, manageToken(r))
-	if err != nil {
-		h.mapServiceError(r.Context(), w, err)
-		return
-	}
-	state := "waiting"
-	if st.Ready {
-		state = "ready"
-	}
-	writeJSON(w, http.StatusOK, statusResponse{State: state, CreatedAt: st.CreatedAt.UTC(), ExpiresAt: st.ExpiresAt.UTC()})
-}
-
-// handleClaimReply implements GET /api/request/{id}/reply: the requester
-// claims (or re-fetches) the reply, with the same response headers as a
-// secret claim.
-//
-// Parameters:
-//   - w: response writer.
-//   - r: incoming request.
-//   - id: request ID.
-func (h *Handler) handleClaimReply(w http.ResponseWriter, r *http.Request, id string) {
-	clog := requestLog(r)
-	res, err := h.Requests.ClaimReply(r.Context(), id, manageToken(r), r.Header.Get(HeaderClaim))
-	if err != nil {
-		h.mapServiceError(r.Context(), w, err)
-		clog.Info("request claim", "action", "error")
-		return
-	}
-	h.writeClaim(w, res, clog)
-}
-
-// handleAckReply implements DELETE /api/request/{id}/reply: the requester
-// confirms the reply was opened and it is deleted.
-//
-// Parameters:
-//   - w: response writer.
-//   - r: incoming request.
-//   - id: request ID.
-func (h *Handler) handleAckReply(w http.ResponseWriter, r *http.Request, id string) {
-	if err := h.Requests.AckReply(r.Context(), id, r.Header.Get(HeaderClaim)); err != nil {
 		h.mapServiceError(r.Context(), w, err)
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusNoContent)
-	requestLog(r).Info("request ack", "action", "success")
-}
-
-// handleCancelRequest implements POST /api/request/{id}/revoke.
-//
-// Parameters:
-//   - w: response writer.
-//   - r: incoming request.
-//   - id: request ID.
-func (h *Handler) handleCancelRequest(w http.ResponseWriter, r *http.Request, id string) {
-	if err := h.Requests.CancelRequest(r.Context(), id, manageToken(r)); err != nil {
-		h.mapServiceError(r.Context(), w, err)
-		return
-	}
-	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(http.StatusNoContent)
-	requestLog(r).Info("request cancel", "action", "success")
+	requestLog(r).Info(event, "action", "success")
 }
 
 // requestLog returns a logger tagged with the request domain and correlation
@@ -376,50 +241,4 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(v)
-}
-
-// handleRequestPage serves the requester's page: /request (new request and
-// the list) and /request/{id} (one request).
-//
-// Parameters:
-//   - w: response writer.
-//   - r: incoming request.
-func (h *Handler) handleRequestPage(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/request" {
-		h.renderRequestPage(w, r)
-		return
-	}
-	h.serveIDPage(w, r, "/request/", h.RequestDetailTmpl, "request template unavailable")
-}
-
-// renderRequestPage renders /request with the configured TTL choices.
-//
-// Parameters:
-//   - w: response writer.
-//   - r: incoming request.
-func (h *Handler) renderRequestPage(w http.ResponseWriter, r *http.Request) {
-	if h.RequestTmpl == nil {
-		http.Error(w, "request template unavailable", http.StatusServiceUnavailable)
-		return
-	}
-	renderTemplate(w, r, h.RequestTmpl, h.indexView())
-}
-
-// handleReplyPage serves the reply page at /reply/{id}. The page reads the
-// public key and fill token from the URL fragment, which never reaches the
-// server.
-//
-// Parameters:
-//   - w: response writer.
-//   - r: incoming request.
-func (h *Handler) handleReplyPage(w http.ResponseWriter, r *http.Request) {
-	if !strings.HasPrefix(r.URL.Path, "/reply/") || len(r.URL.Path) == len("/reply/") {
-		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
-		return
-	}
-	if h.ReplyTmpl == nil {
-		http.Error(w, "reply template unavailable", http.StatusServiceUnavailable)
-		return
-	}
-	renderTemplate(w, r, h.ReplyTmpl, h.indexView())
 }

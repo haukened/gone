@@ -8,7 +8,7 @@
 // as goneI18n message keys; the requester's own label is shown as typed.
 // Exposed as window.goneRequestDetailView.
 (function requestDetailViewModule() {
-  if (window.goneRequestDetailView || !window.goneI18n) return;
+  if (window.goneRequestDetailView || !window.goneI18n || !window.goneUtil || !window.goneInlineConfirm) return;
   const i18n = window.goneI18n;
 
   const VIEWS = ['check', 'missing', 'waiting', 'cancelled', 'open', 'revealed', 'gone'];
@@ -31,10 +31,7 @@
   // switchTo shows the named view, hides the others, and moves focus to its
   // heading so screen readers announce the change.
   function switchTo(name) {
-    VIEWS.forEach(function (v) { show(byId(`view-${v}`), v === name); });
-    if (TITLES[name]) i18n.setTitle(TITLES[name]);
-    const heading = byId(`${name}-heading`);
-    if (heading) heading.focus();
+    window.goneUtil.showView(VIEWS, name, TITLES);
   }
 
   // setTime writes a time in the page's language (style "datetime" unless
@@ -92,19 +89,9 @@
     show(byId('waiting-error'), Boolean(key));
   }
 
-  function openConfirm() {
-    show(byId('cancel-start'), false);
-    show(byId('cancel-confirm'), true);
-    const text = byId('cancel-confirm-text');
-    if (text) text.focus();
-  }
-
-  function closeConfirm() {
-    show(byId('cancel-confirm'), false);
-    show(byId('cancel-start'), true);
-    const btn = byId('cancel-now');
-    if (btn) btn.focus();
-  }
+  const confirmBox = window.goneInlineConfirm.create({
+    start: 'cancel-start', panel: 'cancel-confirm', text: 'cancel-confirm-text', button: 'cancel-now'
+  });
 
   function on(id, handler) {
     const node = byId(id);
@@ -119,8 +106,7 @@
     on('cancel-yes', c.confirm);
     on('cancel-no', c.keep);
     on('copy-waiting-link', c.copy);
-    const confirm = byId('cancel-confirm');
-    if (confirm) confirm.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') c.keep(); });
+    confirmBox.onEscape(c.keep);
   }
 
   window.goneRequestDetailView = Object.freeze({
@@ -133,8 +119,8 @@
     showWaitingError: showWaitingError,
     setChecking: function (busy) { setBusyButton('check-again', busy, 'js.common.checking', 'js.manage.checkAgain'); },
     setCancelling: function (busy) { setBusyButton('cancel-yes', busy, 'js.detail.cancelling', 'js.detail.cancelIt'); },
-    openConfirm: openConfirm,
-    closeConfirm: closeConfirm,
+    openConfirm: confirmBox.open,
+    closeConfirm: confirmBox.close,
     bind: bind
   });
 })();

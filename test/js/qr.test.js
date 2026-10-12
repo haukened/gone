@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
-const { reset, load } = require('./harness');
+const { reset, load, loadRaw } = require('./harness');
 
 // text returns n printable ASCII characters, the same generator that made the
 // fingerprints below.
@@ -59,6 +59,20 @@ test('loads once', () => {
   assert.ok(Object.isFrozen(q));
   load('qr');
   assert.equal(window.goneQr, q);
+});
+
+test('the encoder and its patterns wait for their parts', () => {
+  reset();
+  loadRaw('qr');
+  assert.equal(window.goneQr, undefined);
+  loadRaw('qrPatterns');
+  assert.equal(window.goneQrPatterns, undefined);
+  ['qrCodewords', 'qrGrid', 'qrPatterns'].forEach(loadRaw);
+  loadRaw('qr');
+  assert.equal(window.goneQr, undefined);
+  loadRaw('qrPenalty');
+  loadRaw('qr');
+  assert.ok(Object.isFrozen(window.goneQr));
 });
 
 test('matches an independent encoder module for module', () => {

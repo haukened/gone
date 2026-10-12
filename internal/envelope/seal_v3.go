@@ -1,7 +1,6 @@
 package envelope
 
 import (
-	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/hkdf"
@@ -52,11 +51,7 @@ func SealV3(pubR, plaintext []byte) (nonce, blob []byte, err error) {
 // Returns the nonce and blob, or ErrInvalidKey or the read error.
 func sealV3With(r io.Reader, eph *ecdh.PrivateKey, pubR, plaintext []byte) (nonce, blob []byte, err error) {
 	peer, err := ecdh.P256().NewPublicKey(pubR)
-	if err != nil {
-		return nil, nil, ErrInvalidKey
-	}
-	nonce = make([]byte, domain.NonceSize)
-	if _, err := io.ReadFull(r, nonce); err != nil {
+	if nonce, err = keyedNonce(r, err); err != nil {
 		return nil, nil, err
 	}
 	hdr := eph.PublicKey().Bytes()
@@ -134,11 +129,7 @@ func v3AEAD(priv *ecdh.PrivateKey, peer *ecdh.PublicKey, pubE, pubR []byte) (cip
 		return nil, err
 	}
 	defer clear(k)
-	block, err := aes.NewCipher(k)
-	if err != nil {
-		return nil, err
-	}
-	return cipher.NewGCM(block)
+	return newGCM(k)
 }
 
 // v3Info returns the HKDF info string: "gone:v3 aead key" || pubE || pubR.

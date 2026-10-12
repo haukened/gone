@@ -29,14 +29,13 @@
 
   const byId = function (id) { return document.getElementById(id); };
 
+  // viewId maps a view name to its element id; the compose view is #compose.
+  function viewId(v) {
+    return v === 'compose' ? 'compose' : `view-${v}`;
+  }
+
   function switchTo(name) {
-    VIEWS.forEach(function (v) {
-      const node = byId(v === 'compose' ? 'compose' : `view-${v}`);
-      if (node) node.hidden = v !== name;
-    });
-    if (TITLES[name]) i18n.setTitle(TITLES[name]);
-    const heading = byId(`${name}-heading`);
-    if (heading) heading.focus();
+    util.showView(VIEWS, name, TITLES, viewId);
   }
 
   // showCheckError shows a link or network problem's message key.

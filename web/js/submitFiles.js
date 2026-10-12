@@ -2,46 +2,15 @@
 
 // File selection for the create form: picker/drag-and-drop input, duplicate
 // filtering, and the removable file list. Requires window.goneUtil,
-// window.goneI18n, window.goneFileMeta and window.goneIcons. Exposed as
-// window.goneFileSelection.
+// window.goneI18n, window.goneFileMeta, window.goneIcons and
+// window.goneSubmitDrop (submitDrop.js). Exposed as window.goneFileSelection.
 (function fileSelectionModule() {
-  if (window.goneFileSelection || !window.goneUtil || !window.goneI18n || !window.goneFileMeta || !window.goneIcons) return;
+  if (window.goneFileSelection || !window.goneUtil || !window.goneI18n || !window.goneFileMeta || !window.goneIcons || !window.goneSubmitDrop) return;
   const util = window.goneUtil;
   const i18n = window.goneI18n;
   const meta = window.goneFileMeta;
   const icons = window.goneIcons;
-
-  function sameFile(a, b) {
-    return a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
-  }
-
-  function hasFiles(ev) {
-    return Boolean(ev.dataTransfer) && Array.from(ev.dataTransfer.types || []).includes('Files');
-  }
-
-  // setupDropZone accepts files dragged onto form, highlighting target while
-  // a file drag is over it and passing dropped files to add.
-  function setupDropZone(form, target, add) {
-    ['dragenter', 'dragover'].forEach(function (type) {
-      form.addEventListener(type, function (ev) {
-        if (!hasFiles(ev)) return;
-        ev.preventDefault();
-        target.classList.add('dragging');
-      });
-    });
-    ['dragleave', 'dragend'].forEach(function (type) {
-      form.addEventListener(type, function (ev) {
-        if (ev.relatedTarget && form.contains(ev.relatedTarget)) return;
-        target.classList.remove('dragging');
-      });
-    });
-    form.addEventListener('drop', function (ev) {
-      target.classList.remove('dragging');
-      if (!ev.dataTransfer || !ev.dataTransfer.files.length) return;
-      ev.preventDefault();
-      add(ev.dataTransfer.files);
-    });
-  }
+  const drop = window.goneSubmitDrop;
 
   function noop() {}
 
@@ -91,16 +60,14 @@
 
     function add(list) {
       if (isBusy() || !list) return;
-      Array.from(list).forEach(function (f) {
-        if (!selected.some(function (s) { return sameFile(s, f); })) selected.push(f);
-      });
+      drop.addUnique(selected, list);
       if (input) input.value = '';
       onAdd();
       render();
     }
 
     if (input) input.addEventListener('change', function () { add(input.files); });
-    setupDropZone(form, opts.dropZone || form, add);
+    drop.setupDropZone(form, opts.dropZone || form, add);
 
     return {
       files: function () { return selected.slice(); },

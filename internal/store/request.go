@@ -142,11 +142,7 @@ func (s *Store) ClaimReply(ctx context.Context, id, manageHash, claimHash string
 	if s.blobs == nil {
 		return app.Claimed{}, errors.New("store not properly initialized")
 	}
-	res, err := ri.ClaimReply(ctx, id, manageHash, claimHash, retry, s.clock.Now(), claimedUntil, s.blobs.Open)
-	if err != nil {
-		return app.Claimed{}, err
-	}
-	return buildClaimed(res)
+	return buildClaimed(ri.ClaimReply(ctx, id, manageHash, claimHash, retry, s.clock.Now(), claimedUntil, s.blobs.Open))
 }
 
 // CancelRequest deletes an open request or an unopened reply. A reply's blob

@@ -33,16 +33,8 @@ func parseSend(args []string) (sendOpts, error) {
 	fs := newFlagSet("send")
 	o.register(fs)
 	o.pass.register(fs, true)
-	for _, name := range []string{"s", "server"} {
-		fs.StringVar(&o.server, name, "", "")
-	}
-	for _, name := range []string{"t", "ttl"} {
-		fs.DurationVar(&o.ttl, name, defaultTTL, "")
-	}
-	for _, name := range []string{"f", "file"} {
-		fs.Var(&o.files, name, "")
-	}
-	fs.StringVar(&o.messageFile, "message-file", "", "")
+	registerServerTTL(fs, &o.server, &o.ttl, defaultTTL)
+	registerInputs(fs, &o.files, &o.messageFile)
 	pos, err := parseArgs(fs, args)
 	if err != nil {
 		return o, err

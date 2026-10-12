@@ -31,15 +31,6 @@ func New(index Index, blobs BlobStorage, clock app.Clock, inlineMax int64) *Stor
 
 var _ app.SecretStore = (*Store)(nil)
 
-// CounterClaimsExpired counts secrets that were claimed but never
-// acknowledged before their lease lapsed.
-const CounterClaimsExpired = "secrets_claims_expired_total"
-
-// CounterRequestsExpired counts secret requests whose reply window closed
-// without an answer. DeleteExpired reports them here rather than in its
-// returned count, which covers secrets only.
-const CounterRequestsExpired = "requests_expired_total"
-
 // WithMetrics attaches an optional metrics sink used to count lapsed claims
 // during DeleteExpired.
 //
@@ -69,20 +60,20 @@ func (s *Store) Claim(ctx context.Context, id, claimHash string, retry bool, cla
 	if s == nil || s.index == nil || s.blobs == nil || s.clock == nil {
 		return app.Claimed{}, errors.New("store not properly initialized")
 	}
-	res, err := s.index.Claim(ctx, id, claimHash, retry, s.clock.Now(), claimedUntil, s.blobs.Open)
-	if err != nil {
-		return app.Claimed{}, err
-	}
-	return buildClaimed(res)
+	return buildClaimed(s.index.Claim(ctx, id, claimHash, retry, s.clock.Now(), claimedUntil, s.blobs.Open))
 }
 
 // buildClaimed converts an IndexResult into app.Claimed depending on storage mode.
 //
 // Parameters:
-//   - res: row returned by Index.Claim.
+//   - res: row returned by Index.Claim or RequestIndex.ClaimReply.
+//   - err: error returned with it, passed through unchanged.
 //
-// Returns the claimed secret or an error if an external reader is missing.
-func buildClaimed(res *IndexResult) (app.Claimed, error) {
+// Returns the claimed secret, err, or an error if an external reader is missing.
+func buildClaimed(res *IndexResult, err error) (app.Claimed, error) {
+	if err != nil {
+		return app.Claimed{}, err
+	}
 	c := app.Claimed{Meta: res.Meta, Size: res.Size, ClaimedUntil: res.ClaimedUntil}
 	if res.External {
 		if res.Reader == nil {
@@ -158,87 +149,4 @@ func (s *Store) Revoke(ctx context.Context, id, manageHash string) error {
 		_ = s.blobs.Delete(id) // best-effort; Reconcile cleans orphans
 	}
 	return nil
-}
-
-// DeleteExpired removes secrets whose expiry is <= t or whose claim lease has
-// lapsed without acknowledgement, and returns the count. Expired open
-// requests are removed too and counted in CounterRequestsExpired.
-// Blob files for expired records are removed best-effort.
-func (s *Store) DeleteExpired(ctx context.Context, t time.Time) (int, error) {
-	expired, err := s.index.DeleteExpired(ctx, t)
-	if err != nil {
-		return 0, err
-	}
-	claimed, requests := 0, 0
-	for _, rec := range expired {
-		if rec.External {
-			_ = s.blobs.Delete(rec.ID) // best-effort
-		}
-		if rec.Claimed {
-			claimed++
-		}
-		if rec.Request {
-			requests++
-		}
-	}
-	s.count(CounterClaimsExpired, claimed)
-	s.count(CounterRequestsExpired, requests)
-	return len(expired) - requests, nil
-}
-
-// count adds n to a counter when metrics are configured and n is positive.
-//
-// Parameters:
-//   - name: counter name.
-//   - n: amount to add.
-func (s *Store) count(name string, n int) {
-	if s.metrics != nil && n > 0 {
-		s.metrics.Inc(name, int64(n))
-	}
-}
-
-// Reconcile scans for blob orphans and removes them. It can also be extended
-// later to verify referential integrity or rebuild indexes.
-func (s *Store) Reconcile(ctx context.Context) error {
-	if s.index == nil || s.blobs == nil {
-		return errors.New("store not properly initialized")
-	}
-	blobIDs, err := s.blobs.List()
-	if err != nil {
-		return err
-	}
-	extIDs, err := s.index.ListExternalIDs(ctx)
-	if err != nil {
-		return err
-	}
-	s.deleteReconcileOrphans(blobIDs, extIDs)
-	return nil
-}
-
-// deleteReconcileOrphans removes blob IDs not present in the external index set.
-//
-// Parameters:
-//   - blobIDs: IDs currently present in blob storage.
-//   - extIDs: IDs recorded as external in the index.
-func (s *Store) deleteReconcileOrphans(blobIDs, extIDs []string) {
-	indexSet := externalIDMembership(extIDs)
-	for _, bid := range blobIDs {
-		if _, ok := indexSet[bid]; !ok {
-			_ = s.blobs.Delete(bid)
-		}
-	}
-}
-
-// externalIDMembership builds a lookup set for externally stored secret IDs.
-//
-// Parameters:
-//   - ids: external IDs read from the index.
-//
-// Returns a set keyed by secret ID.
-func externalIDMembership(ids []string) map[string]struct{} {
-	indexSet := make(map[string]struct{}, len(ids))
-	for _, id := range ids {
-		indexSet[id] = struct{}{}
-	}
-	return indexSet
 }

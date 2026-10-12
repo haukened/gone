@@ -2,25 +2,18 @@
 
 // Encrypt-and-upload side of the create flow: builds the envelope, encrypts it
 // under a fresh key, POSTs the ciphertext to the fixed same-origin API path,
-// and builds the share link. Requires window.goneCrypto, window.goneEnvelope
-// and window.goneUtil. Exposed as window.goneUpload.
+// and builds the share link. Requires window.goneCrypto, window.goneEnvelope,
+// window.goneUtil and window.goneSubmitXhr (submitXhr.js). Exposed as
+// window.goneUpload.
 (function uploadModule() {
-  if (window.goneUpload || !window.goneCrypto || !window.goneEnvelope || !window.goneUtil) return;
+  if (window.goneUpload || !window.goneCrypto || !window.goneEnvelope || !window.goneUtil || !window.goneSubmitXhr) return;
   const gc = window.goneCrypto;
   const util = window.goneUtil;
+  const xhr = window.goneSubmitXhr;
 
-  const UPLOAD_PATH = '/api/secret';
-  const NETWORK_ERROR = 'js.upload.network';
-  const TRANSPORT_ERROR_RE = /network|abort|timed/;
   const SECRET_ID_RE = /^[0-9a-f]{32}$/;
   const MANAGE_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
-  const SERVER_ERROR = 'js.upload.server';
-  const UPLOAD_ERRORS = new Map([
-    [400, 'js.upload.rejected'],
-    [413, 'js.upload.tooLarge'],
-    [429, 'js.common.tooMany'],
-    [503, 'js.common.busy']
-  ]);
+  const SERVER_ERROR = xhr.SERVER_ERROR;
 
   // buildPlaintext reads the files and encodes them with message into an
   // envelope. Intermediate file buffers are zeroed.
@@ -57,42 +50,6 @@
     }
   }
 
-  function parseJSON(text) {
-    try {
-      return JSON.parse(text);
-    } catch {
-      return null;
-    }
-  }
-
-  // xhrUpload sends the ciphertext with XMLHttpRequest because fetch has no
-  // upload progress events. The URL is a fixed same-origin path.
-  //
-  // Returns {status, json}; rejects only on a transport failure.
-  // target is {method, path} for a same-origin path chosen by the caller;
-  // the default is POST /api/secret.
-  function xhrUpload(ciphertext, headers, onProgress, target) {
-    const t = target || { method: 'POST', path: UPLOAD_PATH };
-    return new Promise(function (resolve, reject) {
-      const xhr = new XMLHttpRequest();
-      xhr.open(t.method, t.path);
-      Object.keys(headers).forEach(function (k) { xhr.setRequestHeader(k, headers[k]); });
-      xhr.upload.onprogress = function (e) {
-        if (e.lengthComputable) onProgress(e.loaded, e.total);
-      };
-      xhr.onload = function () { resolve({ status: xhr.status, json: parseJSON(xhr.responseText) }); };
-      xhr.onerror = function () { reject(new Error('network error')); };
-      xhr.onabort = function () { reject(new Error('upload aborted')); };
-      xhr.ontimeout = function () { reject(new Error('upload timed out')); };
-      xhr.send(ciphertext);
-    });
-  }
-
-  // uploadErrorMessage returns the message key for a failed upload status.
-  function uploadErrorMessage(status) {
-    return UPLOAD_ERRORS.get(status) || SERVER_ERROR;
-  }
-
   // upload sends the encrypted secret with the given TTL under protocol
   // version (default v1).
   //
@@ -107,23 +64,14 @@
     };
     onProgress(0, encResult.ciphertext.length);
     const t0 = performance.now();
-    const res = await xhrUpload(encResult.ciphertext, headers, onProgress);
+    const res = await xhr.send(encResult.ciphertext, headers, onProgress);
     util.logTiming('upload', t0, performance.now());
     if (res.status !== 201 && res.status !== 200) {
       console.error('[gone] server error', res.status);
-      throw new Error(uploadErrorMessage(res.status));
+      throw new Error(xhr.uploadErrorMessage(res.status));
     }
     if (!res.json || !res.json.id) throw new Error(SERVER_ERROR);
     return res.json;
-  }
-
-  // friendlyError returns the message key to show for an upload failure:
-  // transport failures get the network message, keyed errors pass through,
-  // anything else gets the generic server message.
-  function friendlyError(e) {
-    const msg = e && e.message;
-    if (!msg || TRANSPORT_ERROR_RE.test(msg)) return NETWORK_ERROR;
-    return msg.indexOf('js.') === 0 ? msg : SERVER_ERROR;
   }
 
   // buildShareURL returns the link the recipient opens for protocol version
@@ -148,9 +96,9 @@
     buildPlaintext: buildPlaintext,
     encryptSelection: encryptSelection,
     upload: upload,
-    send: xhrUpload,
-    uploadErrorMessage: uploadErrorMessage,
-    friendlyError: friendlyError,
+    send: xhr.send,
+    uploadErrorMessage: xhr.uploadErrorMessage,
+    friendlyError: xhr.friendlyError,
     buildShareURL: buildShareURL,
     buildManageURL: buildManageURL
   });

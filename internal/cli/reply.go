@@ -26,10 +26,7 @@ func parseReply(args []string) (replyOpts, string, error) {
 	var o replyOpts
 	fs := newFlagSet("reply")
 	o.register(fs)
-	for _, name := range []string{"f", "file"} {
-		fs.Var(&o.files, name, "")
-	}
-	fs.StringVar(&o.messageFile, "message-file", "", "")
+	registerInputs(fs, &o.files, &o.messageFile)
 	raw, err := onePositional(fs, args, "request link")
 	if err != nil {
 		return o, "", err
@@ -51,15 +48,9 @@ func (a *app) runReply(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	a.json = o.json
-	if raw, err = a.readLinkArg(raw); err != nil {
-		return err
-	}
-	link, err := envelope.ParseReplyLink(raw)
-	if err != nil {
-		return usagef("not a valid gone request link (quote it in single quotes so the shell keeps the #fragment)")
-	}
-	cl, err := newClient(a.env, link.Origin, "the link", o.common)
+	link, cl, err := openLinkArg(a, o.common, raw, envelope.ParseReplyLink,
+		func(l envelope.ReplyLink) string { return l.Origin },
+		"not a valid gone request link (quote it in single quotes so the shell keeps the #fragment)")
 	if err != nil {
 		return err
 	}

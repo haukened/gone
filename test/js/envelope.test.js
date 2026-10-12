@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load } = require('./harness');
+const { reset, load, loadRaw } = require('./harness');
 
 const MAGIC = [0x47, 0x4f, 0x4e, 0x45, 0x32, 0, 0, 0];
 
@@ -24,7 +24,7 @@ function raw(header, body, lenOverride) {
   return out;
 }
 
-test('requires fileMeta and loads once', () => {
+test('requires fileMeta and envelopeHeader, and loads once', () => {
   load('envelope');
   assert.equal(window.goneEnvelope, env);
   const saved = window.goneFileMeta;
@@ -33,6 +33,13 @@ test('requires fileMeta and loads once', () => {
   load('envelope');
   assert.equal(window.goneEnvelope, undefined);
   window.goneFileMeta = saved;
+  const header = window.goneEnvelopeHeader;
+  delete window.goneEnvelopeHeader;
+  loadRaw('envelope');
+  assert.equal(window.goneEnvelope, undefined);
+  window.goneEnvelopeHeader = header;
+  loadRaw('envelopeHeader');
+  assert.equal(window.goneEnvelopeHeader, header);
   window.goneEnvelope = env;
 });
 
