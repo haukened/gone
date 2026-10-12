@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/knadh/koanf/providers/env/v2 v2.0.1
 	github.com/knadh/koanf/providers/structs v1.0.1
-	github.com/knadh/koanf/v2 v2.3.7
+	github.com/knadh/koanf/v2 v2.3.8
 	golang.org/x/term v0.46.0
 	golang.org/x/text v0.42.0
 	modernc.org/sqlite v1.60.1
