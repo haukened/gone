@@ -14,13 +14,7 @@
   }
 
   function switchTo(name) {
-    VIEWS.forEach(function (v) {
-      const node = ctx.byId(`view-${v}`);
-      if (node) node.hidden = v !== name;
-    });
-    if (TITLES[name]) ctx.i18n.setTitle(TITLES[name]);
-    const heading = ctx.byId(`${name}-heading`);
-    if (heading) heading.focus();
+    ctx.util.showView(VIEWS, name, TITLES);
   }
 
   // selectOutput is the copy fallback: the recipient copies by hand, so the

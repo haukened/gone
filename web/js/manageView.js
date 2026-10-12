@@ -6,7 +6,7 @@
 // #view-deleted and #view-gone. Text is set as goneI18n message keys.
 // Exposed as window.goneManageView.
 (function manageViewModule() {
-  if (window.goneManageView || !window.goneI18n) return;
+  if (window.goneManageView || !window.goneI18n || !window.goneUtil || !window.goneInlineConfirm) return;
   const i18n = window.goneI18n;
 
   const VIEWS = ['check', 'pending', 'deleted', 'gone'];
@@ -27,8 +27,7 @@
       retry: 'check-retry', created: 'manage-created', expires: 'manage-expires',
       checked: 'manage-checked', again: 'check-again', pendingStatus: 'pending-status',
       pendingError: 'pending-error', pendingErrorText: 'pending-error-text',
-      deleteStart: 'delete-start', deleteNow: 'delete-now', confirm: 'delete-confirm',
-      confirmText: 'delete-confirm-text', yes: 'delete-yes', no: 'delete-no'
+      deleteNow: 'delete-now', yes: 'delete-yes', no: 'delete-no'
     };
     const dom = {};
     Object.keys(ids).forEach(function (k) { dom[k] = byId(ids[k]); });
@@ -55,11 +54,8 @@
   // switchTo shows the named view, hides the others, and moves focus to its
   // heading so screen readers announce the change.
   function switchTo(name) {
-    VIEWS.forEach(function (v) { show(byId(`view-${v}`), v === name); });
-    if (TITLES[name]) i18n.setTitle(TITLES[name]);
     state.current = name;
-    const heading = byId(`${name}-heading`);
-    if (heading) heading.focus();
+    window.goneUtil.showView(VIEWS, name, TITLES);
   }
 
   // setTime writes a time in the page's language (style "datetime" or
@@ -129,19 +125,11 @@
     show(dom.pendingError, false);
   }
 
-  // openConfirm swaps Delete now for the inline confirm and focuses its prompt.
-  function openConfirm() {
-    show(dom.deleteStart, false);
-    show(dom.confirm, true);
-    if (dom.confirmText) dom.confirmText.focus();
-  }
-
-  // closeConfirm hides the confirm and returns focus to Delete now.
-  function closeConfirm() {
-    show(dom.confirm, false);
-    show(dom.deleteStart, true);
-    if (dom.deleteNow) dom.deleteNow.focus();
-  }
+  // confirmBox swaps Delete now for the inline confirm and focuses its
+  // prompt; closing it returns focus to Delete now.
+  const confirmBox = window.goneInlineConfirm.create({
+    start: 'delete-start', panel: 'delete-confirm', text: 'delete-confirm-text', button: 'delete-now'
+  });
 
   function on(node, type, fn) {
     if (node) node.addEventListener(type, fn);
@@ -155,9 +143,7 @@
     on(dom.deleteNow, 'click', handlers.ask);
     on(dom.yes, 'click', handlers.confirm);
     on(dom.no, 'click', handlers.cancel);
-    on(dom.confirm, 'keydown', function (ev) {
-      if (ev.key === 'Escape') handlers.cancel();
-    });
+    confirmBox.onEscape(handlers.cancel);
   }
 
   window.goneManageView = Object.freeze({
@@ -169,8 +155,8 @@
     setDeleting: setDeleting,
     showPendingError: showPendingError,
     clearPendingError: clearPendingError,
-    openConfirm: openConfirm,
-    closeConfirm: closeConfirm,
+    openConfirm: confirmBox.open,
+    closeConfirm: confirmBox.close,
     showDeleted: function () { switchTo('deleted'); },
     showGone: function () { switchTo('gone'); },
     bind: bind

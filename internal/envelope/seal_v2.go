@@ -1,7 +1,6 @@
 package envelope
 
 import (
-	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hkdf"
 	"crypto/pbkdf2"
@@ -60,12 +59,12 @@ func sealV2From(r io.Reader, linkKey []byte, passphrase string, plaintext []byte
 		return nil, nil, err
 	}
 	defer clear(p)
-	salt := make([]byte, domain.V2SaltSize)
-	if _, err := io.ReadFull(r, salt); err != nil {
+	salt, err := randomBytes(r, domain.V2SaltSize)
+	if err != nil {
 		return nil, nil, err
 	}
-	iv := make([]byte, domain.NonceSize)
-	if _, err := io.ReadFull(r, iv); err != nil {
+	iv, err := randomBytes(r, domain.NonceSize)
+	if err != nil {
 		return nil, nil, err
 	}
 	hdr := buildV2Header(domain.V2Iterations, salt)
@@ -180,11 +179,7 @@ func v2AEAD(linkKey, p, salt []byte, iterations uint32) (cipher.AEAD, error) {
 		return nil, err
 	}
 	defer clear(k)
-	block, err := aes.NewCipher(k)
-	if err != nil {
-		return nil, err
-	}
-	return cipher.NewGCM(block)
+	return newGCM(k)
 }
 
 // buildV2Header encodes kdf_id || iterations (uint32 BE) || salt.

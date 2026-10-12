@@ -3,7 +3,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load, loadI18n, h, EN_MESSAGES } = require('./harness');
+const { reset, load, loadI18n, loadRaw, h, EN_MESSAGES } = require('./harness');
 
 const ES = {
   'js.greet': 'Hola {name}',
@@ -58,6 +58,18 @@ test('loads once and reads the page data', () => {
   load('i18n');
   assert.equal(window.goneI18n, i);
   assert.ok(Object.isFrozen(i));
+});
+
+test('needs its parts, and each part loads once', () => {
+  reset();
+  loadRaw('i18n');
+  assert.equal(window.goneI18n, undefined);
+  boot();
+  const PARTS = ['goneI18nPattern', 'goneI18nFormat', 'goneI18nRender', 'goneI18nNodes', 'goneI18nLocale'];
+  const before = PARTS.map((g) => window[g]);
+  ['i18nPattern', 'i18nFormat', 'i18nRender', 'i18nNodes', 'i18nLocale'].forEach(loadRaw);
+  assert.deepEqual(PARTS.map((g) => window[g]), before);
+  before.forEach((part) => assert.ok(Object.isFrozen(part)));
 });
 
 test('missing or malformed page data falls back to the document language', () => {

@@ -38,11 +38,7 @@ type manageRow struct {
 // absent, dead, has no manage hash, or the hash does not match.
 func (i *Index) Status(ctx context.Context, id, manageHash string, now time.Time) (app.SecretStatus, error) {
 	var st app.SecretStatus
-	err := i.immediateTx(ctx, func(conn *sql.Conn) error {
-		row, err := loadManagedRow(ctx, conn, id, manageHash, now)
-		if err != nil {
-			return err
-		}
+	err := i.withManagedRow(ctx, id, manageHash, now, func(_ *sql.Conn, row *manageRow) error {
 		st = app.SecretStatus{CreatedAt: row.createdAt, ExpiresAt: row.life.ExpiresAt}
 		return nil
 	})
@@ -66,12 +62,8 @@ func (i *Index) Status(ctx context.Context, id, manageHash string, now time.Time
 // the blob), or app.ErrNotFound under the same conditions as Status.
 func (i *Index) Revoke(ctx context.Context, id, manageHash string, now time.Time) (bool, error) {
 	var external bool
-	err := i.immediateTx(ctx, func(conn *sql.Conn) error {
-		row, err := loadManagedRow(ctx, conn, id, manageHash, now)
-		if err != nil {
-			return err
-		}
-		if err = deleteSecret(ctx, conn, id); err != nil {
+	err := i.withManagedRow(ctx, id, manageHash, now, func(conn *sql.Conn, row *manageRow) error {
+		if err := deleteSecret(ctx, conn, id); err != nil {
 			return err
 		}
 		external = row.external
@@ -81,6 +73,28 @@ func (i *Index) Revoke(ctx context.Context, id, manageHash string, now time.Time
 		return false, err
 	}
 	return external, nil
+}
+
+// withManagedRow runs fn on a live, authorized row inside an immediate
+// transaction. Errors from loadManagedRow, including errDeadRow, reach
+// immediateTx unchanged so a lazy deletion still commits.
+//
+// Parameters:
+//   - ctx: request context.
+//   - id: secret identifier.
+//   - manageHash: hex SHA-256 of the presented manage token.
+//   - now: current time used for expiry checks.
+//   - fn: work to run on the row within the transaction.
+//
+// Returns fn's error, app.ErrNotFound, or a DB error.
+func (i *Index) withManagedRow(ctx context.Context, id, manageHash string, now time.Time, fn func(conn *sql.Conn, row *manageRow) error) error {
+	return i.immediateTx(ctx, func(conn *sql.Conn) error {
+		row, err := loadManagedRow(ctx, conn, id, manageHash, now)
+		if err != nil {
+			return err
+		}
+		return fn(conn, row)
+	})
 }
 
 // loadManagedRow loads a row for a manage operation. A dead row is deleted

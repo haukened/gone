@@ -24,11 +24,36 @@ func NewKey() ([]byte, error) {
 //
 // Returns a KeySize-byte key or the read error.
 func newKeyFrom(r io.Reader) ([]byte, error) {
-	k := make([]byte, domain.KeySize)
-	if _, err := io.ReadFull(r, k); err != nil {
+	return randomBytes(r, domain.KeySize)
+}
+
+// keyedNonce reads a fresh nonce from r, unless setting up the key failed.
+//
+// Parameters:
+//   - r: nonce randomness source.
+//   - keyErr: error from parsing or using the key, or nil.
+//
+// Returns the nonce, ErrInvalidKey when keyErr is set, or the read error.
+func keyedNonce(r io.Reader, keyErr error) ([]byte, error) {
+	if keyErr != nil {
+		return nil, ErrInvalidKey
+	}
+	return randomBytes(r, domain.NonceSize)
+}
+
+// randomBytes reads n bytes from r.
+//
+// Parameters:
+//   - r: randomness source.
+//   - n: number of bytes to read.
+//
+// Returns the bytes or the read error.
+func randomBytes(r io.Reader, n int) ([]byte, error) {
+	b := make([]byte, n)
+	if _, err := io.ReadFull(r, b); err != nil {
 		return nil, err
 	}
-	return k, nil
+	return b, nil
 }
 
 // Seal encrypts plaintext under key with protocol v1 (AES-256-GCM, a fresh
@@ -54,11 +79,7 @@ func Seal(key, plaintext []byte) (nonce, ciphertext []byte, err error) {
 // Returns the nonce and ciphertext, or ErrInvalidKey or the read error.
 func sealFrom(r io.Reader, key, plaintext []byte) (nonce, ciphertext []byte, err error) {
 	aead, err := newAEAD(key)
-	if err != nil {
-		return nil, nil, ErrInvalidKey
-	}
-	nonce = make([]byte, domain.NonceSize)
-	if _, err := io.ReadFull(r, nonce); err != nil {
+	if nonce, err = keyedNonce(r, err); err != nil {
 		return nil, nil, err
 	}
 	return nonce, aead.Seal(nil, nonce, plaintext, []byte(domain.AADv1)), nil
@@ -96,6 +117,17 @@ func newAEAD(key []byte) (cipher.AEAD, error) {
 	if len(key) != domain.KeySize {
 		return nil, ErrInvalidKey
 	}
+	return newGCM(key)
+}
+
+// newGCM builds an AES-GCM AEAD for key. It does not wipe key; callers that
+// own a derived key clear it themselves.
+//
+// Parameters:
+//   - key: AES key.
+//
+// Returns the AEAD or a cipher error.
+func newGCM(key []byte) (cipher.AEAD, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err

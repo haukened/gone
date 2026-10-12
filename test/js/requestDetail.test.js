@@ -3,7 +3,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load, waitFor, captureConsole } = require('./harness');
+const { reset, load, loadRaw, waitFor, captureConsole } = require('./harness');
 const { fakeIndexedDB } = require('./fakeIdb');
 const { fakeResponse, installFetch } = require('./fakes');
 const { detailPage } = require('./requestPage');
@@ -232,4 +232,15 @@ test('a non-request error is logged and shown generically', async (t) => {
   assert.equal(b.$('check-error-text').textContent, 'Something went wrong. Try again.');
   assert.equal(b.$('check-retry').hidden, false);
   assert.match(b.logs.error[0], /request error/);
+});
+
+test('each part waits for the parts it needs', () => {
+  reset('https://gone.test/request/x');
+  loadRaw('requestDetailActions');
+  loadRaw('requestDetailSource');
+  load('util');
+  loadRaw('requestDetailActions');
+  loadRaw('requestDetailSource');
+  assert.equal(window.goneRequestDetailActions, undefined);
+  assert.equal(window.goneRequestDetailSource, undefined);
 });

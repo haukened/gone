@@ -29,6 +29,16 @@ test('requires goneI18n; loads once; present reflects the page', () => {
   assert.equal(setup({ skip: ['view-pending'] }).view.present, false);
 });
 
+test('requires goneUtil and goneInlineConfirm', () => {
+  reset();
+  load('i18n');
+  loadRaw('manageView');
+  assert.equal(window.goneManageView, undefined);
+  load('util');
+  loadRaw('manageView');
+  assert.equal(window.goneManageView, undefined);
+});
+
 test('check view: checking, then errors with optional retry', () => {
   const { $, view } = setup();
   view.showCheckError('boom', true);

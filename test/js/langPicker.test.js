@@ -39,12 +39,19 @@ function key(target, k) {
 
 test('needs goneI18n and loads once', () => {
   reset();
+  loadRaw('langPickerMenu');
+  loadRaw('langPicker');
+  assert.equal(window.goneLangPickerMenu, undefined);
+  assert.equal(window.goneLangPicker, undefined);
+  loadI18n();
   loadRaw('langPicker');
   assert.equal(window.goneLangPicker, undefined);
   const p = picker(null, LOCALES);
   const api = window.goneLangPicker;
+  const menu = window.goneLangPickerMenu;
   load('langPicker');
   assert.equal(window.goneLangPicker, api);
+  assert.equal(window.goneLangPickerMenu, menu);
   assert.equal(p.wrap.hidden, false);
   assert.equal(p.code.textContent, 'EN');
   assert.deepEqual(current(p), ['en']);

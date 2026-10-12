@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load, h } = require('./harness');
+const { reset, load, loadRaw, h } = require('./harness');
 
 const mk = (name, text, lastModified) => new File([text], name, { type: 'text/plain', lastModified: lastModified || 1 });
 
@@ -35,6 +35,13 @@ test('requires util, fileMeta and icons; loads once', () => {
   const first = window.goneFileSelection;
   load('submitFiles');
   assert.equal(window.goneFileSelection, first);
+});
+
+test('requires submitDrop', () => {
+  reset();
+  load('util', 'fileMeta', 'icons');
+  loadRaw('submitFiles');
+  assert.equal(window.goneFileSelection, undefined);
 });
 
 test('add dedupes, renders sanitized entries and resets the input', () => {

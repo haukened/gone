@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load, captureConsole } = require('./harness');
+const { reset, load, loadRaw, captureConsole } = require('./harness');
 const { FakeXHR } = require('./fakes');
 
 // tr renders a message key (as carried by errors) in English.
@@ -24,6 +24,13 @@ test('requires crypto, envelope and util; loads once', (t) => {
   const { up } = setup(t);
   load('submitUpload');
   assert.equal(window.goneUpload, up);
+});
+
+test('requires submitXhr', () => {
+  reset();
+  load('util', 'crypto', 'fileMeta', 'envelope');
+  loadRaw('submitUpload');
+  assert.equal(window.goneUpload, undefined);
 });
 
 test('buildPlaintext encodes text-only and file envelopes', async (t) => {

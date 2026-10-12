@@ -12,6 +12,7 @@
   const MINUTE = 60000;
   const HOUR = 60 * MINUTE;
   const DAY = 24 * HOUR;
+  const UNITS = [['day', DAY], ['hour', HOUR], ['minute', MINUTE]];
 
   function byId(id) {
     return document.getElementById(id);
@@ -21,8 +22,12 @@
   // unit, as a message key and args.
   function since(ms, now) {
     const d = Math.max(0, now - ms);
-    if (d < MINUTE) return { key: 'js.request.askedJustNow' };
-    const unit = d < HOUR ? ['minute', MINUTE] : d < DAY ? ['hour', HOUR] : ['day', DAY];
+    const unit = UNITS.find(function (u) { return d >= u[1]; });
+    return unit ? asked(d, unit) : { key: 'js.request.askedJustNow' };
+  }
+
+  // asked is the message for d milliseconds ago in [name, size] units.
+  function asked(d, unit) {
     return { key: 'js.request.asked', args: { when: { rel: -Math.floor(d / unit[1]), unit: unit[0] } } };
   }
 

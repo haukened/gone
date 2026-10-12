@@ -6,7 +6,7 @@ applyTo: '**/*.js'
 Purpose: Keep frontend code small, secure, maintainable, dependency‑light, and friendly to static analysis.
 Target Runtime: Evergreen modern browsers (Chromium, Firefox, Safari) – ES2020+ features allowed when natively supported without polyfills.
 ECMAScript Baseline: ES2022 (`.eslintrc.json` `ecmaVersion`). Later features may be used only when the ESLint ruleset and all target browsers support them without polyfills. Always `use strict` in non-module files. Forbid `eval`, `new Function`, and dynamic imports from untrusted sources.
-Files: `web/js/` holds small single-responsibility scripts (no bundler). Each is an IIFE that exposes at most one `window.gone*` namespace; load order is set by the `<script>` tags in `web/*.tmpl.html` (e.g. `util.js` → `fileMeta.js` → `crypto.js` → `envelope.js` → flow modules → `submit.js` / `consume.js`).
+Files: `web/js/` holds small single-responsibility scripts (no bundler). Each is an IIFE that exposes at most one `window.gone*` namespace; load order is set by the `<script>` tags in `web/*.tmpl.html` (e.g. `util.js` → `fileMeta.js` → `crypto.js` → `envelope.js` → flow modules → `submit.js` / `consume.js`). When a file outgrows the complexity budget, split it into parts that load first and keep the original namespace as a facade that re-exports them (e.g. `consumeApi.js` over `consumeApi*.js`), so consumers do not change; shared helpers such as `goneUtil.showView` replace copied code.
 Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`). Every new or changed module needs tests; keep coverage at 100% lines.
 
 ## Core Principles

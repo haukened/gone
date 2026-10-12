@@ -26,7 +26,12 @@ const GONE_GLOBALS = ['goneUtil', 'goneCrypto', 'goneCryptoEncoding', 'goneCrypt
   'goneTheme', 'goneManageApi', 'goneManageView', 'goneWordlist', 'gonePassgen', 'gonePassphraseField',
   'goneSubmitDom', 'goneSubmitState', 'goneSubmitUi', 'goneSubmitRun', 'goneSubmitPreview', 'goneConsumeOpener',
   'goneCryptoV3', 'goneRequestStore', 'goneRequestApi', 'goneRequestPoll', 'goneRequestList',
-  'goneRequestDetailView', 'goneSubmitTarget', 'goneQr', 'goneResultQr', 'goneI18n', 'goneLangPicker'];
+  'goneRequestDetailView', 'goneSubmitTarget', 'goneQr', 'goneResultQr', 'goneI18n', 'goneLangPicker',
+  'goneI18nPattern', 'goneI18nFormat', 'goneI18nRender', 'goneI18nNodes', 'goneI18nLocale', 'goneLangPickerMenu',
+  'goneQrCodewords', 'goneQrGrid', 'goneQrPatterns', 'goneQrPenalty',
+  'goneRequestDom', 'goneRequestSync', 'goneRequestCreated', 'goneRequestDetailSource', 'goneRequestDetailActions',
+  'goneRequestApiFetch', 'goneRequestStoreDb',
+  'goneEnvelopeHeader', 'goneSubmitDrop', 'goneSubmitStrength', 'goneSubmitXhr', 'goneInlineConfirm'];
 
 const MESSAGES_FILE = path.join(__dirname, '..', '..', 'web', 'messages', 'en.json');
 
@@ -56,11 +61,23 @@ function englishMessages() {
 const EN_MESSAGES = englishMessages();
 
 const MODULE_DEPS = {
+  langPicker: ['langPickerMenu'],
   crypto: ['cryptoEncoding', 'cryptoCore', 'cryptoCipher', 'cryptoV2Inputs', 'cryptoV2Key', 'cryptoV2'],
+  requestStore: ['requestStoreDb'],
+  requestApi: ['requestApiFetch'],
+  requestDetail: ['requestDetailActions', 'requestDetailSource'],
+  request: ['requestDom', 'requestSync', 'requestCreated'],
   consumeApi: ['consumeApiErrors', 'consumeApiEndpoint', 'consumeApiRead', 'consumeApiFetch', 'consumeApiCrypto', 'consumeApiAck'],
+  qr: ['qrCodewords', 'qrGrid', 'qrPatterns', 'qrPenalty'],
   consumeView: ['consumeViewBase', 'consumeViewPassphrase', 'consumeViewStatus', 'consumeViewMask', 'consumeViewMessages', 'consumeViewFiles', 'consumeViewFinal'],
   submit: ['submitDom', 'submitState', 'submitUi', 'submitRun', 'submitPreview'],
-  consume: ['consumeOpener']
+  consume: ['consumeOpener'],
+  envelope: ['envelopeHeader'],
+  submitFiles: ['submitDrop'],
+  submitPassphrase: ['submitStrength'],
+  submitUpload: ['submitXhr'],
+  manageView: ['inlineConfirm'],
+  requestDetailView: ['inlineConfirm']
 };
 
 // reset installs a fresh fake browser at url and removes loaded gone modules.
@@ -127,6 +144,9 @@ function selectionFor(env) {
   };
 }
 
+// I18N_PARTS are i18n.js and the parts it joins, in page order.
+const I18N_PARTS = ['i18nPattern', 'i18nFormat', 'i18nRender', 'i18nNodes', 'i18nLocale', 'i18n'];
+
 // loadI18n loads i18n.js with the English catalog (or the given page data)
 // the way the server inlines it, then removes the data block again so tests
 // see only the DOM they built.
@@ -135,7 +155,7 @@ function loadI18n(data) {
   block.id = 'gone-i18n';
   block.textContent = JSON.stringify(data || { locale: 'en', dir: 'ltr', locales: [{ tag: 'en', name: 'English', dir: 'ltr' }], catalogs: {}, messages: EN_MESSAGES });
   document.body.appendChild(block);
-  runFile('i18n');
+  I18N_PARTS.forEach(runFile);
   block.remove();
 }
 
@@ -156,8 +176,8 @@ function load(...names) {
   names.forEach((name) => {
     if (!globalThis.goneI18n && name !== 'i18n') loadI18n();
     (MODULE_DEPS[name] || []).forEach((dep) => load(dep));
-    if (name === 'i18n' && globalThis.goneI18n) return;
-    runFile(name);
+    if (name !== 'i18n') runFile(name);
+    else if (!globalThis.goneI18n) I18N_PARTS.forEach(runFile);
   });
 }
 

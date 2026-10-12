@@ -21,12 +21,9 @@ var getuid = os.Geteuid
 //
 // Returns *UnsafeError, a stat error, or nil.
 func checkDir(dir string) error {
-	fi, err := os.Stat(dir)
+	fi, err := statDir(dir)
 	if err != nil {
 		return err
-	}
-	if !fi.IsDir() {
-		return fmt.Errorf("%s is not a directory", dir)
 	}
 	if err := checkOwner(dir, fi); err != nil {
 		return err
