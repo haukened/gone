@@ -22,7 +22,7 @@
         ['date', function (v) { return date(v.date, v.style); }],
         ['rel', function (v) { return new Intl.RelativeTimeFormat(ctx.locale(), { numeric: 'auto' }).format(v.rel, v.unit); }],
         ['compact', function (v) { return new Intl.NumberFormat(ctx.locale(), { notation: 'compact', compactDisplay: 'long', maximumFractionDigits: 0 }).format(v.compact); }],
-        ['msg', function (v) { return t(v.msg, v.args); }],
+        ['msg', function (v) { return t(v.msg, v.args); }]
       ];
     }
 
@@ -67,7 +67,7 @@
       const styles = {
         datetime: { dateStyle: 'medium', timeStyle: 'short' },
         date: { dateStyle: 'medium' },
-        time: { timeStyle: 'short' },
+        time: { timeStyle: 'short' }
       };
       const when = new Date(iso);
       if (Number.isNaN(when.getTime())) return '';
