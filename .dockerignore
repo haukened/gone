@@ -4,6 +4,7 @@
 .tmp
 bin
 web/dist
+test/e2e
 gone
 goned
 cmd/gone/gone

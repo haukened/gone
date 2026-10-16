@@ -4,4 +4,5 @@ exclude_paths:
   - ".golangci.yml"
   - "**/*_test.go"
   - "test/js/**"
+  - "test/e2e/**"
   - "test/vectors/**"
