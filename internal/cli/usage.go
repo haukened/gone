@@ -32,7 +32,7 @@ is never taken from the command line, so it stays out of shell history.
 Flags:
   -s, --server URL           server origin (default: $GONE_SERVER, config, https://gone.hauken.us)
   -t, --ttl DURATION         lifetime, e.g. 30m or 24h (default 1h)
-  -f, --file PATH            attach a file; repeat for more (max 10)
+  -f, --file PATH            attach a file; repeat for more (max 10, or the server's limit)
       --message-file PATH    read the message from PATH instead of standard input
       --passphrase-prompt    protect with a passphrase typed at a prompt
       --passphrase-file PATH protect with the passphrase in PATH
@@ -159,7 +159,7 @@ only the device that made the request can open it, once.
 A link of "-" is read from standard input.
 
 Flags:
-  -f, --file PATH            attach a file; repeat for more (max 10)
+  -f, --file PATH            attach a file; repeat for more (max 10, or the server's limit)
       --message-file PATH    read the message from PATH instead of standard input
       --json                 print the result as JSON
   -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://gone.hauken.us)

@@ -15,7 +15,8 @@ const dataRoot = path.join(__dirname, '.data');
 const binary = path.resolve(__dirname, '../../bin/goned');
 
 // gonedServer starts the prod binary for one of the servers in servers.js on
-// a fresh data directory, with that server's rate limits. Readiness is
+// a fresh data directory, with that server's rate limits and any extra
+// settings it lists (such as an operator policy). Readiness is
 // checked on goned's own port, which is the public one only without the proxy.
 function gonedServer(name) {
   const s = servers[name];
@@ -34,6 +35,7 @@ function gonedServer(name) {
       // The TLS proxy appends the peer it sees to X-Forwarded-For, which is
       // how ratelimit.spec.js gives each test its own client.
       GONE_TRUSTED_PROXIES: '127.0.0.1',
+      ...s.env,
     },
   };
 }
@@ -74,5 +76,5 @@ module.exports = defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   // A fresh data directory each run for each server; see servers.js.
-  webServer: [gonedServer('main'), gonedServer('rate')].concat(plain ? [] : [proxyServer()]),
+  webServer: [gonedServer('main'), gonedServer('rate'), gonedServer('policy')].concat(plain ? [] : [proxyServer()]),
 });

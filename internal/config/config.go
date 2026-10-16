@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/envelope"
 	"github.com/haukened/gone/v3/internal/ratelimit"
 	"github.com/knadh/koanf/providers/env/v2"
 	"github.com/knadh/koanf/providers/structs"
@@ -26,6 +27,11 @@ type Config struct {
 	ClaimLease     time.Duration      `koanf:"claim_lease"`
 	MetricsAddr    string             `koanf:"metrics_addr"`
 	MetricsToken   string             `koanf:"metrics_token"`
+
+	// Operator policies: RequirePassphrase is enforced by the server;
+	// MaxFiles is honoured by the web UI and CLI (file count is encrypted).
+	RequirePassphrase bool `koanf:"require_passphrase"`
+	MaxFiles          int  `koanf:"max_files"`
 
 	// Rate limiting: raw settings loaded from GONE_RATE_* and
 	// GONE_TRUSTED_PROXIES, and the typed values derived from them.
@@ -82,6 +88,7 @@ var DefaultAppConfig = Config{
 	},
 	ClaimLease:  2 * time.Minute, // window to finish download + decrypt before a claim lapses
 	MetricsAddr: "",              // disabled by default
+	MaxFiles:    envelope.MaxFiles,
 	RateCreate:  "10/m",
 	RateRead:    "30/m",
 	RateBurst:   10,

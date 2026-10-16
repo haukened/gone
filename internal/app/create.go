@@ -22,7 +22,7 @@ import (
 //
 // Returns the new secret's ID, expiry, and manage token, or
 // domain.ErrTTLInvalid, ErrSizeExceeded, domain.ErrInvalidVersion,
-// domain.ErrInvalidNonce, or a storage error.
+// domain.ErrInvalidNonce, ErrPassphraseRequired, or a storage error.
 func (s *Service) CreateSecret(ctx context.Context, ct io.Reader, size int64, version uint8, nonce string, ttl time.Duration) (Created, error) {
 	if err := s.validateCreateSecretRequest(size, version, nonce, ttl); err != nil {
 		return Created{}, err
@@ -60,5 +60,11 @@ func (s *Service) validateCreateSecretRequest(size int64, version uint8, nonce s
 	if size <= 0 || size > s.MaxBytes {
 		return ErrSizeExceeded
 	}
-	return domain.ValidateProtocol(version, nonce)
+	if err := domain.ValidateProtocol(version, nonce); err != nil {
+		return err
+	}
+	if s.RequirePassphrase && version == domain.ProtocolV1 {
+		return ErrPassphraseRequired
+	}
+	return nil
 }

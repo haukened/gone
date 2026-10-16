@@ -16,7 +16,8 @@
       input: ctx.byId('passphrase'),
       toggle: ctx.byId('pass-toggle'),
       generate: ctx.byId('pass-generate'),
-      strength: ctx.byId('pass-strength')
+      strength: ctx.byId('pass-strength'),
+      required: ctx.passRequired
     }, function () { clearError(); updateMeter(); });
   }
 
@@ -26,6 +27,7 @@
       input: ctx.fileInput,
       dropZone: ctx.byId('drop-zone'),
       listEl: ctx.byId('file-list'),
+      disabled: ctx.maxFiles === 0,
       isBusy: function () { return ctx.busy; },
       onAdd: clearError,
       onChange: updateMeter
@@ -56,7 +58,7 @@
   }
 
   function currentProblem(size) {
-    return ctx.sizeMeter.selectionProblem(selection.count(), size, ctx.envelope.MAX_FILES, ctx.maxBytes);
+    return ctx.sizeMeter.selectionProblem(selection.count(), size, ctx.maxFiles, ctx.maxBytes);
   }
 
   function updateMeter() {

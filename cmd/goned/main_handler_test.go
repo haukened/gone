@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,6 +44,25 @@ func TestBuildHandler_IndexRoute(t *testing.T) {
 	}
 	if rr.Body.Len() == 0 {
 		t.Fatalf("expected body content")
+	}
+}
+
+func TestBuildHandler_Policy(t *testing.T) {
+	db := openTestDB(t, filepath.Join(t.TempDir(), "gone.db"))
+	idx, err := sqlite.New(db)
+	if err != nil {
+		t.Fatalf("sqlite init: %v", err)
+	}
+	cfg := &config.Config{MaxBytes: 2048, MinTTL: time.Minute, MaxTTL: 2 * time.Minute, RequirePassphrase: true, MaxFiles: 2}
+	svc := buildService(idx, stubBlobStorage{}, cfg, realClock{})
+	if !svc.RequirePassphrase {
+		t.Fatalf("service RequirePassphrase not set")
+	}
+	h := buildHandler(cfg, svc, db, t.TempDir(), minimalTemplates(), wembed.Assets).Router()
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/policy", nil))
+	if want := `{"passphrase_required":true,"max_files":2}`; strings.TrimSpace(rr.Body.String()) != want {
+		t.Fatalf("policy body = %q, want %q", rr.Body.String(), want)
 	}
 }
 

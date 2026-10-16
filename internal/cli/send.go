@@ -68,7 +68,8 @@ func (a *app) runSend(ctx context.Context, args []string) error {
 	return a.createSendSecret(ctx, cl, o)
 }
 
-// createSendSecret reads, encrypts, uploads, and reports one send request.
+// createSendSecret checks the server's policy, then reads, encrypts,
+// uploads, and reports one send request.
 //
 // Parameters:
 //   - ctx: request context.
@@ -77,6 +78,13 @@ func (a *app) runSend(ctx context.Context, args []string) error {
 //
 // Returns nil or a classified error.
 func (a *app) createSendSecret(ctx context.Context, cl *client.Client, o sendOpts) error {
+	pol, err := serverPolicy(ctx, cl)
+	if err != nil {
+		return err
+	}
+	if err = checkSendPolicy(o, pol); err != nil {
+		return err
+	}
 	pass, generated, err := a.sendPassphrase(o.pass)
 	defer clear(pass)
 	if err != nil {

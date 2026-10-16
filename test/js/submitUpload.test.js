@@ -90,6 +90,7 @@ test('upload accepts 200 and rejects bad statuses or bodies', async (t) => {
     [201, { id: 'a'.repeat(31) }, 'js.upload.badId'],
     [201, { id: 5 }, 'js.upload.badId'],
     [400, {}, 'js.upload.rejected'],
+    [403, {}, 'js.upload.passRequired'],
     [413, undefined, 'js.upload.tooLarge'],
     [429, undefined, 'js.common.tooMany'],
     [503, undefined, 'js.common.busy'],

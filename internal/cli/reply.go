@@ -60,7 +60,8 @@ func (a *app) runReply(ctx context.Context, args []string) error {
 	return a.sendReply(ctx, cl, link, o)
 }
 
-// sendReply reads, seals and uploads the reply.
+// sendReply checks the server's file limit, then reads, seals and uploads
+// the reply. Replies are exempt from the passphrase policy.
 //
 // Parameters:
 //   - ctx: cancellation signal.
@@ -70,6 +71,13 @@ func (a *app) runReply(ctx context.Context, args []string) error {
 //
 // Returns an error to classify.
 func (a *app) sendReply(ctx context.Context, cl *client.Client, link envelope.ReplyLink, o replyOpts) error {
+	pol, err := serverPolicy(ctx, cl)
+	if err != nil {
+		return err
+	}
+	if err = checkFiles(len(o.files), pol); err != nil {
+		return err
+	}
 	payload, err := a.readPayload(o.files, o.messageFile)
 	defer clearPayload(payload)
 	if err != nil {

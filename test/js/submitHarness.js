@@ -64,7 +64,7 @@ function page(env, opts) {
   const skip = new Set(o.skip || []);
   const label = o.noLabel ? [] : [h('span', { textContent: 'Create one-time link' })];
   const ttl = o.ttl === null ? null : { value: o.ttl || '1h' };
-  const dataset = maxBytesDataset(o.maxBytes);
+  const dataset = Object.assign(maxBytesDataset(o.maxBytes), o.dataset);
   const form = h('form', { id: 'create-secret', dataset, elements: { namedItem: (n) => (n === 'ttl' ? ttl : null) } }, formChildren(skip, o, label));
   env.document.body.append(h('div', { id: 'compose' }, optionalNode(skip, 'create-secret', form)), resultView());
 }

@@ -1,6 +1,6 @@
 'use strict';
 
-// Optional passphrase field on the create form: show/hide toggle, Generate
+// Passphrase field on the create form (optional unless the operator requires one): show/hide toggle, Generate
 // button, live entropy and time-to-guess hint, and length validation. Requires
 // window.goneI18n, window.goneCrypto, window.gonePassgen and
 // window.goneSubmitStrength (submitStrength.js). Exposed as
@@ -12,10 +12,13 @@
   const showStrength = window.goneSubmitStrength.showStrength;
 
   const SHORT_PROBLEM = { key: 'js.pass.shortProblem', args: { min: passgen.minChars } };
+  const SHORT_REQUIRED_PROBLEM = { key: 'js.pass.shortRequired', args: { min: passgen.minChars } };
+  const REQUIRED_PROBLEM = { key: 'js.pass.required' };
 
   // create wires the passphrase controls.
   //
-  // els: {disclosure, input, toggle, generate, strength}; onChange is called
+  // els: {disclosure, input, toggle, generate, strength, required}; required
+  // makes an empty passphrase a problem. onChange is called
   // after every edit. Returns null when the input is missing, otherwise
   // {value, problem, overhead, setBusy, clear, reveal}.
   function create(els, onChange) {
@@ -28,9 +31,12 @@
       return input.value;
     }
 
-    // problem returns {key, args} when a non-empty passphrase is too short.
+    // problem returns {key, args} when a non-empty passphrase is too short,
+    // or when it is empty and the server requires one.
     function problem() {
-      return passgen.strength(input.value) === 'short' ? SHORT_PROBLEM : '';
+      if (els.required && !input.value) return REQUIRED_PROBLEM;
+      if (passgen.strength(input.value) !== 'short') return '';
+      return els.required ? SHORT_REQUIRED_PROBLEM : SHORT_PROBLEM;
     }
 
     // overhead returns the extra ciphertext bytes a passphrase adds (the v2 header).

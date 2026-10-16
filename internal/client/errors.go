@@ -21,6 +21,9 @@ var (
 	ErrRateLimited = errors.New("rate limited")
 	// ErrTooLarge is returned for HTTP 413 or an oversized response.
 	ErrTooLarge = errors.New("too large")
+	// ErrPassphraseRequired is returned for HTTP 403 from POST /api/secret:
+	// the operator requires a passphrase on every secret.
+	ErrPassphraseRequired = errors.New("this server requires a passphrase")
 	// ErrRejected is returned for any other 4xx response.
 	ErrRejected = errors.New("request rejected by server")
 	// ErrServer is returned for 5xx and any unexpected status, including 3xx.

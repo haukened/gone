@@ -19,10 +19,10 @@ function fields(skip) {
 }
 
 // boot loads the field module with its dependencies and creates a field.
-function boot(skip) {
+function boot(skip, required) {
   const env = reset();
   load('util', 'crypto', 'wordlist', 'passgen', 'submitPassphrase');
-  const els = fields(skip);
+  const els = Object.assign(fields(skip), { required: Boolean(required) });
   let changes = 0;
   const field = window.gonePassphraseField.create(els, () => { changes += 1; });
   return { env, els, field, changes: () => changes };
@@ -122,4 +122,13 @@ test('optional controls may be absent', () => {
   b.field.clear();
   b.field.reveal();
   assert.equal(b.env.document.activeElement, b.els.input);
+});
+
+test('a required passphrase may not be empty or short', () => {
+  const b = boot([], true);
+  assert.deepEqual(b.field.problem(), { key: 'js.pass.required' });
+  typeIn(b, 'abc');
+  assert.equal(b.field.problem().key, 'js.pass.shortRequired');
+  typeIn(b, 'correct horse battery');
+  assert.equal(b.field.problem(), '');
 });

@@ -76,6 +76,7 @@ func run(ctx context.Context) (err error) {
 	for _, w := range cfg.Warnings {
 		slog.Warn(w)
 	}
+	slog.Info("operator policy", "require_passphrase", cfg.RequirePassphrase, "max_files", cfg.MaxFiles)
 	dataDir, blobDir, err := ensureDataDir(cfg.DataDir)
 	if err != nil {
 		return err

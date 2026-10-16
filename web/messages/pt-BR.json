@@ -111,6 +111,7 @@
 	"js.common.show": "Mostrar",
 	"send.passGenerate": "Gerar",
 	"send.passHint": "Quem recebe digita a frase antes de o segredo abrir. Envie-a separadamente (por exemplo, por telefone ou em outro aplicativo), nunca junto com o link.",
+	"send.passRequired": "Este servidor exige uma frase secreta em todo segredo.",
 	"send.submit": "Criar link de uso único",
 	"compose.uploadProgress": "Progresso do envio",
 	"compose.submitHint": "Nada sai deste dispositivo até você apertar o botão.",
@@ -548,6 +549,7 @@
 	"js.upload.server": "O servidor teve um problema ao criar o segredo. Tente de novo daqui a pouco.",
 	"js.upload.badId": "O servidor devolveu um id de segredo inválido, então não há link para compartilhar. Tente de novo.",
 	"js.upload.rejected": "O servidor recusou o segredo.",
+	"js.upload.passRequired": "Este servidor exige uma frase secreta. Adicione uma e tente de novo.",
 	"js.upload.tooLarge": "Este segredo é grande demais para este servidor.",
 	"js.meter.tooMany": [
 		{
@@ -657,6 +659,8 @@
 	"js.pass.guessUniverse": "Cerca de {bits} bits de entropia, mais do que a idade do universo para adivinhar.",
 	"js.pass.weak": "{text} Quanto mais longa, melhor; ou aperte Gerar.",
 	"js.pass.shortProblem": "Use uma frase secreta com pelo menos {min} caracteres, ou deixe em branco.",
+	"js.pass.required": "Este servidor exige uma frase secreta. Digite uma ou toque em Gerar.",
+	"js.pass.shortRequired": "Use uma frase secreta com pelo menos {min} caracteres.",
 	"js.reply.badLink": "Este link de pedido está incompleto. Confira se você copiou o link inteiro, incluindo tudo depois do #.",
 	"js.reply.newer": "Este link foi criado por uma versão mais nova do Gone e não pode ser respondido aqui.",
 	"js.reply.badKey": "Este link de pedido está danificado, então nada pode ser criptografado para ele. Peça um novo link.",

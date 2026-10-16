@@ -12,6 +12,7 @@
   const SERVER_ERROR = 'js.upload.server';
   const UPLOAD_ERRORS = new Map([
     [400, 'js.upload.rejected'],
+    [403, 'js.upload.passRequired'],
     [413, 'js.upload.tooLarge'],
     [429, 'js.common.tooMany'],
     [503, 'js.common.busy']

@@ -108,6 +108,33 @@ func TestServiceCreateSecretProtocolValidation(t *testing.T) {
 	}
 }
 
+func TestServiceCreateSecretRequirePassphrase(t *testing.T) {
+	cases := []struct {
+		name     string
+		required bool
+		version  uint8
+		want     error
+	}{
+		{"v1 rejected", true, domain.ProtocolV1, ErrPassphraseRequired},
+		{"v2 accepted", true, domain.ProtocolV2, nil},
+		{"v1 accepted when off", false, domain.ProtocolV1, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ms := &mockStore{}
+			svc := newServiceTestSubject(ms, time.Now())
+			svc.RequirePassphrase = c.required
+			_, err := svc.CreateSecret(context.Background(), strings.NewReader("a"), 1, c.version, "AAAAAAAAAAAAAAAA", time.Minute)
+			if !errors.Is(err, c.want) {
+				t.Fatalf("err = %v, want %v", err, c.want)
+			}
+			if ms.saveCalled != (c.want == nil) {
+				t.Fatalf("saveCalled = %v, want %v", ms.saveCalled, c.want == nil)
+			}
+		})
+	}
+}
+
 func TestServiceCreateSecretSizeValidation(t *testing.T) {
 	tests := []struct {
 		name string

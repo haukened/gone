@@ -60,6 +60,9 @@ func validateCases() []validateCase {
 		{name: "long lease", mutate: func(c *Config) { c.ClaimLease = maxClaimLease + time.Second }, wantErr: "GONE_CLAIM_LEASE"},
 		{name: "burst zero", mutate: func(c *Config) { c.RateBurst = 0 }, wantErr: "GONE_RATE_BURST"},
 		{name: "burst too large", mutate: func(c *Config) { c.RateBurst = 1001 }, wantErr: "GONE_RATE_BURST"},
+		{name: "files off", mutate: func(c *Config) { c.MaxFiles = 0 }},
+		{name: "negative files", mutate: func(c *Config) { c.MaxFiles = -1 }, wantErr: "GONE_MAX_FILES"},
+		{name: "too many files", mutate: func(c *Config) { c.MaxFiles = 11 }, wantErr: "GONE_MAX_FILES"},
 	}
 }
 

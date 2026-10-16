@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/haukened/gone/v3/internal/envelope"
 )
 
 // maxClaimLease is the longest claim lease accepted from GONE_CLAIM_LEASE.
@@ -23,7 +25,7 @@ const maxClaimLease = 15 * time.Minute
 // Returns:
 //   - error: the first invalid setting, named by its environment variable.
 func validate(cfg *Config) error {
-	for _, check := range []func(*Config) error{validatePaths, validateSizes, validateTTLs, validateRateBurst} {
+	for _, check := range []func(*Config) error{validatePaths, validateSizes, validateTTLs, validateRateBurst, validateMaxFiles} {
 		if err := check(cfg); err != nil {
 			return err
 		}
@@ -96,6 +98,20 @@ func validateTTLs(cfg *Config) error {
 func validateRateBurst(cfg *Config) error {
 	if cfg.RateBurst < 1 || cfg.RateBurst > 1000 {
 		return fmt.Errorf("GONE_RATE_BURST: must be from 1 to 1000, got %d", cfg.RateBurst)
+	}
+	return nil
+}
+
+// validateMaxFiles checks the per-secret file limit.
+//
+// Parameters:
+//   - cfg: the configuration to check.
+//
+// Returns:
+//   - error: naming GONE_MAX_FILES when outside 0 to envelope.MaxFiles.
+func validateMaxFiles(cfg *Config) error {
+	if cfg.MaxFiles < 0 || cfg.MaxFiles > envelope.MaxFiles {
+		return fmt.Errorf("GONE_MAX_FILES: must be from 0 to %d, got %d", envelope.MaxFiles, cfg.MaxFiles)
 	}
 	return nil
 }

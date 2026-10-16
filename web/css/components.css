@@ -928,6 +928,12 @@ textarea:focus-visible,
   padding-bottom: 1.25rem;
 }
 
+/* A required passphrase: the disclosure body, always shown, under a note */
+.pass-required > .hint {
+  margin: 0;
+  padding-block: 1rem 0.75rem;
+}
+
 /* Delete zone and its inline confirm */
 .zone {
   display: grid;
