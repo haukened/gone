@@ -30,8 +30,14 @@ func newRequestServer(t *testing.T) *httptest.Server {
 // requests enabled and no rate limits.
 func newRequestHandler(t *testing.T) http.Handler {
 	t.Helper()
+	return newRequestHandlerAt(t, t.TempDir())
+}
+
+// newRequestHandlerAt is newRequestHandler with its store under dir.
+func newRequestHandlerAt(t *testing.T, dir string) http.Handler {
+	t.Helper()
 	cfg := config.DefaultAppConfig
-	svc := newService(t, &cfg)
+	svc := newServiceAt(t, &cfg, dir)
 	svc.Requests = svc.Store.(app.RequestStore)
 	h := httpx.New(svc, cfg.MaxBytes, nil)
 	h.MinTTL, h.MaxTTL = cfg.MinTTL, cfg.MaxTTL

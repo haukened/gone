@@ -109,7 +109,7 @@ Everything lives in `GONE_DATA_DIR`:
   - `metrics_counters` and `metrics_summaries`: running totals only, with no IDs.
 - **Blobs:** ciphertext larger than `GONE_INLINE_MAX_BYTES` is stored as a file under `blobs/`.
 
-Rows and blobs are deleted on confirmed receipt, revoke, cancel or expiry. Nothing about a secret is kept after that.
+Rows and blobs are deleted on confirmed receipt, revoke, cancel or expiry. An expired secret or reply is deleted, blob included, as soon as anyone asks for it, and otherwise by the janitor within a minute. Nothing about a secret is kept after that.
 
 ## Security headers
 

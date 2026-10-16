@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/fs"
 	"time"
 
 	"github.com/haukened/gone/v3/internal/app"
@@ -71,7 +72,7 @@ func (s *Store) RequestOpen(ctx context.Context, id, fillHash string) (time.Time
 // first, so a closed request never costs a blob write; the payload is then
 // written and the request swapped for the reply atomically. If that swap
 // fails, an external payload is removed best-effort (Reconcile sweeps any
-// orphan).
+// orphan). As in Save, the ID is held until the swap is done.
 //
 // Parameters:
 //   - ctx: request context.
@@ -93,9 +94,11 @@ func (s *Store) Fill(ctx context.Context, id, fillHash string, meta app.Meta, r 
 	if _, err = ri.RequestOpen(ctx, id, fillHash, s.clock.Now()); err != nil {
 		return time.Time{}, err
 	}
+	release := s.guard.hold(id)
+	defer release()
 	inline, external, err := s.storePayload(ctx, id, r, size)
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, fillWriteError(err)
 	}
 	expires, err := ri.FillRequest(ctx, id, fillHash, s.clock.Now(), NewRow{
 		Meta: meta, Inline: inline, External: external, Size: size,
@@ -104,6 +107,22 @@ func (s *Store) Fill(ctx context.Context, id, fillHash string, meta app.Meta, r 
 		_ = s.blobs.Delete(id) // best-effort; Reconcile cleans orphans
 	}
 	return expires, err
+}
+
+// fillWriteError maps a failed reply payload write for Fill. A blob that
+// already exists means another fill of the same request got past the open
+// check too and wrote first: that fill wins, and this one finds the request
+// no longer open, as when the two fills meet in the index.
+//
+// Parameters:
+//   - err: error from storing the payload.
+//
+// Returns app.ErrNotFound for fs.ErrExist, otherwise err.
+func fillWriteError(err error) error {
+	if errors.Is(err, fs.ErrExist) {
+		return app.ErrNotFound
+	}
+	return err
 }
 
 // RequestStatus reports a request to the requester holding its manage token.
@@ -142,7 +161,8 @@ func (s *Store) ClaimReply(ctx context.Context, id, manageHash, claimHash string
 	if s.blobs == nil {
 		return app.Claimed{}, errors.New("store not properly initialized")
 	}
-	return buildClaimed(ri.ClaimReply(ctx, id, manageHash, claimHash, retry, s.clock.Now(), claimedUntil, s.blobs.Open))
+	res, err := ri.ClaimReply(ctx, id, manageHash, claimHash, retry, s.clock.Now(), claimedUntil, s.blobs.Open)
+	return buildClaimed(res, s.sweepDead(id, err))
 }
 
 // CancelRequest deletes an open request or an unopened reply. A reply's blob
@@ -161,7 +181,7 @@ func (s *Store) CancelRequest(ctx context.Context, id, manageHash string) error 
 	}
 	external, err := ri.CancelRequest(ctx, id, manageHash, s.clock.Now())
 	if err != nil {
-		return err
+		return s.sweepDead(id, err)
 	}
 	if external && s.blobs != nil {
 		_ = s.blobs.Delete(id) // best-effort; Reconcile cleans orphans

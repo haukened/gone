@@ -52,12 +52,15 @@ func (s *Store) count(name string, n int) {
 	}
 }
 
-// Reconcile scans for blob orphans and removes them. It can also be extended
-// later to verify referential integrity or rebuild indexes.
+// Reconcile scans for blob orphans and removes them. A blob whose save is
+// still in flight, or was at any point during the scan, is never an orphan
+// here even though its row is not visible yet (see blobGuard).
 func (s *Store) Reconcile(ctx context.Context) error {
 	if s.index == nil || s.blobs == nil {
 		return errors.New("store not properly initialized")
 	}
+	s.guard.beginScan()
+	defer s.guard.endScan()
 	blobIDs, err := s.blobs.List()
 	if err != nil {
 		return err
@@ -70,7 +73,8 @@ func (s *Store) Reconcile(ctx context.Context) error {
 	return nil
 }
 
-// deleteReconcileOrphans removes blob IDs not present in the external index set.
+// deleteReconcileOrphans removes blob IDs not present in the external index
+// set, skipping any the guard saw saved during the scan.
 //
 // Parameters:
 //   - blobIDs: IDs currently present in blob storage.
@@ -79,7 +83,7 @@ func (s *Store) deleteReconcileOrphans(blobIDs, extIDs []string) {
 	indexSet := externalIDMembership(extIDs)
 	for _, bid := range blobIDs {
 		if _, ok := indexSet[bid]; !ok {
-			_ = s.blobs.Delete(bid)
+			s.guard.deleteUntouched(bid, s.blobs.Delete)
 		}
 	}
 }

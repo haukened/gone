@@ -39,7 +39,9 @@ func New(root string) (*BlobStore, error) {
 // path constructs the full path to the blob file for a given secret ID.
 func (b *BlobStore) path(id string) string { return filepath.Join(b.root, id+".blob") }
 
-// Write stores exactly size bytes from r into a file associated with id.
+// Write stores exactly size bytes from r into a file associated with id. The
+// file and then the blob directory are synced, so after a crash a committed
+// index row never points at a blob whose directory entry was lost.
 func (b *BlobStore) Write(id string, r io.Reader, size int64) error {
 	if err := validateID(id); err != nil {
 		return err
@@ -57,6 +59,9 @@ func (b *BlobStore) Write(id string, r io.Reader, size int64) error {
 		return errors.Join(closeBlobFile(f, err), os.Remove(p))
 	}
 	if err = f.Close(); err != nil {
+		return errors.Join(err, os.Remove(p))
+	}
+	if err = syncBlobDir(b.root); err != nil {
 		return errors.Join(err, os.Remove(p))
 	}
 	return nil
