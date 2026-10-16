@@ -43,7 +43,13 @@ func TestNormalizeOrigin(t *testing.T) {
 		{"http://localhost:8080", true, "http://localhost:8080", nil},
 		{"http://localhost:8080", false, "", ErrInsecureOrigin},
 		{"http://LocalHost", true, "http://localhost", nil},
-		{"http://gone.localhost:8080", true, "http://gone.localhost:8080", nil},
+		{"http://gone.localhost:8080", true, "", ErrInsecureOrigin},
+		{"http://localhost.:8080", true, "", ErrInsecureOrigin},
+		{"https://gone.example:443", false, "https://gone.example", nil},
+		{"https://gone.example:", false, "https://gone.example", nil},
+		{"https://gone.example:80", false, "https://gone.example:80", nil},
+		{"http://localhost:80", true, "http://localhost", nil},
+		{"http://[::1]:", true, "http://[::1]", nil},
 		{"http://127.0.0.2:8080", true, "http://127.0.0.2:8080", nil},
 		{"http://[::1]:8080", true, "http://[::1]:8080", nil},
 		{"http://gone.example", true, "", ErrInsecureOrigin},
@@ -111,6 +117,26 @@ func TestNewDefaults(t *testing.T) {
 	c2, _ := New("https://gone.example", Options{Timeout: time.Second})
 	if c2.hc.Timeout != time.Second {
 		t.Fatalf("timeout = %v", c2.hc.Timeout)
+	}
+}
+
+func TestNewProxyOnlyForHTTPS(t *testing.T) {
+	tests := []struct {
+		origin string
+		proxy  bool
+	}{
+		{"https://gone.example", true},
+		{"http://localhost:8080", false},
+		{"http://127.0.0.1:8080", false},
+	}
+	for _, tc := range tests {
+		c, err := New(tc.origin, Options{AllowHTTP: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := c.hc.Transport.(*http.Transport).Proxy != nil; got != tc.proxy {
+			t.Errorf("%s: proxy set = %v, want %v", tc.origin, got, tc.proxy)
+		}
 	}
 }
 

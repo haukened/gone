@@ -42,7 +42,7 @@ func requestJSON(t *testing.T, te *testEnv, server string, args ...string) map[s
 func replier(t *testing.T, te *testEnv) *testEnv {
 	t.Helper()
 	r := newTestEnv(t)
-	r.RootCAs = te.RootCAs
+	r.RootCAs, r.allow = te.RootCAs, te.allow
 	return r
 }
 

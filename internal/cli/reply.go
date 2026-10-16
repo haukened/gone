@@ -11,7 +11,7 @@ import (
 
 // replyOpts holds `gone reply` flags.
 type replyOpts struct {
-	common
+	linkOpts
 	files       stringList
 	messageFile string
 }
@@ -31,7 +31,7 @@ func parseReply(args []string) (replyOpts, string, error) {
 	if err != nil {
 		return o, "", err
 	}
-	return o, raw, validateCommon(o.common)
+	return o, raw, o.validate()
 }
 
 // runReply answers someone's request: it checks the request is still open
@@ -48,7 +48,7 @@ func (a *app) runReply(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	link, cl, err := openLinkArg(a, o.common, raw, envelope.ParseReplyLink,
+	link, cl, err := openLinkArg(a, o.linkOpts, raw, envelope.ParseReplyLink,
 		func(l envelope.ReplyLink) string { return l.Origin },
 		"not a valid gone request link (quote it in single quotes so the shell keeps the #fragment)")
 	if err != nil {
