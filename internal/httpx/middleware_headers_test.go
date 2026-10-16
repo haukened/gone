@@ -20,6 +20,7 @@ func TestSecureHeadersMiddleware(t *testing.T) {
 	checks := map[string]string{
 		"X-Content-Type-Options":  "nosniff",
 		"Referrer-Policy":         "no-referrer",
+		"X-Robots-Tag":            "noindex",
 		"Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
 	}
 	for k, expect := range checks {
