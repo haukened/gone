@@ -11,7 +11,7 @@ import (
 
 // getOpts holds the parsed "gone get" flags.
 type getOpts struct {
-	common
+	linkOpts
 	out        string
 	messageOut string
 	raw        bool
@@ -58,7 +58,7 @@ func parseGet(args []string) (getOpts, string, error) {
 	if err != nil {
 		return o, "", err
 	}
-	return o, raw, validateCommon(o.common)
+	return o, raw, o.validate()
 }
 
 // runGet implements "gone get <link>": validate everything that can be
@@ -74,7 +74,7 @@ func (a *app) runGet(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	link, cl, err := openLinkArg(a, o.common, raw, envelope.ParseLink,
+	link, cl, err := openLinkArg(a, o.linkOpts, raw, envelope.ParseLink,
 		func(l envelope.Link) string { return l.Origin },
 		"not a valid gone link (quote it in single quotes so the shell keeps the #fragment)")
 	if err != nil {

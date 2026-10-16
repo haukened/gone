@@ -83,13 +83,17 @@ func loadConfig(env *Env) (config, error) {
 //   - path: config file path, used only in error messages.
 //
 // Returns the contents, nil when the file or directory does not exist,
-// or an I/O error (including when the file is too large).
+// or an I/O error (including when the file is too large, or another user
+// could have written it).
 func readConfigFile(dir, path string) ([]byte, error) {
 	f, err := openConfigFile(dir)
 	if f == nil || err != nil {
 		return nil, err
 	}
 	defer func() { _ = f.Close() }()
+	if err := checkConfigFile(f, path); err != nil {
+		return nil, err
+	}
 	data, err := io.ReadAll(io.LimitReader(f, maxConfigBytes+1))
 	if err != nil {
 		return nil, ioErr("read config", err)

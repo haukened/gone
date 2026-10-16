@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -30,9 +31,10 @@ const (
 
 // Options configures a Client.
 type Options struct {
-	// AllowHTTP permits a plain-HTTP origin on a loopback host, the same
-	// exception browsers make for localhost. Any other http origin is always
-	// refused. TLS certificates are always verified when HTTPS is used.
+	// AllowHTTP permits a plain-HTTP origin on "localhost" or a literal
+	// loopback IP, the same exception browsers make for localhost. Any other
+	// http origin is always refused, and a plain-HTTP client never uses a
+	// proxy. TLS certificates are always verified when HTTPS is used.
 	AllowHTTP bool
 	// Timeout bounds each request; zero means DefaultTimeout.
 	Timeout time.Duration
@@ -67,7 +69,7 @@ func New(origin string, opts Options) (*Client, error) {
 		timeout = DefaultTimeout
 	}
 	tr := &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
+		Proxy:               proxyFor(o),
 		TLSClientConfig:     &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: opts.RootCAs},
 		TLSHandshakeTimeout: 10 * time.Second,
 		ForceAttemptHTTP2:   true,
@@ -80,6 +82,22 @@ func New(origin string, opts Options) (*Client, error) {
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
 	return &Client{origin: o, hc: hc, ua: opts.UserAgent}, nil
+}
+
+// proxyFor picks the proxy policy for a normalized origin: the
+// environment's proxy for https, and none for a loopback http origin, so
+// plain-HTTP traffic is never handed to a proxy that could forward it off
+// the machine.
+//
+// Parameters:
+//   - origin: normalized origin.
+//
+// Returns the Transport proxy function, or nil for no proxy.
+func proxyFor(origin string) func(*http.Request) (*url.URL, error) {
+	if strings.HasPrefix(origin, "http://") {
+		return nil
+	}
+	return http.ProxyFromEnvironment
 }
 
 // Origin returns the normalized server origin.

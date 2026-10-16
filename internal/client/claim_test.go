@@ -142,6 +142,54 @@ func TestClaimTruncatedBody(t *testing.T) {
 	}
 }
 
+// flakyClaimServer truncates the body of every claim without a claim
+// token and serves the full body to a retry carrying it.
+//
+// Parameters:
+//   - t: test handle.
+//   - h: claim response headers.
+//   - tokens: receives each request's X-Gone-Claim value.
+//
+// Returns the client.
+func flakyClaimServer(t *testing.T, h http.Header, tokens *[]string) *Client {
+	t.Helper()
+	c, _ := newTLS(t, func(w http.ResponseWriter, r *http.Request) {
+		*tokens = append(*tokens, r.Header.Get(headerClaim))
+		for k, vs := range h {
+			w.Header()[k] = vs
+		}
+		w.Header().Set("Content-Length", "10")
+		if r.Header.Get(headerClaim) == "" {
+			_, _ = io.WriteString(w, "ciph")
+			return
+		}
+		_, _ = io.WriteString(w, "ciphertext")
+	})
+	return c
+}
+
+func TestClaimRetriesInterruptedDownload(t *testing.T) {
+	var tokens []string
+	c := flakyClaimServer(t, claimHeaders(), &tokens)
+	cl, err := c.Claim(context.Background(), testID, 1)
+	if err != nil || string(cl.Body) != "ciphertext" {
+		t.Fatalf("claim = %q, %v", cl.Body, err)
+	}
+	if len(tokens) != 2 || tokens[0] != "" || tokens[1] != testClaim.String() {
+		t.Fatalf("claim tokens sent = %q", tokens)
+	}
+}
+
+func TestClaimNoRetryAfterLease(t *testing.T) {
+	var tokens []string
+	h := claimHeaders()
+	h.Set(headerClaimExpires, "2001-01-01T00:00:00Z")
+	c := flakyClaimServer(t, h, &tokens)
+	if _, err := c.Claim(context.Background(), testID, 1); !errors.Is(err, ErrNetwork) || len(tokens) != 1 {
+		t.Fatalf("err = %v after %d requests", err, len(tokens))
+	}
+}
+
 func TestAck(t *testing.T) {
 	var method, tok string
 	c, srv := newTLS(t, func(w http.ResponseWriter, r *http.Request) {

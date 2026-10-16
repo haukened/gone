@@ -61,7 +61,7 @@ func (a *app) runRequest(ctx context.Context, args []string) error {
 func parseRequestCreate(args []string) (requestOpts, error) {
 	var o requestOpts
 	fs := newFlagSet("request")
-	o.register(fs)
+	o.common.register(fs)
 	registerOutputs(&o.getOpts, fs)
 	registerServerTTL(fs, &o.server, &o.ttl, defaultRequestTTL)
 	for _, name := range []string{"l", "label"} {
@@ -111,11 +111,7 @@ func (a *app) runRequestCreate(ctx context.Context, args []string) error {
 		return err
 	}
 	a.json = o.json
-	origin, source, err := resolveServer(a.env, o.server)
-	if err != nil {
-		return err
-	}
-	cl, err := newClient(a.env, origin, source, o.common)
+	cl, err := a.serverClient(o.server, o.common)
 	if err != nil {
 		return err
 	}

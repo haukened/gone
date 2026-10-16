@@ -30,6 +30,12 @@ type testEnv struct {
 	vars      map[string]string
 	passwords []string
 	configDir string
+	// allow lists every test server's origin; run passes it to link
+	// commands as --allow-origin unless strict is set.
+	allow []string
+	// strict runs link commands without the automatic --allow-origin, to
+	// test the origin policy itself.
+	strict bool
 }
 
 // newTestEnv returns a non-interactive environment with an empty config
@@ -74,8 +80,14 @@ func newTestEnv(t *testing.T) *testEnv {
 //
 // Returns the exit code.
 func (te *testEnv) run(args ...string) int {
+	if !te.strict && len(te.allow) > 0 && len(args) > 0 && linkCommands[args[0]] {
+		args = append([]string{args[0], "--allow-origin=" + strings.Join(te.allow, ",")}, args[1:]...)
+	}
 	return Run(context.Background(), args, te.Env)
 }
+
+// linkCommands are the commands that act on a link and check its origin.
+var linkCommands = map[string]bool{"get": true, "reply": true, "status": true, "revoke": true}
 
 // reset clears captured output and queued input.
 func (te *testEnv) reset() {
@@ -162,6 +174,7 @@ func newTLS(t *testing.T, te *testEnv, h http.Handler) *httptest.Server {
 	srv := httptest.NewTLSServer(h)
 	t.Cleanup(srv.Close)
 	te.RootCAs = srv.Client().Transport.(*http.Transport).TLSClientConfig.RootCAs
+	te.allow = append(te.allow, srv.URL)
 	return srv
 }
 

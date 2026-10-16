@@ -48,7 +48,9 @@ const usageGet = `Usage: gone get <link|-> [flags]
 Downloads and decrypts the secret, writes attachments to the output
 directory, prints the message (or writes it to --message-out), then
 deletes the secret from the server. Existing files are never overwritten.
-A link of "-" is read from standard input.
+A link of "-" is read from standard input. A link for a server other than
+yours (--server, $GONE_SERVER, config, default) is refused unless allowed
+with --allow-origin.
 
 Flags:
   -o, --out DIR              directory for attachments (default .)
@@ -56,6 +58,8 @@ Flags:
       --passphrase-file PATH read the passphrase from PATH instead of prompting
       --json                 print the result as JSON
       --raw                  print the message without escaping control characters
+  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://gone.hauken.us)
+      --allow-origin ORIGIN  also trust this server for this command; repeat or comma-separate
       --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
 `
@@ -68,6 +72,8 @@ Shows whether the secret is still waiting to be opened. A manage link of
 
 Flags:
       --json                 print the result as JSON
+  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://gone.hauken.us)
+      --allow-origin ORIGIN  also trust this server for this command; repeat or comma-separate
       --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
 `
@@ -80,6 +86,8 @@ read from standard input.
 
 Flags:
       --json                 print the result as JSON
+  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://gone.hauken.us)
+      --allow-origin ORIGIN  also trust this server for this command; repeat or comma-separate
       --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
 `
@@ -87,10 +95,11 @@ Flags:
 // usageSet documents "gone set".
 const usageSet = `Usage: gone set server <url> [--insecure]
 
-Saves the default server used by "gone send" and "gone request". The
-value must be a bare origin such as https://gone.example.com. http:// is
-refused, except for a localhost server with --insecure here and on every
-later send or request.
+Saves the default server used by "gone send" and "gone request", and the
+server whose links get, status, revoke and reply open without
+--allow-origin. The value must be a bare origin such as
+https://gone.example.com. http:// is refused, except for localhost or a
+loopback IP with --insecure here and on every later command.
 `
 
 // usageVersion documents "gone version".
@@ -153,6 +162,8 @@ Flags:
   -f, --file PATH            attach a file; repeat for more (max 10)
       --message-file PATH    read the message from PATH instead of standard input
       --json                 print the result as JSON
+  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://gone.hauken.us)
+      --allow-origin ORIGIN  also trust this server for this command; repeat or comma-separate
       --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
 `
