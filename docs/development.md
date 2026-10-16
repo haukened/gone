@@ -6,7 +6,7 @@ How to build, run and test Gone from source. The pull request process and coding
 
 - **Go 1.27.2 or newer.** Gone is pure Go: SQLite comes from [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite). It builds with `CGO_ENABLED=0` into a fully static binary.
 - **[Task](https://taskfile.dev/docs/installation)**, which runs the build steps in `Taskfile.yml`.
-- **Node 20 or newer**, for the JavaScript tests and linters. The web client itself needs no npm install.
+- **Node 20.19 or newer**, for the JavaScript tests and linters. The web client itself needs no npm install.
 - **[minify](https://github.com/tdewolff/minify)**, for production builds only.
 
 ## Build and run
@@ -41,7 +41,9 @@ Every variable is listed in [Configuration](configuration.md). The container ima
 | `task e2e` | Browser end-to-end tests in `test/e2e/`: a production build, served over HTTPS, in Chromium, Firefox and WebKit with Playwright. Run `task e2e-install` once first to install the browsers. It needs Go, which builds the test TLS proxy. |
 | `task perf` | The latency target: p95 under 50 ms at 100 requests per second, against the real stack. |
 | `task lint` | golangci-lint (configured in `.golangci.yml`) for the default and `dev` build tags. |
-| `task lint-web` | ESLint and stylelint through `npx`, as CI runs them. |
+| `task lint-web` | ESLint (flat config in `eslint.config.cjs`) and stylelint, at the versions pinned in `tools/lint`, as CI runs them. |
+
+`eslint.config.cjs` is the ESLint config that CI and `task lint-web` use. `.eslintrc.json` is kept only for Codacy's older ESLint, which reads just the legacy format, and must mirror it.
 
 ### What each suite covers
 

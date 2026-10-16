@@ -126,8 +126,6 @@ jobs:
       # ESLint and stylelint are pinned, with their dependencies, in
       # tools/lint/package-lock.json.
       - name: Lint JavaScript and CSS
-        env:
-          ESLINT_USE_FLAT_CONFIG: 'false'
         run: |
           npm ci --prefix tools/lint --no-audit --no-fund --ignore-scripts
           tools/lint/node_modules/.bin/eslint --max-warnings 0 web/js web/dev test/js test/interop test/e2e
