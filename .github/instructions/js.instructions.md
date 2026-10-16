@@ -18,7 +18,7 @@ Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`
 
 ## Avoid XSS Risks
 - Never manipulate the DOM with untrusted input via `innerHTML` or similar. Prefer `textContent` or explicit element creation.
-- Do not use `innerHTML`, `outerHTML` or `insertAdjacentHTML`, even for static markup. Build icons with `window.goneIcons.make()` (DOM-built SVG). Rich text (a message with links or emphasis) goes through `goneI18n.set` with `{#slot}…{/slot}` slots that reuse the template's elements; plain text through `goneUtil.setText` or `textContent`. `goneUtil` exports `logTiming`, `sleep`, `allPresent`, `cryptoAvailable`, `setText`, `el`, `flashCopied`, `copyText`, `showView` and `isToken` (the strict 43-character bearer-token check).
+- Do not use `innerHTML`, `outerHTML` or `insertAdjacentHTML`, even for static markup. Build icons with `window.goneIcons.make()` (DOM-built SVG). Rich text (a message with links or emphasis) goes through `goneI18n.set` with `{#slot}…{/slot}` slots that reuse the template's elements; plain text through `goneUtil.setText` or `textContent`. `goneUtil` exports `logTiming`, `sleep`, `allPresent`, `cryptoAvailable`, `setText`, `el`, `flashCopied`, `copyText`, `showView`, `isToken` (the strict 43-character bearer-token check) and `clearFragment` (replaces the URL with its path and query, no fragment, once a page has read a link key or token).
 
 ## Language & Syntax
 - Use `const` by default; use `let` only when reassignment is required. NEVER use `var`.

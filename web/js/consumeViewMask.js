@@ -83,5 +83,14 @@
     }
   }
 
-  window.goneConsumeViewMask = Object.freeze({ apply: apply, show: show, sizeOf: sizeOf });
+  // clear removes the message from the page and from this module, for when
+  // the page is left and might be restored from the back-forward cache.
+  function clear() {
+    text = '';
+    if (dom.output) dom.output.textContent = '';
+    if (dom.coverDots) dom.coverDots.textContent = '';
+    if (dom.messagePanel) dom.messagePanel.hidden = true;
+  }
+
+  window.goneConsumeViewMask = Object.freeze({ apply: apply, show: show, sizeOf: sizeOf, clear: clear });
 })();

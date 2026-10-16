@@ -229,3 +229,45 @@ test('busy guard: a running check blocks a second check and delete', async (t) =
   await waitFor(() => !b.$('check-again').disabled);
   assert.equal(b.calls.length, 2);
 });
+
+test('the token leaves the address bar once read, and a reload says the link is incomplete', async (t) => {
+  const b = boot(t, URL_OK, [ok(PENDING)]);
+  assert.deepEqual(b.env.replaced, [`/manage/${ID}`]);
+  assert.equal(globalThis.location.hash, '');
+  await waitFor(() => b.visible()[0] === 'pending');
+  assert.equal(b.calls[0].init.headers['X-Gone-Manage'], TOKEN);
+
+  const reloaded = boot(t, `https://gone.test/manage/${ID}`);
+  assert.equal(reloaded.calls.length, 0);
+  assert.match(reloaded.$('check-error-text').textContent, /isn’t valid/);
+  assert.equal(reloaded.$('check-retry').hidden, true);
+});
+
+test('a malformed link also leaves the address bar, keeping the query', (t) => {
+  const b = boot(t, `https://gone.test/manage/${ID}?x=1#nope`);
+  assert.deepEqual(b.env.replaced, [`/manage/${ID}?x=1`]);
+});
+
+test('a link pasted into the tab sets up a page that showed a bad link, once', async (t) => {
+  const b = boot(t, `https://gone.test/manage/${ID}`, [ok(PENDING), ok(PENDING)]);
+  assert.match(b.$('check-error-text').textContent, /isn\u2019t valid/);
+  const paste = (hash) => {
+    globalThis.location.hash = hash;
+    b.env.windowListeners.hashchange();
+  };
+  paste('');
+  paste('#bad');
+  assert.equal(b.calls.length, 0);
+  assert.match(b.$('check-error-text').textContent, /isn\u2019t valid/);
+
+  paste(`#${TOKEN}`);
+  await waitFor(() => b.visible()[0] === 'pending');
+  assert.equal(b.calls[0].init.headers['X-Gone-Manage'], TOKEN);
+  assert.equal(globalThis.location.hash, '');
+
+  // Set up once: another change neither re-checks nor re-binds.
+  paste(`#${TOKEN}`);
+  b.$('check-again').click();
+  await waitFor(() => b.calls.length === 2);
+  assert.equal(b.calls.length, 2);
+});

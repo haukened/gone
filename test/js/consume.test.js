@@ -208,7 +208,11 @@ test('a v2 link asks for the passphrase and retries a wrong one without fetching
   assert.equal($('secret-output').textContent, 'v2 secret');
   assert.equal($('open-passphrase').value, '');
   env.windowListeners.pagehide();
-  assert.equal($('view-revealed').hidden, false);
+  // Leaving takes the secret off the page: a restore from the back-forward
+  // cache shows the gone view, not the text.
+  assert.equal($('view-revealed').hidden, true);
+  assert.equal($('view-gone').hidden, false);
+  assert.equal($('secret-output').textContent, '');
 });
 
 test('a damaged v2 header is final and erases the download', async (t) => {
@@ -273,4 +277,138 @@ test('an insecure page without WebCrypto locks Open before fetching', (t) => {
   assert.ok(disabled($));
   open();
   assert.equal(calls.length, 0);
+});
+
+test('a link pasted into the tab recovers the incomplete-link page, once', async (t) => {
+  const s = await sealed('pasted back');
+  const calls = installFetch([s.get, () => fakeResponse({ status: 204 })]);
+  const { $, env, open } = boot(t, BASE + ID);
+  const paste = (hash) => {
+    globalThis.location.hash = hash;
+    env.windowListeners.hashchange();
+  };
+  open();
+  assert.match($('consume-error-text').textContent, /everything after the #/);
+  assert.ok(disabled($));
+
+  paste('');
+  assert.ok(disabled($));
+  paste('#v1:short');
+  assert.equal($('consume-error').hidden, true);
+  assert.equal(disabled($), false);
+  open();
+  assert.match($('consume-error-text').textContent, /everything after the #/);
+  assert.ok(disabled($));
+  assert.equal(calls.length, 0);
+
+  paste(s.frag);
+  assert.equal($('consume-error').hidden, true);
+  assert.equal(disabled($), false);
+  assert.equal(globalThis.location.hash, '');
+  assert.deepEqual(env.replaced, [`/secret/${ID}`, `/secret/${ID}`, `/secret/${ID}`]);
+  open();
+  await waitFor(() => $('view-revealed').hidden === false);
+  assert.equal($('secret-output').textContent, 'pasted back');
+  assert.equal(calls.length, 2);
+
+  // A page set up for a valid link ignores later changes: no second claim.
+  paste(s.frag);
+  assert.equal(env.replaced.length, 3);
+  open();
+  assert.equal(calls.length, 2);
+});
+
+test('a pasted v2 link recovers the page and asks for the passphrase', async (t) => {
+  const s = await sealedV2('v2 pasted');
+  installFetch([s.get, () => fakeResponse({ status: 204 })]);
+  const { $, env, open } = boot(t, BASE + ID);
+  globalThis.location.hash = s.frag;
+  env.windowListeners.hashchange();
+  assert.equal($('open-pass-field').hidden, false);
+  typePass($, PASS);
+  open();
+  await waitFor(() => $('view-revealed').hidden === false, KDF_WAIT);
+  assert.equal($('secret-output').textContent, 'v2 pasted');
+});
+
+test('a link pasted into an insecure page does not unlock Open', (t) => {
+  installFetch([]);
+  const real = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+  Object.defineProperty(globalThis, 'crypto', { configurable: true, value: {} });
+  t.after(() => Object.defineProperty(globalThis, 'crypto', real));
+  const { $, env } = boot(t, BASE + ID + VALID_FRAG);
+  env.windowListeners.hashchange();
+  assert.ok(disabled($));
+});
+
+test('the key leaves the address bar once read; a reload says the link is incomplete', async (t) => {
+  const s = await sealed('kept in memory');
+  const calls = installFetch([s.get, () => fakeResponse({ status: 204 })]);
+  const a = boot(t, BASE + ID + s.frag);
+  assert.deepEqual(a.env.replaced, [`/secret/${ID}`]);
+  assert.equal(globalThis.location.hash, '');
+  a.open();
+  await waitFor(() => a.$('view-revealed').hidden === false);
+  assert.equal(a.$('secret-output').textContent, 'kept in memory');
+  assert.equal(calls.length, 2);
+
+  const b = boot(t, BASE + ID);
+  b.open();
+  assert.match(b.$('consume-error-text').textContent, /everything after the #/);
+  assert.ok(disabled(b.$));
+  assert.equal(calls.length, 2);
+});
+
+test('a download held for a passphrase retry warns before the page is left', async (t) => {
+  const s = await sealedV2('guarded');
+  installFetch([s.get, () => fakeResponse({ status: 204 })]);
+  const { $, env, logs, open } = boot(t, BASE + ID + s.frag);
+  const leave = () => {
+    const ev = { preventDefault() { this.prevented = true; } };
+    env.windowListeners.beforeunload(ev);
+    return ev;
+  };
+  typePass($, 'wrong horse');
+  open();
+  await waitFor(() => logs.error.length > 0, KDF_WAIT);
+  const armed = leave();
+  assert.equal(armed.prevented, true);
+  assert.equal(armed.returnValue, '');
+
+  typePass($, PASS);
+  open();
+  await waitFor(() => $('view-revealed').hidden === false, KDF_WAIT);
+  assert.equal(leave().prevented, undefined);
+  env.windowListeners.pagehide();
+});
+
+test('the retry guard drops once the download is erased on pagehide', async (t) => {
+  const s = await sealedV2('x');
+  installFetch([s.get]);
+  const { $, env, logs, open } = boot(t, BASE + ID + s.frag);
+  typePass($, 'wrong horse');
+  open();
+  await waitFor(() => logs.error.length > 0, KDF_WAIT);
+  const ev = { preventDefault() { this.prevented = true; } };
+  env.windowListeners.beforeunload(ev);
+  assert.equal(ev.prevented, true);
+  env.windowListeners.pagehide();
+  const after = { preventDefault() { this.prevented = true; } };
+  env.windowListeners.beforeunload(after);
+  assert.equal(after.prevented, undefined);
+});
+
+test('a rate-limited claim leaves Open usable, with no automatic retry, and works later', async (t) => {
+  const s = await sealed('after the limit');
+  const calls = installFetch([() => fakeResponse({ status: 429 }), s.get, () => fakeResponse({ status: 204 })]);
+  const { $, open } = boot(t, BASE + ID + s.frag);
+  open();
+  await waitFor(() => !$('consume-error').hidden);
+  assert.match($('consume-error-text').textContent, /Too many requests/);
+  assert.equal(disabled($), false);
+  assert.equal(calls.length, 1);
+
+  open();
+  await waitFor(() => $('view-revealed').hidden === false);
+  assert.equal($('secret-output').textContent, 'after the limit');
 });

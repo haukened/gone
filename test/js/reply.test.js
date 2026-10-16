@@ -166,8 +166,16 @@ test('malformed links are rejected before any request', async (t) => {
     assert.equal(b.$('check-error').hidden, false, JSON.stringify(c));
     assert.match(b.$('check-error-text').textContent, c.message || /isn’t complete/);
     assert.equal(b.calls.length, 0);
-    assert.equal(window.goneSubmitTarget, undefined);
   }
+});
+
+test('with no valid link the reply target refuses to encrypt or send', async (t) => {
+  const b = await boot(t, { hash: '' });
+  // Nothing is sealed or sent without a link; the compose view is hidden anyway.
+  await assert.rejects(window.goneSubmitTarget.encrypt('x', []), TypeError);
+  const enc = { encResult: { nonce: new Uint8Array(12), ciphertext: new Uint8Array(1) } };
+  await assert.rejects(window.goneSubmitTarget.upload(enc, () => {}), TypeError);
+  assert.equal(b.calls.length, 0);
 });
 
 test('the script does nothing on other pages or twice', (t) => {
@@ -178,4 +186,46 @@ test('the script does nothing on other pages or twice', (t) => {
   window.goneSubmitTarget = { mine: true };
   load('reply');
   assert.deepEqual(window.goneSubmitTarget, { mine: true });
+});
+
+test('the key and fill token leave the address bar once read; a reload is a bad link', async (t) => {
+  const kp = await keys();
+  const b = await boot(t, { kp });
+  assert.deepEqual(b.env.replaced, [`/reply/${ID}`]);
+  assert.equal(globalThis.location.hash, '');
+  await waitFor(() => !b.$('compose').hidden);
+  assert.equal(b.calls[0].init.headers['X-Gone-Fill'], FILL);
+
+  const again = await boot(t, { kp, hash: '' });
+  assert.equal(again.calls.length, 0);
+  assert.equal(again.$('check-error').hidden, false);
+  assert.match(again.$('check-error-text').textContent, /isn’t complete/);
+});
+
+test('a link pasted into the tab sets up a page that showed a bad link, once', async (t) => {
+  const kp = await keys();
+  const b = await boot(t, { kp, hash: '', fetch: [json(200, { state: 'open', expires_at: '2030-01-01T00:00:00Z' }), json(404, {})] });
+  assert.equal(b.$('check-error').hidden, false);
+  const paste = (hash) => {
+    globalThis.location.hash = hash;
+    b.env.windowListeners.hashchange();
+  };
+  paste('');
+  paste(`#v3:${b64u(kp.publicKey)}`);
+  assert.equal(b.calls.length, 0);
+  assert.equal(b.$('check-error').hidden, false);
+
+  paste(`#v3:${b64u(kp.publicKey)}.${FILL}`);
+  await waitFor(() => !b.$('compose').hidden);
+  assert.equal(b.calls[0].init.headers['X-Gone-Fill'], FILL);
+  assert.equal(globalThis.location.hash, '');
+  assert.equal(b.$('check-error').hidden, true);
+
+  // The send form now seals to the requester's key, as for any valid link.
+  const enc = await window.goneSubmitTarget.encrypt('pasted reply', []);
+  assert.equal(enc.encResult.nonce.length, 12);
+
+  // Set up once: the page stops listening, so nothing can check again.
+  assert.equal(b.env.windowListeners.hashchange, undefined);
+  assert.equal(b.calls.length, 1);
 });

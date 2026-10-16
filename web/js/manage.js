@@ -101,17 +101,35 @@
     return { retry: check, check: check, ask: ask, confirm: confirm, cancel: cancel };
   }
 
-  function start() {
-    // Development builds only: web/dev/js/preview.js defines the hook.
-    if (window.gonePreview && window.gonePreview.manage(view, api)) return;
+  // ready is set once a valid link has been set up. Until then a hashchange
+  // (the full link pasted into this tab, a same-document navigation that
+  // runs no script again) may set the page up; afterwards it never does, so
+  // handlers are bound once and a check in flight is never replaced.
+  let ready = false;
+
+  function setUp() {
     const token = readLink();
+    // The token now lives only in memory; a reload shows the invalid-link page.
+    util.clearFragment();
     if (!token) {
       view.showCheckError(api.INVALID_LINK, false);
       return;
     }
+    ready = true;
     const controller = makeController(token);
     view.bind(controller);
     controller.check();
+  }
+
+  function onHashChange() {
+    if (!ready && location.hash) setUp();
+  }
+
+  function start() {
+    // Development builds only: web/dev/js/preview.js defines the hook.
+    if (window.gonePreview && window.gonePreview.manage(view, api)) return;
+    window.addEventListener('hashchange', onHashChange);
+    setUp();
   }
 
   start();

@@ -91,3 +91,32 @@ test('more lines than placeholder rows caps the dots', (t) => {
   view.showDecoded({ message: '1\n2\n3\n4\n5\n6\n7\n8', files: [] });
   assert.equal($('secret-cover-dots').textContent.split('\n').length, 5);
 });
+
+test('cleanup takes a shown message off the page and shows the gone view', (t) => {
+  const { $, view } = masked(t);
+  view.showDecoded({ message: 'hunter2\nsecond line', files: [] });
+  $('show-secret').click();
+  assert.equal($('secret-output').textContent, 'hunter2\nsecond line');
+  view.cleanup();
+  assert.equal($('secret-output').textContent, '');
+  assert.equal($('secret-cover-dots').textContent, '');
+  assert.equal($('message-panel').hidden, true);
+  assert.equal($('view-revealed').hidden, true);
+  assert.equal($('view-gone').hidden, false);
+  // Nothing left to toggle back on.
+  $('show-secret').click();
+  assert.equal($('secret-output').textContent, '');
+});
+
+test('cleanup before anything is revealed leaves the open view alone', (t) => {
+  const { $, view } = masked(t);
+  view.cleanup();
+  assert.equal($('view-gone').hidden, true);
+});
+
+test('cleanup copes with a page lacking the message nodes', (t) => {
+  const { $, view } = setup(t, ['secret-output', 'secret-cover-dots', 'message-panel', 'file-output-list', 'file-section']);
+  view.showDecoded({ message: 'x', files: [] });
+  view.cleanup();
+  assert.equal($('view-gone').hidden, false);
+});

@@ -9,6 +9,15 @@
   const util = window.goneUtil;
   const MAX_FETCH_ATTEMPTS = 3;
   const RETRY_BACKOFF_MS = 500;
+  const RATE_LIMITED = 429;
+
+  // retryable reports whether the person may press Open again after status:
+  // a server problem, or a rate limit, which turns the request away before
+  // anything is claimed. (The page URL no longer holds the key, so a reload
+  // would not help; the button must stay usable.)
+  function retryable(status) {
+    return status >= 500 || status === RATE_LIMITED;
+  }
 
   async function requestSecret(claim) {
     const headers = claim.token ? { 'X-Gone-Claim': claim.token } : {};
@@ -18,7 +27,7 @@
     } catch {
       throw errs.FetchError(errs.NETWORK_ERROR, true);
     }
-    if (!resp.ok) throw errs.FetchError(errs.statusMessage(resp.status), resp.status >= 500, resp.status);
+    if (!resp.ok) throw errs.FetchError(errs.statusMessage(resp.status), retryable(resp.status), resp.status);
     claim.token = resp.headers.get('X-Gone-Claim') || claim.token;
     return resp;
   }
@@ -33,8 +42,10 @@
     }
   }
 
+  // shouldStop ends the automatic retries. A rate limit is left to the
+  // person: retrying at once would only spend more of the budget.
   function shouldStop(err, attempt, claim) {
-    return !err.retryable || (attempt > 1 && !claim.token);
+    return !err.retryable || err.status === RATE_LIMITED || (attempt > 1 && !claim.token);
   }
 
   async function fetchWithRetry(claim, onProgress) {

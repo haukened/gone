@@ -75,6 +75,13 @@
       view.disableOpen();
     }
 
+    // onBeforeUnload warns before leaving while a download is held for a
+    // passphrase retry (the secret is already claimed and can't be fetched
+    // again); otherwise the view decides, from its unsaved files.
+    function onBeforeUnload(ev) {
+      view.guardUnload(ev, Boolean(held.fetched));
+    }
+
     function settleGone() {
       view.showGone();
       if (source.onGone) source.onGone();
@@ -110,7 +117,7 @@
       view.setOpening(true);
       if (!flags.guarded) {
         flags.guarded = true;
-        window.addEventListener('beforeunload', view.guardUnload);
+        window.addEventListener('beforeunload', onBeforeUnload);
         window.addEventListener('pagehide', onPageHide);
       }
       run(source, claim, held).then(function () { flags.done = true; }, fail);

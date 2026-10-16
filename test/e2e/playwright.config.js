@@ -2,15 +2,56 @@
 
 // Browser end-to-end tests: the real goned binary (prod build, so the
 // minified, embedded assets that ship), the real templates and the real CSP,
-// in Chromium, Firefox and WebKit. Run with `task e2e`, which builds
+// served over HTTPS through a test TLS proxy with the rate limits on, in
+// Chromium, Firefox and WebKit. Run with `task e2e`, which builds
 // bin/goned first.
 
 const path = require('node:path');
 const { defineConfig, devices } = require('@playwright/test');
 
-const port = Number(process.env.GONE_E2E_PORT || 8199);
-const dataDir = path.join(__dirname, '.data');
+const { plain, servers } = require('./servers');
+
+const dataRoot = path.join(__dirname, '.data');
 const binary = path.resolve(__dirname, '../../bin/goned');
+
+// gonedServer starts the prod binary for one of the servers in servers.js on
+// a fresh data directory, with that server's rate limits. Readiness is
+// checked on goned's own port, which is the public one only without the proxy.
+function gonedServer(name) {
+  const s = servers[name];
+  const dir = path.join(dataRoot, name);
+  return {
+    command: `rm -rf "${dir}" && mkdir -p "${dir}" && exec "${binary}"`,
+    url: `http://127.0.0.1:${s.backendPort}/readyz`,
+    reuseExistingServer: !process.env.CI,
+    timeout: 30000,
+    env: {
+      GONE_ADDR: `127.0.0.1:${s.backendPort}`,
+      GONE_DATA_DIR: dir,
+      GONE_RATE_CREATE: s.rate.create,
+      GONE_RATE_READ: s.rate.read,
+      GONE_RATE_BURST: String(s.rate.burst),
+      // The TLS proxy appends the peer it sees to X-Forwarded-For, which is
+      // how ratelimit.spec.js gives each test its own client.
+      GONE_TRUSTED_PROXIES: '127.0.0.1',
+    },
+  };
+}
+
+// proxyServer builds and starts the TLS proxy in front of every server.
+function proxyServer() {
+  const pairs = Object.values(servers).map(function (s) {
+    return `127.0.0.1:${s.port}=127.0.0.1:${s.backendPort}`;
+  });
+  const exe = path.join(dataRoot, 'tlsproxy');
+  return {
+    command: `mkdir -p "${dataRoot}" && go build -o "${exe}" ./tlsproxy && exec "${exe}" ${pairs.join(' ')}`,
+    url: `${servers.main.origin}/readyz`,
+    ignoreHTTPSErrors: true,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  };
+}
 
 module.exports = defineConfig({
   testDir: __dirname,
@@ -20,8 +61,11 @@ module.exports = defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    // 127.0.0.1 is a secure context, which WebCrypto needs.
-    baseURL: `http://127.0.0.1:${port}`,
+    // https://127.0.0.1 through tlsproxy (a self-signed certificate), or
+    // plain http://127.0.0.1 with GONE_E2E_PLAIN=1. Both are secure contexts,
+    // which WebCrypto needs.
+    baseURL: servers.main.origin,
+    ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',
   },
   projects: [
@@ -29,18 +73,6 @@ module.exports = defineConfig({
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
-  webServer: {
-    // A fresh data directory each run. Every browser connects from
-    // 127.0.0.1, so the rate limits are off.
-    command: `rm -rf "${dataDir}" && mkdir -p "${dataDir}" && exec "${binary}"`,
-    url: `http://127.0.0.1:${port}/readyz`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 30000,
-    env: {
-      GONE_ADDR: `127.0.0.1:${port}`,
-      GONE_DATA_DIR: dataDir,
-      GONE_RATE_CREATE: '0',
-      GONE_RATE_READ: '0',
-    },
-  },
+  // A fresh data directory each run for each server; see servers.js.
+  webServer: [gonedServer('main'), gonedServer('rate')].concat(plain ? [] : [proxyServer()]),
 });

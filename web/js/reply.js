@@ -12,7 +12,7 @@
   const i18n = window.goneI18n;
   const v3 = window.goneCryptoV3;
   const uploader = window.goneUpload;
-  if (!util || !util.allPresent([i18n, v3, uploader, window.goneCrypto]) || !document.getElementById('view-sent')) return;
+  if (!util || !util.allPresent([i18n, v3, uploader, window.goneCrypto, document.getElementById('view-sent')])) return;
 
   const ID_RE = /^[0-9a-f]{32}$/;
   const VIEWS = ['check', 'compose', 'sent', 'gone'];
@@ -92,22 +92,26 @@
     switchTo('compose');
   }
 
-  // target encrypts the form's message and files to the requester's key and
-  // sends them as the request's one reply.
-  function makeTarget(link) {
+  // makeTarget encrypts the form's message and files to the requester's key
+  // and sends them as the request's one reply. It is installed before the
+  // link is known, because the send-form scripts take it when they load, and
+  // fails (the form is hidden anyway) until ref.link holds a valid link.
+  function makeTarget(ref) {
     return {
       encrypt: async function (message, files) {
+        const link = ref.link;
         const plaintext = await uploader.buildPlaintext(message, files);
         try {
           return { encResult: await v3.encryptV3(plaintext, link.frag.publicKey) };
         } catch (e) {
-          if (e && e.code === 'invalid_key') e.userMessage = BAD_KEY;
+          if (e.code === 'invalid_key') e.userMessage = BAD_KEY;
           throw e;
         } finally {
           plaintext.fill(0);
         }
       },
       upload: async function (enc, onProgress) {
+        const link = ref.link;
         const headers = {
           'X-Gone-Version': String(v3.version),
           'X-Gone-Nonce': window.goneCrypto.b64urlEncode(enc.encResult.nonce),
@@ -125,15 +129,36 @@
     };
   }
 
-  function start() {
+  // ref.link is set once a valid link has been set up.
+  const ref = { link: null };
+
+  // onHashChange sets the page up again when the full link is pasted into
+  // this tab after a link problem (a same-document navigation, so no script
+  // would otherwise run). It is listening only while the link is bad, so a
+  // valid page is never set up twice: the retry handler is bound once.
+  function onHashChange() {
+    if (!location.hash) return;
+    window.removeEventListener('hashchange', onHashChange);
+    setUp();
+  }
+
+  function setUp() {
     const link = readLink();
+    // The key and fill token now live only in memory; a reload shows the bad-link page.
+    util.clearFragment();
     if (link.problem) {
+      window.addEventListener('hashchange', onHashChange);
       showCheckError(link.problem, false);
       return;
     }
-    window.goneSubmitTarget = makeTarget(link);
+    ref.link = link;
     byId('check-retry').addEventListener('click', function () { checkOpen(link); });
     checkOpen(link);
+  }
+
+  function start() {
+    window.goneSubmitTarget = makeTarget(ref);
+    setUp();
   }
 
   start();
