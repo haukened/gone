@@ -122,13 +122,27 @@ func validateLinkURL(name, raw string, mailto bool) error {
 		want = "an https:// URL or a mailto: address"
 	}
 	u, err := url.Parse(raw)
-	switch {
-	case err != nil || len(raw) > maxLinkURLBytes:
+	if err != nil || len(raw) > maxLinkURLBytes {
 		return fmt.Errorf("%s: must be %s of at most %d bytes", name, want, maxLinkURLBytes)
-	case u.Scheme == "https" && u.Host != "" && u.User == nil:
-		return nil
-	case mailto && u.Scheme == "mailto" && u.Opaque != "":
-		return nil
 	}
-	return fmt.Errorf("%s: must be %s, got %q", name, want, raw)
+	if !linkAllowed(u, mailto) {
+		return fmt.Errorf("%s: must be %s, got %q", name, want, raw)
+	}
+	return nil
+}
+
+// linkAllowed reports whether u is an https URL with a host and no user
+// info, or (when mailto is allowed) a mailto: address.
+//
+// Parameters:
+//   - u: the parsed link.
+//   - mailto: whether mailto: links are allowed.
+//
+// Returns:
+//   - bool: true when the link may be shown.
+func linkAllowed(u *url.URL, mailto bool) bool {
+	if u.Scheme == "https" {
+		return u.Host != "" && u.User == nil
+	}
+	return mailto && u.Scheme == "mailto" && u.Opaque != ""
 }

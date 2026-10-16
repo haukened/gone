@@ -1,8 +1,9 @@
 package httpx
 
 import (
+	"bytes"
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/haukened/gone/v3/internal/brand"
 )
@@ -53,8 +54,6 @@ func (h *Handler) brandAsset(pick func(*brand.Brand) *brand.Asset) http.HandlerF
 		w.Header().Set("Cache-Control", cache)
 		w.Header().Del("Pragma")
 		w.Header().Set("Content-Type", a.Type)
-		w.Header().Set("Content-Length", strconv.Itoa(len(a.Data)))
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(a.Data)
+		http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(a.Data))
 	}
 }
