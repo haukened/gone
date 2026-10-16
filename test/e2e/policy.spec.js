@@ -18,10 +18,10 @@ test('the send page asks for a passphrase and offers no files', async ({ page, n
   await expect(page.locator('#passphrase')).toBeVisible();
 
   await page.locator('#secret').fill('needs two factors');
-  // The button is aria-disabled until there is a passphrase; pressing it
-  // anyway explains why.
+  // The button is aria-disabled until there is a passphrase; submitting
+  // anyway (Enter in the empty field) explains why.
   await expect(page.locator('#create-secret button[type=submit]')).toHaveAttribute('aria-disabled', 'true');
-  await page.locator('#create-secret button[type=submit]').click({ force: true });
+  await page.locator('#passphrase').press('Enter');
   await expect(page.locator('#submit-error')).toContainText('requires a passphrase');
   await expect(page.locator('#result')).toBeHidden();
 
