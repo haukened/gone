@@ -129,7 +129,7 @@
 	<script src="{{ asset "js/submitState.js" }}" defer></script>
 	<script src="{{ asset "js/submitUi.js" }}" defer></script>
 	<script src="{{ asset "js/submitRun.js" }}" defer></script>
-	<script src="{{ asset "js/submitPreview.js" }}" defer></script>
+	{{ if dev }}<script src="{{ asset "dev/js/preview.js" }}" defer></script>{{ end }}
 	<script src="{{ asset "js/submit.js" }}" defer></script>
 </body>
 </html>

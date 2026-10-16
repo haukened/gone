@@ -39,7 +39,7 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - `internal/cli/`, `internal/client/`, `internal/passgen/`: CLI commands, its HTTP API client, and the passphrase wordlist generator. `internal/cli/reqdb/` keeps the CLI's open requests (`requests.gob` under a lock, written atomically).
 - `internal/buildinfo/`: The release version a binary reports (`-ldflags` stamp, else the module build info).
 - `internal/sqlrows/`: Small SQL row helpers.
-- `web/`: Templates, CSS (`web/css/`), and vanilla JS (`web/js/`) for the web interface.
+- `web/`: Templates, CSS (`web/css/`), and vanilla JS (`web/js/`) for the web interface. `web/dev/` holds development-only scripts (the `?preview=` design modes), served only by the `dev` build and never minified into `web/dist`.
 - `test/`: Go integration tests; `test/js/` JS unit tests; `test/interop/` browser-crypto/CLI interop; `test/vectors/` shared test vectors; `test/e2e/` browser end-to-end tests (Playwright, its own `package.json`; nothing there ships).
 - `docs/`: `README.md` (index), `api.md` and `openapi.yaml` (HTTP API), `protocol.md`, `cli.md`, `configuration.md`, `metrics.md`, `security.md`, `development.md`, `deploy/` (`docker.md`, `compose.md`, `reverse-proxy.md`), `ROADMAP.md`, `rejected.md` (rejected features), `decisions.md` (technical decisions), plus `brand/` and `img/`.
 - `scripts/`: Release tooling (`release.sh`).

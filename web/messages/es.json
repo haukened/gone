@@ -546,6 +546,7 @@
 	"js.submit.uploading": "Subiendo {pct} %",
 	"js.upload.network": "No se pudo conectar con el servidor, así que no se envió nada. Comprueba tu conexión y vuelve a intentarlo.",
 	"js.upload.server": "El servidor tuvo un problema al crear el secreto. Vuelve a intentarlo en un momento.",
+	"js.upload.badId": "El servidor devolvió un id de secreto no válido, así que no hay enlace que compartir. Vuelve a intentarlo.",
 	"js.upload.rejected": "El servidor rechazó el secreto.",
 	"js.upload.tooLarge": "Este secreto es demasiado grande para este servidor.",
 	"js.meter.tooMany": [

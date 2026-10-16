@@ -38,7 +38,7 @@
       }
     },
     {
-      "files": ["web/js/**/*.js"],
+      "files": ["web/js/**/*.js", "web/dev/**/*.js"],
       "env": { "browser": true },
       "rules": {
         "no-restricted-properties": "off"

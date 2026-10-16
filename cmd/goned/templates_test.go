@@ -105,6 +105,9 @@ func TestTemplateFuncs(t *testing.T) {
 	if v := templateFuncs(fsys, "v1.2.3")["version"].(func() string)(); v != "v1.2.3" {
 		t.Fatalf("version = %q", v)
 	}
+	if got := templateFuncs(fsys, "v1.2.3")["dev"].(func() bool)(); got != wembed.Dev {
+		t.Fatalf("dev = %v, want %v", got, wembed.Dev)
+	}
 }
 
 // TestTemplateArgHelpers covers the argument builders' error paths.

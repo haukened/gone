@@ -101,26 +101,9 @@
     return { retry: check, check: check, ask: ask, confirm: confirm, cancel: cancel };
   }
 
-  // preview renders a static state for design review (?preview=...) without
-  // any network request. Returns whether a preview was shown.
-  function preview(mode) {
-    const now = Date.now();
-    const modes = new Map([
-      ['pending', function () {
-        view.showPending({ createdAt: new Date(now - 5 * 60000), expiresAt: new Date(now + 55 * 60000) }, new Date(now));
-      }],
-      ['deleted', view.showDeleted],
-      ['gone', view.showGone],
-      ['error', function () { view.showCheckError(api.INVALID_LINK, false); }]
-    ]);
-    const render = modes.get(mode);
-    if (typeof render !== 'function') return false;
-    render();
-    return true;
-  }
-
   function start() {
-    if (preview(new URLSearchParams(location.search).get('preview'))) return;
+    // Development builds only: web/dev/js/preview.js defines the hook.
+    if (window.gonePreview && window.gonePreview.manage(view, api)) return;
     const token = readLink();
     if (!token) {
       view.showCheckError(api.INVALID_LINK, false);

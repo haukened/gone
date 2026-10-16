@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { FakeXHR } = require('./fakes');
-const { KDF_WAIT, PASS_MODULES, boot, submit, type, typePass, waitFor } = require('./submitHarness');
+const { MODULES, KDF_WAIT, PASS_MODULES, boot, submit, type, typePass, waitFor } = require('./submitHarness');
 
 test('a passphrase seals protocol v2 and marks the result', async (t) => {
   const b = boot(t, { pass: true, modules: PASS_MODULES });
@@ -30,7 +30,7 @@ test('a passphrase seals protocol v2 and marks the result', async (t) => {
   assert.equal(sent.headers['X-Gone-Version'], '2');
   const blob = sent.body.slice();
   const nonce = sent.headers['X-Gone-Nonce'];
-  sent.respond(201, { id: 'i'.repeat(32), expires_at: '2030-01-01T00:00:00Z' });
+  sent.respond(201, { id: 'a'.repeat(32), expires_at: '2030-01-01T00:00:00Z' });
   await waitFor(() => !b.$('result').hidden);
   assert.equal(b.$('result-pass-note').hidden, false);
   assert.equal(b.$('passphrase').value, '');
@@ -55,10 +55,10 @@ test('a failed v2 upload keeps the passphrase for retry', async (t) => {
   assert.equal(b.$('result-pass-note').hidden, true);
 });
 
-test('preview=result&passphrase shows a v2 link and the passphrase note', (t) => {
-  const b = boot(t, { url: 'https://gone.test/?preview=result&passphrase', pass: true, modules: PASS_MODULES });
+test('development preview=result&passphrase shows a v2 link and the passphrase note', (t) => {
+  const b = boot(t, { url: 'https://gone.test/?preview=result&passphrase', pass: true, modules: [...PASS_MODULES, 'dev/preview'] });
   assert.match(b.$('share-link').value, /#v2:A{43}$/);
   assert.equal(b.$('result-pass-note').hidden, false);
-  const c = boot(t, { url: 'https://gone.test/?preview=result' });
+  const c = boot(t, { url: 'https://gone.test/?preview=result', modules: [...MODULES, 'dev/preview'] });
   assert.equal(c.$('result-pass-note').hidden, true);
 });

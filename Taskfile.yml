@@ -113,7 +113,7 @@ tasks:
   cover-js:
     desc: Run JavaScript unit tests with coverage output
     cmds:
-      - node --test --experimental-test-coverage --test-coverage-include='web/js/**' 'test/js/*.test.js'
+      - node --test --experimental-test-coverage --test-coverage-include='web/js/**' --test-coverage-include='web/dev/**' 'test/js/*.test.js'
 
   e2e:
     desc: Run the browser end-to-end tests (Playwright; first run task e2e-install)
@@ -141,5 +141,5 @@ tasks:
     env:
       ESLINT_USE_FLAT_CONFIG: 'false'
     cmds:
-      - npx --yes eslint@9.39.5 --max-warnings 0 web/js test/js test/interop test/e2e
+      - npx --yes eslint@9.39.5 --max-warnings 0 web/js web/dev test/js test/interop test/e2e
       - npx --yes stylelint@17.15.0 'web/css/*.css'

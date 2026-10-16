@@ -537,6 +537,7 @@
 	"js.submit.uploading": "Uploading {pct}%",
 	"js.upload.network": "Couldn’t reach the server, so nothing was sent. Check your connection, then try again.",
 	"js.upload.server": "The server had a problem creating the secret. Try again in a moment.",
+	"js.upload.badId": "The server returned a malformed secret id, so there is no link to share. Try again.",
 	"js.upload.rejected": "The server rejected the secret.",
 	"js.upload.tooLarge": "This secret is too large for this server.",
 	"js.meter.tooMany": [

@@ -31,6 +31,7 @@ function boot(t, url, handlers, opts) {
   const calls = installFetch(handlers || []);
   load('util', 'manageApi', 'manageView');
   if (o.api) window.goneManageApi = Object.assign({}, window.goneManageApi, o.api);
+  if (o.dev) load('dev/preview');
   load('manage');
   const visible = () => ['check', 'pending', 'deleted', 'gone'].filter((v) => !$(`view-${v}`).hidden);
   return { env, $, logs, calls, visible };
@@ -69,17 +70,27 @@ test('malformed links are rejected before any request', async (t) => {
   }
 });
 
-test('preview modes render without network', (t) => {
+test('production ignores ?preview=...: the link check runs instead', (t) => {
+  for (const mode of ['pending', 'deleted', 'gone', 'error']) {
+    const b = boot(t, `https://gone.test/manage/x?preview=${mode}`);
+    assert.equal(window.gonePreview, undefined);
+    assert.deepEqual(b.visible(), ['check'], mode);
+    assert.match(b.$('check-error-text').textContent, /isn\u2019t valid/, mode);
+    assert.equal(b.calls.length, 0, mode);
+  }
+});
+
+test('development preview hook renders manage states without network', (t) => {
   const cases = [['pending', 'pending'], ['deleted', 'deleted'], ['gone', 'gone'], ['error', 'check']];
   for (const [mode, shown] of cases) {
-    const b = boot(t, `https://gone.test/manage/x?preview=${mode}`);
+    const b = boot(t, `https://gone.test/manage/x?preview=${mode}`, [], { dev: true });
     assert.deepEqual(b.visible(), [shown], mode);
     assert.equal(b.calls.length, 0, mode);
   }
-  const b = boot(t, 'https://gone.test/manage/x?preview=pending');
+  const b = boot(t, 'https://gone.test/manage/x?preview=pending', [], { dev: true });
   assert.ok(b.$('manage-created').textContent.length > 0);
-  assert.match(boot(t, 'https://gone.test/manage/x?preview=error').$('check-error-text').textContent, /isn\u2019t valid/);
-  const unknown = boot(t, 'https://gone.test/manage/x?preview=bogus');
+  assert.match(boot(t, 'https://gone.test/manage/x?preview=error', [], { dev: true }).$('check-error-text').textContent, /isn\u2019t valid/);
+  const unknown = boot(t, 'https://gone.test/manage/x?preview=bogus', [], { dev: true });
   assert.match(unknown.$('check-error-text').textContent, /isn\u2019t valid/);
 });
 

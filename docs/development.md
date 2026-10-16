@@ -13,7 +13,7 @@ How to build, run and test Gone from source. The pull request process and coding
 
 | Task | What it does |
 | ---- | ------------ |
-| `task dev` | Builds development binaries, `bin/goned` (server) and `bin/gone` (CLI). Assets are served from `web/` on disk, so edits show on reload, and the pseudo-language `en-XA` appears in the language picker. |
+| `task dev` | Builds development binaries, `bin/goned` (server) and `bin/gone` (CLI). Assets are served from `web/` on disk, so edits show on reload, the pseudo-language `en-XA` appears in the language picker, and the `?preview=` design modes from `web/dev/` work. |
 | `task prod` | Production build: minifies the assets into `web/dist`, embeds them in `bin/goned` with `-tags=prod`, and builds `bin/gone`. |
 | `task run` | Rebuilds the dev binary and runs it with a temporary data directory (`.tmp`). It sets `GONE_METRICS_ADDR=:9090`, but metrics stay off, with a warning, unless you also set `GONE_METRICS_TOKEN`. |
 | `task release -- vX.Y.Z` | Cross-builds the release archives, `SHA256SUMS` and release notes into `dist/`. This is what the tag workflow publishes. |
@@ -72,7 +72,7 @@ Remove the parameter and the key to turn it off.
 | ---- | ------------ |
 | `cmd/goned`, `cmd/gone` | The server and CLI entry points |
 | `internal/` | The Go packages: `httpx` (handlers), `app` (service), `store` (SQLite and blobs), `envelope` (Go encryption), `cli`, `client`, `i18n`, `metrics`, `ratelimit`, … |
-| `web/` | Templates (`*.tmpl.html`), `js/`, `css/`, `messages/` (translations), fonts and images |
+| `web/` | Templates (`*.tmpl.html`), `js/`, `css/`, `messages/` (translations), fonts and images; `dev/` holds development-only scripts (the `?preview=` design modes) that production builds never contain |
 | `test/` | Integration, interop, vector, perf and end-to-end tests |
 | `docs/` | This documentation, the [protocol](protocol.md) and the [OpenAPI spec](openapi.yaml) |
 | `deploy/` | The Compose and Caddy setup |
