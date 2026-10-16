@@ -1,9 +1,6 @@
 package httpx
 
-import (
-	"encoding/json"
-	"net/http"
-)
+import "net/http"
 
 // policyView is the JSON body of GET /api/policy.
 type policyView struct {
@@ -26,8 +23,5 @@ func (h *Handler) handlePolicy(w http.ResponseWriter, r *http.Request) {
 		h.writeError(r.Context(), w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(policyView{PassphraseRequired: h.RequirePassphrase, MaxFiles: h.MaxFiles})
+	writeJSON(w, http.StatusOK, policyView{PassphraseRequired: h.RequirePassphrase, MaxFiles: h.MaxFiles})
 }

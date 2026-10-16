@@ -9,8 +9,8 @@ import (
 	"github.com/haukened/gone/v3/internal/envelope"
 )
 
-// msgPassRequired explains a server's passphrase policy and the fix.
-const msgPassRequired = "this server requires a passphrase; add --passphrase-generate, --passphrase-prompt or --passphrase-file"
+// msgPolicyNeedsPhrase explains a server's passphrase policy and the fix.
+const msgPolicyNeedsPhrase = "this server requires a passphrase; add --passphrase-generate, --passphrase-prompt or --passphrase-file"
 
 // serverPolicy fetches the operator policy of cl's server. A server older
 // than v3.12 has no policy route, which means no passphrase rule and the
@@ -69,7 +69,7 @@ func checkFiles(n int, p client.Policy) error {
 // Returns nil or a policy error.
 func checkSendPolicy(o sendOpts, p client.Policy) error {
 	if p.PassphraseRequired && !o.pass.set() {
-		return policyErrorf(msgPassRequired)
+		return policyErrorf(msgPolicyNeedsPhrase)
 	}
 	return checkFiles(len(o.files), p)
 }
