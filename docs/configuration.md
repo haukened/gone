@@ -46,42 +46,13 @@ Replies to [requests](api.md#request-workflow) never need a passphrase. A reply 
 
 ### Branding
 
-An instance can carry its operator's name, logo and colour, and link to the operator's contact, imprint and privacy pages. Each setting is optional and works alone. Unbranded instances look exactly as before.
+The six branding settings put your name, logo and accent colour on an unmodified copy of Gone and link your contact, imprint and privacy pages from the footer. Each is optional and works alone; unbranded instances look exactly as before. [Branding your instance](branding.md) shows each setting with screenshots of the result.
 
-| What | Changes | Stays |
-| ---- | ------- | ----- |
-| Header | Your logo and name replace the Gone wordmark. With a logo and no name, the logo links home on its own. | The navigation, language picker and theme toggle |
-| Accent | Heading highlights, links on the About page, focus rings and progress bars use your colours | Buttons and every other colour |
-| Footer | Your contact, imprint and privacy links come first, with labels in the visitor's language. The version line reads "Powered by Gone" plus the version. | The other links and the version |
-| Elsewhere | Nothing | Page titles, the About page, the favicon and every message, which describe the software as Gone |
-
-"Powered by Gone" can't be turned off. Running an unmodified copy under your own name this way is allowed by the [trademark policy](../TRADEMARKS.md); footer links alone don't change the header.
-
-**Contrast.** The accent is used for text, so the server checks each colour against its theme's backgrounds when it starts, and refuses one below WCAG AA (4.5:1):
-
-```text
-load config: GONE_BRAND_ACCENT: the light-theme colour #ffff00 has a contrast of 1.01:1 on that theme's background; it needs at least 4.5:1
-```
-
-A mid-tone that suits the light theme is usually too dark for the dark theme, which is why there are two values. Gone's own accent is `#4b3f8a/#cfc6f7`.
-
-**Logo.** The file is read once at startup and served from memory at `/brand/logo`, so changing it takes a restart. It is shown a little taller than the header text and at most about five times as wide as it is tall, so a wide logo that already contains your name works without `GONE_BRAND_NAME`. The container runs as user 65532, so the file must be readable by it:
-
-```yaml
-services:
-  gone:
-    image: ghcr.io/haukened/gone:v3.12.0
-    environment:
-      GONE_BRAND_NAME: "Acme, Inc. Secrets"
-      GONE_BRAND_LOGO: /brand/logo.svg
-      GONE_BRAND_ACCENT: "#1d4ed8/#93c5fd"
-      GONE_IMPRINT_URL: https://acme.example/imprint
-      GONE_PRIVACY_URL: https://acme.example/privacy
-    volumes:
-      - ./logo.svg:/brand/logo.svg:ro
-```
-
-Operators in the EU are often required to publish an imprint and a privacy notice; `GONE_IMPRINT_URL` and `GONE_PRIVACY_URL` link them from every page.
+In short:
+- **Header:** the logo and name replace the Gone wordmark. Footer links alone don't change it.
+- **Accent:** your two colours replace Gone's violet in heading highlights, focus rings and progress bars. Each must reach 4.5:1 contrast on its theme's background, or the server won't start.
+- **Footer:** your links come first. The version line reads "Powered by Gone", and it, the copyright notice and the project links **can't be removed**.
+- **Everything else stays Gone:** page titles, the favicon, the About page and the page text.
 
 ### Derived settings
 

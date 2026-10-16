@@ -26,7 +26,7 @@ The HTTP API of the Gone one-time secret sharing service. The machine-readable O
 | DELETE | `/api/request/{id}/reply` | Requester: acknowledge the reply; permanently deletes it (`X-Gone-Claim`) |
 | POST | `/api/request/{id}/revoke` | Requester: cancel the request, or delete an unopened reply (`X-Gone-Manage`) |
 | GET | `/api/policy` | The operator policy clients honour before encrypting: `{"passphrase_required": bool, "max_files": int}`. Never cached and not rate limited. See [Policies](configuration.md#policies). |
-| GET | `/brand/logo` | The operator's logo, when `GONE_BRAND_LOGO` is set (`image/svg+xml` or `image/png`; otherwise the HTML 404 page). An SVG carries its own sandboxed CSP. GET and HEAD only. See [Branding](configuration.md#branding). |
+| GET | `/brand/logo` | The operator's logo, when `GONE_BRAND_LOGO` is set (`image/svg+xml` or `image/png`; otherwise the HTML 404 page). An SVG carries its own sandboxed CSP. GET and HEAD only. See [Branding your instance](branding.md). |
 | GET | `/brand/accent.css` | The operator's accent colours as CSS custom properties, when `GONE_BRAND_ACCENT` is set (otherwise the HTML 404 page). GET and HEAD only. |
 | GET | `/healthz` | Liveness check (`200`, text `ok`). GET and HEAD only. |
 | GET | `/i18n/{tag}.json` | The web pages' message catalog for one language (`en`, `es`, `fr`, `de`, `pt-BR`), used to switch language in place. With the current `?v=` hash it may be cached for a year. |

@@ -86,7 +86,7 @@ Guarantees, in simple terms:
   - The globe button switches the language in place, without losing what's on the page. The choice is kept in a `gone_lang` cookie that holds only the language.
   - Translations other than English are machine-made; [corrections are welcome](CONTRIBUTING.md#translations).
 - **Self-hosted:** one static binary or a small container, SQLite storage, no external services, and a strict Content Security Policy. Nothing loads from anywhere but your server.
-- **Your name on it:** an operator can show their own name, logo and accent colour, and link their contact, imprint and privacy pages, with "Powered by Gone" kept in the footer. See [Branding](docs/configuration.md#branding).
+- **Your name on it:** an operator can show their own name, logo and accent colour, and link their contact, imprint and privacy pages, with "Powered by Gone" kept in the footer. See [Branding your instance](docs/branding.md).
 
 ### From the command line
 
