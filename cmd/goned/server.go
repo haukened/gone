@@ -45,25 +45,6 @@ func buildService(idx store.Index, blobs store.BlobStorage, cfg *config.Config, 
 	return svc
 }
 
-// readinessCheck reports whether the database answers pings and the blob
-// directory is readable.
-//
-// Parameters:
-//   - db: database to ping.
-//   - blobDir: blob directory that must be listable.
-//
-// Returns:
-//   - func(context.Context) error: probe returning nil when ready.
-func readinessCheck(db *sql.DB, blobDir string) func(context.Context) error {
-	return func(ctx context.Context) error {
-		if err := db.PingContext(ctx); err != nil {
-			return err
-		}
-		_, err := os.ReadDir(blobDir)
-		return err
-	}
-}
-
 // buildHandler wires the HTTP handler with templates, static assets, TTL
 // options, and a readiness probe.
 //
@@ -111,6 +92,7 @@ func newServer(cfg *config.Config, handler http.Handler) *http.Server {
 	// are sized so a full MaxBytes payload succeeds on modest connections.
 	return &http.Server{
 		Addr:              cfg.Addr,
+		ErrorLog:          newErrorLog(),
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       60 * time.Second,
@@ -180,7 +162,7 @@ func startMetrics(ctx context.Context, db *sql.DB, cfg *config.Config, sources .
 	if !cfg.MetricsEnabled() {
 		return mgr, nil
 	}
-	srv := &http.Server{Addr: cfg.MetricsAddr, Handler: metrics.NewMux(mgr, cfg.MetricsToken, sources...), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second}
+	srv := newMetricsServer(cfg.MetricsAddr, metrics.NewMux(mgr, cfg.MetricsToken, sources...))
 	go func() {
 		if err := listenAndServe(ctx, srv); err != nil {
 			slog.Error("metrics server error", "err", err)
@@ -188,6 +170,27 @@ func startMetrics(ctx context.Context, db *sql.DB, cfg *config.Config, sources .
 	}()
 	slog.Info("metrics server started", "addr", cfg.MetricsAddr)
 	return mgr, nil
+}
+
+// newMetricsServer builds the metrics listener's server with short timeouts and
+// the address-redacting error log.
+//
+// Parameters:
+//   - addr: listen address.
+//   - handler: the token-protected metrics mux.
+//
+// Returns:
+//   - *http.Server: the unstarted server.
+func newMetricsServer(addr string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ErrorLog:          newErrorLog(),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       30 * time.Second,
+	}
 }
 
 // storageStats is the read-only counting the SQLite index provides.

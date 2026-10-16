@@ -95,8 +95,8 @@ func TestFillRequestBecomesReply(t *testing.T) {
 	if err != nil || string(res.Inline) != "ciphertext" || res.Meta.Version != 3 {
 		t.Fatalf("ClaimReply = %+v, %v", res, err)
 	}
-	if _, err := ix.Ack(ctx, "r", "claim"); err != nil {
-		t.Fatalf("Ack: %v", err)
+	if _, err := ix.AckReply(ctx, "r", "claim"); err != nil {
+		t.Fatalf("AckReply: %v", err)
 	}
 	if _, err := ix.RequestStatus(ctx, "r", reqManage, at); !errors.Is(err, app.ErrNotFound) {
 		t.Fatalf("status after ack err = %v", err)

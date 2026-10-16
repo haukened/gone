@@ -18,6 +18,11 @@ info:
     reply link sends one reply encrypted to the requester's public key, which only the
     requester can claim with the manage token. The server never sees either key.
     This spec enumerates all HTTP statuses the current implementation may emit.
+    A trailing slash is not part of a route: `/api/secret/{id}/` and
+    `/api/request/{id}/reply/` are 404, never an alias of the route without it.
+    X-Gone-Manage, X-Gone-Fill and X-Gone-Claim must each appear at most once; a
+    repeated header is a 400 for that token. If the client disconnects mid-request the
+    server records 499 and logs nothing at error level; no client ever sees it.
     Every route also returns 400 `invalid correlation id` when an X-Correlation-ID request
     header is present but is not a UUID.
     Metrics are not part of this API: they are served on a separate, token-protected
@@ -124,17 +129,14 @@ paths:
             Validation error. `error` is one of `invalid content length`,
             `missing required headers` (absent, empty, or repeated X-Gone-*
             header), `invalid version`, `invalid nonce`, `invalid ttl`,
-            `ttl invalid`, or `bad request`.
+            `ttl invalid`, `short body` (the body ended before Content-Length
+            bytes arrived), or `bad request`.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '405':
-          description: Method not allowed (non-POST on /api/secret)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/MethodNotAllowed'
         '411':
           description: Content length required (missing Content-Length header)
           content:
@@ -197,7 +199,9 @@ paths:
                 type: string
                 format: binary
         '400':
-          description: Invalid ID format or malformed claim token
+          description: >-
+            `invalid id` for a malformed ID, or `invalid claim` for a malformed
+            or repeated X-Gone-Claim header.
           content:
             application/json:
               schema:
@@ -209,11 +213,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '405':
-          description: Method not allowed (not GET or DELETE on /api/secret/{id})
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -243,7 +243,9 @@ paths:
         '204':
           description: Secret deleted.
         '400':
-          description: Invalid ID format or missing/malformed claim token
+          description: >-
+            `invalid id` for a malformed ID, or `invalid claim` for a missing,
+            malformed or repeated X-Gone-Claim header.
           content:
             application/json:
               schema:
@@ -255,11 +257,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '405':
-          description: Method not allowed (not GET or DELETE on /api/secret/{id})
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -299,11 +297,7 @@ paths:
         '404':
           $ref: '#/components/responses/ManageNotFound'
         '405':
-          description: Method not allowed (not GET). The Allow header lists GET.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -335,11 +329,7 @@ paths:
         '404':
           $ref: '#/components/responses/ManageNotFound'
         '405':
-          description: Method not allowed (not POST). The Allow header lists POST.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -544,7 +534,7 @@ paths:
           description: >-
             `invalid id`, `invalid manage token` (X-Gone-Manage missing,
             repeated, or not 43 base64url characters), or `invalid claim` (a
-            malformed X-Gone-Claim on a retry).
+            malformed or repeated X-Gone-Claim on a retry).
           content:
             application/json:
               schema:
@@ -575,7 +565,7 @@ paths:
         '204':
           description: Reply deleted.
         '400':
-          description: '`invalid id`, or `invalid claim` for a missing or malformed X-Gone-Claim.'
+          description: '`invalid id`, or `invalid claim` for a missing, malformed or repeated X-Gone-Claim.'
           content:
             application/json:
               schema:
@@ -645,7 +635,9 @@ paths:
     get:
       summary: Liveness probe
       operationId: healthz
-      description: Returns 200 while the process is running.
+      description: >-
+        Returns 200 while the process is running. Answers GET and HEAD only; any
+        other method is 405 with `Allow: GET, HEAD`.
       tags: [health]
       responses:
         '200':
@@ -655,11 +647,18 @@ paths:
               schema:
                 type: string
                 enum: [ok]
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
   /readyz:
     get:
       summary: Readiness probe
       operationId: readyz
-      description: Returns 200 when the readiness probe passes, 503 otherwise.
+      description: >-
+        Returns 200 when the readiness probe passes, 503 otherwise. The probe
+        pings the database and opens the blob directory; its result is cached
+        for 2 seconds, so a failure or recovery can take that long to show. The
+        probe is not rate limited. Answers GET and HEAD only; any other method
+        is 405 with `Allow: GET, HEAD`.
       tags: [health]
       responses:
         '200':
@@ -669,6 +668,8 @@ paths:
               schema:
                 type: string
                 enum: [ready]
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '503':
           description: Not yet ready (the database ping or the blob directory check failed)
           content:
@@ -796,7 +797,8 @@ components:
     RequestBadRequest:
       description: >-
         `invalid id`, `invalid fill token`, `missing required headers`,
-        `invalid version`, `invalid nonce`, or `invalid content length`.
+        `invalid version`, `invalid nonce`, `invalid content length`, or
+        `short body` (the body ended before Content-Length bytes arrived).
       content:
         application/json:
           schema:

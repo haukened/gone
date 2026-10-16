@@ -114,7 +114,7 @@ func testStorage(t *testing.T) (*sql.DB, store.Index, string) {
 // TestReadinessCheck covers healthy, database-down, and blob-dir-missing cases.
 func TestReadinessCheck(t *testing.T) {
 	db, _, blobDir := testStorage(t)
-	check := readinessCheck(db, blobDir)
+	check := readinessProbe(db, blobDir)
 	if err := check(context.Background()); err != nil {
 		t.Fatalf("healthy check: %v", err)
 	}

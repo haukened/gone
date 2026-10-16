@@ -58,8 +58,11 @@ func TestStoreRequestLifecycleExternal(t *testing.T) {
 	if string(body) != "larger than inline" {
 		t.Fatalf("body = %q", body)
 	}
-	if err := f.store.Ack(f.ctx, reqID, "claim"); err != nil {
-		t.Fatalf("Ack: %v", err)
+	if err := f.store.Ack(f.ctx, reqID, "claim"); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("secret Ack of a reply err = %v, want ErrNotFound", err)
+	}
+	if err := f.store.AckReply(f.ctx, reqID, "claim"); err != nil {
+		t.Fatalf("AckReply: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(f.blobDir, reqID+".blob")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("blob not deleted: %v", err)

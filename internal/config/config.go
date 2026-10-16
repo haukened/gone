@@ -36,6 +36,10 @@ type Config struct {
 	CreateRate      ratelimit.Rate `koanf:"-"`
 	ReadRate        ratelimit.Rate `koanf:"-"`
 	TrustedPrefixes []netip.Prefix `koanf:"-"`
+
+	// Warnings holds non-fatal findings from validation, for the server to
+	// log once at startup. They never contain secret values.
+	Warnings []string `koanf:"-"`
 }
 
 // DefaultAppConfig provides the default app configuration values.
@@ -164,6 +168,7 @@ func Load() (*Config, error) {
 	if err = validate(&cfg); err != nil {
 		return nil, err
 	}
+	cfg.Warnings = warnings(&cfg)
 
 	return &cfg, nil
 }

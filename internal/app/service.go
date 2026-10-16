@@ -155,7 +155,7 @@ func (s *Service) Claim(ctx context.Context, idStr, tokenStr string) (ClaimResul
 // Returns nil on deletion, or domain.ErrInvalidID, domain.ErrInvalidClaim,
 // ErrNotFound, or a storage error.
 func (s *Service) Ack(ctx context.Context, idStr, tokenStr string) error {
-	return s.ack(ctx, idStr, tokenStr, "secrets_consumed_total")
+	return s.ack(ctx, idStr, tokenStr, "secrets_consumed_total", s.Store.Ack)
 }
 
 // claim issues or parses a claim token, sets the lease deadline and runs the
@@ -187,10 +187,11 @@ func (s *Service) claim(claimStr string, reserve func(claimHash string, retry bo
 //   - idStr: secret or request ID.
 //   - claimStr: claim token.
 //   - metric: counter to increment on deletion.
+//   - del: store call deleting the row for the claim hash.
 //
 // Returns nil on deletion, or domain.ErrInvalidID, domain.ErrInvalidClaim,
 // ErrNotFound, or a storage error.
-func (s *Service) ack(ctx context.Context, idStr, claimStr, metric string) error {
+func (s *Service) ack(ctx context.Context, idStr, claimStr, metric string, del func(context.Context, string, string) error) error {
 	if _, err := domain.ParseID(idStr); err != nil {
 		return domain.ErrInvalidID
 	}
@@ -198,7 +199,7 @@ func (s *Service) ack(ctx context.Context, idStr, claimStr, metric string) error
 	if err != nil {
 		return err
 	}
-	if err = s.Store.Ack(ctx, idStr, tok.Hash()); err != nil {
+	if err = del(ctx, idStr, tok.Hash()); err != nil {
 		return err
 	}
 	s.inc(metric)

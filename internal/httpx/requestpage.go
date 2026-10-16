@@ -41,7 +41,7 @@ func (h *Handler) renderRequestPage(w http.ResponseWriter, r *http.Request) {
 //   - r: incoming request.
 func (h *Handler) handleReplyPage(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.URL.Path, "/reply/") || len(r.URL.Path) == len("/reply/") {
-		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
+		h.renderErrorPage(w, r, http.StatusNotFound, "error.notFound")
 		return
 	}
 	if h.ReplyTmpl == nil {

@@ -2,9 +2,11 @@ package httpx
 
 import (
 	"errors"
-	"github.com/haukened/gone/v3/internal/domain"
 	"net/http"
 	"time"
+
+	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // handleRequestOpen implements GET /api/request/{id}: 200 while the request
@@ -116,7 +118,11 @@ func (h *Handler) handleRequestStatus(w http.ResponseWriter, r *http.Request, id
 //   - id: request ID.
 func (h *Handler) handleClaimReply(w http.ResponseWriter, r *http.Request, id string) {
 	clog := requestLog(r)
-	res, err := h.Requests.ClaimReply(r.Context(), id, manageToken(r), r.Header.Get(HeaderClaim))
+	token, err := claimHeader(r)
+	var res app.ClaimResult
+	if err == nil {
+		res, err = h.Requests.ClaimReply(r.Context(), id, manageToken(r), token)
+	}
 	if err != nil {
 		h.mapServiceError(r.Context(), w, err)
 		clog.Info("request claim", "action", "error")
@@ -133,7 +139,11 @@ func (h *Handler) handleClaimReply(w http.ResponseWriter, r *http.Request, id st
 //   - r: incoming request.
 //   - id: request ID.
 func (h *Handler) handleAckReply(w http.ResponseWriter, r *http.Request, id string) {
-	h.finishNoContent(w, r, h.Requests.AckReply(r.Context(), id, r.Header.Get(HeaderClaim)), "request ack")
+	token, err := claimHeader(r)
+	if err == nil {
+		err = h.Requests.AckReply(r.Context(), id, token)
+	}
+	h.finishNoContent(w, r, err, "request ack")
 }
 
 // handleCancelRequest implements POST /api/request/{id}/revoke.

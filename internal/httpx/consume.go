@@ -2,14 +2,13 @@ package httpx
 
 import (
 	"fmt"
-
-	"github.com/haukened/gone/v3/internal/app"
 	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/haukened/gone/v3/internal/app"
 )
 
 // Claim protocol headers.
@@ -53,14 +52,11 @@ type consumeSecretRoute struct {
 // Parameters:
 //   - path: request URL path.
 //
-// Returns the route and true when the path has a non-empty secret suffix.
+// Returns the route and true when the path has a non-empty secret suffix
+// without a trailing slash after the ID.
 func consumeSecretRouteFromPath(path string) (consumeSecretRoute, bool) {
-	rest, ok := strings.CutPrefix(path, "/api/secret/")
-	if !ok || rest == "" {
-		return consumeSecretRoute{}, false
-	}
-	id, action, _ := strings.Cut(rest, "/")
-	return consumeSecretRoute{id: id, action: action}, true
+	id, action, ok := splitRoutePath(path, "/api/secret/")
+	return consumeSecretRoute{id: id, action: action}, ok
 }
 
 // dispatchConsumeSecretRoute routes a parsed consume-secret request.
@@ -133,13 +129,16 @@ func (h *Handler) allowMethod(w http.ResponseWriter, r *http.Request, method str
 //   - id: secret ID extracted from the path.
 func (h *Handler) handleClaimSecret(w http.ResponseWriter, r *http.Request, id string) {
 	cid, _ := GetCorrelationID(r.Context())
-	token := r.Header.Get(HeaderClaim)
+	token, err := claimHeader(r)
 	clog := slog.With("domain", "secret", "cid", cid, "retry", token != "")
 	clog.Info("claim", "action", "start")
-	res, err := h.Service.Claim(r.Context(), id, token)
+	var res app.ClaimResult
+	if err == nil {
+		res, err = h.Service.Claim(r.Context(), id, token)
+	}
 	if err != nil {
 		h.mapServiceError(r.Context(), w, err)
-		clog.Error("claim", "action", "error")
+		clog.Warn("claim", "action", "error")
 		return
 	}
 	h.writeClaim(w, res, clog)
@@ -182,9 +181,13 @@ func (h *Handler) handleAckSecret(w http.ResponseWriter, r *http.Request, id str
 	cid, _ := GetCorrelationID(r.Context())
 	clog := slog.With("domain", "secret", "cid", cid)
 	clog.Info("ack", "action", "start")
-	if err := h.Service.Ack(r.Context(), id, r.Header.Get(HeaderClaim)); err != nil {
+	token, err := claimHeader(r)
+	if err == nil {
+		err = h.Service.Ack(r.Context(), id, token)
+	}
+	if err != nil {
 		h.mapServiceError(r.Context(), w, err)
-		clog.Error("ack", "action", "error")
+		clog.Warn("ack", "action", "error")
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")

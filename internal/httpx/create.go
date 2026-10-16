@@ -145,8 +145,11 @@ func (h *Handler) handleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	meta, err := h.parseAndValidateCreate(r)
 	if err != nil {
 		code, msg := classifyCreateError(err)
+		if code == http.StatusMethodNotAllowed {
+			w.Header().Set("Allow", http.MethodPost)
+		}
 		h.writeError(r.Context(), w, code, msg)
-		clog.Error("create", "action", "error", "kind", "validation")
+		clog.Warn("create", "action", "error", "kind", "validation")
 		return
 	}
 	body := http.MaxBytesReader(w, r.Body, meta.contentLength)
@@ -154,7 +157,7 @@ func (h *Handler) handleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	created, svcErr := h.Service.CreateSecret(r.Context(), body, meta.contentLength, meta.version, meta.nonce, meta.ttl)
 	if svcErr != nil {
 		h.mapServiceError(r.Context(), w, svcErr)
-		clog.Error("create", "action", "error", "kind", "service")
+		clog.Warn("create", "action", "error", "kind", "service")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

@@ -85,8 +85,8 @@ func assertIndexResponse(t *testing.T, w *httptest.ResponseRecorder) {
 		}
 	}
 	assertIndexTTLOrder(t, body)
-	if !strings.Contains(body, "<option selected>1h<") || strings.Count(body, "selected") != 1 {
-		t.Fatalf("expected only the longest option selected: %s", body)
+	if !strings.Contains(body, "<option selected>5m<") || strings.Count(body, "selected") != 1 {
+		t.Fatalf("expected only the shortest option selected: %s", body)
 	}
 }
 

@@ -5,6 +5,14 @@
 const { test, expect } = require('./fixtures');
 const { sendSecret, reveal, downloadFile, file } = require('./helpers');
 
+test('the shortest expiry is preselected', async ({ page }) => {
+  await page.goto('/');
+  const options = page.locator('input[name="ttl"]');
+  expect(await options.count()).toBeGreaterThan(1);
+  await expect(page.locator('input[name="ttl"]:checked')).toHaveCount(1);
+  await expect(options.first()).toBeChecked();
+});
+
 test('a message and a file round-trip, and the link works once', async ({ page, newPerson }) => {
   const note = file('note.txt', 'attached ✓ ' + Date.now());
   const sent = await sendSecret(page, { text: 'hunter2 — ünïcödé', files: [note] });

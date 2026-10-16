@@ -105,13 +105,24 @@ func (s *Store) Ack(ctx context.Context, id, claimHash string) error {
 		return errors.New("store not properly initialized")
 	}
 	external, err := s.index.Ack(ctx, id, claimHash)
-	if err != nil {
-		return err
-	}
-	if external {
+	return s.dropBlob(id, external, err)
+}
+
+// dropBlob finishes an acknowledgement: on success an external payload's blob
+// is deleted best-effort, because Reconcile removes any orphan left by a
+// failure here.
+//
+// Parameters:
+//   - id: secret or request identifier.
+//   - external: whether the deleted row's payload was external.
+//   - err: the index's result.
+//
+// Returns err unchanged.
+func (s *Store) dropBlob(id string, external bool, err error) error {
+	if err == nil && external {
 		_ = s.blobs.Delete(id) // best-effort; Reconcile cleans orphans
 	}
-	return nil
+	return err
 }
 
 // Status reports a pending secret to the sender holding its manage token. A
