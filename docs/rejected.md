@@ -16,6 +16,7 @@ This page is about features: what you'd be able to do. How Gone is built, and th
 | Feature | Decided | Why not | Revisit when |
 | ------- | ------- | ------- | ------------ |
 | **Get notified when a secret is opened** (by email, push or webhook) | 2026-10-02 | Gone would have to keep your contact details and a record tying you to the secret. Your manage link tells you whether it's still waiting, whenever you check. | Never |
+| **Have Gone email the link**, or check the recipient's email address before it opens | 2026-10-16 | Gone would have to keep email addresses and send mail for you, which leaves a record of who sent a secret to whom. Paste the link into your own email or chat, and add a passphrase if the link might leak. | Never |
 | **See that a secret was opened**, as opposed to expired or deleted | v3.0.0 | Telling those apart means keeping a record after the secret is gone. The manage link only ever says "still waiting" or "gone". | Never |
 | **Let a secret be opened more than once**, by several people, or edited after sending | 2025-09 | Opening once is the point: it's how you know nobody else saw it first. Send one link per person instead. | Never |
 | **Lock a secret after too many wrong passphrases** | v3.0.0 | Someone who has the link already has the encrypted copy and can keep guessing on their own computer, so a lock would only get in the way of the real recipient. Use a strong passphrase; the **Generate** button makes one. | Never |
@@ -36,6 +37,7 @@ This page is about features: what you'd be able to do. How Gone is built, and th
 | Feature | Decided | Why not | Revisit when |
 | ------- | ------- | ------- | ------------ |
 | **Use Gone from AI chat apps** (an MCP server) | 2026-10-16 | Coding assistants can already run the `gone` CLI, which handles secrets by file so they never appear in the conversation. In a chat app, the secret would usually be pasted into the chat first, which defeats the point. | AI tools that can't run commands become common |
+| **Send a secret from Slack or Teams** (a bot or slash command) | 2026-10-16 | The secret would pass through the chat service and the bot before anything encrypts it, and could stay in their logs. Make the link in Gone and paste the link into the chat. | Chat apps let an app encrypt on your device before a message is sent |
 | **Type the secret on the command line** (`gone send "hunter2"`) | v3.0.0 | It would be saved in your shell history and visible to other programs on the machine. Pipe it in, or use `--message-file`. | Never |
 | **Overwrite existing files** when saving attachments | v3.0.0 | `gone get` never replaces a file you have; it saves under a free name instead, which is just as easy to script. | Never |
 
