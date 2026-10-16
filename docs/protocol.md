@@ -376,7 +376,7 @@ The requester has no link of their own. The `manage_token` and private key stay 
 
 ## 8. HTTP exchange
 
-The full endpoint reference, including status codes, is in [docs/README.md](README.md) and [openapi.yaml](openapi.yaml). This section lists only what is protocol-relevant.
+The full endpoint reference, including status codes, is in [docs/api.md](api.md) and [openapi.yaml](openapi.yaml). This section lists only what is protocol-relevant.
 
 ### 8.1 Create: `POST /api/secret`
 

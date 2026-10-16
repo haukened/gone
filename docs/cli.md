@@ -18,14 +18,14 @@ Each [GitHub release](https://github.com/haukened/gone/releases) contains static
 | macOS   | amd64, arm64   | `gone_<tag>_darwin_<arch>.tar.gz` |
 | Windows | amd64, arm64   | `gone_<tag>_windows_<arch>.zip`   |
 
-The release also contains `SHA256SUMS` and the `goned` server archives for Linux.
+The release also contains `SHA256SUMS`, the `goned` server archives for Linux, and the signed build provenance as `gone_<tag>.sigstore.json` (a Sigstore bundle, for offline checks with `gh attestation verify ... --bundle`) and `gone_<tag>.intoto.jsonl` (the same statement as an in-toto DSSE envelope).
 
 ### Verify, then install
 
 Every archive carries a [build-provenance attestation](https://docs.github.com/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds) signed by the release workflow. Check it before you run anything:
 
 ```sh
-TAG=v3.0.0
+TAG=v3.10.3
 ARCHIVE=gone_${TAG}_linux_amd64.tar.gz
 
 curl -fsSLO "https://github.com/haukened/gone/releases/download/${TAG}/${ARCHIVE}"
@@ -166,7 +166,7 @@ gone request [-l TEXT] [-t DURATION] [-s URL] [--wait [-o DIR] [--message-out PA
 
 Asks someone for a secret and prints a **request link** to send them, then exits. A key pair is made on this machine: the private key and the request's manage token are saved on this device (see [Requests on this device](#requests-on-this-device)) and never leave it. The server learns only how long to wait. The person with the secret answers on that link in a browser, or with [`gone reply`](#gone-reply), and only this device can open the reply, once.
 
-- `-l, --label TEXT` is a note so you can tell requests apart (up to 80 characters). It stays on this device and is never sent.
+- `-l, --label TEXT` is a note so you can tell requests apart. Up to 80 characters are kept; a longer label is cut to 80. It stays on this device and is never sent.
 - `-t, --ttl` is how long the link works (default `1h`). A reply is then kept for the same length of time, counted from when it arrives.
 - `-s, --server` picks the server as for `send`.
 - `--wait` waits for the reply and opens it, taking the same output flags as `request open`. The request is saved first, so Ctrl-C stops waiting but keeps it; resume with `gone request open ID --wait`.
@@ -210,7 +210,7 @@ Cancels the request, or deletes a reply before you open it, and forgets it here.
 gone reply <request-link|-> [-f FILE]... [--message-file PATH] [--json] [--insecure] [--timeout DURATION]
 ```
 
-Answers someone's request. The link is checked with the server first, so if the request was already answered, cancelled, or has expired, `gone` exits 3 without reading the message. The message comes from standard input or `--message-file`, plus up to 10 attachments, exactly as for `send`. It is encrypted to the requester's public key from the link: not even you can open it afterwards. Prints `Sent. Only the requester can open it.` A request link of `-` is read from standard input.
+Answers someone's request. The link is checked with the server first, so if the request was already answered, cancelled, or has expired, `gone` exits 3 without reading the message. The message comes from standard input or `--message-file`, plus up to 10 attachments, exactly as for `send`. It is encrypted to the requester's public key from the link: not even you can open it afterwards. Prints `Sent. Only the requester can open it.` and an `Expires:` line with when the reply is deleted if the requester never opens it. A request link of `-` is read from standard input.
 
 Only answer a request link you trust: anyone can make one, so check it came from the person you expect.
 
@@ -226,9 +226,9 @@ The file is internal to `gone`: it is a binary (Go gob) file, not meant to be op
 gone set server <url> [--insecure]
 ```
 
-Saves the default server for `send`. The value must be a bare origin such as `https://gone.example.com`. The file is `gone/config.json` under your user configuration directory (`$XDG_CONFIG_HOME`, or `~/.config` if unset, on Linux; `~/Library/Application Support` on macOS; `%AppData%` on Windows), written with mode `0600`.
+Saves the default server for `send` and `request`. The value must be a bare origin such as `https://gone.example.com`. The file is `gone/config.json` under your user configuration directory (`$XDG_CONFIG_HOME`, or `~/.config` if unset, on Linux; `~/Library/Application Support` on macOS; `%AppData%` on Windows), written with mode `0600`.
 
-`get`, `status` and `revoke` always use the server named in the link.
+`get`, `status`, `revoke` and `reply` always use the server named in the link, and `request list`, `request open` and `request cancel` the server each saved request was made on.
 
 ### `gone version`, `gone help`
 
@@ -286,7 +286,7 @@ gone reply - --message-file /root/.db-password --json < request-link.txt
 
 ## Server selection and transport
 
-`send` picks its server from, in order: `--server`, the `GONE_SERVER` environment variable, the saved config, then `https://gone.hauken.us`.
+`send` and `request` pick their server from, in order: `--server`, the `GONE_SERVER` environment variable, the saved config, then `https://gone.hauken.us`.
 
 The standard proxy variables (`HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`) are honored for every request.
 

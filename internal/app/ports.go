@@ -106,7 +106,7 @@ type SecretStore interface {
 	// ErrNotFound under the same conditions as Status.
 	Revoke(ctx context.Context, id, manageHash string) error
 
-	// DeleteExpired removes (or tombstones) secrets whose expiry is <= t and
+	// DeleteExpired removes secrets whose expiry is <= t and
 	// returns the count of secrets affected. Best-effort cleanup of blob files
 	// is acceptable; failures should be surfaced via error.
 	DeleteExpired(ctx context.Context, t time.Time) (n int, err error)

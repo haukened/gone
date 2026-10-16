@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Gone Secret Sharing API
-  version: 3.6.0
+  version: 3.10.3
   description: |
     Minimal API for one-time secret creation and consumption.
     Secrets are created with a TTL and may be stored inline or in external blob storage.
@@ -20,6 +20,8 @@ info:
     This spec enumerates all HTTP statuses the current implementation may emit.
     Every route also returns 400 `invalid correlation id` when an X-Correlation-ID request
     header is present but is not a UUID.
+    Metrics are not part of this API: they are served on a separate, token-protected
+    listener (GONE_METRICS_ADDR) and documented in docs/metrics.md.
 servers:
   - url: /
     description: >-
@@ -36,6 +38,8 @@ tags:
       token and the requester uses the manage token.
   - name: health
     description: Liveness and readiness probes.
+  - name: i18n
+    description: Message catalogs the web pages use to switch language in place.
 paths:
   /api/secret:
     post:
@@ -176,29 +180,17 @@ paths:
           description: Ciphertext payload. The secret is now claimed; acknowledge with DELETE once received.
           headers:
             X-Gone-Claim:
-              schema:
-                type: string
-              description: Opaque claim token required to re-fetch or acknowledge.
+              $ref: '#/components/headers/ClaimToken'
             X-Gone-Claim-Expires:
-              schema:
-                type: string
-                format: date-time
-              description: When the claim lapses and the secret is deleted if not acknowledged.
+              $ref: '#/components/headers/ClaimExpires'
             Cache-Control:
-              schema:
-                type: string
-                example: no-store
+              $ref: '#/components/headers/NoStore'
             X-Gone-Version:
-              schema:
-                type: string
-                pattern: '^[1-9][0-9]{0,2}$'
+              $ref: '#/components/headers/Version'
             X-Gone-Nonce:
-              schema:
-                type: string
-                pattern: '^[A-Za-z0-9_-]{16}$'
+              $ref: '#/components/headers/Nonce'
             Content-Length:
-              schema:
-                type: integer
+              $ref: '#/components/headers/ContentLength'
           content:
             application/octet-stream:
               schema:
@@ -390,9 +382,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '405':
-          description: Method not allowed (not POST). The Allow header lists POST.
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/Internal'
         '503':
           $ref: '#/components/responses/Busy'
   /api/request/{id}:
@@ -424,8 +418,12 @@ paths:
           $ref: '#/components/responses/RequestBadRequest'
         '404':
           $ref: '#/components/responses/RequestNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/Internal'
   /api/request/{id}/reply:
     put:
       summary: Send the reply
@@ -451,6 +449,13 @@ paths:
           schema:
             type: string
             pattern: '^[A-Za-z0-9_-]{16}$'
+        - in: header
+          name: Content-Length
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Exact ciphertext byte length; enforced against service MaxBytes.
       requestBody:
         required: true
         content:
@@ -474,12 +479,24 @@ paths:
           $ref: '#/components/responses/RequestBadRequest'
         '404':
           $ref: '#/components/responses/RequestNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '411':
-          description: Content-Length required.
+          description: Content length required (missing Content-Length header).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '413':
-          description: Size exceeded.
+          description: Payload too large (size exceeds configured max).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/Internal'
         '503':
           $ref: '#/components/responses/Busy'
     get:
@@ -494,20 +511,54 @@ paths:
         X-Gone-Claim-Expires, and a retry sends X-Gone-Claim.
       parameters:
         - $ref: '#/components/parameters/SecretID'
+        - in: header
+          name: X-Gone-Claim
+          required: false
+          schema:
+            type: string
+          description: |
+            Omit to make a fresh claim. Supply the token from a previous response to re-fetch
+            the same ciphertext before the lease lapses.
       responses:
         '200':
-          description: The reply ciphertext.
+          description: The reply ciphertext. It is now claimed; acknowledge with DELETE once received.
+          headers:
+            X-Gone-Claim:
+              $ref: '#/components/headers/ClaimToken'
+            X-Gone-Claim-Expires:
+              $ref: '#/components/headers/ClaimExpires'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Gone-Version:
+              $ref: '#/components/headers/Version'
+            X-Gone-Nonce:
+              $ref: '#/components/headers/Nonce'
+            Content-Length:
+              $ref: '#/components/headers/ContentLength'
           content:
             application/octet-stream:
               schema:
                 type: string
                 format: binary
         '400':
-          $ref: '#/components/responses/ManageBadRequest'
+          description: >-
+            `invalid id`, `invalid manage token` (X-Gone-Manage missing,
+            repeated, or not 43 base64url characters), or `invalid claim` (a
+            malformed X-Gone-Claim on a retry).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           $ref: '#/components/responses/RequestNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/Internal'
+        '503':
+          $ref: '#/components/responses/Busy'
     delete:
       summary: Acknowledge the reply
       operationId: ackReply
@@ -524,9 +575,21 @@ paths:
         '204':
           description: Reply deleted.
         '400':
-          description: '`invalid claim`.'
+          description: '`invalid id`, or `invalid claim` for a missing or malformed X-Gone-Claim.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           $ref: '#/components/responses/RequestNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/Internal'
+        '503':
+          $ref: '#/components/responses/Busy'
   /api/request/{id}/status:
     get:
       summary: Is the request waiting, or is its reply ready?
@@ -548,8 +611,12 @@ paths:
           $ref: '#/components/responses/ManageBadRequest'
         '404':
           $ref: '#/components/responses/RequestNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/Internal'
   /api/request/{id}/revoke:
     post:
       summary: Cancel a request, or delete an unopened reply
@@ -566,8 +633,12 @@ paths:
           $ref: '#/components/responses/ManageBadRequest'
         '404':
           $ref: '#/components/responses/RequestNotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/Internal'
         '503':
           $ref: '#/components/responses/Busy'
   /healthz:
@@ -579,6 +650,11 @@ paths:
       responses:
         '200':
           description: Process is alive
+          content:
+            text/plain:
+              schema:
+                type: string
+                enum: [ok]
   /readyz:
     get:
       summary: Readiness probe
@@ -588,14 +664,115 @@ paths:
       responses:
         '200':
           description: Service ready
+          content:
+            text/plain:
+              schema:
+                type: string
+                enum: [ready]
         '503':
-          description: Not yet ready
+          description: Not yet ready (the database ping or the blob directory check failed)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                error: not ready
+  /i18n/{tag}.json:
+    get:
+      summary: Message catalog for one language
+      operationId: i18nCatalog
+      description: |
+        The web pages' messages for one locale, used to switch language in place
+        without a reload. The pages request it with the catalog's content hash as
+        `?v=`; with the current hash the response may be cached for a year,
+        otherwise for five minutes. Only GET (and HEAD) is routed.
+      tags: [i18n]
+      parameters:
+        - in: path
+          name: tag
+          required: true
+          schema:
+            type: string
+            enum: [en, es, fr, de, pt-BR]
+          description: >-
+            BCP 47 language tag of a loaded catalog. Development builds also
+            serve the pseudo-locale en-XA.
+        - in: query
+          name: v
+          required: false
+          schema:
+            type: string
+          description: The catalog's content hash, as the pages link it.
+      responses:
+        '200':
+          description: The catalog, as a JSON object of message keys to message patterns.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=31536000, immutable
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          description: No catalog for that tag (plain-text body).
+          content:
+            text/plain:
+              schema:
+                type: string
 components:
+  headers:
+    ClaimToken:
+      schema:
+        type: string
+        pattern: '^[A-Za-z0-9_-]{43}$'
+      description: Opaque claim token required to re-fetch or acknowledge.
+    ClaimExpires:
+      schema:
+        type: string
+        format: date-time
+      description: When the claim lapses and the item is deleted if not acknowledged.
+    NoStore:
+      schema:
+        type: string
+        example: no-store
+    Version:
+      schema:
+        type: string
+        pattern: '^[1-9][0-9]{0,2}$'
+      description: Protocol version of the ciphertext.
+    Nonce:
+      schema:
+        type: string
+        pattern: '^[A-Za-z0-9_-]{16}$'
+      description: Unpadded base64url of the 12-byte nonce.
+    ContentLength:
+      schema:
+        type: integer
   responses:
+    MethodNotAllowed:
+      description: Method not allowed. The Allow header lists the methods the path accepts.
+      headers:
+        Allow:
+          schema:
+            type: string
+            example: GET
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: method not allowed
+    Internal:
+      description: Internal server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: internal
     ManageBadRequest:
       description: >-
         `invalid id` for a malformed ID, or `invalid manage token` when
@@ -637,9 +814,11 @@ components:
             error: not found
     TooManyRequests:
       description: |
-        Rate limited. The client exceeded its per-address budget (GONE_RATE_CREATE for
-        POST /api/secret, GONE_RATE_READ for every /api/secret/{id} route, including
-        status and revoke). Retry after the indicated delay.
+        Rate limited. The client exceeded its per-address budget. GONE_RATE_CREATE covers
+        POST /api/secret, POST /api/request, and PUT /api/request/{id}/reply (the calls
+        that upload or create). GONE_RATE_READ covers every /api/secret/{id} route,
+        including status and revoke, and every other /api/request/{id} route. Retry after
+        the indicated delay.
       headers:
         Retry-After:
           schema:

@@ -27,20 +27,21 @@ Zero-knowledge, one-time, self-hostable, tiny. Gone's honesty is structural — 
 ## Capabilities and Constraints
 
 - Create: text secret and/or up to 10 file attachments, server-configured max size, expiry (TTL) chosen from server-configured bounds, optional passphrase (typed or five generated words).
-- Result: a shareable link containing the decryption key in the fragment, plus a private manage link for the sender. With a passphrase, a reminder to send it through a different channel.
-- Receive: confirm-to-reveal, passphrase prompt for v2 links (retries against one download), decrypt locally, show text, download attachments; states for expired, already opened/not found, wrong passphrase, and decryption failure.
+- Result: a shareable link containing the decryption key in the fragment, plus a private manage link for the sender. An opt-in QR code of the share link for handing it over in person (send result only; never for request or reply links, since a code hides the address it opens). With a passphrase, a reminder to send it through a different channel.
+- Receive: confirm-to-reveal, passphrase prompt for v2 links (retries against one download), decrypt locally, then the text stays covered until **Show** (for screen sharing) with **Copy** alongside and an "always show on this device" option; download attachments; states for expired, already opened/not found, wrong passphrase, and decryption failure.
 - Manage: the sender's manage link shows whether the secret is still waiting and can delete it before it is opened. It can never reveal the secret.
 - Request: the requester makes a request link (an optional label that stays in their browser, and how long to wait). Their browser keeps a non-extractable private key in IndexedDB; whoever holds the link sends one reply encrypted to it. The requester's page lists the requests saved in that browser, checks them while it's open, and opens a reply once. A reply can only be opened in the browser that asked; there is no way to move it elsewhere.
 - Technical: Go html/template pages, vanilla JS with WebCrypto, strict CSP (self-only scripts/styles/fonts, no inline), no third-party assets or CDNs, no innerHTML, requires HTTPS (or localhost); on an insecure page it warns and turns off sending.
+- Languages: English, Spanish, French, German and Brazilian Portuguese. The first visit follows the browser's languages; a picker in the header switches language in place, without a reload, and remembers the choice in a cookie. Non-English text is machine-translated and says so.
 - Pages: send (home), result, receive, manage, request (new request and the list), request detail (waiting, open the reply, cancel), reply (answer a request), about, error.
 
 ## Brand Commitments
 
-- The product name "Gone" is binding. Everything else (marks, icons, palette, type) is open.
+- The product name "Gone" and the "G" mark (`docs/brand/`, `web/img/`) are the brand, covered by [TRADEMARKS.md](TRADEMARKS.md). Icons, palette and type follow [DESIGN.md](DESIGN.md).
 
 ## Evidence on Hand
 
-- README.md and about page copy explaining the mechanism. No logo, no illustrations, no testimonials, no usage statistics — none may be invented.
+- README.md and about page copy explaining the mechanism, and the brand mark and wordmark in `docs/brand/`. No illustrations, no testimonials, no usage statistics — none may be invented.
 
 ## Product Principles
 

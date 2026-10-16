@@ -87,9 +87,10 @@ Flags:
 // usageSet documents "gone set".
 const usageSet = `Usage: gone set server <url> [--insecure]
 
-Saves the default server used by "gone send". The value must be a bare
-origin such as https://gone.example.com. http:// is refused, except for a
-localhost server with --insecure here and on every later send.
+Saves the default server used by "gone send" and "gone request". The
+value must be a bare origin such as https://gone.example.com. http:// is
+refused, except for a localhost server with --insecure here and on every
+later send or request.
 `
 
 // usageVersion documents "gone version".

@@ -115,7 +115,7 @@ Each view is **one sheet of glass** floating over a soft light field. Inputs are
 
 The signature is the **frosted reveal**. On the receive page the secret sits behind frosted glass (a decorative, aria-hidden vault). When it opens, the message panel defrosts from blur to sharp. When it is gone, the eroding **G** of the brand mark stands alone on the pane.
 
-Mode is **Operate** for send, receive and manage, and **Read** for About.
+Mode is **Operate** for send, receive, manage, request (the new-request form, the list and the request page) and reply, and **Read** for About.
 
 **Key characteristics:**
 - Frosted panes (36px backdrop blur, 130% saturation) with a bright top edge and a deep, soft shadow.

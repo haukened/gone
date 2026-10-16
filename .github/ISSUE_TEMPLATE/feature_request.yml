@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Before asking, please check the [roadmap's non-goals](https://github.com/haukened/gone/blob/main/docs/ROADMAP.md#non-goals). Gone deliberately has no accounts, no push notifications, no secrets that open more than once, and no front-end frameworks.
+        Before asking, please check the [rejected features](https://github.com/haukened/gone/blob/main/docs/rejected.md) and the [roadmap's non-goals](https://github.com/haukened/gone/blob/main/docs/ROADMAP.md#non-goals). Gone deliberately has no accounts, no push notifications, no secrets that open more than once, and no front-end frameworks. Each rejected feature says when it would be worth revisiting; if that has happened, say so.
   - type: textarea
     id: problem
     attributes:

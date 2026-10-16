@@ -14,6 +14,7 @@ body:
       label: Where does it happen?
       options:
         - Web interface
+        - Translations
         - gone CLI
         - Server (goned) or HTTP API
         - Container image or deployment
@@ -24,7 +25,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: The image tag (for example `v3.0.0`), or the output of `gone version`.
+      description: The image tag (for example `v3.10.3`), or the output of `gone version`.
     validations:
       required: true
   - type: textarea
