@@ -6,3 +6,5 @@ exclude_paths:
   - "test/js/**"
   - "test/e2e/**"
   - "test/vectors/**"
+  - "tools/lint/**"
+  - "**/package-lock.json"
