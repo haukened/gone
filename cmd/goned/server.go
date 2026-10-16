@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/brand"
 	"github.com/haukened/gone/v3/internal/config"
 	"github.com/haukened/gone/v3/internal/httpx"
 	"github.com/haukened/gone/v3/internal/i18n"
@@ -79,6 +80,7 @@ func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir stri
 	h.TTLOptions = cfg.TTLOptions
 	h.RequirePassphrase = cfg.RequirePassphrase
 	h.MaxFiles = cfg.MaxFiles
+	h.Brand = tmpls.brand
 	return h
 }
 
@@ -245,7 +247,7 @@ type components struct {
 //   - ctx: context for the janitor loop; canceling it stops the server.
 //
 // Returns:
-//   - error: non-nil if blob storage, templates, or the listener fail.
+//   - error: non-nil if blob storage, branding, templates, or the listener fail.
 func (c *components) serve(ctx context.Context) error {
 	blobs, err := newBlobStorage(c.blobDir)
 	if err != nil {
@@ -255,7 +257,11 @@ func (c *components) serve(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("load translations: %w", err)
 	}
-	tmpls, err := loadTemplatesFrom(c.assets, version, bundle)
+	br, err := brand.Load(c.cfg)
+	if err != nil {
+		return err
+	}
+	tmpls, err := loadTemplatesFrom(c.assets, version, bundle, br)
 	if err != nil {
 		return err
 	}

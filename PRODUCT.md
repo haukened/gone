@@ -38,6 +38,7 @@ Zero-knowledge, one-time, self-hostable, tiny. Gone's honesty is structural — 
 ## Brand Commitments
 
 - The product name "Gone" and the "G" mark (`docs/brand/`, `web/img/`) are the brand, covered by [TRADEMARKS.md](TRADEMARKS.md). Icons, palette and type follow [DESIGN.md](DESIGN.md).
+- An operator may show their own name, logo and accent colour in the header, and link their contact, imprint and privacy pages in the footer (`GONE_BRAND_*`, `GONE_*_URL`). Page titles, the About page, messages and the favicon still say Gone, and the footer always says "Powered by Gone".
 
 ## Evidence on Hand
 

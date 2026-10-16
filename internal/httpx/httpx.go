@@ -4,7 +4,7 @@
 // Handlers are split across files by route: secrets (create.go, consume.go,
 // manage.go), secret requests (request*.go), pages (index.go, secret.go,
 // about.go, render.go), health probes (health.go), the operator policy
-// (policy.go), and shared error mapping,
+// (policy.go) and branding assets (brand.go), and shared error mapping,
 // middleware and rate limiting (errors.go, middleware.go, ratelimit.go).
 package httpx
 
@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/brand"
 	"github.com/haukened/gone/v3/internal/domain"
 	"github.com/haukened/gone/v3/internal/envelope"
 	"github.com/haukened/gone/v3/internal/i18n"
@@ -54,6 +55,7 @@ type Handler struct {
 	I18n              *i18n.Bundle                // optional catalogs; nil renders every page in English
 	RequirePassphrase bool                        // reject v1 secrets (operator policy; replies exempt)
 	MaxFiles          int                         // files per secret offered to clients (advisory; 0 = off)
+	Brand             *brand.Brand                // optional operator branding; nil means none
 
 	CreateLimiter  RateLimiter    // optional limiter for POST /api/secret (nil disables)
 	ReadLimiter    RateLimiter    // optional limiter for /api/secret/{id}[/status|/revoke] (nil disables)
@@ -88,6 +90,8 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("/api/request", h.limit(h.CreateLimiter, scopeCreate, &xffWarn, h.handleCreateRequest))
 	mux.HandleFunc("/api/request/", h.limitBy(h.requestLimit, &xffWarn, h.handleRequestRoute)) // /api/request/{id}[/reply|/status|/revoke]
 	mux.HandleFunc("/api/policy", h.handlePolicy)
+	mux.HandleFunc(brand.LogoPath, h.brandAsset(brandLogo))
+	mux.HandleFunc(brand.AccentPath, h.brandAsset(brandAccent))
 	mux.HandleFunc("/healthz", h.handleHealth)
 	mux.HandleFunc("/readyz", h.handleReady)
 	if h.Assets != nil {

@@ -121,6 +121,8 @@ var (
 	stripped  = regexp.MustCompile(`(?s)<script.*?</script>|<svg.*?</svg>|<ul id="lang-menu".*?</ul>|<pre class="vault".*?</pre>|<title.*?</title>`)
 	tagRe     = regexp.MustCompile(`<[^>]*>`)
 	asciiWord = regexp.MustCompile(`[A-Za-z]{2,}`)
+	// attrTextRe finds the attributes that show or speak text.
+	attrTextRe = regexp.MustCompile(`\s(?:aria-label|placeholder|title)="([^"]*)"`)
 )
 
 // untranslatedAllowed are the visible words that stay as they are in every
@@ -131,20 +133,32 @@ var untranslatedAllowed = map[string]bool{"Gone": true, "one": true, "test": tru
 // TestPages_PseudoLocaleCoversAllText renders every page in the
 // pseudo-locale, where every translated letter is accented: any plain ASCII
 // word left on the page is text that skipped translation.
+//
+// The branded run allows the operator's name, which is never translated.
 func TestPages_PseudoLocaleCoversAllText(t *testing.T) {
-	h := pageRouter(t)
-	for _, path := range i18nPagePaths {
-		body := getIn(h, path, i18n.PseudoLocale, "").Body.String()
-		text := html.UnescapeString(tagRe.ReplaceAllString(stripped.ReplaceAllString(body, " "), " "))
-		for _, w := range asciiWord.FindAllString(text, -1) {
-			if !untranslatedAllowed[w] {
-				t.Errorf("%s: untranslated %q", path, w)
+	runs := []struct {
+		name     string
+		h        http.Handler
+		operator string
+	}{
+		{"default", pageRouter(t), ""},
+		{"branded", pageRouterWith(t, brandAll(t)), testBrandName},
+	}
+	for _, run := range runs {
+		allowed := func(w string) bool { return untranslatedAllowed[w] || strings.Contains(run.operator, w) }
+		for _, path := range i18nPagePaths {
+			body := getIn(run.h, path, i18n.PseudoLocale, "").Body.String()
+			text := html.UnescapeString(tagRe.ReplaceAllString(stripped.ReplaceAllString(body, " "), " "))
+			for _, w := range asciiWord.FindAllString(text, -1) {
+				if !allowed(w) {
+					t.Errorf("%s %s: untranslated %q", run.name, path, w)
+				}
 			}
-		}
-		for _, attr := range regexp.MustCompile(`\s(?:aria-label|placeholder|title)="([^"]*)"`).FindAllStringSubmatch(body, -1) {
-			for _, w := range asciiWord.FindAllString(html.UnescapeString(attr[1]), -1) {
-				if !untranslatedAllowed[w] {
-					t.Errorf("%s: untranslated attribute text %q", path, w)
+			for _, attr := range attrTextRe.FindAllStringSubmatch(body, -1) {
+				for _, w := range asciiWord.FindAllString(html.UnescapeString(attr[1]), -1) {
+					if !allowed(w) {
+						t.Errorf("%s %s: untranslated attribute text %q", run.name, path, w)
+					}
 				}
 			}
 		}

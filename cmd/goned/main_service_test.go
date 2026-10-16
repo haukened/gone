@@ -110,7 +110,7 @@ func (r *recordingBlobStorage) List() ([]string, error) { return nil, nil }
 // Parameters:
 //   - t: the test handle.
 func TestLoadTemplates(t *testing.T) {
-	tmpls, err := loadTemplatesFrom(wembed.Assets, "v0.0.0-test", testBundle(t))
+	tmpls, err := loadTemplatesFrom(wembed.Assets, "v0.0.0-test", testBundle(t), nil)
 	if err != nil {
 		t.Fatalf("loadTemplatesFrom error: %v", err)
 	}

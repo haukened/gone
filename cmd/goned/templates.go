@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/haukened/gone/v3/internal/brand"
 	"github.com/haukened/gone/v3/internal/httpx"
 	"github.com/haukened/gone/v3/internal/i18n"
 	wembed "github.com/haukened/gone/v3/web"
@@ -21,6 +22,7 @@ import (
 type templates struct {
 	index, about, secret, manage, request, requestDetail, reply, errorPage httpx.LocalizedTemplate
 	bundle                                                                 *i18n.Bundle
+	brand                                                                  *brand.Brand // the branding the pages were rendered with
 }
 
 // pageFiles maps each page template name to its file in the assets FS.
@@ -248,16 +250,21 @@ func localize(t *template.Template, b *i18n.Bundle) (httpx.LocalizedTemplate, er
 //     and the static assets they reference.
 //   - ver: release version shown in the footer.
 //   - b: the loaded catalogs.
+//   - br: the operator's branding, exposed to templates as brand; nil means none.
 //
 // Returns:
 //   - *templates: the parsed page templates.
 //   - error: non-nil if any template is missing or fails to parse.
-func loadTemplatesFrom(fsys fs.FS, ver string, b *i18n.Bundle) (*templates, error) {
+func loadTemplatesFrom(fsys fs.FS, ver string, b *i18n.Bundle, br *brand.Brand) (*templates, error) {
 	partials, err := fs.ReadFile(fsys, "partials.tmpl.html")
 	if err != nil {
 		return nil, err
 	}
+	if br == nil {
+		br = &brand.Brand{}
+	}
 	funcs := templateFuncs(fsys, ver)
+	funcs["brand"] = func() *brand.Brand { return br }
 	for name, fn := range localeFuncs(b, i18n.BaseLocale) {
 		funcs[name] = fn
 	}
@@ -274,6 +281,6 @@ func loadTemplatesFrom(fsys fs.FS, ver string, b *i18n.Bundle) (*templates, erro
 	return &templates{
 		index: parsed["index"], about: parsed["about"], secret: parsed["secret"], manage: parsed["manage"],
 		request: parsed["request"], requestDetail: parsed["requestDetail"], reply: parsed["reply"],
-		errorPage: parsed["error"], bundle: b,
+		errorPage: parsed["error"], bundle: b, brand: br,
 	}, nil
 }

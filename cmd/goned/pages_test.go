@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/haukened/gone/v3/internal/brand"
 	"github.com/haukened/gone/v3/internal/config"
 	"github.com/haukened/gone/v3/internal/domain"
 	"github.com/haukened/gone/v3/internal/envelope"
@@ -97,7 +98,8 @@ func pageRouter(t *testing.T) http.Handler {
 }
 
 // pageRouterWith is pageRouter with a hook that adjusts the configuration,
-// such as the operator policy, before the router is built.
+// such as the operator policy or branding, before the templates and router
+// are built.
 //
 // Parameters:
 //   - t: the calling test; resources are released via t.Cleanup.
@@ -117,15 +119,19 @@ func pageRouterWith(t *testing.T, adjust func(*config.Config)) http.Handler {
 	if err != nil {
 		t.Fatalf("sqlite init: %v", err)
 	}
-	tmpls, err := loadTemplatesFrom(wembed.Assets, "v0.0.0-test", testBundle(t))
-	if err != nil {
-		t.Fatalf("load templates: %v", err)
-	}
 	cfg := &config.Config{MaxBytes: 2048, MinTTL: time.Minute, MaxTTL: time.Hour, MaxFiles: envelope.MaxFiles, TTLOptions: []domain.TTLOption{
 		{Duration: time.Minute, Label: "1m"}, {Duration: time.Hour, Label: "1h"},
 	}}
 	if adjust != nil {
 		adjust(cfg)
+	}
+	br, err := brand.Load(cfg)
+	if err != nil {
+		t.Fatalf("load brand: %v", err)
+	}
+	tmpls, err := loadTemplatesFrom(wembed.Assets, "v0.0.0-test", testBundle(t), br)
+	if err != nil {
+		t.Fatalf("load templates: %v", err)
 	}
 	svc := buildService(idx, stubBlobStorage{}, cfg, realClock{})
 	return buildHandler(cfg, svc, db, tmp, tmpls, wembed.Assets).Router()

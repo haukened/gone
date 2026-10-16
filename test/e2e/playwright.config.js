@@ -76,5 +76,5 @@ module.exports = defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   // A fresh data directory each run for each server; see servers.js.
-  webServer: [gonedServer('main'), gonedServer('rate'), gonedServer('policy')].concat(plain ? [] : [proxyServer()]),
+  webServer: [gonedServer('main'), gonedServer('rate'), gonedServer('policy'), gonedServer('brand')].concat(plain ? [] : [proxyServer()]),
 });

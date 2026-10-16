@@ -33,6 +33,19 @@ type Config struct {
 	RequirePassphrase bool `koanf:"require_passphrase"`
 	MaxFiles          int  `koanf:"max_files"`
 
+	// Operator branding, all optional: the header shows BrandName and the
+	// logo at BrandLogo (a file path), BrandAccent ("#light/#dark") recolours
+	// the accent, and the footer links to the contact, imprint and privacy
+	// pages. AccentLight and AccentDark are parsed from BrandAccent.
+	BrandName   string `koanf:"brand_name"`
+	BrandLogo   string `koanf:"brand_logo"`
+	BrandAccent string `koanf:"brand_accent"`
+	ContactURL  string `koanf:"contact_url"`
+	ImprintURL  string `koanf:"imprint_url"`
+	PrivacyURL  string `koanf:"privacy_url"`
+	AccentLight string `koanf:"-"`
+	AccentDark  string `koanf:"-"`
+
 	// Rate limiting: raw settings loaded from GONE_RATE_* and
 	// GONE_TRUSTED_PROXIES, and the typed values derived from them.
 	RateCreate      string         `koanf:"rate_create"`
@@ -107,10 +120,11 @@ var defaultLoader = func(k *koanf.Koanf) error {
 // It transforms the keys to lowercase and removes the prefix.
 // and can be mocked in tests.
 var envLoader = func(k *koanf.Koanf) error {
-	// Load environment variables with prefix "GONE_" using lowercase keys; all values scalar.
+	// Load environment variables with prefix "GONE_" using lowercase keys. A
+	// value with a comma becomes a list, except for scalarKeys (names, URLs).
 	return k.Load(env.Provider(".", env.Opt{Prefix: "GONE_", TransformFunc: func(key, value string) (string, any) {
 		key = strings.ToLower(strings.TrimPrefix(key, "GONE_"))
-		if strings.Contains(value, ",") {
+		if strings.Contains(value, ",") && !scalarKeys[key] {
 			parts := strings.Split(value, ",")
 			for i := range parts {
 				parts[i] = strings.TrimSpace(parts[i])

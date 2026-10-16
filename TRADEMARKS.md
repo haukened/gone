@@ -7,6 +7,7 @@ Gone's source code is free software under the GNU Affero General Public License 
 ## You may
 
 - Run an **unmodified** copy of Gone and call it Gone.
+- Show your own name, logo and accent colour on an **unmodified** copy of Gone through its branding settings (`GONE_BRAND_NAME`, `GONE_BRAND_LOGO` and `GONE_BRAND_ACCENT`; see [Branding](docs/configuration.md#branding)). The "Powered by Gone" line in the footer must stay, and your name and logo must not be confusingly similar to the Marks.
 - Say truthfully that your project is "based on Gone", "a fork of Gone", or "compatible with Gone", as long as you don't use the logo or wordmark and don't imply that this project endorses you.
 - Refer to Gone by name in articles, reviews, talks, and documentation.
 
@@ -17,6 +18,8 @@ Gone's source code is free software under the GNU Affero General Public License 
 - Use the Marks in a way that suggests this project or its author sponsors, endorses, or supports you.
 
 ## If you fork Gone
+
+To run Gone under your own name without changing its code, you don't need a fork: use the branding settings above.
 
 Give your fork its own name and replace the wordmark and logo. The name appears in `web/partials.tmpl.html` and in the message catalogs `web/messages/*.json` (page titles and text, in every language); the logo is in `web/img/` (the favicon set and `gone-g-*.svg`) and `docs/brand/`. Removing the branding does **not** mean removing the notices: keep the copyright and license notices, and meet every other term of the AGPLv3.
 

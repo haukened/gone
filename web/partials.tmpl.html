@@ -11,7 +11,8 @@
 	<link rel="stylesheet" href="{{ asset "css/layout.css" }}" />
 	<link rel="stylesheet" href="{{ asset "css/components.css" }}" />
 	<link rel="stylesheet" href="{{ asset "css/passphrase.css" }}" />
-	<link rel="stylesheet" href="{{ asset "css/pages.css" }}" />
+	<link rel="stylesheet" href="{{ asset "css/pages.css" }}" />{{ with brand }}{{ with .AccentURL }}
+	<link rel="stylesheet" href="{{ . }}" />{{ end }}{{ end }}
 	<script type="application/json" id="gone-i18n">{{ i18nData }}</script>
 	<script src="{{ asset "js/i18nPattern.js" }}"></script>
 	<script src="{{ asset "js/i18nFormat.js" }}"></script>
@@ -53,7 +54,7 @@
 <a class="skip" href="#main" data-i18n="common.skip">{{ t "common.skip" }}</a>
 <header class="site">
 	<div class="wrap">
-		<a class="brand" href="/" aria-label="{{ t "common.home" }}" data-i18n-attr="aria-label:common.home"><span class="brand-g"></span>one</a>
+		{{ with brand }}{{ if .Branded }}<a class="brand brand-operator" href="/"{{ with .Name }} aria-label="{{ ta "common.homeNamed" (args "name" .) }}" data-i18n-attr="aria-label:common.homeNamed" data-i18n-args="{{ json (args "name" .) }}"{{ else }} aria-label="{{ t "common.homeLink" }}" data-i18n-attr="aria-label:common.homeLink"{{ end }}>{{ with .LogoURL }}<img class="brand-logo" src="{{ . }}" alt="" />{{ end }}{{ with .Name }}<span class="brand-name">{{ . }}</span>{{ end }}</a>{{ else }}<a class="brand" href="/" aria-label="{{ t "common.home" }}" data-i18n-attr="aria-label:common.home"><span class="brand-g"></span>one</a>{{ end }}{{ end }}
 		<nav class="nav" aria-label="{{ t "common.navSite" }}" data-i18n-attr="aria-label:common.navSite">
 			<a href="/"{{ if eq . "send" }} aria-current="page"{{ end }}><span data-i18n="common.navSend">{{ rich "common.navSend" nil "long" `<span class="nav-long">` }}</span></a>
 			<a href="/request"{{ if eq . "request" }} aria-current="page"{{ end }}><span data-i18n="common.navRequest">{{ rich "common.navRequest" nil "long" `<span class="nav-long">` }}</span></a>
@@ -86,12 +87,13 @@
 	<div class="wrap">
 		<p><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span data-i18n="common.footerTagline">{{ t "common.footerTagline" }}</span></p>
 		<nav aria-label="{{ t "common.navFooter" }}" data-i18n-attr="aria-label:common.navFooter">
-			<a href="/about" data-i18n="common.navAbout">{{ t "common.navAbout" }}</a>
+			{{ with brand }}{{ range .Links }}<a href="{{ .URL }}"{{ if not .Mailto }} rel="noopener noreferrer"{{ end }}{{ if eq .Kind "contact" }} data-i18n="common.footerContact">{{ t "common.footerContact" }}{{ else if eq .Kind "imprint" }} data-i18n="common.footerImprint">{{ t "common.footerImprint" }}{{ else }} data-i18n="common.footerPrivacy">{{ t "common.footerPrivacy" }}{{ end }}</a>
+			{{ end }}{{ end }}<a href="/about" data-i18n="common.navAbout">{{ t "common.navAbout" }}</a>
 			<a href="https://github.com/haukened/gone" rel="noopener noreferrer" data-i18n="common.source">{{ t "common.source" }}</a>
 			<a href="https://github.com/haukened/gone/issues/new/choose" rel="noopener noreferrer" data-i18n="common.report">{{ t "common.report" }}</a>
 			<a href="https://github.com/haukened/gone/blob/main/CONTRIBUTING.md" rel="noopener noreferrer" data-i18n="common.contribute">{{ t "common.contribute" }}</a>
 			<a href="https://github.com/haukened/gone/graphs/contributors" rel="noopener noreferrer" data-i18n="common.copyright">{{ t "common.copyright" }}</a>
-			{{ with version }}{{ if eq . "dev" }}<span class="ver" data-i18n="common.devBuild">{{ t "common.devBuild" }}</span>{{ else }}<a class="ver" href="https://github.com/haukened/gone/releases/tag/{{ . }}" rel="noopener noreferrer">Gone {{ . }}</a>{{ end }}{{ end }}
+			{{ with version }}{{ if (brand).Branded }}{{ if eq . "dev" }}<span class="ver" data-i18n="common.poweredByDev">{{ t "common.poweredByDev" }}</span>{{ else }}<a class="ver" href="https://github.com/haukened/gone/releases/tag/{{ . }}" rel="noopener noreferrer" data-i18n="common.poweredBy" data-i18n-args="{{ json (args "version" .) }}">{{ ta "common.poweredBy" (args "version" .) }}</a>{{ end }}{{ else if eq . "dev" }}<span class="ver" data-i18n="common.devBuild">{{ t "common.devBuild" }}</span>{{ else }}<a class="ver" href="https://github.com/haukened/gone/releases/tag/{{ . }}" rel="noopener noreferrer">Gone {{ . }}</a>{{ end }}{{ end }}
 		</nav>
 		<p class="machine" data-i18n="common.machine" data-i18n-hidden-in="en"{{ if eq lang "en" }} hidden{{ end }}>{{ rich "common.machine" nil "link" `<a href="https://github.com/haukened/gone/blob/main/CONTRIBUTING.md#translations" rel="noopener noreferrer">` }}</p>
 	</div>

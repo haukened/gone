@@ -43,6 +43,8 @@ tags:
       token and the requester uses the manage token.
   - name: policy
     description: The operator policy clients honour before encrypting.
+  - name: branding
+    description: The operator's logo and accent colours, served from memory.
   - name: health
     description: Liveness and readiness probes.
   - name: i18n
@@ -666,6 +668,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Policy'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+  /brand/logo:
+    get:
+      summary: Operator logo
+      operationId: getBrandLogo
+      description: >-
+        The file named by GONE_BRAND_LOGO, read at startup. An SVG is served
+        with `Content-Security-Policy: default-src 'none'; style-src
+        'unsafe-inline'; img-src data:; sandbox`. With the `v` query
+        parameter the pages use, it may be cached for a year. Without a logo
+        the path is the HTML 404 page. Answers GET and HEAD only; any other
+        method is 405 with `Allow: GET, HEAD`.
+      tags: [branding]
+      parameters:
+        - name: v
+          in: query
+          required: false
+          description: Content fingerprint, for caching.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The logo
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: No logo is configured (HTML page)
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+  /brand/accent.css:
+    get:
+      summary: Operator accent stylesheet
+      operationId: getBrandAccent
+      description: >-
+        CSS custom properties for the accent colours in GONE_BRAND_ACCENT.
+        With the `v` query parameter the pages use, it may be cached for a
+        year. Without an accent the path is the HTML 404 page. Answers GET
+        and HEAD only; any other method is 405 with `Allow: GET, HEAD`.
+      tags: [branding]
+      parameters:
+        - name: v
+          in: query
+          required: false
+          description: Content fingerprint, for caching.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The stylesheet
+          content:
+            text/css:
+              schema:
+                type: string
+        '404':
+          description: No accent is configured (HTML page)
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
   /healthz:
