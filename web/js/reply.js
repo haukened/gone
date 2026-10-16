@@ -25,7 +25,7 @@
     [429, 'js.common.tooMany'],
     [503, 'js.common.busy']
   ]);
-  const TITLES = { compose: 'reply.pageTitle', sent: 'js.reply.titleSent', gone: 'js.detail.titleGone' };
+  const TITLES = { compose: 'js.reply.titleCompose', sent: 'js.reply.titleSent', gone: 'js.detail.titleGone' };
 
   const byId = function (id) { return document.getElementById(id); };
 

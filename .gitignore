@@ -68,5 +68,11 @@ TODO.md
 # Playwright MCP scratch output
 .playwright-mcp/
 
+# Browser end-to-end tests (test/e2e)
+/test/e2e/node_modules/
+/test/e2e/.data/
+/test/e2e/test-results/
+/test/e2e/playwright-report/
+
 # Release archives (scripts/release.sh)
 dist/

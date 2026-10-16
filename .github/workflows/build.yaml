@@ -111,7 +111,7 @@ jobs:
         env:
           ESLINT_USE_FLAT_CONFIG: 'false'
         run: |
-          npx --yes eslint@${{ env.ESLINT_VERSION }} --max-warnings 0 web/js test/js test/interop
+          npx --yes eslint@${{ env.ESLINT_VERSION }} --max-warnings 0 web/js test/js test/interop test/e2e
           npx --yes stylelint@${{ env.STYLELINT_VERSION }} 'web/css/*.css'
 
       - name: Run JavaScript tests
@@ -154,6 +154,72 @@ jobs:
           language: 'javascript'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Browser end-to-end tests (test/e2e): the prod goned binary, the real
+  # templates and the real CSP in Chromium, Firefox and WebKit. The JS unit
+  # tests load scripts through a harness, so only this job catches a missing
+  # or misordered <script> tag or a CSP violation.
+  e2e:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - name: Restore Go module cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/go/bin
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+
+      - name: Install minify and Task
+        run: |
+          go install github.com/tdewolff/minify/v2/cmd/minify@${{ env.MINIFY_VERSION }}
+          go install github.com/go-task/task/v3/cmd/task@${{ env.TASK_VERSION }}
+
+      - name: Build (prod via Taskfile)
+        run: $HOME/go/bin/task prod
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Playwright
+        working-directory: test/e2e
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('test/e2e/package-lock.json') }}
+
+      # Downloads only what the cache lacks; the system packages always install.
+      - name: Install browsers
+        working-directory: test/e2e
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run browser tests
+        working-directory: test/e2e
+        env:
+          CI: 'true'
+        run: npx playwright test
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: test/e2e/playwright-report
+          retention-days: 7
 
   # Latency target (p95 under 50ms at 100 req/s) against the real stack.
   # The data directory is on RAM (/dev/shm): shared runner disks stall on

@@ -128,6 +128,12 @@ func localeFuncs(b *i18n.Bundle, tag string) template.FuncMap {
 	}
 }
 
+// scriptMessagePrefixes are the message key prefixes every page embeds for
+// its scripts. A script can show only these keys until a language change
+// loads a whole catalog, so web/js uses no others (see
+// TestMessages_ScriptKeysAreEmbedded).
+var scriptMessagePrefixes = []string{"js.", "common."}
+
 // pageI18nData is the JSON block each page carries for i18n.js: the locale,
 // the picker's locales, every catalog's URL, and the js.* and common.*
 // messages scripts need before any catalog is fetched.
@@ -141,7 +147,7 @@ func pageI18nData(b *i18n.Bundle, loc i18n.Locale) map[string]any {
 		"dir":      loc.Dir,
 		"locales":  b.Locales(),
 		"catalogs": urls,
-		"messages": b.Messages(loc.Tag, "js.", "common."),
+		"messages": b.Messages(loc.Tag, scriptMessagePrefixes...),
 	}
 }
 

@@ -18,7 +18,7 @@ Gone's source code is free software under the GNU Affero General Public License 
 
 ## If you fork Gone
 
-Give your fork its own name and replace the wordmark and logo, including in `web/partials.tmpl.html` and any page titles. Removing the branding does **not** mean removing the notices: keep the copyright and license notices, and meet every other term of the AGPLv3.
+Give your fork its own name and replace the wordmark and logo. The name appears in `web/partials.tmpl.html` and in the message catalogs `web/messages/*.json` (page titles and text, in every language); the logo is in `web/img/` (the favicon set and `gone-g-*.svg`) and `docs/brand/`. Removing the branding does **not** mean removing the notices: keep the copyright and license notices, and meet every other term of the AGPLv3.
 
 ## Questions
 

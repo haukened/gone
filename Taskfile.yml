@@ -115,6 +115,21 @@ tasks:
     cmds:
       - node --test --experimental-test-coverage --test-coverage-include='web/js/**' 'test/js/*.test.js'
 
+  e2e:
+    desc: Run the browser end-to-end tests (Playwright; first run task e2e-install)
+    deps: [prod]
+    dir: test/e2e
+    cmds:
+      - npm ci --no-audit --no-fund
+      - npx playwright test {{.CLI_ARGS}}
+
+  e2e-install:
+    desc: Install the browsers the end-to-end tests use (Chromium, Firefox, WebKit)
+    dir: test/e2e
+    cmds:
+      - npm ci --no-audit --no-fund
+      - npx playwright install --with-deps chromium firefox webkit
+
   lint:
     desc: Run Go linters via golangci-lint, matching CI
     cmds:
@@ -126,5 +141,5 @@ tasks:
     env:
       ESLINT_USE_FLAT_CONFIG: 'false'
     cmds:
-      - npx --yes eslint@9.39.5 --max-warnings 0 web/js test/js test/interop
+      - npx --yes eslint@9.39.5 --max-warnings 0 web/js test/js test/interop test/e2e
       - npx --yes stylelint@17.15.0 'web/css/*.css'

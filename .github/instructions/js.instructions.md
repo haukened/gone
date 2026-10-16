@@ -6,11 +6,11 @@ applyTo: '**/*.js'
 Purpose: Keep frontend code small, secure, maintainable, dependency‑light, and friendly to static analysis.
 Target Runtime: Evergreen modern browsers (Chromium, Firefox, Safari) – ES2020+ features allowed when natively supported without polyfills.
 ECMAScript Baseline: ES2022 (`.eslintrc.json` `ecmaVersion`). Later features may be used only when the ESLint ruleset and all target browsers support them without polyfills. Always `use strict` in non-module files. Forbid `eval`, `new Function`, and dynamic imports from untrusted sources.
-Files: `web/js/` holds small single-responsibility scripts (no bundler). Each is an IIFE that exposes at most one `window.gone*` namespace; load order is set by the `<script>` tags in `web/*.tmpl.html` (e.g. `util.js` → `fileMeta.js` → `crypto.js` → `envelope.js` → flow modules → `submit.js` / `consume.js`). When a file outgrows the complexity budget, split it into parts that load first and keep the original namespace as a facade that re-exports them (e.g. `consumeApi.js` over `consumeApi*.js`), so consumers do not change; shared helpers such as `goneUtil.showView` replace copied code.
-Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`). Every new or changed module needs tests; keep coverage at 100% lines.
+Files: `web/js/` holds small single-responsibility scripts (no bundler). Each is an IIFE that exposes at most one `window.gone*` namespace; load order is set by the `<script>` tags in `web/*.tmpl.html`: a module's dependencies load before it. The i18n parts (`i18nPattern.js` … `i18nLocale.js` → `i18n.js`) load in `<head>` from `partials.tmpl.html`; each page then loads the crypto parts (`cryptoEncoding.js` → `cryptoCore.js` → `cryptoCipher.js` → `cryptoV2*.js` → `crypto.js`, plus `cryptoV3.js` on request and reply pages) → `util.js` → `fileMeta.js` → `envelopeHeader.js` → `envelope.js` → flow modules → the page entry point (`submit.js`, `consume.js`, `manage.js`, `request.js`, `requestDetail.js`). When a file outgrows the complexity budget, split it into parts that load first and keep the original namespace as a facade that re-exports them (e.g. `consumeApi.js` over `consumeApi*.js`), so consumers do not change; shared helpers such as `goneUtil.showView` replace copied code.
+Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`). Every new or changed module needs tests; keep coverage at 100% lines. The unit tests load scripts through `test/js/harness.js`, not the templates, so a new or reordered `<script>` tag is covered by the browser end-to-end tests in `test/e2e/` (Playwright; run `task e2e`), which load every page under the real CSP.
 
 ## Core Principles
-1. Security First: Never send plaintext secrets or keys to the server; key only lives in the URL fragment. Avoid logging sensitive data. Keep crypto primitives minimal (AES‑256‑GCM via WebCrypto only).
+1. Security First: Never send plaintext secrets or keys to the server; key only lives in the URL fragment. Avoid logging sensitive data. Keep crypto primitives minimal and on WebCrypto only: AES‑256‑GCM, PBKDF2‑SHA‑256 and HKDF‑SHA‑256 (v2 passphrases), ECDH P‑256 (v3 requests).
 2. Minimalism: No bundler or build-time module system. Split into a new file only when it materially reduces complexity or groups a single responsibility.
 3. Stability: Avoid experimental APIs unless widely shipped. No external JS dependencies unless a critical security or standards need.
 4. Deterministic Refactors: Any complexity or size reduction should preserve observable behavior and timing logging semantics.
@@ -18,7 +18,7 @@ Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`
 
 ## Avoid XSS Risks
 - Never manipulate the DOM with untrusted input via `innerHTML` or similar. Prefer `textContent` or explicit element creation.
-- Do not use `innerHTML`, `outerHTML` or `insertAdjacentHTML`, even for static markup. Build icons with `window.goneIcons.make()` (DOM-built SVG) and set mixed content with `goneUtil.setContent()`.
+- Do not use `innerHTML`, `outerHTML` or `insertAdjacentHTML`, even for static markup. Build icons with `window.goneIcons.make()` (DOM-built SVG). Rich text (a message with links or emphasis) goes through `goneI18n.set` with `{#slot}…{/slot}` slots that reuse the template's elements; plain text through `goneUtil.setText` or `textContent`. `goneUtil` exports `logTiming`, `sleep`, `allPresent`, `cryptoAvailable`, `setText`, `el`, `flashCopied`, `copyText` and `showView`.
 
 ## Language & Syntax
 - Use `const` by default; use `let` only when reassignment is required. NEVER use `var`.
@@ -43,9 +43,15 @@ Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`
 - Prefer explicit loops over regex for performance‑sensitive or security‑sensitive transforms (base64 padding trim).
 
 ## Cryptography Handling
-- AES‑GCM with 12‑byte nonce and 32‑byte key. AAD is `gone:v1` for v1; for v2 (passphrase) it is `gone:v2` plus the 21‑byte KDF header, and the key comes from HKDF over the link key and PBKDF2 of the passphrase (`cryptoV2*.js`, `docs/protocol.md` §4.2).
+- AES‑GCM with 12‑byte nonce and 32‑byte key in every version (`docs/protocol.md` §4):
+  - v1: a random key; AAD `gone:v1`.
+  - v2 (passphrase): the key comes from HKDF‑SHA‑256 over the link key and PBKDF2‑SHA‑256 of the passphrase; AAD is `gone:v2` plus the 21‑byte KDF header (`cryptoV2*.js`, §4.2).
+  - v3 (request replies): ECDH P‑256 between the requester's key and a fresh ephemeral key, then HKDF‑SHA‑256; AAD is `gone:v3` plus the ephemeral public key (`cryptoV3.js`, §4.3).
 - Fresh nonce per encryption. Never reuse.
-- Key exported as unpadded base64url into fragment `#v<version>:<key>`; never transmitted to server.
+- Link fragments, never transmitted to the server (all unpadded base64url):
+  - share link: `/secret/{id}#v1:<key>` or `#v2:<key>`;
+  - reply link: `/reply/{id}#v3:<public key>.<fill token>`;
+  - manage link: `/manage/{id}#<manage token>` (no version).
 - Enforce key length on import; throw early on mismatch.
 - Verify version header before decrypt.
 
@@ -63,7 +69,7 @@ Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`
 - Never log plaintext secret or key material.
 
 ## Network Calls
-- Explicit headers: `X-Gone-Version`, `X-Gone-Nonce`, `X-Gone-TTL` on create; `X-Gone-Claim` on claim retry and acknowledge; `X-Gone-Manage` on status and revoke. Tokens only ever go in headers, never in URLs or bodies.
+- Explicit headers: `X-Gone-Version`, `X-Gone-Nonce`, `X-Gone-TTL` on create; `X-Gone-Claim` on claim retry and acknowledge; `X-Gone-Manage` on status and revoke. Requests (`/api/request`, `/api/request/{id}` and its `/reply`, `/status` and `/revoke`) also use `X-Gone-Fill` to check and send a reply, and `X-Gone-Manage` for the requester's status, claim and cancel. Tokens only ever go in headers, never in URLs or bodies.
 - Treat non‑2xx as failure; re‑enable UI with a slight delay for UX clarity.
 - Ciphertext body is raw bytes; no JSON wrapping.
 
@@ -91,12 +97,12 @@ Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`
 ## Migration Path (Optional Future)
 - Phase 1: Split by responsibility into IIFE scripts (done; see `web/js/`). Move to ES modules if the script graph grows further.
 - Phase 2: Add JSDoc typedefs for encrypted payload structure.
-- Phase 3: Consider TypeScript if surface grows substantially (>3 modules or complex state machine).
+- TypeScript, a bundler and front-end frameworks are not planned: they need a build-time JS toolchain, which is a non-goal. See [Technical decisions](../../docs/decisions.md#web-client).
 
 ## Anti‑Patterns to Avoid
 - Reintroducing `var`.
 - Global mutable state for timing or counters (prefer local logs).
-- Storing secrets in `localStorage`, `sessionStorage`, or query params.
+- Storing secrets in `localStorage`, `sessionStorage`, or query params. The one deliberate exception is IndexedDB for secret requests (`requestStore*.js`): the requester's private key (a non-extractable WebCrypto key) and manage token are kept there so the request survives closing the browser.
 - Silent catch blocks without user feedback.
 - Large HTML template strings with dynamic insertions.
 

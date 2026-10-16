@@ -28,6 +28,16 @@ updates:
       gosec:
         patterns: ["*"]
 
+  # Playwright for the browser end-to-end tests. Test-only: nothing in
+  # test/e2e is built into Gone.
+  - package-ecosystem: "npm"
+    directory: "/test/e2e"
+    schedule:
+      interval: "weekly"
+    groups:
+      e2e:
+        patterns: ["*"]
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

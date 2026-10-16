@@ -61,10 +61,22 @@
       return { key: node.getAttribute('data-i18n'), args: ctx.readArgs(node), text: node.textContent };
     }
 
+    // restore puts back what snapshot saw. A key this page hasn't loaded (a
+    // server-rendered label outside js.* and common.) gets its text back as
+    // it was, still marked with the key, so a language change, which loads
+    // the whole catalog, re-renders it.
     function restore(node, snap) {
       if (!node || !snap) return;
-      if (snap.key) set(node, snap.key, snap.args);
-      else plain(node, snap.text);
+      if (!snap.key) plain(node, snap.text);
+      else if (ctx.has(snap.key)) set(node, snap.key, snap.args);
+      else keep(node, snap);
+    }
+
+    // keep shows snap's text on node under snap's key and args.
+    function keep(node, snap) {
+      node.textContent = snap.text;
+      node.setAttribute('data-i18n', snap.key);
+      setArgs(node, snap.args);
     }
 
     // clear empties node and forgets any message key.

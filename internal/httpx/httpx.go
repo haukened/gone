@@ -1,7 +1,10 @@
 // Package httpx contains the HTTP delivery layer (net/http handlers) for the Gone service.
 // It maps HTTP requests to the application service while enforcing validation, size
 // limits, security headers, streaming semantics, and error translation.
-// Handlers are split across files (create.go, consume.go, health.go, errors.go).
+// Handlers are split across files by route: secrets (create.go, consume.go,
+// manage.go), secret requests (request*.go), pages (index.go, secret.go,
+// about.go, render.go), health probes (health.go), and shared error mapping,
+// middleware and rate limiting (errors.go, middleware.go, ratelimit.go).
 package httpx
 
 import (

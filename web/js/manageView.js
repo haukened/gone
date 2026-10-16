@@ -68,7 +68,7 @@
 
   // showChecking resets the first-load view to its busy state.
   function showChecking() {
-    i18n.set(dom.checkHeading, 'manage.checkTitle');
+    i18n.set(dom.checkHeading, 'js.manage.checkTitle');
     i18n.set(dom.checkStatus, 'js.common.checking');
     show(dom.checkError, false);
     show(dom.retry, false);

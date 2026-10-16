@@ -24,23 +24,24 @@ Gone is a minimal Go service for one-time secret sharing. Its goal is to provide
 ## Project Structure
 The project follows a minimal Go layout to keep code organized and maintainable:
 
-- `cmd/goned/`: The server entry point (`goned`): wiring, storage setup, templates, readiness.
+- `cmd/goned/`: The server entry point (`goned`): wiring, storage setup, templates, readiness, and the `goned healthcheck` subcommand that the image's Docker `HEALTHCHECK` runs (the distroless image has no shell or curl).
 - `cmd/gone/`: The command-line client entry point (`gone`).
-- `internal/app/`: The secret service: create, claim, acknowledge, status, revoke.
+- `internal/app/`: The secret service: create, claim, acknowledge, status, revoke; and secret requests: create, check, reply (fill), status, claim, acknowledge, cancel.
 - `internal/domain/`: Protocol constants and validation shared by server and client (versions, nonces, TTLs, IDs).
 - `internal/envelope/`: Go implementation of the encryption format, GONE2 envelope, and link fragments (see `docs/protocol.md`).
-- `internal/store/`: Secret storage: SQLite index (`store/sqlite`, with migrations) and filesystem blobs (`store/filesystem`).
+- `internal/store/`: Storage for secrets and secret requests: SQLite index (`store/sqlite`, with migrations) and filesystem blobs (`store/filesystem`).
 - `internal/httpx/`: HTTP handlers, middleware, and security headers.
 - `internal/ratelimit/`: Per-client token-bucket rate limiting.
 - `internal/janitor/`: Background deletion of expired secrets and lapsed claims.
 - `internal/metrics/`: In-memory counters, persisted to SQLite and served on the optional token-protected metrics listener: Prometheus text at `/metrics`, a JSON snapshot at `/`. The Prometheus format is written by hand (no `client_golang`).
 - `internal/i18n/`: Web page translations: loads `web/messages/*.json`, picks a request's language (the `gone_lang` cookie, then `Accept-Language`), renders messages with placeholders, plurals and rich-text slots, and serves catalogs at `/i18n/<tag>.json`. `web/js/i18n*.js` render the same messages in the browser and switch language in place.
 - `internal/config/`: Environment variable parsing and validation.
-- `internal/cli/`, `internal/client/`, `internal/passgen/`: CLI commands, its HTTP API client, and the passphrase wordlist generator.
+- `internal/cli/`, `internal/client/`, `internal/passgen/`: CLI commands, its HTTP API client, and the passphrase wordlist generator. `internal/cli/reqdb/` keeps the CLI's open requests (`requests.gob` under a lock, written atomically).
+- `internal/buildinfo/`: The release version a binary reports (`-ldflags` stamp, else the module build info).
 - `internal/sqlrows/`: Small SQL row helpers.
 - `web/`: Templates, CSS (`web/css/`), and vanilla JS (`web/js/`) for the web interface.
-- `test/`: Go integration tests; `test/js/` JS unit tests; `test/interop/` browser-crypto/CLI interop; `test/vectors/` shared test vectors.
-- `docs/`: API (`README.md`, `openapi.yaml`), protocol, CLI guide, and roadmap.
+- `test/`: Go integration tests; `test/js/` JS unit tests; `test/interop/` browser-crypto/CLI interop; `test/vectors/` shared test vectors; `test/e2e/` browser end-to-end tests (Playwright, its own `package.json`; nothing there ships).
+- `docs/`: `README.md` (index), `api.md` and `openapi.yaml` (HTTP API), `protocol.md`, `cli.md`, `configuration.md`, `metrics.md`, `security.md`, `development.md`, `deploy/` (`docker.md`, `compose.md`, `reverse-proxy.md`), `ROADMAP.md`, `rejected.md` (rejected features), `decisions.md` (technical decisions), plus `brand/` and `img/`.
 - `scripts/`: Release tooling (`release.sh`).
 
 ## Testing Requirements
@@ -52,6 +53,7 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - Use table-driven tests where appropriate.
 - Integration tests should be placed in the `test/` directory.
 - Run tests with `go test ./...` and ensure all tests pass before finalizing changes.
+- Changes to templates, `<script>` tags or page JS: also run `task e2e` (browser end-to-end tests in Chromium, Firefox and WebKit; `task e2e-install` once first).
 
 ## Coding Style
 - Write idiomatic Go code following standard Go conventions.
@@ -79,13 +81,14 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 ## Build & Run
 - Build the server with: `go build ./cmd/goned`, run with `./goned`
 - Build the CLI with: `go build ./cmd/gone`
-- `task dev`, `task prod`, and `task run` wrap the common builds (see the README task table).
-- Configuration is environment variables only. The full list with defaults and limits is the configuration table in `README.md` §3. Main ones: `GONE_ADDR`, `GONE_DATA_DIR` (the SQLite database `gone.db` and blobs live here), `GONE_MAX_BYTES`, `GONE_TTL_OPTIONS` (min/max TTL are derived from it), `GONE_CLAIM_LEASE`, `GONE_RATE_*`, `GONE_TRUSTED_PROXIES`, and the metrics pair `GONE_METRICS_ADDR` / `GONE_METRICS_TOKEN`. The CLI reads `GONE_SERVER`.
+- `task dev`, `task prod`, and `task run` wrap the common builds (see the task table in `docs/development.md`).
+- Configuration is environment variables only. The full list with defaults and limits is `docs/configuration.md`. Main ones: `GONE_ADDR`, `GONE_DATA_DIR` (the SQLite database `gone.db` and blobs live here), `GONE_MAX_BYTES`, `GONE_TTL_OPTIONS` (min/max TTL are derived from it), `GONE_CLAIM_LEASE`, `GONE_RATE_*`, `GONE_TRUSTED_PROXIES`, and the metrics pair `GONE_METRICS_ADDR` / `GONE_METRICS_TOKEN`. The CLI reads `GONE_SERVER`.
 
 ## Testing
 - Use Go's standard `testing` package
 - Run tests with: `task test` (Go and JS) or `go test ./...`
 - Integration tests located in `test/` directory
+- Browser end-to-end tests: `task e2e` (`test/e2e`, against the prod build; CI's `e2e` job)
 - Protocol changes must update `test/vectors/`; both Go and JS suites check them.
 
 ## Linting & Formatting
@@ -99,7 +102,7 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - Use multi-stage Docker builds for minimal image size
 - Base images are Docker Hardened Images (`dhi.io/golang` builder, distroless `dhi.io/static` runtime), pinned by digest
 - Mount persistent storage at `/data` (the image's `VOLUME` and the `GONE_DATA_DIR` default)
-- Expose health endpoints at `/healthz` and `/readyz`
+- Expose health endpoints at `/healthz` and `/readyz`; the image's `HEALTHCHECK` runs `goned healthcheck`, which probes `/readyz`
 
 ## Code Ownership & Contribution
 - Trunk-based development model
@@ -115,15 +118,18 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 ## Observability
 - Structured logs with `log/slog` (default text handler, key=value pairs)
 - Do not log request bodies, client addresses, keys, or tokens
-- Metrics (see the README metrics table): counters for created, consumed, revoked, expired/deleted by the janitor, lapsed claims, rate-limited requests, and the secret-request lifecycle; a janitor deletions-per-cycle summary; and, on `/metrics` only, live storage gauges, `gone_build_info`, and Go runtime metrics. Counters are prefixed `gone_` on `/metrics`. Metrics never include IDs, tokens, client addresses, or ciphertext
+- Metrics (see `docs/metrics.md`): counters for created, consumed, revoked, expired/deleted by the janitor, lapsed claims, rate-limited requests, and the secret-request lifecycle; a janitor deletions-per-cycle summary; and, on `/metrics` only, live storage gauges, `gone_build_info`, and Go runtime metrics. Counters are prefixed `gone_` on `/metrics`. Metrics never include IDs, tokens, client addresses, or ciphertext
 
 ## Domain Logic
-- HTTP API endpoints (full reference: `docs/README.md` and `docs/openapi.yaml`):
+- HTTP API endpoints (full reference: `docs/api.md` and `docs/openapi.yaml`):
   - `POST /api/secret` creates a secret and returns its ID, expiry, and manage token
   - `GET /api/secret/{id}` claims a secret (returns ciphertext and a claim token); repeating it with `X-Gone-Claim` re-fetches during the lease
   - `DELETE /api/secret/{id}` with `X-Gone-Claim` acknowledges receipt and deletes it
   - `GET /api/secret/{id}/status` and `POST /api/secret/{id}/revoke` with `X-Gone-Manage` serve the sender
-- The `secrets` table (`internal/store/sqlite/migrate.go`) has `id`, `version`, `nonce_b64u`, `inline` (ciphertext when small) or `external` (blob flag), `size`, `created_at`, `expires_at`, and, added by migrations, `claim_hash`, `claimed_until`, and `manage_hash`. Only hashes of claim and manage tokens are stored.
+  - Secret requests (protocol v3): `POST /api/request` opens one (returns ID, expiry, manage token and fill token); `GET /api/request/{id}` and `PUT /api/request/{id}/reply` with `X-Gone-Fill` check and send the one reply; `GET /api/request/{id}/status`, `GET`/`DELETE /api/request/{id}/reply` and `POST /api/request/{id}/revoke` serve the requester (`X-Gone-Manage`, then `X-Gone-Claim` to acknowledge)
+  - `GET /i18n/{tag}.json` serves a language's message catalog; `/healthz` and `/readyz` are the health probes
+- Pages: `/` (send), `/about`, `/secret/{id}`, `/manage/{id}`, `/request` and `/request/{id}` (the requester's), `/reply/{id}`; unknown paths get an HTML 404 page (JSON under `/api/`).
+- The `secrets` table (`internal/store/sqlite/migrate.go`) has `id`, `version`, `nonce_b64u`, `inline` (ciphertext when small) or `external` (blob flag), `size`, `created_at`, `expires_at`, and, added by migrations, `claim_hash`, `claimed_until`, `manage_hash`, and `reply` (migration 3: a request's reply, claimable only through the request routes). Migration 3 also adds the `requests` table (`id`, `fill_hash`, `manage_hash`, `ttl_seconds`, `created_at`, `expires_at`) for open requests; a filled request becomes a `reply` row in `secrets`. Only hashes of claim, manage and fill tokens are stored.
 - Schema changes go through the `PRAGMA user_version` migration runner, one step per version.
 
 ## Style & Structure

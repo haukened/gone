@@ -8,7 +8,7 @@ Thanks for helping. Gone is small on purpose, and its security depends on that, 
 - **Security problems:** do **not** open a public issue. Report them privately as described in [SECURITY.md](SECURITY.md).
 - **Questions and ideas:** an issue is fine. Search the [existing issues](https://github.com/haukened/gone/issues?q=is%3Aissue) first; they're public and searchable.
 
-We aim to acknowledge new issues within 14 days. Not every request will be accepted. The [non-goals in the roadmap](docs/ROADMAP.md#non-goals) (accounts, push notifications, secrets that open more than once, front-end frameworks, WebAssembly) are deliberate.
+We aim to acknowledge new issues within 14 days. Not every request will be accepted. The [non-goals in the roadmap](docs/ROADMAP.md#non-goals) (accounts, push notifications, secrets that open more than once, front-end frameworks, WebAssembly) are deliberate. Before requesting a feature, check [rejected features](docs/rejected.md): it lists what we've decided against, why, and what would make us look again.
 
 ## How a change gets in
 
@@ -16,7 +16,7 @@ We aim to acknowledge new issues within 14 days. Not every request will be accep
 2. **Fork and branch.** Work on a branch in your fork, named for the change (for example `fix/claim-timeout`).
 3. **Commit with signed commits.** `main` only accepts signed commits ([GitHub's guide](https://docs.github.com/authentication/managing-commit-signature-verification/signing-commits)). Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): `fix(cli): ...`, `feat: ...`, `docs: ...`, `ci: ...`, `test: ...`.
 4. **Open a pull request** against `main` and fill in the template. Keep each PR to one change.
-5. **Pass the checks.** Every PR runs lint, tests with the race detector, CodeQL, Codacy (static analysis and coverage), and the latency check. All required checks must pass, and the branch must be up to date with `main`.
+5. **Pass the checks.** Every PR runs lint, tests with the race detector, the browser end-to-end tests, CodeQL, Codacy (static analysis and coverage), and the latency check. All required checks must pass, and the branch must be up to date with `main`.
 6. **Merge.** A maintainer merges with a merge commit.
 
 ## Requirements for acceptable contributions
@@ -35,6 +35,7 @@ The full style rules are in [.github/instructions/default.instructions.md](.gith
 **New functionality needs tests in the same PR.** That's our test policy, and reviewers will ask for them.
 - Go unit tests go next to the code (`foo.go` → `foo_test.go`, same package), table-driven where it fits. Integration tests go in `test/`.
 - JavaScript tests go in `test/js/` and use `node:test` with no dependencies.
+- A change to a page, a template's `<script>` tags or a user flow should keep the browser end-to-end tests in `test/e2e/` passing (`task e2e`), and extend them for a new flow. They are the only tests that load the real templates under the real CSP.
 - Go and JS line coverage are kept at or near 100%; don't lower it.
 - Changes to the encryption format must update the shared vectors in `test/vectors/`, which both the Go and JS suites check.
 - Bug fixes should include a test that fails without the fix.
@@ -46,13 +47,24 @@ go fmt ./...
 task test        # Go and JavaScript tests
 task lint        # golangci-lint
 task lint-web    # ESLint and stylelint
+task e2e         # browser end-to-end tests (run task e2e-install once first)
 ```
+
+[docs/development.md](docs/development.md) explains every task and test suite.
 
 ### Text in the web pages
 Never write user-visible text straight into a template or script. Add a message to [web/messages/en.json](web/messages/en.json) and to every other catalog, then use its key: `{{ t "key" }}` with a matching `data-i18n="key"` in templates, and `goneI18n.set(node, 'js.key', args)` in scripts. The tests fail on a key that is missing or unused, or on a catalog whose placeholders differ from English. See [Translations](#translations).
 
 ### Documentation
-Update the docs in the same PR when behavior changes: the message catalogs (any wording), the README (configuration, metrics), [docs/README.md](docs/README.md) and [docs/openapi.yaml](docs/openapi.yaml) (HTTP API), [docs/protocol.md](docs/protocol.md) (wire format), and [docs/cli.md](docs/cli.md) (CLI).
+Update the docs in the same PR when behavior changes:
+- the message catalogs, for any wording;
+- [docs/configuration.md](docs/configuration.md) for settings, and [docs/metrics.md](docs/metrics.md) for metrics;
+- [docs/api.md](docs/api.md) and [docs/openapi.yaml](docs/openapi.yaml) for the HTTP API;
+- [docs/protocol.md](docs/protocol.md) for the wire format, and [docs/security.md](docs/security.md) when the security model or threat model changes;
+- [docs/cli.md](docs/cli.md) for the CLI;
+- [docs/deploy/](docs/deploy/) for deployment.
+
+A feature we decide against goes in [docs/rejected.md](docs/rejected.md), and a technical alternative we turn down goes in [docs/decisions.md](docs/decisions.md), each with its reason and what would make us revisit it. [docs/README.md](docs/README.md) is the index of all of them.
 
 ## Translations
 

@@ -2,14 +2,12 @@
 
 ## Supported Versions
 
-Security fixes go into the latest release only.
+Only the latest release is supported. Security fixes go into a new release, not into older ones, so update to the [latest release](https://github.com/haukened/gone/releases/latest) before reporting.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 3.0.x   | :white_check_mark: |
-| 2.x     | :x:                |
-| 1.x     | :x:                |
-| 0.x     | :x:                |
+| Version            | Supported          |
+| ------------------ | ------------------ |
+| Latest release     | :white_check_mark: |
+| Any older release  | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -29,4 +27,4 @@ Please include:
 
 ## Scope
 
-Gone's security model is described in the README's [security and architecture section](README.md#8-security--architecture-deep-dive). In short: the server must never be able to read a secret, and a link must open a secret at most once. Problems with the default container image, the web client, the `gone` CLI, and the protocol in [docs/protocol.md](docs/protocol.md) are all in scope.
+Gone's security model is described in [docs/security.md](docs/security.md). In short: the server must never be able to read a secret, a link must open a secret at most once, and a request's reply must open only in the browser (or `gone` CLI) that made the request. Problems with the default container image, the web client, the `gone` CLI, secret requests, the token-protected metrics listener, and the protocol in [docs/protocol.md](docs/protocol.md) are all in scope.

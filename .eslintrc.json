@@ -29,7 +29,7 @@
   },
   "overrides": [
     {
-      "files": ["test/js/**/*.js", "test/interop/**/*.js"],
+      "files": ["test/js/**/*.js", "test/interop/**/*.js", "test/e2e/**/*.js"],
       "env": { "browser": false, "node": true },
       "globals": { "window": "readonly" },
       "rules": {

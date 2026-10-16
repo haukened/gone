@@ -16,6 +16,8 @@ Gone v3 adds abuse protection, a second factor for secrets, sender control, a co
 * Front-end frameworks or a build-time JS toolchain. The UI stays vanilla JS under a strict CSP.
 * Running WebAssembly in the browser. Encryption stays on WebCrypto (see [Phase 2](#phase-2-protocol-spec-and-go-envelope)).
 
+Features we have decided against are in [rejected.md](rejected.md); technical alternatives we turned down are in [decisions.md](decisions.md). Each lists the reason and what would make us look again.
+
 ## Guiding principles
 * **One phase, one pull request.** Each phase is reviewable, passes Codacy on its own, and leaves `main` releasable.
 * **Zero knowledge stays intact.** No phase may give the server a key, a passphrase, or plaintext.
@@ -93,7 +95,7 @@ No user-visible change. This phase writes down the encryption format and adds a 
 
 **Done when**
 * Go and JS both pass every shared test case.
-* `docs/protocol.md` is linked from the README and `docs/README.md`.
+* `docs/protocol.md` is linked from the README and the API guide (now `docs/api.md`).
 
 ---
 
@@ -111,7 +113,7 @@ A full redesign that keeps today's constraints: vanilla JS, no `innerHTML`, stri
   * *Receive:* reveal, a slot for the passphrase prompt, and the error states (expired, already opened, wrong passphrase).
 * **Accessibility:** target WCAG 2.2 AA. That means full keyboard operation, visible focus, correct labels and live regions, `prefers-reduced-motion` support, and sufficient contrast in both themes.
 * **Responsive layout** that works from small phones to wide desktops.
-* **Browser smoke tests:** a Playwright check of the send→receive round trip in CI. *Not done:* the round trip is covered by JS unit tests and the Node interop tests in `test/interop` instead.
+* **Browser smoke tests:** a Playwright check of the send→receive round trip in CI. *Done later* (#81): `test/e2e` runs every flow in Chromium, Firefox and WebKit against the production build and its real CSP (`task e2e`).
 
 **Done when**
 * Every existing flow works with the same or fewer steps.
@@ -146,7 +148,7 @@ The sender can check whether a secret is still waiting and delete it before it i
 
 **Done when**
 * Store, service, and handler tests cover each state change, including a revoke that races with a claim.
-* `docs/openapi.yaml`, `docs/protocol.md`, and `docs/README.md` are updated, and rate limits apply to the new endpoints.
+* `docs/openapi.yaml`, `docs/protocol.md`, and the API guide (now `docs/api.md`) are updated, and rate limits apply to the new endpoints.
 
 ---
 
@@ -186,7 +188,7 @@ A single static binary, `gone`, that sends and receives secrets and talks to the
 * **Script-friendly output.** `--json` on every command, with errors as JSON on standard error. Exit codes are fixed per outcome: usage 2, not found 3, wrong passphrase 4, rate limited 5, integrity 6, network or server 7, local I/O 8.
 * **Safe saving.** Attachments are created with `O_EXCL` and mode `0600` inside an `os.Root`, so they never overwrite a file or escape the output directory. A collision becomes `name (1).ext`. Names get the protocol's sanitization plus a Windows-aware save policy. On a terminal, control and bidi characters in messages and printed names are escaped (`--raw` opts out).
 * **Secret hygiene.** Messages and passphrases never come from arguments. Keys, passphrases, and plaintext buffers are wiped where Go allows it.
-* **Tests.** Unit tests for `internal/cli`, `internal/client`, and `internal/passgen`. Integration tests in `test/` run the real CLI against an in-process server. Interop tests run the browser's crypto modules in Node (`test/interop/interop.js`) to exchange v1 and v2 secrets with the CLI in both directions; CI requires Node for them (`GONE_REQUIRE_NODE=1`).
+* **Tests.** Unit tests for `internal/cli`, `internal/client`, and `internal/passgen`. Integration tests in `test/` run the real CLI against an in-process server. Interop tests run the browser's crypto modules in Node (`test/interop/interop.js`) to exchange v1 and v2 secrets (and, since v3.7.0, v3 request replies) with the CLI in both directions; CI requires Node for them (`GONE_REQUIRE_NODE=1`).
 * **Releases.** On a `v*` tag, the build workflow runs the tests, cross-builds `gone` for linux, darwin, and windows on amd64 and arm64 and `goned` for linux (`scripts/release.sh`, also `task release`), attests build provenance with `actions/attest`, and publishes the archives, `SHA256SUMS`, and install notes to the GitHub release. The container image is still published by the release workflow.
 
 **Decisions** (formerly open questions)
@@ -212,9 +214,23 @@ A single static binary, `gone`, that sends and receives secrets and talks to the
 ## After v3.0.0
 Work after the six phases. Each item is still one PR, under the same guiding principles.
 
-* **Agent-friendly CLI** (done). `send --message-file`, `get --message-out` and `-` for links on standard input let scripts and AI agents move secrets by reference, so the plaintext stays out of their output and context. Error output never contains plaintext, keys, tokens, passphrases or secret IDs, and a test enforces it. Decisions: no `--mode` (the file is always `0600`, like attachments), still no `--force`, and no separate non-interactive mode (file flags already avoid every prompt).
-* **Request a secret** (planned). Someone asks for a secret, a person fills in a web page, and it lands in a file. This needs its own protocol and server design.
-* **`gone mcp`** (planned). A stdio MCP server as a thin layer over the agent-friendly CLI.
+| Release | Change |
+| ------- | ------ |
+| v3.2.0 | Ordered write gate: SQLite contention answers `503 busy` instead of `500` (#44). `go-playground/validator` dropped (#43). |
+| v3.3.0 | Moonstone redesign and the G brand mark (#45, #46). |
+| v3.4.0 | `goned healthcheck` and a Docker `HEALTHCHECK` (#49). The opened secret stays covered until **Show**, for screen sharing (#48). |
+| v3.5.0 | HTTPS required: sending and opening are turned off on insecure pages, and the CLI refuses `http://` except to localhost (#52). |
+| v3.6.0 | **Request a secret** (protocol v3) in the web UI (#60). **Agent-friendly CLI:** `send --message-file`, `get --message-out` and `-` for links on standard input, so scripts and AI agents move secrets by reference. Error output never contains plaintext, keys, tokens, passphrases or secret IDs, and a test enforces it (#59). |
+| v3.7.0 | Requests in the CLI: `gone request`, `request list/open/cancel` and `gone reply` (#61). |
+| v3.8.0 | Opt-in QR code for the share link (#63). |
+| v3.9.0 | Prometheus `/metrics` on the token-protected metrics listener (#64). |
+| v3.10.0 | Translations (English, Spanish, French, German, Brazilian Portuguese) with a live language picker (#66). |
+| v3.10.2 | Every source file split back to a Codacy A grade; no behavior change (#74). |
+| next | Browser end-to-end tests in CI (#81). Documentation split into topic pages under `docs/`. |
+
+Decided against since v3.0.0:
+* **`gone mcp`**, a stdio MCP server over the CLI. Coding assistants have a shell and already use the agent-friendly CLI. Listed in [rejected.md](rejected.md).
+* **Argon2id**, reconfirmed on 2026-10-16. It still needs WebAssembly in the browser; see [Phase 5's decisions](#phase-5-optional-passphrase) and [decisions.md](decisions.md#encryption).
 
 ## Tracking
 | Phase | Status |
@@ -225,3 +241,6 @@ Work after the six phases. Each item is still one PR, under the same guiding pri
 | 4. Sender status + revoke | Done |
 | 5. Optional passphrase | Done |
 | 6. CLI | Done |
+| Request a secret | Done (v3.6.0 web, v3.7.0 CLI) |
+| Browser end-to-end tests | Done (#81) |
+| `gone mcp` | Rejected |
