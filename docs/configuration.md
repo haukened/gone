@@ -20,6 +20,12 @@ The server, `goned`, is configured only through environment variables. There are
 | `GONE_TRUSTED_PROXIES` | Comma list of proxy IPs or CIDRs whose `X-Forwarded-For` header is trusted. Prefixes broader than `/8` (IPv4) or `/32` (IPv6), and IPv4-mapped IPv6 addresses, are rejected. See [Behind a reverse proxy](deploy/reverse-proxy.md). | (empty) |
 | `GONE_METRICS_ADDR` | Address for the separate metrics listener, in the same form as `GONE_ADDR`. Use a loopback address such as `127.0.0.1:9090`; see [Metrics](metrics.md). | (empty) |
 | `GONE_METRICS_TOKEN` | Bearer token for the metrics listener, at least 16 characters recommended. A shorter token still works and logs a warning at startup, but a future release will refuse it. Generate one with `openssl rand -base64 24`. Metrics stay off unless both this and `GONE_METRICS_ADDR` are set. See [Metrics](metrics.md). | (empty) |
+| `GONE_BRAND_NAME` | Your instance's name, shown in the header in place of the Gone wordmark. Up to 40 characters; commas are fine. See [Branding](#branding). | (empty) |
+| `GONE_BRAND_LOGO` | Path to your logo, an SVG or PNG file of at most 256 KiB, shown in the header before the name. Read once at startup. | (empty) |
+| `GONE_BRAND_ACCENT` | Your accent colour for the light and dark themes, as `#rrggbb/#rrggbb`. Each must have at least 4.5:1 contrast on its theme's background. | (empty) |
+| `GONE_CONTACT_URL` | Footer link to your contact page: an `https://` URL or a `mailto:` address. | (empty) |
+| `GONE_IMPRINT_URL` | Footer link to your imprint (legal notice) page, `https://` only. | (empty) |
+| `GONE_PRIVACY_URL` | Footer link to your privacy policy, `https://` only. | (empty) |
 
 ### Expiry format
 
@@ -37,6 +43,16 @@ Two settings let an operator narrow what people may send. Clients read them from
 | `GONE_MAX_FILES=N` | The web page and the CLI | The web page offers N files, or hides file attachments at `0`; the CLI refuses more `--file` flags than that. The server can't check it, because the file count is encrypted, so a custom client can ignore it. Bound what a secret may carry with `GONE_MAX_BYTES`, which the server enforces. |
 
 Replies to [requests](api.md#request-workflow) never need a passphrase. A reply link carries no decryption key, only the requester's public key, so a leaked reply link can't open a reply; see [decisions.md](decisions.md#server) for the full reasoning. Replies do follow `GONE_MAX_FILES`.
+
+### Branding
+
+The six branding settings put your name, logo and accent colour on an unmodified copy of Gone and link your contact, imprint and privacy pages from the footer. Each is optional and works alone; unbranded instances look exactly as before. [Branding your instance](branding.md) shows each setting with screenshots of the result.
+
+In short:
+- **Header:** the logo and name replace the Gone wordmark. Footer links alone don't change it.
+- **Accent:** your two colours replace Gone's violet in heading highlights, focus rings and progress bars. Each must reach 4.5:1 contrast on its theme's background, or the server won't start.
+- **Footer:** your links come first. The version line reads "Powered by Gone", and it, the copyright notice and the project links **can't be removed**.
+- **Everything else stays Gone:** page titles, the favicon, the About page and the page text.
 
 ### Derived settings
 

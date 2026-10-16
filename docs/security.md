@@ -100,6 +100,8 @@ A request runs the other way. See [protocol.md §4.3](protocol.md#43-protocol-ve
 
 **Operator policies** ([configuration.md](configuration.md#policies)): `GONE_REQUIRE_PASSPHRASE` is enforced by the server, which refuses any secret without a passphrase. It can't check the passphrase's strength, only that one was used. Replies to requests are exempt: a reply link holds no key that can open a reply, so the leaked-link risk a passphrase guards against doesn't apply ([why](decisions.md#server)). `GONE_MAX_FILES` is not a security control: the file count is inside the ciphertext, so only the web page and the CLI honour it, and a custom client can ignore it. `GONE_MAX_BYTES` is the limit the server enforces.
 
+**Operator branding** ([branding.md](branding.md)): the logo is read once at startup, checked to be a PNG or an SVG, and served from memory at `/brand/logo`. An SVG gets its own policy, `default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox`, so it can't run scripts or load anything even when opened directly; the pages show it with `<img>`, where SVG scripts never run. The accent arrives as a same-origin stylesheet, so the page CSP is unchanged. The operator's files and links are trusted like the rest of the configuration: footer links must be `https://` (or `mailto:` for contact), and the name is escaped like any other text.
+
 **QR codes** are offered only for share links, never for request or reply links. A QR code hides the address it opens, so it's easy to swap for a phishing link. That matters most for a link that asks someone to type a secret into it.
 
 **Operating tips**

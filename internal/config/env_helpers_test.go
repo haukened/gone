@@ -24,6 +24,12 @@ func cleanEnvVars(t *testing.T) map[string]string {
 		"GONE_TRUSTED_PROXIES",
 		"GONE_REQUIRE_PASSPHRASE",
 		"GONE_MAX_FILES",
+		"GONE_BRAND_NAME",
+		"GONE_BRAND_LOGO",
+		"GONE_BRAND_ACCENT",
+		"GONE_CONTACT_URL",
+		"GONE_IMPRINT_URL",
+		"GONE_PRIVACY_URL",
 	}
 	for _, v := range vars {
 		if val := os.Getenv(v); val != "" {

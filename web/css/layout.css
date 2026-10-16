@@ -52,6 +52,41 @@
   mask: url("../img/gone-g-32.svg") center / contain no-repeat;
 }
 
+/* An operator's logo and name in place of the wordmark (GONE_BRAND_*). Both
+   scale with the wordmark's font size, and a long name is cut short. */
+.brand-operator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  min-width: 0;
+  letter-spacing: -0.02em;
+}
+
+.brand-logo {
+  display: block;
+  flex: none;
+  width: auto;
+  height: 1.1em;
+  max-width: 6em;
+  object-fit: contain;
+}
+
+.brand-name {
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* An operator's logo or name can be any width, so the links center in the
+   space between it and the tools instead of on the page, and never overlap. */
+.site .wrap:has(.brand-operator) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.site .wrap:has(.brand-operator) .nav {
+  justify-self: center;
+}
+
 .nav {
   display: flex;
   gap: var(--space-1);
@@ -418,6 +453,20 @@
     font-size: 1.6rem;
   }
 
+  .brand-name {
+    max-width: 7em;
+  }
+
+  /* An operator's logo stands alone on narrow screens; the link's label
+     keeps the name for screen readers. */
+  .brand-logo {
+    max-width: 4em;
+  }
+
+  .brand-logo + .brand-name {
+    display: none;
+  }
+
 
   .pane {
     border-radius: 20px;
@@ -449,6 +498,10 @@
 
   .brand {
     font-size: 1.45rem;
+  }
+
+  .brand-name {
+    max-width: 5em;
   }
 }
 

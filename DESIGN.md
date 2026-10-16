@@ -121,7 +121,7 @@ Mode is **Operate** for send, receive, manage, request (the new-request form, th
 - Frosted panes (36px backdrop blur, 130% saturation) with a bright top edge and a deep, soft shadow.
 - A backdrop of three low-saturation light fields (lilac, peach, aqua) plus fine film grain. It drifts slowly on wide screens only.
 - One dark (light mode) or moonlight (dark mode) primary button per view. Everything else is glass.
-- One accent, moonstone violet, rationed to the accent word in headings, focus, progress, and the current lifecycle step.
+- One accent, moonstone violet, rationed to the accent word in headings, focus, progress, and the current lifecycle step. An operator may replace it with their own light and dark colours (`GONE_BRAND_ACCENT`); the server refuses either below 4.5:1 contrast on its theme's background.
 - Geist for the interface, Geist Mono for anything a person might retype: messages, links, passphrases.
 
 ## Colors

@@ -39,7 +39,7 @@ func validPages() fstest.MapFS {
 // TestLoadTemplatesFrom_Success verifies each page is parsed and assigned.
 func TestLoadTemplatesFrom_Success(t *testing.T) {
 	b := testBundle(t)
-	tmpls, err := loadTemplatesFrom(validPages(), "v0.0.0-test", b)
+	tmpls, err := loadTemplatesFrom(validPages(), "v0.0.0-test", b, nil)
 	if err != nil {
 		t.Fatalf("loadTemplatesFrom: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestLoadTemplatesFrom_PageErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fsys := validPages()
 			tt.mutate(fsys)
-			_, err := loadTemplatesFrom(fsys, "v0.0.0-test", testBundle(t))
+			_, err := loadTemplatesFrom(fsys, "v0.0.0-test", testBundle(t), nil)
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("err = %v, want containing %q", err, tt.want)
 			}

@@ -16,6 +16,10 @@
 //         proxy's address, and the proxy appends the real peer).
 //   policy: a server with an operator policy for policy.spec.js: every
 //         secret needs a passphrase, and files are turned off.
+//   brand: a branded server for brand.spec.js: a name, logo and accent,
+//         and contact, imprint and privacy links.
+
+const path = require('node:path');
 
 const plain = Boolean(process.env.GONE_E2E_PLAIN);
 const port = Number(process.env.GONE_E2E_PORT || 8199);
@@ -32,6 +36,18 @@ const servers = {
     port: port + 2,
     rate: { create: '10/m', read: '30/m', burst: 1000 },
     env: { GONE_REQUIRE_PASSPHRASE: 'true', GONE_MAX_FILES: '0' },
+  },
+  brand: {
+    port: port + 3,
+    rate: { create: '10/m', read: '30/m', burst: 1000 },
+    env: {
+      GONE_BRAND_NAME: 'Acme, Inc. Secrets',
+      GONE_BRAND_LOGO: path.join(__dirname, 'brand-logo.svg'),
+      GONE_BRAND_ACCENT: '#1d4ed8/#93c5fd',
+      GONE_CONTACT_URL: 'mailto:it@example.com',
+      GONE_IMPRINT_URL: 'https://example.com/imprint',
+      GONE_PRIVACY_URL: 'https://example.com/privacy',
+    },
   },
 };
 
