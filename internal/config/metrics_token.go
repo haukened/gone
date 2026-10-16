@@ -8,7 +8,7 @@ const minMetricsTokenLen = 16
 
 // metricsTokenWarning is logged once at startup for a short metrics token. It
 // never includes the token.
-const metricsTokenWarning = "GONE_METRICS_TOKEN is shorter than 16 characters; a future release will refuse it; generate one with: openssl rand -base64 24"
+const metricsTokenWarning = "GONE_METRICS_TOKEN is shorter than 16 characters; a future release will refuse it; generate one with: openssl rand -base64 24" // #nosec G101 -- a log message naming the variable, not a credential
 
 // warnings returns the non-fatal findings for cfg. An empty token (metrics
 // off) is not a finding.
