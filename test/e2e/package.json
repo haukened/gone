@@ -2,7 +2,7 @@
   "name": "gone-e2e",
   "private": true,
   "description": "Browser end-to-end tests for Gone. Test-only: nothing here is built into or shipped with Gone.",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "test": "playwright test"
   },
