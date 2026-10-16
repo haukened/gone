@@ -1,0 +1,7 @@
+# OSV-Scanner reads this file for the package-lock.json beside it: the
+# ESLint/stylelint dev tooling only, which is never shipped.
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2027-01-16
+reason = "braces <=3.0.3 (CVE-2026-93687): stack exhaustion on deeply nested brace patterns, with no fixed release yet. It comes in through stylelint -> micromatch, and only the glob patterns we pass on the command line ('web/css/*.css') reach it. CI-only lint tooling, not shipped. Recheck when braces publishes a fix."

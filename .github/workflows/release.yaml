@@ -1,29 +1,84 @@
 name: Release
 
+# The production auto-updater pulls :latest, so an image is published only
+# for a strict semver tag (vMAJOR.MINOR.PATCH[-PRERELEASE]) on a commit that
+# is already on main, and only after the tests pass. The tag filter below
+# narrows the trigger; scripts/check-release-ref.sh is the actual check.
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
 
 permissions:
   contents: read
 
+# Never run two publishes of the same tag at once, and never cancel one halfway.
+concurrency:
+  group: release-image-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   IMAGE_NAME: ghcr.io/haukened/gone
+  GO_VERSION: '1.27.2'
+  NODE_VERSION: '24'
 
 jobs:
-  publish:
+  # Guard and tests, with a read-only token and no secrets.
+  test:
+    name: Check tag and test
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # Push the image (and its attestation) to GHCR.
-      packages: write
-      # Sign and store the image's build provenance attestation.
-      id-token: write
-      attestations: write
-      artifact-metadata: write
+    steps:
+      # Full history, so the guard can check the tagged commit is on main.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check release tag
+        run: scripts/check-release-ref.sh
+
+      # No Go cache: a release must not restore a cache another ref wrote.
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      # Node is required: the CLI/browser interop tests run the real web
+      # crypto through a Node bridge and must not silently skip.
+      - name: Run tests
+        env:
+          GONE_REQUIRE_NODE: '1'
+        run: go test -race ./...
+
+  publish:
+    name: Build and publish image
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read  # check out the repository
+      packages: write  # push the image and its attestation to GHCR
+      id-token: write  # OIDC identity that signs the provenance (Sigstore)
+      attestations: write  # store the attestation
+      artifact-metadata: write  # record the attested image
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Checked again here: this job holds the publishing permissions.
+      - name: Check release tag
+        run: scripts/check-release-ref.sh
 
       # No QEMU needed: the builder cross-compiles (CGO off) and the runtime stage has no RUN steps.
       - name: Set up Buildx
@@ -71,8 +126,10 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
           tags: ${{ steps.tags.outputs.list }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # No GitHub Actions layer cache: a tag run can read main's cache
+          # entries, which any job on main can write, so a release builds
+          # every layer from the pinned base images.
+          no-cache: true
 
       # GitHub-signed SLSA provenance for the pushed digest, so deployers can
       # check the image came from this workflow before running it:

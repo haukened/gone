@@ -16,7 +16,7 @@ The server, `goned`, is configured only through environment variables. There are
 | `GONE_RATE_READ` | Per-client budget for everything else on the API: opening and confirming secrets, status and delete calls, and checking, claiming or cancelling requests. `0` turns it off. | `30/m` |
 | `GONE_RATE_BURST` | Requests a client may make back to back before the rate applies (1–1000). | `10` |
 | `GONE_TRUSTED_PROXIES` | Comma list of proxy IPs or CIDRs whose `X-Forwarded-For` header is trusted. Prefixes broader than `/8` (IPv4) or `/32` (IPv6), and IPv4-mapped IPv6 addresses, are rejected. See [Behind a reverse proxy](deploy/reverse-proxy.md). | (empty) |
-| `GONE_METRICS_ADDR` | Address for the separate metrics listener, in the same form as `GONE_ADDR`. | (empty) |
+| `GONE_METRICS_ADDR` | Address for the separate metrics listener, in the same form as `GONE_ADDR`. Use a loopback address such as `127.0.0.1:9090`; see [Metrics](metrics.md). | (empty) |
 | `GONE_METRICS_TOKEN` | Bearer token for the metrics listener. Metrics stay off unless both this and `GONE_METRICS_ADDR` are set. See [Metrics](metrics.md). | (empty) |
 
 ### Expiry format

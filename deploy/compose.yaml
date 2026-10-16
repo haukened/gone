@@ -15,9 +15,9 @@ services:
     image: ghcr.io/haukened/gone:latest
     restart: unless-stopped
     environment:
-      # Caddy is the only other container on this network. Trusting it lets
-      # Gone rate-limit each visitor instead of treating everyone as Caddy.
-      GONE_TRUSTED_PROXIES: 172.31.255.0/28
+      # Trust only Caddy, at its fixed address below, so Gone rate-limits each
+      # visitor instead of treating everyone as Caddy.
+      GONE_TRUSTED_PROXIES: 172.31.255.2/32
     volumes:
       - gone-data:/data
     networks:
@@ -28,7 +28,8 @@ services:
       - no-new-privileges:true
 
   caddy:
-    image: caddy:2
+    # Pinned by tag and digest; Dependabot bumps both together.
+    image: caddy:2.11.7@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af
     restart: unless-stopped
     depends_on:
       gone:
@@ -44,14 +45,23 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     networks:
-      - gone
+      gone:
+        # Fixed so GONE_TRUSTED_PROXIES can name exactly this container.
+        ipv4_address: 172.31.255.2
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt:
+      - no-new-privileges:true
 
 networks:
   gone:
     ipam:
       config:
         # Change this if it collides with an existing network; keep
-        # GONE_TRUSTED_PROXIES above in step.
+        # GONE_TRUSTED_PROXIES and Caddy's ipv4_address in step.
         - subnet: 172.31.255.0/28
 
 volumes:

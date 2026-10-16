@@ -47,15 +47,17 @@ Kubernetes and other orchestrators can probe the endpoints directly:
 
 ## Metrics
 
-Metrics are off by default. To turn them on, publish a second port and set both variables:
+Metrics are off by default. To turn them on, publish a second port on the host's loopback address and set both variables:
 
 ```sh
 docker run --rm \
-  -p 8080:8080 -p 127.0.0.1:9090:9090 \
+  -p 127.0.0.1:8080:8080 -p 127.0.0.1:9090:9090 \
   -e GONE_METRICS_ADDR=0.0.0.0:9090 \
   -e GONE_METRICS_TOKEN=change-me \
   ghcr.io/haukened/gone:latest
 ```
+
+`GONE_METRICS_ADDR=0.0.0.0:9090` is the address *inside* the container, which Docker needs in order to forward the published port. The `127.0.0.1:` in `-p` is what keeps it off the network. Without Docker, bind `GONE_METRICS_ADDR=127.0.0.1:9090` directly.
 
 See [Metrics](../metrics.md) for the Prometheus setup and the list of metrics.
 

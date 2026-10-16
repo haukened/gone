@@ -11,14 +11,18 @@ permissions:
 
 env:
   GO_VERSION: '1.27.2'
+  GOVULNCHECK_VERSION: v1.9.0
+  OSV_SCANNER_VERSION: v2.7.0
 
 jobs:
   security:
+    name: Static and dependency scans
     runs-on: ubuntu-latest
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
 
     - name: Set up Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -32,15 +36,50 @@ jobs:
     - name: Run Gosec Security Scanner
       run: go tool -modfile=tools/gosec/go.mod gosec ./...
 
-  # Fuzz each target for a short time. Regular `go test` only replays the
-  # seed corpus; this explores new inputs. A crash fails the job, and the
-  # failing input is uploaded so it can be added to testdata/fuzz.
+    - name: Install govulncheck and OSV-Scanner
+      run: |
+        go install golang.org/x/vuln/cmd/govulncheck@"$GOVULNCHECK_VERSION"
+        go install github.com/google/osv-scanner/v2/cmd/osv-scanner@"$OSV_SCANNER_VERSION"
+
+    # Source mode (also on every PR, in build.yaml) reports vulnerable code
+    # the module calls. Binary mode checks what is actually linked into the
+    # shipped binaries, including the standard library they were built with.
+    # goned is built without -tags=prod: that tag only embeds web/dist, so
+    # the linked Go code is the same.
+    - name: Run govulncheck
+      run: |
+        "$(go env GOPATH)/bin/govulncheck" ./...
+        mkdir -p "$RUNNER_TEMP/bin"
+        for cmd in goned gone; do
+          CGO_ENABLED=0 go build -trimpath -o "$RUNNER_TEMP/bin/$cmd" "./cmd/$cmd"
+          "$(go env GOPATH)/bin/govulncheck" -mode=binary "$RUNNER_TEMP/bin/$cmd"
+        done
+
+    # Every lockfile and go.mod in the repo: the server, test/e2e,
+    # tools/lint and the gosec tool module. OSV-Scanner reads the
+    # osv-scanner.toml beside each manifest (tools/gosec, tools/lint), so an
+    # ignore there covers that tool's manifest only and cannot hide the same
+    # advisory in the server's go.mod. Passing --config would apply one file
+    # to every manifest instead.
+    - name: Run OSV-Scanner
+      run: '"$(go env GOPATH)/bin/osv-scanner" scan source -r .'
+
+  # Fuzz each target for 90 s. Regular `go test` only replays the seed
+  # corpus; this explores new inputs. Targets are found by name, so a new
+  # func Fuzz* in any _test.go file under internal/ is picked up with no
+  # change here. A crash fails the job, and the failing input is uploaded so
+  # it can be added to testdata/fuzz.
   fuzz:
+    name: Fuzz
     runs-on: ubuntu-latest
+    # About 90 s per target plus build time.
+    timeout-minutes: 60
 
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
 
     - name: Set up Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -50,14 +89,18 @@ jobs:
     - name: Fuzz
       run: |
         set -euo pipefail
-        grep -rlE '^func Fuzz' --include='*_test.go' internal | sort -u | while read -r file; do
+        count=0
+        while read -r file; do
           pkg="./$(dirname "$file")"
           for target in $(grep -oE '^func Fuzz[A-Za-z0-9_]+' "$file" | cut -d' ' -f2); do
             echo "::group::$pkg $target"
-            go test "$pkg" -run '^$' -fuzz "^${target}\$" -fuzztime 30s
+            go test "$pkg" -run '^$' -fuzz "^${target}\$" -fuzztime 90s
             echo "::endgroup::"
+            count=$((count + 1))
           done
-        done
+        done < <(grep -rlE '^func Fuzz' --include='*_test.go' internal | sort -u)
+        echo "Fuzzed $count targets."
+        test "$count" -gt 0
 
     - name: Upload failing inputs
       if: failure()

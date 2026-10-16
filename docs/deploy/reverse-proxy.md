@@ -40,6 +40,38 @@ server {
 
 Run Gone with `GONE_ADDR=127.0.0.1:8080` and `GONE_TRUSTED_PROXIES=127.0.0.1`.
 
+## Example: Cloudflare Tunnel
+
+With `cloudflared` in front of Gone, the tunnel container is the proxy. `GONE_TRUSTED_PROXIES` must name its address; otherwise Gone sees every request as coming from the tunnel, and all visitors share a single rate-limit bucket (the tunnel's `/32`). The whole site then gets one client's budget (10 creates per minute by default).
+
+Give the tunnel a fixed address, as the [Caddy setup](compose.md) does, and trust only that:
+
+```yaml
+services:
+  gone:
+    image: ghcr.io/haukened/gone:latest
+    environment:
+      GONE_TRUSTED_PROXIES: 172.31.255.2/32
+    networks: [gone]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest   # pin a tag and digest
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN}
+    networks:
+      gone:
+        ipv4_address: 172.31.255.2
+
+networks:
+  gone:
+    ipam:
+      config:
+        - subnet: 172.31.255.0/28
+```
+
+Point the tunnel's public hostname at `http://gone:8080`. Cloudflare sets the client address in `X-Forwarded-For`, which Gone reads only because the request arrives from the trusted tunnel address. Don't publish Gone's port on the host.
+
 ## Things to check
 
 - **Body size:** the proxy must allow uploads of at least `GONE_MAX_BYTES` (10 MiB by default) plus a little overhead.

@@ -1,0 +1,10 @@
+{
+  "name": "gone-lint-tools",
+  "private": true,
+  "description": "Pins ESLint and stylelint for build.yaml's verify job and `task lint-web`. Install with npm ci --prefix tools/lint.",
+  "license": "AGPL-3.0",
+  "devDependencies": {
+    "eslint": "9.39.5",
+    "stylelint": "17.15.0"
+  }
+}
