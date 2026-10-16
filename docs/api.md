@@ -25,11 +25,11 @@ The HTTP API of the Gone one-time secret sharing service. The machine-readable O
 | GET | `/api/request/{id}/reply` | Requester: claim the reply (`X-Gone-Manage`, plus `X-Gone-Claim` on a retry) |
 | DELETE | `/api/request/{id}/reply` | Requester: acknowledge the reply; permanently deletes it (`X-Gone-Claim`) |
 | POST | `/api/request/{id}/revoke` | Requester: cancel the request, or delete an unopened reply (`X-Gone-Manage`) |
-| GET | `/healthz` | Liveness check (`200`, text `ok`) |
+| GET | `/healthz` | Liveness check (`200`, text `ok`). GET and HEAD only. |
 | GET | `/i18n/{tag}.json` | The web pages' message catalog for one language (`en`, `es`, `fr`, `de`, `pt-BR`), used to switch language in place. With the current `?v=` hash it may be cached for a year. |
-| GET | `/readyz` | Readiness check: the database answers a ping and the blob directory is readable (`200`, text `ready`; otherwise `503` with JSON `{"error":"not ready"}`) |
+| GET | `/readyz` | Readiness check: the database answers a ping and the blob directory is readable (`200`, text `ready`; otherwise `503` with JSON `{"error":"not ready"}`). GET and HEAD only. The result is cached for 2 seconds, and the blob directory check opens the directory and reads at most one entry. |
 
-Other methods on `/api/secret/{id}` return `405` with `Allow: GET, DELETE`. The same applies to `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`), to `/api/request` (`Allow: POST`), `/api/request/{id}` and its `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`), and to `/api/request/{id}/reply` (`Allow: GET, PUT, DELETE`). Unknown `/api/` paths return a JSON `404`.
+Other methods on `/api/secret/{id}` return `405` with `Allow: GET, DELETE`. The same applies to `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`), to `/api/request` (`Allow: POST`), `/api/request/{id}` and its `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`), and to `/api/request/{id}/reply` (`Allow: GET, PUT, DELETE`). `/api/secret` answers `405` with `Allow: POST`, and `/healthz` and `/readyz` answer anything but GET and HEAD with `405` and `Allow: GET, HEAD`. Unknown `/api/` paths return a JSON `404`. A trailing slash is never part of a route: `/api/secret/{id}/` and `/api/request/{id}/reply/` are `404`, not aliases. Page routes without an ID (`/secret/`, `/manage/`, `/reply/`, `/request/`) return the HTML 404 page.
 
 Pages are rendered in the language chosen by the `gone_lang` cookie, else the best match for `Accept-Language`, else English. Page responses carry `Content-Language` and `Vary: Cookie, Accept-Language`. The API itself is not translated: error bodies are always English, and the pages map status codes to their own messages.
 
@@ -95,7 +95,7 @@ All errors are JSON `{ "error": "<message>" }`.
 | --------- | ------ | ------------ |
 | `X-Correlation-ID` present but not a UUID (any route) | 400 | `invalid correlation id` |
 | Invalid ID format | 400 | `invalid id` |
-| Malformed claim token (DELETE without/with bad `X-Gone-Claim`, or bad token on GET retry) | 400 | `invalid claim` |
+| Malformed or repeated claim token (DELETE without/with bad `X-Gone-Claim`, or bad token on GET retry; the header must appear at most once) | 400 | `invalid claim` |
 | Missing, repeated, or malformed `X-Gone-Manage` on status/revoke | 400 | `invalid manage token` |
 | Missing, repeated, or malformed `X-Gone-Fill` on a request check or reply | 400 | `invalid fill token` |
 | Missing, empty, or repeated `X-Gone-Version` / `X-Gone-Nonce` / `X-Gone-TTL` | 400 | `missing required headers` |
@@ -104,6 +104,7 @@ All errors are JSON `{ "error": "<message>" }`.
 | Unparseable TTL | 400 | `invalid ttl` |
 | TTL outside `[MinTTL, MaxTTL]` | 400 | `ttl invalid` |
 | Unparseable `Content-Length` | 400 | `invalid content length` |
+| Body ends before `Content-Length` bytes arrived (create or reply) | 400 | `short body` |
 | Any other malformed create request | 400 | `bad request` |
 | Not found / expired / claimed by someone else / wrong token / lease lapsed / opened or revoked (status, revoke) | 404 | `not found` |
 | Method not allowed | 405 | `method not allowed` |
@@ -113,8 +114,12 @@ All errors are JSON `{ "error": "<message>" }`.
 | Internal failure | 500 | `internal` |
 | Storage overloaded: no write turn within 5s (sets `Retry-After`; nothing changed, safe to retry) | 503 | `busy` |
 
+If the client disconnects or times out while the server is working, the request is recorded as `499` and logged at debug level only; no client sees it, and it is never an error-level log line.
+
+Secret replies are a different resource from secrets: `DELETE /api/secret/{id}`, `/status` and `/revoke` return `404` for a request's reply, so a claim or manage token from the request side can only be used on `/api/request/{id}/...`.
+
 ## Rate Limiting
-Each client address has two token buckets: one for creating secrets (`POST /api/secret`, `GONE_RATE_CREATE`) and one for reading them (`GET` and `DELETE /api/secret/{id}`, plus `/status` and `/revoke`, `GONE_RATE_READ`). Requests follow the same split: `POST /api/request` and `PUT /api/request/{id}/reply` (which uploads a body) use the create bucket, and every other `/api/request/` call uses the read bucket. Both buckets hold up to `GONE_RATE_BURST` tokens and refill steadily at the configured rate. Health probes, pages, and static assets are not limited.
+Each client address has two token buckets: one for creating secrets (`POST /api/secret`, `GONE_RATE_CREATE`) and one for reading them (`GET` and `DELETE /api/secret/{id}`, plus `/status` and `/revoke`, `GONE_RATE_READ`). Requests follow the same split: `POST /api/request` and `PUT /api/request/{id}/reply` (which uploads a body) use the create bucket, and every other `/api/request/` call uses the read bucket. Both buckets hold up to `GONE_RATE_BURST` tokens and refill steadily at the configured rate. Health probes, pages, and static assets are not limited. `/readyz` is cheap by construction (cached for 2 seconds, one directory read); a language header is parsed only up to its first 16 entries.
 
 - Over budget: `429` with `Retry-After: <seconds>` and `{ "error": "rate limited" }`. The request body is never read.
 - Clients are keyed by IPv4 `/32` or IPv6 `/64`.

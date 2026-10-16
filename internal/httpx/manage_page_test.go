@@ -27,7 +27,7 @@ func TestHandleManagePage(t *testing.T) {
 		wantBody string
 	}{
 		{"renders page", "/manage/" + manageID, pageTemplate{body: "manage-page"}, http.StatusOK, "manage-page"},
-		{"bare prefix", "/manage/", pageTemplate{body: "manage-page"}, http.StatusNotFound, "not found"},
+		{"bare prefix", "/manage/", pageTemplate{body: "manage-page"}, http.StatusNotFound, "Not Found"},
 		{"nil template", "/manage/" + manageID, nil, http.StatusServiceUnavailable, "manage template unavailable"},
 	}
 	for _, tc := range tests {

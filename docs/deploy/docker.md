@@ -43,7 +43,7 @@ The image has a Docker `HEALTHCHECK` that runs `goned healthcheck` every 30 seco
 
 Kubernetes and other orchestrators can probe the endpoints directly:
 - `/healthz` (`200 ok` while the process is up);
-- `/readyz` (`200 ready` when the database and blob directory are usable, else `503`).
+- `/readyz` (`200 ready` when the database and blob directory are usable, else `503`; the result is cached for 2 seconds).
 
 ## Metrics
 
@@ -53,11 +53,11 @@ Metrics are off by default. To turn them on, publish a second port on the host's
 docker run --rm \
   -p 127.0.0.1:8080:8080 -p 127.0.0.1:9090:9090 \
   -e GONE_METRICS_ADDR=0.0.0.0:9090 \
-  -e GONE_METRICS_TOKEN=change-me \
+  -e GONE_METRICS_TOKEN="$(openssl rand -base64 24)" \
   ghcr.io/haukened/gone:latest
 ```
 
-`GONE_METRICS_ADDR=0.0.0.0:9090` is the address *inside* the container, which Docker needs in order to forward the published port. The `127.0.0.1:` in `-p` is what keeps it off the network. Without Docker, bind `GONE_METRICS_ADDR=127.0.0.1:9090` directly.
+The token should be at least 16 characters (a future release will require it); `openssl rand -base64 24` makes a good one (keep it, since Prometheus needs the same value). `GONE_METRICS_ADDR=0.0.0.0:9090` is the address *inside* the container, which Docker needs in order to forward the published port. The `127.0.0.1:` in `-p` is what keeps it off the network. Without Docker, bind `GONE_METRICS_ADDR=127.0.0.1:9090` directly.
 
 See [Metrics](../metrics.md) for the Prometheus setup and the list of metrics.
 

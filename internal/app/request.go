@@ -157,7 +157,10 @@ func (s *Service) ClaimReply(ctx context.Context, idStr, manageStr, claimStr str
 // Returns nil on deletion, or domain.ErrInvalidID, domain.ErrInvalidClaim,
 // ErrNotFound, or a storage error.
 func (s *Service) AckReply(ctx context.Context, idStr, claimStr string) error {
-	return s.ack(ctx, idStr, claimStr, "requests_opened_total")
+	if s.Requests == nil {
+		return ErrRequestsDisabled
+	}
+	return s.ack(ctx, idStr, claimStr, "requests_opened_total", s.Requests.AckReply)
 }
 
 // CancelRequest deletes an open request or an unopened reply for the

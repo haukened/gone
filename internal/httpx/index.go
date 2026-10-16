@@ -73,7 +73,8 @@ func (h *Handler) indexView() IndexView {
 }
 
 // ttlOptionViews converts TTL options to template views sorted shortest
-// first, marking the longest option as the default selection.
+// first, marking the shortest option as the default selection: a one-time
+// secret should not outlive its need by default, and the sender can widen it.
 //
 // Parameters:
 //   - opts: the configured TTL options; the slice is not modified.
@@ -92,7 +93,7 @@ func ttlOptionViews(opts []domain.TTLOption) []TTLOptionView {
 		sec := int(opt.Duration.Seconds())
 		views = append(views, TTLOptionView{Label: opt.Label, DurationSeconds: sec})
 	}
-	views[len(views)-1].Default = true
+	views[0].Default = true
 	return views
 }
 

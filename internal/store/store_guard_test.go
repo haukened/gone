@@ -8,6 +8,7 @@ import (
 
 	"github.com/haukened/gone/v3/internal/app"
 	"github.com/haukened/gone/v3/internal/store"
+	"github.com/haukened/gone/v3/internal/store/sqlite"
 )
 
 func TestStoreNilReceiverClaim(t *testing.T) {
@@ -101,5 +102,29 @@ func TestStoreReconcileDeleteErrorIgnored(t *testing.T) {
 	s := store.New(storeMockIndex{}, &storeMockBlobStore{listIDs: []string{"orphan"}, deleteErr: errors.New("del fail")}, storeFixedClock{now: time.Now()}, 10)
 	if err := s.Reconcile(context.Background()); err != nil {
 		t.Fatalf("unexpected error despite delete failure: %v", err)
+	}
+}
+
+func TestStoreAckReplyGuards(t *testing.T) {
+	var nilStore *store.Store
+	if err := nilStore.AckReply(context.Background(), "x", "hash"); err == nil {
+		t.Fatalf("expected error on nil store AckReply")
+	}
+	// An index without request support cannot ack replies.
+	s := store.New(storeMockIndex{}, &storeMockBlobStore{}, storeFixedClock{now: time.Now()}, 10)
+	if err := s.AckReply(context.Background(), "x", "hash"); err == nil {
+		t.Fatalf("expected error without request support")
+	}
+}
+
+func TestStoreAckReplyNilBlobs(t *testing.T) {
+	f := storeNewFixture(t, time.Unix(1700000000, 0).UTC(), 4)
+	ix, err := sqlite.New(f.db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := store.New(ix, nil, storeFixedClock{now: time.Now()}, 10)
+	if err := s.AckReply(context.Background(), "x", "hash"); err == nil {
+		t.Fatalf("expected error with nil blob storage")
 	}
 }

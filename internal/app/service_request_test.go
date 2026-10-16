@@ -24,6 +24,8 @@ type fakeRequests struct {
 	ttl        time.Duration
 	meta       Meta
 	body       string
+	ackErr     error
+	acked      string
 }
 
 func (f *fakeRequests) CreateRequest(_ context.Context, _, fillHash, manageHash string, ttl time.Duration, expiresAt time.Time) error {
@@ -50,6 +52,11 @@ func (f *fakeRequests) RequestStatus(_ context.Context, _, manageHash string) (R
 func (f *fakeRequests) ClaimReply(_ context.Context, _, manageHash, claimHash string, retry bool, _ time.Time) (Claimed, error) {
 	f.manageHash, f.claimHash, f.retry = manageHash, claimHash, retry
 	return f.claimed, f.err
+}
+
+func (f *fakeRequests) AckReply(_ context.Context, _, claimHash string) error {
+	f.acked = claimHash
+	return f.ackErr
 }
 
 func (f *fakeRequests) CancelRequest(_ context.Context, _, manageHash string) error {
@@ -199,9 +206,16 @@ func TestClaimAndAckReply(t *testing.T) {
 	if err := s.AckReply(ctx, reqTestID, "bad"); !errors.Is(err, domain.ErrInvalidClaim) {
 		t.Fatalf("AckReply bad claim err = %v", err)
 	}
-	s.Store = &mockStore{ackErr: ErrNotFound}
+	if f.acked != res.Token.Hash() {
+		t.Fatalf("AckReply passed hash %q, want the claim token's", f.acked)
+	}
+	f.ackErr = ErrNotFound
 	if err := s.AckReply(ctx, reqTestID, res.Token.String()); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("AckReply store err = %v", err)
+	}
+	s.Requests = nil
+	if err := s.AckReply(ctx, reqTestID, res.Token.String()); !errors.Is(err, ErrRequestsDisabled) {
+		t.Fatalf("AckReply without requests err = %v", err)
 	}
 }
 

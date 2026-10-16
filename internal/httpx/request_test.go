@@ -281,9 +281,9 @@ func TestRequestPages(t *testing.T) {
 		{"request page", "/request", func(h *httpx.Handler) { h.RequestTmpl = pageTemplate{body: "req"} }, http.StatusOK, "req"},
 		{"request page unavailable", "/request", func(*httpx.Handler) {}, http.StatusServiceUnavailable, "request template unavailable"},
 		{"detail page", "/request/" + reqID, func(h *httpx.Handler) { h.RequestDetailTmpl = pageTemplate{body: "detail"} }, http.StatusOK, "detail"},
-		{"detail bare prefix", "/request/", func(h *httpx.Handler) { h.RequestDetailTmpl = pageTemplate{body: "detail"} }, http.StatusNotFound, "not found"},
+		{"detail bare prefix", "/request/", func(h *httpx.Handler) { h.RequestDetailTmpl = pageTemplate{body: "detail"} }, http.StatusNotFound, "Not Found"},
 		{"reply page", "/reply/" + reqID, func(h *httpx.Handler) { h.ReplyTmpl = pageTemplate{body: "reply"} }, http.StatusOK, "reply"},
-		{"reply bare prefix", "/reply/", func(h *httpx.Handler) { h.ReplyTmpl = pageTemplate{body: "reply"} }, http.StatusNotFound, "not found"},
+		{"reply bare prefix", "/reply/", func(h *httpx.Handler) { h.ReplyTmpl = pageTemplate{body: "reply"} }, http.StatusNotFound, "Not Found"},
 		{"reply unavailable", "/reply/" + reqID, func(*httpx.Handler) {}, http.StatusServiceUnavailable, "reply template unavailable"},
 	}
 	for _, tc := range tests {

@@ -76,7 +76,10 @@ A request runs the other way. See [protocol.md §4.3](protocol.md#43-protocol-ve
 - **A leaked link,** when the sender added a strong passphrase and the link leaks before the recipient opens it.
 - **Expiry:** secrets are deleted on time.
 - **Shoulder-surfing and screen sharing:** an opened message stays covered until the recipient presses **Show**, and it isn't in the page at all while covered.
-- **Metrics:** they live on a separate listener behind a bearer token, compared in constant time, and never include IDs or ciphertext.
+- **Metrics:** they live on a separate listener behind a bearer token (16 or more characters recommended; shorter ones warn now and will be refused in a future release), compared in constant time (as digests), and never include IDs or ciphertext.
+- **Logs:** client addresses, IDs, tokens and plaintext are never logged. This includes the web server's own messages (handler panics, TLS and accept errors), which are rewritten to drop any IP:port before they are logged at warn level.
+- **Cheap unauthenticated routes:** `/readyz` caches its result for 2 seconds and only opens the blob directory, and `Accept-Language` is parsed only up to 16 entries, so neither can be used to make the server do much work per request.
+- **Reply rows are not secrets:** a request's reply can only be claimed, acknowledged, inspected or cancelled through the request routes with the request's own tokens. The secret routes answer `404` for it.
 
 **Partially defended**
 - **ID guessing:** IDs are 128-bit random, and reads are rate limited per client.

@@ -66,6 +66,9 @@ type RequestStore interface {
 	RequestStatus(ctx context.Context, id, manageHash string) (RequestStatus, error)
 	// ClaimReply reserves a ready reply for the requester, as SecretStore.Claim.
 	ClaimReply(ctx context.Context, id, manageHash, claimHash string, retry bool, claimedUntil time.Time) (Claimed, error)
+	// AckReply permanently deletes a claimed reply once the requester confirms
+	// receipt, as SecretStore.Ack. Ordinary secrets are ErrNotFound here.
+	AckReply(ctx context.Context, id, claimHash string) error
 	// CancelRequest deletes an open request or an unopened reply.
 	CancelRequest(ctx context.Context, id, manageHash string) error
 }

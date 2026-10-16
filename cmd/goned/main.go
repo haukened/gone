@@ -73,6 +73,9 @@ func run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
+	for _, w := range cfg.Warnings {
+		slog.Warn(w)
+	}
 	dataDir, blobDir, err := ensureDataDir(cfg.DataDir)
 	if err != nil {
 		return err

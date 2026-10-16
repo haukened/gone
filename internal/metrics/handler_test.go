@@ -148,3 +148,29 @@ func muxRequest(h http.Handler, method, path, auth string) *httptest.ResponseRec
 	h.ServeHTTP(rw, req)
 	return rw
 }
+
+// TestAuthorizedTable covers the digest comparison: exact match only, and no
+// length-dependent early exit (a prefix, an extension, and a different length
+// are all rejected).
+func TestAuthorizedTable(t *testing.T) {
+	const token = "0123456789abcdef-token"
+	cases := []struct {
+		name, header, token string
+		want                bool
+	}{
+		{"match", "Bearer " + token, token, true},
+		{"empty token never matches", "Bearer x", "", false},
+		{"no prefix", token, token, false},
+		{"lowercase scheme", "bearer " + token, token, false},
+		{"empty credential", "Bearer ", token, false},
+		{"prefix of token", "Bearer " + token[:10], token, false},
+		{"token plus extra", "Bearer " + token + "x", token, false},
+		{"same length differs", "Bearer 0123456789abcdef-tokeX", token, false},
+		{"huge credential", "Bearer " + string(make([]byte, 1<<16)), token, false},
+	}
+	for _, tc := range cases {
+		if got := authorized(tc.header, tc.token); got != tc.want {
+			t.Errorf("%s: authorized = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

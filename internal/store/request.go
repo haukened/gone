@@ -165,6 +165,28 @@ func (s *Store) ClaimReply(ctx context.Context, id, manageHash, claimHash string
 	return buildClaimed(res, s.sweepDead(id, err))
 }
 
+// AckReply deletes a claimed reply after the requester confirms receipt, as
+// Ack does for a secret. An ordinary secret is app.ErrNotFound here.
+//
+// Parameters:
+//   - ctx: request context.
+//   - id: request identifier.
+//   - claimHash: hex SHA-256 of the claim token.
+//
+// Returns app.ErrNotFound if no matching claimed reply exists, or a storage
+// error.
+func (s *Store) AckReply(ctx context.Context, id, claimHash string) error {
+	ri, err := s.requests()
+	if err != nil {
+		return err
+	}
+	if s.blobs == nil {
+		return errors.New("store not properly initialized")
+	}
+	external, err := ri.AckReply(ctx, id, claimHash)
+	return s.dropBlob(id, external, err)
+}
+
 // CancelRequest deletes an open request or an unopened reply. A reply's blob
 // is removed best-effort; Reconcile sweeps any orphan.
 //

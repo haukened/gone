@@ -56,7 +56,7 @@ func TestRun_ServesUntilCanceled(t *testing.T) {
 		"GONE_ADDR":          addr,
 		"GONE_DATA_DIR":      filepath.Join(t.TempDir(), "data"),
 		"GONE_METRICS_ADDR":  metricsAddr,
-		"GONE_METRICS_TOKEN": "tok",
+		"GONE_METRICS_TOKEN": "0123456789abcdef-token",
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
@@ -64,9 +64,41 @@ func TestRun_ServesUntilCanceled(t *testing.T) {
 
 	waitFor(t, "http://"+addr+"/healthz", nil, http.StatusOK)
 	waitFor(t, "http://"+addr+"/readyz", nil, http.StatusOK)
-	waitFor(t, "http://"+metricsAddr+"/", http.Header{"Authorization": {"Bearer tok"}}, http.StatusOK)
+	waitFor(t, "http://"+metricsAddr+"/", http.Header{"Authorization": {"Bearer 0123456789abcdef-token"}}, http.StatusOK)
 	cancel()
 	if err := <-done; err != nil {
 		t.Fatalf("run after cancel: %v", err)
+	}
+}
+
+// TestRun_ShortMetricsTokenWarnsOnce checks a short token does not stop
+// startup: metrics serve with it, and one warning is logged. A token of 16 or
+// more characters logs none.
+func TestRun_ShortMetricsTokenWarnsOnce(t *testing.T) {
+	for _, tc := range []struct {
+		token string
+		warns int
+	}{{"short-tok", 1}, {"0123456789abcdef", 0}} {
+		t.Run(tc.token, func(t *testing.T) {
+			logs := captureLogs(t)
+			addr, metricsAddr := freeAddr(t), freeAddr(t)
+			setEnv(t, map[string]string{
+				"GONE_ADDR":          addr,
+				"GONE_DATA_DIR":      filepath.Join(t.TempDir(), "data"),
+				"GONE_METRICS_ADDR":  metricsAddr,
+				"GONE_METRICS_TOKEN": tc.token,
+			})
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan error, 1)
+			go func() { done <- run(ctx) }()
+			waitFor(t, "http://"+metricsAddr+"/", http.Header{"Authorization": {"Bearer " + tc.token}}, http.StatusOK)
+			cancel()
+			if err := <-done; err != nil {
+				t.Fatalf("run after cancel: %v", err)
+			}
+			if got := strings.Count(logs.String(), "GONE_METRICS_TOKEN is shorter than 16 characters"); got != tc.warns {
+				t.Fatalf("warning logged %d times, want %d: %s", got, tc.warns, logs.String())
+			}
+		})
 	}
 }

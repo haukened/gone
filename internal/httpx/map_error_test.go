@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,6 +30,8 @@ func TestMapServiceError(t *testing.T) {
 		{"invalid nonce", domain.ErrInvalidNonce, http.StatusBadRequest, "invalid nonce"},
 		{"os not exist", os.ErrNotExist, http.StatusNotFound, "not found"},
 		{"busy", fmt.Errorf("insert: %w", app.ErrBusy), http.StatusServiceUnavailable, "busy"},
+		{"short body", fmt.Errorf("save: %w", io.ErrUnexpectedEOF), http.StatusBadRequest, "short body"},
+		{"empty body", io.EOF, http.StatusBadRequest, "short body"},
 		{"internal default", errors.New("boom"), http.StatusInternalServerError, "internal"},
 	}
 	for _, tc := range cases {
@@ -70,4 +73,23 @@ func indexOf(haystack, needle string) int {
 		}
 	}
 	return -1
+}
+
+// TestMapServiceError_ContextEnded checks any error under an ended request
+// context maps to a bare 499, while a live context with a context error does
+// not (it is a server-side failure).
+func TestMapServiceError_ContextEnded(t *testing.T) {
+	h := &Handler{}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	rr := httptest.NewRecorder()
+	h.mapServiceError(ctx, rr, errors.New("read: connection reset"))
+	if rr.Code != statusClientClosed || rr.Body.Len() != 0 {
+		t.Fatalf("ended ctx: got %d %q", rr.Code, rr.Body.String())
+	}
+	rr = httptest.NewRecorder()
+	h.mapServiceError(context.Background(), rr, context.DeadlineExceeded)
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("live ctx with deadline error: got %d", rr.Code)
+	}
 }

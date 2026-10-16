@@ -89,7 +89,7 @@ func (i *Index) Revoke(ctx context.Context, id, manageHash string, now time.Time
 // Returns fn's error, app.ErrNotFound, or a DB error.
 func (i *Index) withManagedRow(ctx context.Context, id, manageHash string, now time.Time, fn func(conn *sql.Conn, row *manageRow) error) error {
 	return i.immediateTx(ctx, func(conn *sql.Conn) error {
-		row, err := loadManagedRow(ctx, conn, id, manageHash, now)
+		row, err := loadManagedRow(ctx, conn, id, manageHash, now, false)
 		if err != nil {
 			return err
 		}
@@ -107,10 +107,11 @@ func (i *Index) withManagedRow(ctx context.Context, id, manageHash string, now t
 //   - id: secret identifier.
 //   - manageHash: hex SHA-256 of the presented manage token.
 //   - now: current time used for expiry checks.
+//   - reply: whether the row must be a request reply (true) or a secret.
 //
-// Returns the live, authorized row, app.ErrNotFound, deadRowError, or a DB
-// error.
-func loadManagedRow(ctx context.Context, conn *sql.Conn, id, manageHash string, now time.Time) (*manageRow, error) {
+// Returns the live, authorized row, app.ErrNotFound (including a row of the
+// other kind), deadRowError, or a DB error.
+func loadManagedRow(ctx context.Context, conn *sql.Conn, id, manageHash string, now time.Time, reply bool) (*manageRow, error) {
 	row, err := selectManageRow(ctx, conn, id)
 	if err != nil {
 		return nil, err
@@ -121,7 +122,7 @@ func loadManagedRow(ctx context.Context, conn *sql.Conn, id, manageHash string, 
 		}
 		return nil, deadRowError{external: row.external}
 	}
-	if !hashMatches(row.manageHash, manageHash) {
+	if row.reply != reply || !hashMatches(row.manageHash, manageHash) {
 		return nil, app.ErrNotFound
 	}
 	return row, nil

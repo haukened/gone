@@ -25,7 +25,7 @@ task dev
 GONE_ADDR=127.0.0.1:8080 \
 GONE_DATA_DIR="$(pwd)/.tmp" \
 GONE_METRICS_ADDR=127.0.0.1:9090 \
-GONE_METRICS_TOKEN=localtok \
+GONE_METRICS_TOKEN=local-dev-token-0123 \
 ./bin/goned
 ```
 
@@ -46,6 +46,8 @@ Every variable is listed in [Configuration](configuration.md). The container ima
 ### What each suite covers
 
 - **Go unit tests** sit next to the code. **Integration tests** in `test/` run the real router and store in-process.
+- **Fuzz targets** in `internal/httpx` (`FuzzParseSecretHeaders`, `FuzzParseFillHeaders`, `FuzzConsumeRoute`) are seeded from `test/vectors/server_headers.json`. Plain `go test` runs the seeds; fuzz one with `go test ./internal/httpx -run '^$' -fuzz FuzzParseSecretHeaders -fuzztime 60s`.
+- **The OpenAPI drift test** (`test/openapi_drift_test.go`) reads `docs/openapi.yaml` and checks the real router against it: every documented operation is routed, the statuses it returns are documented, and the `Allow` and `Retry-After` headers are. Change the spec and the code together.
 - **Shared test vectors** in `test/vectors/` are checked by both the Go and JavaScript suites, so the two implementations of the encryption format can't drift apart by a byte.
 - **Interop tests** (`test/cli_interop_test.go`, `test/request_interop_test.go`) exchange secrets and requests between the CLI and the browser's crypto code, run in Node through `test/interop/interop.js`. They skip when `node` is missing, unless `GONE_REQUIRE_NODE=1` is set, as it is in CI.
 - **JavaScript unit tests** load each script through `test/js/harness.js` with a fake DOM.

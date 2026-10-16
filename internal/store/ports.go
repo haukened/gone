@@ -28,8 +28,10 @@ type Index interface {
 	// payloads, openExternal is called while the transaction is held; if
 	// opening fails, the claim is rolled back.
 	Claim(ctx context.Context, id, claimHash string, retry bool, now, claimedUntil time.Time, openExternal ExternalOpener) (*IndexResult, error)
-	// Ack deletes a claimed row when claimHash matches the stored claim and
-	// reports whether its payload was external. Returns app.ErrNotFound otherwise.
+	// Ack deletes a claimed secret row when claimHash matches the stored claim
+	// and reports whether its payload was external. Request replies are not
+	// secrets: Ack returns app.ErrNotFound for them. Returns app.ErrNotFound
+	// otherwise.
 	Ack(ctx context.Context, id, claimHash string) (external bool, err error)
 	// Status returns a live row's creation and expiry times when manageHash
 	// matches. Dead rows are deleted lazily, reported as ErrDeadExternal if
@@ -66,6 +68,9 @@ type RequestIndex interface {
 	// ClaimReply behaves like Index.Claim but only for a reply row whose
 	// manage hash matches.
 	ClaimReply(ctx context.Context, id, manageHash, claimHash string, retry bool, now, claimedUntil time.Time, openExternal ExternalOpener) (*IndexResult, error)
+	// AckReply is Ack for a reply row only: it returns app.ErrNotFound for an
+	// ordinary secret.
+	AckReply(ctx context.Context, id, claimHash string) (external bool, err error)
 	// CancelRequest deletes an open request or an unopened reply whose manage
 	// hash matches, and reports whether a reply payload was external. A dead
 	// reply is deleted lazily as in Index.Status.

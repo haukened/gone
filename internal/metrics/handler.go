@@ -2,9 +2,11 @@ package metrics
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 // SnapshotProvider abstracts Manager for testing.
@@ -82,17 +84,24 @@ func jsonHandler(provider SnapshotProvider) http.HandlerFunc {
 	}
 }
 
+// authorized reports whether header is "Bearer " followed by token. Both sides
+// are hashed before the constant-time comparison, so the comparison takes the
+// same time whatever the length of the presented value.
+//
+// Parameters:
+//   - header: the Authorization header value.
+//   - token: the expected bearer token; empty never matches.
+//
+// Returns:
+//   - bool: true only for an exact match.
 func authorized(header, token string) bool {
 	if token == "" {
 		return false
 	}
-	const prefix = "Bearer "
-	if len(header) <= len(prefix) || header[:len(prefix)] != prefix {
+	got, ok := strings.CutPrefix(header, "Bearer ")
+	if !ok || got == "" {
 		return false
 	}
-	got := header[len(prefix):]
-	if got == "" || len(got) != len(token) {
-		return false
-	}
-	return subtle.ConstantTimeCompare([]byte(got), []byte(token)) == 1
+	want, have := sha256.Sum256([]byte(token)), sha256.Sum256([]byte(got))
+	return subtle.ConstantTimeCompare(have[:], want[:]) == 1
 }

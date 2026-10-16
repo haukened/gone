@@ -1,12 +1,12 @@
 # Metrics
 
-Metrics are off unless both `GONE_METRICS_ADDR` and `GONE_METRICS_TOKEN` are set. An address without a token logs a warning and leaves metrics off.
+Metrics are off unless both `GONE_METRICS_ADDR` and `GONE_METRICS_TOKEN` are set. An address without a token logs a warning and leaves metrics off. The token should be at least 16 characters: a shorter one logs a warning at startup and a future release will refuse it. Generate one with `openssl rand -base64 24`.
 
 They get their own listener on `GONE_METRICS_ADDR` (for example `127.0.0.1:9090`), separate from the app on `GONE_ADDR`, so the public site never serves metrics. Keep that port on loopback or a private network.
 
 ## The metrics listener
 
-Every request must carry `Authorization: Bearer <token>`. The token is compared in constant time.
+Every request must carry `Authorization: Bearer <token>`. The token is compared in constant time (as SHA-256 digests, so the comparison does not depend on its length).
 
 | Request | Response |
 | ------- | -------- |

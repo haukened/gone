@@ -212,12 +212,9 @@ func cancelInTx(ctx context.Context, conn *sql.Conn, id, manageHash string, now 
 	if !errors.Is(err, app.ErrNotFound) {
 		return false, err
 	}
-	reply, err := loadManagedRow(ctx, conn, id, manageHash, now)
+	reply, err := loadManagedRow(ctx, conn, id, manageHash, now, true)
 	if err != nil {
 		return false, err
-	}
-	if !reply.reply {
-		return false, app.ErrNotFound
 	}
 	return reply.external, deleteSecret(ctx, conn, id)
 }

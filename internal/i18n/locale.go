@@ -88,8 +88,41 @@ type acceptEntry struct {
 	q   float64
 }
 
+// Accept-Language is parsed before any rate limiter, so its cost is bounded
+// no matter how large the header is: at most maxAcceptEntries entries are
+// read, and an entry longer than maxAcceptEntryLen bytes (a tag is at most
+// maxTagLen) is dropped without being split.
+const (
+	maxAcceptEntries  = 16
+	maxAcceptEntryLen = 64
+	maxTagLen         = 35
+)
+
+// splitAccept returns the first maxAcceptEntries comma-separated parts of
+// header, ignoring the rest. Work is proportional to the bytes of those
+// parts, not to len(header).
+//
+// Parameters:
+//   - header: the Accept-Language value.
+//
+// Returns:
+//   - []string: at most maxAcceptEntries raw parts, in header order.
+func splitAccept(header string) []string {
+	if limit := maxAcceptEntries * (maxAcceptEntryLen + 1); len(header) > limit {
+		header = header[:limit]
+	}
+	parts := make([]string, 0, maxAcceptEntries)
+	for rest := header; rest != "" && len(parts) < maxAcceptEntries; {
+		var part string
+		part, rest, _ = strings.Cut(rest, ",")
+		parts = append(parts, part)
+	}
+	return parts
+}
+
 // parseAcceptLanguage returns the header's language ranges, highest quality
-// first; ranges with q=0, wildcards, and malformed entries are dropped.
+// first; ranges with q=0, wildcards, and malformed entries are dropped. Only
+// the first maxAcceptEntries entries are considered.
 //
 // Parameters:
 //   - header: the Accept-Language value.
@@ -98,10 +131,14 @@ type acceptEntry struct {
 //   - []acceptEntry: the ranges in preference order, ties keeping header order.
 func parseAcceptLanguage(header string) []acceptEntry {
 	var out []acceptEntry
-	for _, part := range strings.Split(header, ",") {
-		fields := strings.Split(strings.TrimSpace(part), ";")
+	for _, part := range splitAccept(header) {
+		part = strings.TrimSpace(part)
+		if len(part) > maxAcceptEntryLen {
+			continue
+		}
+		fields := strings.Split(part, ";")
 		tag := strings.TrimSpace(fields[0])
-		if tag == "" || tag == "*" || len(tag) > 35 {
+		if tag == "" || tag == "*" || len(tag) > maxTagLen {
 			continue
 		}
 		if q := quality(fields[1:]); q > 0 {

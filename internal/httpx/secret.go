@@ -24,7 +24,8 @@ func (h *Handler) handleSecret(w http.ResponseWriter, r *http.Request) {
 }
 
 // serveIDPage renders a client-side page addressed as {prefix}{id}. The ID is
-// validated by the page's API calls, not here; a bare prefix returns 404.
+// validated by the page's API calls, not here; a bare prefix returns the
+// HTML 404 page.
 //
 // Parameters:
 //   - w: response writer.
@@ -34,7 +35,7 @@ func (h *Handler) handleSecret(w http.ResponseWriter, r *http.Request) {
 //   - unavailable: plain-text body used when tmpl is nil.
 func (h *Handler) serveIDPage(w http.ResponseWriter, r *http.Request, prefix string, tmpl SecretRenderer, unavailable string) {
 	if !strings.HasPrefix(r.URL.Path, prefix) || len(r.URL.Path) == len(prefix) {
-		h.writeError(r.Context(), w, http.StatusNotFound, "not found")
+		h.renderErrorPage(w, r, http.StatusNotFound, "error.notFound")
 		return
 	}
 	if tmpl == nil {

@@ -6,7 +6,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/haukened/gone/v3/internal/app"
@@ -39,14 +38,11 @@ type requestRoute struct {
 // Parameters:
 //   - path: request URL path.
 //
-// Returns the route and true when the path has a non-empty request suffix.
+// Returns the route and true when the path has a non-empty request suffix
+// without a trailing slash after the ID.
 func requestRouteFromPath(path string) (requestRoute, bool) {
-	rest, ok := strings.CutPrefix(path, "/api/request/")
-	if !ok || rest == "" {
-		return requestRoute{}, false
-	}
-	id, action, _ := strings.Cut(rest, "/")
-	return requestRoute{id: id, action: action}, true
+	id, action, ok := splitRoutePath(path, "/api/request/")
+	return requestRoute{id: id, action: action}, ok
 }
 
 // requestLimit picks the rate-limit budget for a request route: sending a
