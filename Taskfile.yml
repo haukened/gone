@@ -138,8 +138,6 @@ tasks:
 
   lint-web:
     desc: Lint JavaScript (ESLint) and CSS (stylelint) with the versions locked in tools/lint, matching CI
-    env:
-      ESLINT_USE_FLAT_CONFIG: 'false'
     cmds:
       - npm ci --prefix tools/lint --no-audit --no-fund --ignore-scripts
       - tools/lint/node_modules/.bin/eslint --max-warnings 0 web/js web/dev test/js test/interop test/e2e

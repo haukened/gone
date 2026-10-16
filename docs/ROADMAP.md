@@ -226,7 +226,7 @@ Work after the six phases. Each item is still one PR, under the same guiding pri
 | v3.9.0 | Prometheus `/metrics` on the token-protected metrics listener (#64). |
 | v3.10.0 | Translations (English, Spanish, French, German, Brazilian Portuguese) with a live language picker (#66). |
 | v3.10.2 | Every source file split back to a Codacy A grade; no behavior change (#74). |
-| next | Browser end-to-end tests in CI (#81). Documentation split into topic pages under `docs/`. |
+| v3.11.0 | Security review release: 28 findings fixed across the store, web client, CLI, server and CI (#86–#93); browser end-to-end tests in CI, now over TLS (#81, #93); documentation split into topic pages under `docs/`. |
 
 Decided against since v3.0.0:
 * **`gone mcp`**, a stdio MCP server over the CLI. Coding assistants have a shell and already use the agent-friendly CLI. Listed in [rejected.md](rejected.md).
