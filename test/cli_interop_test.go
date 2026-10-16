@@ -1,14 +1,11 @@
 package integration_test
 
 import (
-	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -86,24 +83,9 @@ func requireNode(t *testing.T) string {
 //   - jsMsg: the decoded reply.
 func bridge(t *testing.T, req jsMsg) jsMsg {
 	t.Helper()
-	in, err := json.Marshal(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	// #nosec G204 -- fixed script path; node resolved from PATH by the test.
-	cmd := exec.CommandContext(ctx, requireNode(t), filepath.Join("interop", "interop.js"))
-	cmd.Stdin = bytes.NewReader(in)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("interop %s: %v: %s", req.Op, err, stderr.String())
-	}
 	var reply jsMsg
-	if err := json.Unmarshal(out, &reply); err != nil {
-		t.Fatalf("interop reply %q: %v", out, err)
+	if code := runBridge(t, req, &reply); code != "" {
+		t.Fatalf("interop %s: %s", req.Op, code)
 	}
 	return reply
 }

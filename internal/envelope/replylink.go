@@ -145,5 +145,5 @@ func ParseReplyLink(raw string) (ReplyLink, error) {
 	if err != nil {
 		return ReplyLink{}, err
 	}
-	return ReplyLink{Origin: u.Scheme + "://" + u.Host, ID: id, Fragment: f}, nil
+	return ReplyLink{Origin: originOf(u), ID: id, Fragment: f}, nil
 }

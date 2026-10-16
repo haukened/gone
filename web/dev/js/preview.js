@@ -53,7 +53,7 @@
     const future = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     window.goneResultPanel.show({
       shareURL: `${location.origin}/secret/${MOCK_ID}#v${version}:${MOCK_KEY}`,
-      manageURL: ctx.uploader.buildManageURL(MOCK_ID, 'B'.repeat(43)),
+      manageURL: ctx.uploader.buildManageURL(MOCK_ID, 'B'.repeat(42) + 'A'),
       expiresAt: future,
       passphrase: v2,
       focus: false

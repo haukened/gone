@@ -17,6 +17,12 @@
 //   {"op":"requestKey"} -> {"key","private"}      private is a JWK (JSON)
 //   {"op":"openReply","key","private","nonce","body"}
 //     -> {"message","files":[...]}                protocol v3 (request page)
+//   {"op":"decode","body"} -> {"message","files"} GONE2 decoder on plaintext
+//   {"op":"fragment","fragment"} -> {"version","key"}   secret-link fragment
+//   {"op":"replyFragment","fragment"} -> {"key","fill"} reply-link fragment
+//
+// On failure the script exits 1 and the last stderr line is the error code
+// (or message); test/differential_*_test.go compare it with the Go verdict.
 
 const { reset, load } = require('../js/harness');
 
@@ -89,7 +95,32 @@ async function openReply(m, req) {
   return decoded(m, await m.v3.decryptV3(bytes(req.body), bytes(req.nonce), priv, m.gc.b64urlDecode(req.key)));
 }
 
-const OPS = { seal: seal, open: open, sealReply: sealReply, requestKey: requestKey, openReply: openReply };
+// decode runs the browser's GONE2 decoder on raw plaintext. A header that
+// is not JSON is reported as the code "json".
+function decode(m, req) {
+  try {
+    return decoded(m, bytes(req.body));
+  } catch (e) {
+    throw e instanceof SyntaxError ? Object.assign(new Error('json'), { code: 'json' }) : e;
+  }
+}
+
+// fragment parses a secret-link fragment as the consume page does.
+function fragment(m, req) {
+  const f = m.gc.parseFragment(req.fragment);
+  return { version: f.version, key: b64(f.key) };
+}
+
+// replyFragment parses a reply-link fragment as the reply page does.
+function replyFragment(m, req) {
+  const f = m.v3.parseReplyFragment(req.fragment);
+  return { key: b64(f.publicKey), fill: f.fill };
+}
+
+const OPS = {
+  seal: seal, open: open, sealReply: sealReply, requestKey: requestKey, openReply: openReply,
+  decode: decode, fragment: fragment, replyFragment: replyFragment
+};
 
 // main dispatches one request read from stdin.
 async function main() {

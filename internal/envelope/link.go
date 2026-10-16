@@ -36,7 +36,7 @@ func NewLink(origin string, id domain.SecretID, f Fragment) (Link, error) {
 	if err != nil || !isBareOrigin(u) || !id.Valid() || !domain.Supported(f.version) {
 		return Link{}, ErrInvalidLink
 	}
-	return Link{Origin: u.Scheme + "://" + u.Host, ID: id, Fragment: f}, nil
+	return Link{Origin: originOf(u), ID: id, Fragment: f}, nil
 }
 
 // isBareOrigin reports whether u is an http(s) origin with nothing after the
@@ -72,7 +72,7 @@ func ParseLink(raw string) (Link, error) {
 	if err != nil {
 		return Link{}, err
 	}
-	return Link{Origin: u.Scheme + "://" + u.Host, ID: id, Fragment: f}, nil
+	return Link{Origin: originOf(u), ID: id, Fragment: f}, nil
 }
 
 // parseSecretLinkURL parses and validates the URL-level secret-link shape.
@@ -87,6 +87,18 @@ func parseSecretLinkURL(raw string) (*url.URL, error) {
 		return nil, ErrInvalidLink
 	}
 	return u, nil
+}
+
+// originOf renders u's scheme and host as an origin. The host is escaped
+// again (url.URL.Host holds it decoded), so a host such as an IPv6 zone
+// "[fe80::1%25en0]" keeps its "%25" and the origin parses back to itself.
+//
+// Parameters:
+//   - u: parsed URL.
+//
+// Returns scheme://host[:port].
+func originOf(u *url.URL) string {
+	return (&url.URL{Scheme: u.Scheme, Host: u.Host}).String()
 }
 
 // isOrigin reports whether u is an absolute http(s) URL with a host and no

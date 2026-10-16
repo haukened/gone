@@ -33,7 +33,15 @@
     return { privateKey: kp.privateKey, publicKey: pub };
   }
 
-  function importPublic(raw) {
+  // isUncompressed reports whether b is a 65-byte uncompressed point
+  // (0x04 || X || Y), the only encoding section 4.3 allows. WebCrypto
+  // implementations may also import compressed and hybrid encodings.
+  function isUncompressed(b) {
+    return b instanceof Uint8Array && b.length === PUBLIC_KEY_BYTES && b[0] === 0x04;
+  }
+
+  async function importPublic(raw) {
+    if (!isUncompressed(raw)) throw core.codedError('invalid_key');
     return crypto.subtle.importKey('raw', raw, CURVE, true, []);
   }
 
@@ -64,12 +72,14 @@
   }
 
   // encryptV3 seals data to the requester's 65-byte public key with a fresh
-  // ephemeral key and nonce. Rejects with code "invalid_key" when pubR is not
-  // a point on the curve.
+  // ephemeral key and nonce. The ephemeral private key is non-extractable:
+  // it is only used for deriveBits, and its public half can still be
+  // exported. Rejects with code "invalid_key" when pubR is not an
+  // uncompressed point on the curve.
   //
   // Returns {nonce, ciphertext} where ciphertext = pubE || ct || tag.
   async function encryptV3(data, pubR) {
-    const eph = await crypto.subtle.generateKey(CURVE, true, ['deriveBits']);
+    const eph = await crypto.subtle.generateKey(CURVE, false, ['deriveBits']);
     return sealWith(data, pubR, eph, core.randomBytes(core.NONCE_BYTES));
   }
 
@@ -97,24 +107,29 @@
     return m;
   }
 
-  function decodePublicKey(b64) {
-    let key = null;
+  // decodeOrNull decodes strict base64url, or returns null.
+  function decodeOrNull(b64) {
     try {
-      key = enc.b64urlDecode(b64);
+      return enc.b64urlDecode(b64);
     } catch {
-      key = null;
+      return null;
     }
-    if (!key || key.length !== PUBLIC_KEY_BYTES || key[0] !== 0x04) throw core.codedError('invalid_fragment');
+  }
+
+  function decodePublicKey(b64) {
+    const key = decodeOrNull(b64);
+    if (!isUncompressed(key)) throw core.codedError('invalid_fragment');
     return key;
   }
 
   // parseReplyFragment parses "v3:<pubkey>.<fill>" (section 7.4) into
-  // {publicKey, fill}. Whether the key is on the curve is checked when
-  // sealing.
+  // {publicKey, fill}. The fill token must be strict base64url (43
+  // characters, section 8.6). Whether the key is on the curve is checked
+  // when sealing.
   function parseReplyFragment(s) {
     const m = fragmentParts(s);
     const publicKey = decodePublicKey(m[2]);
-    if (!FILL_RE.test(m[3])) throw core.codedError('invalid_fragment');
+    if (!FILL_RE.test(m[3]) || !decodeOrNull(m[3])) throw core.codedError('invalid_fragment');
     return { publicKey: publicKey, fill: m[3] };
   }
 

@@ -47,6 +47,18 @@ test('registerEndpoint accepts only 32-char lowercase hex ids', (t) => {
   }
 });
 
+test('registerReplyEndpoint needs a strict base64url manage token', async (t) => {
+  const { api } = setup(t, { register: false });
+  const token = 'M'.repeat(42) + 'A';
+  for (const bad of [token.slice(0, -1) + 'B', token + 'A', 'short', undefined]) {
+    assert.throws(() => api.registerReplyEndpoint(ID, bad), (e) => /isn.t valid/.test(tr(e.message)) && e.retryable === false, String(bad));
+  }
+  const calls = installFetch([() => fakeResponse({ status: 404 })]);
+  await assert.rejects(api.fetchWithRetry(() => {}));
+  assert.equal(calls.length, 0);
+  api.registerReplyEndpoint(ID, token);
+});
+
 test('registerEndpoint rejects a non-pinned origin', (t) => {
   const { api } = setup(t, { register: false });
   const RealURL = globalThis.URL;

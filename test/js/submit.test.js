@@ -226,7 +226,7 @@ test('development preview=result renders a mock share panel without focus', (t) 
   assert.equal(b.$('result').hidden, false);
   assert.equal(b.env.document.activeElement, null);
   assert.ok(new Date(b.$('result-expiry').getAttribute('datetime')) > new Date());
-  assert.equal(b.$('manage-link').value, 'https://gone.test/manage/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#' + 'B'.repeat(43));
+  assert.equal(b.$('manage-link').value, 'https://gone.test/manage/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#' + 'B'.repeat(42) + 'A');
   assert.equal(b.$('manage-disclosure').hidden, false);
   const c = boot(t, { url: 'https://gone.test/?preview=other', modules: [...MODULES, 'dev/preview'] });
   assert.equal(c.$('result').hidden, true);

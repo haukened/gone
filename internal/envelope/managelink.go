@@ -42,7 +42,7 @@ func NewManageLink(origin string, id domain.SecretID, token string) (ManageLink,
 	if err != nil {
 		return ManageLink{}, ErrInvalidManageLink
 	}
-	return ManageLink{Origin: u.Scheme + "://" + u.Host, ID: id, Token: t}, nil
+	return ManageLink{Origin: originOf(u), ID: id, Token: t}, nil
 }
 
 // ParseManageLink parses an absolute manage link. The path must be exactly
@@ -64,7 +64,7 @@ func ParseManageLink(raw string) (ManageLink, error) {
 	if !ok || idErr != nil || tokErr != nil {
 		return ManageLink{}, ErrInvalidManageLink
 	}
-	return ManageLink{Origin: u.Scheme + "://" + u.Host, ID: id, Token: tok}, nil
+	return ManageLink{Origin: originOf(u), ID: id, Token: tok}, nil
 }
 
 // parseManageLinkURL parses and validates the URL-level manage-link shape.

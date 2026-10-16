@@ -162,7 +162,7 @@ test('buildShareURL rejects a malformed server id instead of building a link', (
 test('buildManageURL puts the token only in the fragment and rejects bad input', (t) => {
   const { up } = setup(t);
   const id = '0123456789abcdef0123456789abcdef';
-  const token = 'aZ09_-'.repeat(7) + 'x';
+  const token = 'aZ09_-'.repeat(7) + 'w';
   const url = new URL(up.buildManageURL(id, token));
   assert.equal(url.origin, 'https://gone.test');
   assert.equal(url.pathname, '/manage/' + id);
@@ -170,7 +170,7 @@ test('buildManageURL puts the token only in the fragment and rejects bad input',
   assert.equal(url.hash, '#' + token);
   const cases = [
     [id.toUpperCase(), token], [id + '0', token], ['../x', token], [undefined, token],
-    [id, token + 'a'], [id, token.slice(1)], [id, 'A'.repeat(42) + '='], [id, undefined], [id, '']
+    [id, token + 'a'], [id, token.slice(1)], [id, 'A'.repeat(42) + '='], [id, token.slice(0, -1) + 'x'], [id, undefined], [id, '']
   ];
   for (const [i, tok] of cases) assert.equal(up.buildManageURL(i, tok), '', `${i} ${tok}`);
 });

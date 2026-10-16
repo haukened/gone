@@ -7,11 +7,10 @@
 // offers "Check again" and "Try again" instead. Exposed as
 // window.goneManageApi.
 (function manageApiModule() {
-  if (window.goneManageApi) return;
+  if (window.goneManageApi || !window.goneUtil) return;
 
   const API_PATH = '/api/secret/';
   const SECRET_ID_RE = /^[0-9a-f]{32}$/;
-  const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
   const INVALID_LINK = 'js.manage.invalidLink';
   const NETWORK_ERROR = 'js.common.networkRetry';
   const SERVER_ERROR = 'js.common.server';
@@ -40,9 +39,7 @@
   }
 
   // isToken reports whether token is a well-formed manage token.
-  function isToken(token) {
-    return typeof token === 'string' && TOKEN_RE.test(token);
-  }
+  const isToken = window.goneUtil.isToken;
 
   // actionURL builds /api/secret/{id}/{action} on this page's origin. id
   // must already match SECRET_ID_RE, so it cannot alter the path.

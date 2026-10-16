@@ -139,3 +139,23 @@ test('copyText reports success, and on failure selects and explains', async () =
   assert.equal(await u.copyText('x'), false);
   assert.deepEqual(env.alerts, []);
 });
+
+test('isToken is 43 characters of strict base64url', () => {
+  reset('https://gone.test/');
+  load('util', 'crypto');
+  const u = window.goneUtil;
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  for (const last of alphabet) {
+    const token = 'aZ09_-'.repeat(7) + last;
+    let strict = true;
+    try {
+      window.goneCrypto.b64urlDecode(token);
+    } catch {
+      strict = false;
+    }
+    assert.equal(u.isToken(token), strict, token);
+  }
+  for (const bad of ['A'.repeat(42), 'A'.repeat(44), 'A'.repeat(42) + '=', 'A'.repeat(41) + '+A', null, 42]) {
+    assert.equal(u.isToken(bad), false, String(bad));
+  }
+});

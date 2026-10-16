@@ -6,8 +6,8 @@ const { reset, load, loadRaw } = require('./harness');
 const { fakeResponse, installFetch } = require('./fakes');
 
 const ID = 'a'.repeat(32);
-const TOKEN = 'T'.repeat(43);
-const FILL = 'F'.repeat(43);
+const TOKEN = 'T'.repeat(42) + 'A';
+const FILL = 'F'.repeat(42) + 'A';
 const json = (status, body, headers) => () => Object.assign(fakeResponse({ status, headers }), { json: async () => body });
 
 function api() {
@@ -33,6 +33,8 @@ test('create rejects bad responses', async () => {
   const bad = [
     json(201, { id: 'x', manage_token: TOKEN, fill_token: FILL, expires_at: '2026-01-01T00:00:00Z' }),
     json(201, { id: ID, manage_token: TOKEN, fill_token: FILL, expires_at: 'never' }),
+    json(201, { id: ID, manage_token: TOKEN.slice(0, -1) + 'B', fill_token: FILL, expires_at: '2026-01-01T00:00:00Z' }),
+    json(201, { id: ID, manage_token: TOKEN, fill_token: FILL.slice(0, -1) + 'B', expires_at: '2026-01-01T00:00:00Z' }),
     json(201, null),
     () => Object.assign(fakeResponse({ status: 201 }), { json: async () => { throw new Error('bad'); } }),
     json(400, {}),
@@ -45,10 +47,10 @@ test('create rejects bad responses', async () => {
   const results = [];
   for (let i = 0; i < bad.length; i++) results.push(await a.create('1h').catch((e) => e));
   results.forEach((e) => assert.ok(a.isRequestError(e)));
-  assert.equal(results[4].retryable, false);
-  assert.equal(results[5].retryAfter, 7);
-  assert.equal(results[6].retryAfter, 0);
-  assert.match(window.goneI18n.t(results[8].message), /reach the server/);
+  assert.equal(results[6].retryable, false);
+  assert.equal(results[7].retryAfter, 7);
+  assert.equal(results[8].retryAfter, 0);
+  assert.match(window.goneI18n.t(results[10].message), /reach the server/);
 });
 
 test('status maps waiting, ready and gone', async () => {
@@ -69,6 +71,8 @@ test('status and cancel never send a malformed token or id', async () => {
   const calls = installFetch([]);
   assert.deepEqual(await a.status(ID, 'short'), { state: 'gone' });
   assert.equal(await a.cancel(ID, 'short'), 'gone');
+  assert.deepEqual(await a.status(ID, TOKEN.slice(0, -1) + 'B'), { state: 'gone' });
+  assert.equal(await a.cancel(ID, TOKEN.slice(0, -1) + 'B'), 'gone');
   await assert.rejects(a.status('../x', TOKEN), (e) => a.isRequestError(e) && !e.retryable);
   assert.equal(calls.length, 0);
   assert.equal(a.isID(ID), true);
@@ -99,8 +103,9 @@ test('needs its fetch helpers', () => {
   assert.equal(window.goneRequestApi, undefined);
 });
 
-test('needs its fetch helpers', () => {
+test('needs goneUtil', () => {
   reset('https://gone.test/request');
+  load('requestApiFetch');
   loadRaw('requestApi');
   assert.equal(window.goneRequestApi, undefined);
 });

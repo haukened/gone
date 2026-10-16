@@ -9,7 +9,7 @@ const { fakeResponse, installFetch } = require('./fakes');
 const { detailPage } = require('./requestPage');
 
 const ID = 'a'.repeat(32);
-const TOKEN = 'T'.repeat(43);
+const TOKEN = 'T'.repeat(42) + 'A';
 const MODULES = ['crypto', 'cryptoV3', 'util', 'fileMeta', 'envelope', 'icons', 'consumeApi', 'consumeView', 'consumeOpener',
   'requestStore', 'requestApi', 'requestPoll', 'requestDetailView'];
 const json = (status, body) => () => Object.assign(fakeResponse({ status }), { json: async () => body });

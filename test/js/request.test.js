@@ -9,8 +9,8 @@ const { fakeResponse, installFetch } = require('./fakes');
 const { requestPage } = require('./requestPage');
 
 const ID = 'a'.repeat(32);
-const TOKEN = 'T'.repeat(43);
-const FILL = 'F'.repeat(43);
+const TOKEN = 'T'.repeat(42) + 'A';
+const FILL = 'F'.repeat(42) + 'A';
 const MODULES = ['crypto', 'cryptoV3', 'util', 'requestStore', 'requestApi', 'requestPoll', 'requestList'];
 const json = (status, body) => () => Object.assign(fakeResponse({ status }), { json: async () => body });
 const created = (id) => json(201, { id: id || ID, expires_at: '2030-01-01T00:00:00Z', manage_token: TOKEN, fill_token: FILL });
