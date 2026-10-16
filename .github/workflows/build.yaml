@@ -111,13 +111,13 @@ jobs:
         env:
           ESLINT_USE_FLAT_CONFIG: 'false'
         run: |
-          npx --yes eslint@${{ env.ESLINT_VERSION }} --max-warnings 0 web/js test/js test/interop test/e2e
+          npx --yes eslint@${{ env.ESLINT_VERSION }} --max-warnings 0 web/js web/dev test/js test/interop test/e2e
           npx --yes stylelint@${{ env.STYLELINT_VERSION }} 'web/css/*.css'
 
       - name: Run JavaScript tests
         run: >-
           node --test --experimental-test-coverage
-          --test-coverage-include='web/js/**'
+          --test-coverage-include='web/js/**' --test-coverage-include='web/dev/**'
           --test-reporter=spec --test-reporter-destination=stdout
           --test-reporter=lcov --test-reporter-destination=lcov.info
           'test/js/*.test.js'

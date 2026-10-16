@@ -25,6 +25,7 @@ We aim to acknowledge new issues within 14 days. Not every request will be accep
 - **Go:** idiomatic Go, formatted with `go fmt`. `task lint` (golangci-lint with `.golangci.yml`) must report no issues.
 - **GoDoc on every function**, including what the parameters and return values mean.
 - **Errors:** wrap with `%w`; no panics in HTTP handlers.
+- **Development-only code** (design previews, debug aids) goes in `web/dev/`, which only the `dev` build serves. Production pages must never read a `?preview` parameter or render text from the URL.
 - **JavaScript:** vanilla JS only. No frameworks, no build step, no `innerHTML`, nothing loaded from another origin; the strict CSP must keep working. `task lint-web` (ESLint and stylelint) must pass with no warnings.
 - **Dependencies:** prefer the Go standard library and WebCrypto. A new dependency needs a written reason in the PR.
 - **Never** log or store plaintext, keys, passphrases, or tokens, and never give the server anything that would let it decrypt a secret.

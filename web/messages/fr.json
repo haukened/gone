@@ -546,6 +546,7 @@
 	"js.submit.uploading": "Envoi {pct} %",
 	"js.upload.network": "Impossible de joindre le serveur, rien n’a donc été envoyé. Vérifiez votre connexion, puis réessayez.",
 	"js.upload.server": "Le serveur a rencontré un problème en créant le secret. Réessayez dans un instant.",
+	"js.upload.badId": "Le serveur a renvoyé un identifiant de secret invalide, donc il n’y a aucun lien à partager. Réessayez.",
 	"js.upload.rejected": "Le serveur a refusé le secret.",
 	"js.upload.tooLarge": "Ce secret est trop volumineux pour ce serveur.",
 	"js.meter.tooMany": [

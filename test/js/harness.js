@@ -12,6 +12,9 @@ const vm = require('node:vm');
 const { FakeElement, FakeDocument, h, matches } = require('./harness-dom');
 
 const JS_DIR = path.join(__dirname, '..', '..', 'web', 'js');
+// DEV_DIR holds the development-only preview module (web/dev/js/preview.js),
+// loaded by tests as 'dev/preview'. Production builds never contain it.
+const DEV_DIR = path.join(__dirname, '..', '..', 'web', 'dev', 'js');
 
 function define(name, value) {
   Object.defineProperty(globalThis, name, { value: value, writable: true, configurable: true });
@@ -24,7 +27,7 @@ const GONE_GLOBALS = ['goneUtil', 'goneCrypto', 'goneCryptoEncoding', 'goneCrypt
   'goneConsumeViewStatus', 'goneConsumeViewPassphrase', 'goneConsumeViewMask', 'goneConsumeViewMessages', 'goneConsumeViewFiles',
   'goneConsumeViewFinal', 'goneFileSelection', 'goneSizeMeter', 'goneUpload', 'goneResultPanel', 'goneIcons',
   'goneTheme', 'goneManageApi', 'goneManageView', 'goneWordlist', 'gonePassgen', 'gonePassphraseField',
-  'goneSubmitDom', 'goneSubmitState', 'goneSubmitUi', 'goneSubmitRun', 'goneSubmitPreview', 'goneConsumeOpener',
+  'goneSubmitDom', 'goneSubmitState', 'goneSubmitUi', 'goneSubmitRun', 'gonePreview', 'goneConsumeOpener',
   'goneCryptoV3', 'goneRequestStore', 'goneRequestApi', 'goneRequestPoll', 'goneRequestList',
   'goneRequestDetailView', 'goneSubmitTarget', 'goneQr', 'goneResultQr', 'goneI18n', 'goneLangPicker',
   'goneI18nPattern', 'goneI18nFormat', 'goneI18nRender', 'goneI18nNodes', 'goneI18nLocale', 'goneLangPickerMenu',
@@ -70,7 +73,7 @@ const MODULE_DEPS = {
   consumeApi: ['consumeApiErrors', 'consumeApiEndpoint', 'consumeApiRead', 'consumeApiFetch', 'consumeApiCrypto', 'consumeApiAck'],
   qr: ['qrCodewords', 'qrGrid', 'qrPatterns', 'qrPenalty'],
   consumeView: ['consumeViewBase', 'consumeViewPassphrase', 'consumeViewStatus', 'consumeViewMask', 'consumeViewMessages', 'consumeViewFiles', 'consumeViewFinal'],
-  submit: ['submitDom', 'submitState', 'submitUi', 'submitRun', 'submitPreview'],
+  submit: ['submitDom', 'submitState', 'submitUi', 'submitRun'],
   consume: ['consumeOpener'],
   envelope: ['envelopeHeader'],
   submitFiles: ['submitDrop'],
@@ -160,17 +163,17 @@ function loadI18n(data) {
 }
 
 function runFile(name) {
-  const file = path.join(JS_DIR, name + '.js');
+  const file = name.startsWith('dev/') ? path.join(DEV_DIR, name.slice(4) + '.js') : path.join(JS_DIR, name + '.js');
   vm.runInThisContext(fs.readFileSync(file, 'utf8'), { filename: file });
 }
 
-// loadRaw evaluates web/js/<name>.js alone, without loading i18n.js first,
+// loadRaw evaluates web/js/<name>.js (or web/dev/js/<name>.js for 'dev/<name>') alone, without loading i18n.js first,
 // to test how a module behaves when goneI18n is missing.
 function loadRaw(name) {
   runFile(name);
 }
 
-// load evaluates web/js/<name>.js in this realm, after i18n.js unless that
+// load evaluates web/js/<name>.js (or 'dev/<name>' for web/dev/js/) in this realm, after i18n.js unless that
 // is already loaded (call loadI18n first to give it other page data).
 function load(...names) {
   names.forEach((name) => {

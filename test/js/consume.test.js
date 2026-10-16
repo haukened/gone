@@ -18,13 +18,31 @@ test('does nothing without dependencies or the consume page', (t) => {
   assert.equal(calls.length, 0);
 });
 
-test('preview mode shows sample or custom text without fetching', (t) => {
+test('production ignores ?preview=secret: nothing is rendered or fetched', (t) => {
   const calls = installFetch([]);
-  const a = boot(t, BASE + 'x?preview=secret');
+  const a = boot(t, BASE + ID + '?preview=secret&text=SPOOF' + VALID_FRAG);
+  assert.equal(window.gonePreview, undefined);
+  assert.equal(a.$('secret-output').textContent, '');
+  assert.equal(a.$('view-revealed').hidden, true);
+  assert.equal(a.$('view-open').hidden, false);
+  const b = boot(t, BASE + 'x?preview=secret&text=SPOOF');
+  assert.equal(b.$('secret-output').textContent, '');
+  assert.equal(b.$('view-revealed').hidden, true);
+  b.open();
+  assert.match(b.$('consume-error-text').textContent, /missing its key/);
+  assert.equal(calls.length, 0);
+});
+
+test('development preview hook shows sample or custom text without fetching', (t) => {
+  const calls = installFetch([]);
+  const modules = ['consumeApi', 'consumeView', 'dev/preview', 'consume'];
+  const a = boot(t, BASE + 'x?preview=secret', { modules });
   assert.match(a.$('secret-output').textContent, /preview of a decrypted secret/);
   assert.equal(a.$('view-revealed').hidden, false);
-  const b = boot(t, BASE + 'x?preview=secret&text=hi%20there');
+  const b = boot(t, BASE + 'x?preview=secret&text=hi%20there', { modules });
   assert.equal(b.$('secret-output').textContent, 'hi there');
+  const c = boot(t, BASE + 'x?preview=other', { modules });
+  assert.equal(c.$('view-revealed').hidden, true);
   assert.equal(calls.length, 0);
 });
 

@@ -13,6 +13,7 @@
   }
 
   const NO_CRYPTO = 'js.submit.noCrypto';
+  const BAD_ID = 'js.upload.badId';
 
   // sendTarget is the default target: a new secret under a fresh key
   // (v1, or v2 with a passphrase), shown in the result panel. A page can
@@ -22,8 +23,10 @@
     encrypt: function (message, files, pass) { return ctx.uploader.encryptSelection(message, files, pass); },
     upload: function (enc, onProgress) { return ctx.uploader.upload(enc.encResult, selectedTTL(), onProgress, enc.version); },
     show: function (json, enc) {
+      const shareURL = ctx.uploader.buildShareURL(json.id, enc.keyBytes, enc.version);
+      if (!shareURL) throw new Error(BAD_ID);
       window.goneResultPanel.show({
-        shareURL: ctx.uploader.buildShareURL(json.id, enc.keyBytes, enc.version),
+        shareURL: shareURL,
         manageURL: ctx.uploader.buildManageURL(json.id, json.manage_token),
         expiresAt: json.expires_at,
         passphrase: enc.version !== window.goneCrypto.version

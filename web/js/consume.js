@@ -18,7 +18,6 @@
   const NO_CRYPTO = 'js.consume.noCrypto';
   const BAD_ID = 'js.consume.invalidLink';
   const FRAGMENT_PROBLEMS = new Map([['unsupported_version', 'js.consume.newerVersion']]);
-  const PREVIEW_TEXT = 'This is a preview of a decrypted secret. Customize via ?text=...';
 
   // source tells the shared opener how to decrypt this link: v1 with the
   // link key alone, v2 with the link key and the typed passphrase.
@@ -69,11 +68,8 @@
   }
 
   function start() {
-    const params = new URLSearchParams(location.search);
-    if (params.get('preview') === 'secret') {
-      view.showDecoded({ message: params.get('text') || PREVIEW_TEXT, files: [] });
-      return;
-    }
+    // Development builds only: web/dev/js/preview.js defines the hook.
+    if (window.gonePreview && window.gonePreview.consume(view)) return;
     // Every link gets the same Open page, valid or not, so loading it reveals
     // nothing. A link that can't work says why only when Open is pressed,
     // still without touching the network.

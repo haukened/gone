@@ -6,6 +6,7 @@ const { reset, load, loadRaw, captureConsole } = require('./harness');
 const { FakeXHR } = require('./fakes');
 
 // tr renders a message key (as carried by errors) in English.
+const ID = '0123456789abcdef0123456789abcdef';
 const tr = (k) => window.goneI18n.t(k);
 
 function setup(t) {
@@ -64,10 +65,10 @@ test('upload posts ciphertext with headers and reports progress', async (t) => {
   FakeXHR.onSend = (x) => {
     x.upload.onprogress({ lengthComputable: false, loaded: 1, total: 0 });
     x.upload.onprogress({ lengthComputable: true, loaded: 20, total: 40 });
-    x.respond(201, { id: 'abc', expires_at: 'soon' });
+    x.respond(201, { id: ID, expires_at: 'soon' });
   };
   const json = await up.upload(enc, '3600', (l, tot) => progress.push([l, tot]));
-  assert.deepEqual(json, { id: 'abc', expires_at: 'soon' });
+  assert.deepEqual(json, { id: ID, expires_at: 'soon' });
   const x = FakeXHR.instances[0];
   assert.equal(x.method, 'POST');
   assert.equal(x.url, '/api/secret');
@@ -83,7 +84,11 @@ test('upload posts ciphertext with headers and reports progress', async (t) => {
 test('upload accepts 200 and rejects bad statuses or bodies', async (t) => {
   const enc = { nonce: new Uint8Array(12), ciphertext: new Uint8Array(1) };
   const cases = [
-    [200, { id: 'x' }, null],
+    [200, { id: ID }, null],
+    [201, { id: '../evil' }, 'js.upload.badId'],
+    [201, { id: 'A'.repeat(32) }, 'js.upload.badId'],
+    [201, { id: 'a'.repeat(31) }, 'js.upload.badId'],
+    [201, { id: 5 }, 'js.upload.badId'],
     [400, {}, 'js.upload.rejected'],
     [413, undefined, 'js.upload.tooLarge'],
     [429, undefined, 'js.common.tooMany'],
@@ -137,11 +142,21 @@ test('error helpers', (t) => {
 test('buildShareURL puts the key only in the fragment', (t) => {
   const { up, gc } = setup(t);
   const key = gc.generateKey();
-  const url = new URL(up.buildShareURL('abc', key));
+  const id = '0123456789abcdef0123456789abcdef';
+  const url = new URL(up.buildShareURL(id, key));
   assert.equal(url.origin, 'https://gone.test');
-  assert.equal(url.pathname, '/secret/abc');
+  assert.equal(url.pathname, '/secret/' + id);
   assert.equal(url.search, '');
   assert.equal(url.hash, '#v1:' + gc.exportKeyB64(key));
+});
+
+test('buildShareURL rejects a malformed server id instead of building a link', (t) => {
+  const { up, gc } = setup(t);
+  const key = gc.generateKey();
+  const bad = ['', 'abc', 'A'.repeat(32), 'g'.repeat(32), 'a'.repeat(31), 'a'.repeat(33), '../x' + 'a'.repeat(30),
+    'a'.repeat(32) + '\n', 'a'.repeat(32) + '?x', undefined, null, 5, {}];
+  for (const id of bad) assert.equal(up.buildShareURL(id, key), '', String(id));
+  assert.equal(up.buildShareURL('a'.repeat(32), key, 2).startsWith('https://gone.test/secret/' + 'a'.repeat(32) + '#v2:'), true);
 });
 
 test('buildManageURL puts the token only in the fragment and rejects bad input', (t) => {

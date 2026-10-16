@@ -179,23 +179,59 @@ test('secure wipe failure is ignored', async (t) => {
     get: () => val,
     set: (v) => { if (b.btn.hasAttribute('aria-busy') && wipes++ === 0) throw new Error('readonly'); val = v; }
   });
-  FakeXHR.onSend = (x) => x.respond(201, { id: 'i', expires_at: '2030-01-01T00:00:00Z' });
+  FakeXHR.onSend = (x) => x.respond(201, { id: 'a'.repeat(32), expires_at: '2030-01-01T00:00:00Z' });
   submit(b);
   await waitFor(() => !b.$('result').hidden);
   assert.equal(wipes, 1);
   assert.equal(b.$('manage-disclosure').hidden, true, 'no manage_token hides the manage section');
 });
 
-test('preview=result renders a mock share panel without focus', (t) => {
+test('a malformed id from the server shows an error and keeps the sender\u2019s text', async (t) => {
+  const b = boot(t);
+  type(b, 'abc');
+  FakeXHR.onSend = (x) => x.respond(201, { id: '../evil', expires_at: '2030-01-01T00:00:00Z', manage_token: 'M'.repeat(43) });
+  submit(b);
+  await waitFor(() => !b.$('submit-error').hidden);
+  assert.match(b.$('submit-error-content').textContent, /malformed secret id/);
+  assert.equal(b.$('secret').value, 'abc');
+  assert.equal(b.$('result').hidden, true);
+  assert.equal(b.$('compose').hidden, false);
+  assert.equal(b.$('share-link').value, '');
+  assert.ok(b.logs.error.some((l) => /upload failed/.test(l)));
+});
+
+test('the result step refuses a share link that could not be built', async (t) => {
+  const b = boot(t);
+  type(b, 'abc');
+  const real = window.goneSubmitDom.uploader;
+  window.goneSubmitDom.uploader = Object.assign({}, real, { buildShareURL: () => '' });
+  FakeXHR.onSend = (x) => x.respond(201, { id: 'a'.repeat(32), expires_at: '2030-01-01T00:00:00Z' });
+  submit(b);
+  await waitFor(() => !b.$('submit-error').hidden);
+  assert.match(b.$('submit-error-content').textContent, /malformed secret id/);
+  assert.equal(b.$('result').hidden, true);
+  assert.equal(b.$('share-link').value, '');
+});
+
+test('production ignores ?preview=result: no result panel is shown', (t) => {
   const b = boot(t, { url: 'https://gone.test/?preview=result' });
+  assert.equal(window.gonePreview, undefined);
+  assert.equal(b.$('result').hidden, true);
+  assert.equal(b.$('share-link').value, '');
+});
+
+test('development preview=result renders a mock share panel without focus', (t) => {
+  const b = boot(t, { url: 'https://gone.test/?preview=result', modules: [...MODULES, 'dev/preview'] });
   assert.equal(b.$('share-link').value, 'https://gone.test/secret/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#v1:' + 'A'.repeat(43));
   assert.equal(b.$('result').hidden, false);
   assert.equal(b.env.document.activeElement, null);
   assert.ok(new Date(b.$('result-expiry').getAttribute('datetime')) > new Date());
   assert.equal(b.$('manage-link').value, 'https://gone.test/manage/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#' + 'B'.repeat(43));
   assert.equal(b.$('manage-disclosure').hidden, false);
-  const c = boot(t, { url: 'https://gone.test/?preview=other' });
+  const c = boot(t, { url: 'https://gone.test/?preview=other', modules: [...MODULES, 'dev/preview'] });
   assert.equal(c.$('result').hidden, true);
+  const d = boot(t, { url: 'https://gone.test/?preview=result', modules: ['util', 'crypto', 'submitUpload', 'dev/preview'] });
+  assert.equal(d.$('result').hidden, true);
 });
 
 

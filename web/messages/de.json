@@ -537,6 +537,7 @@
 	"js.submit.uploading": "Wird hochgeladen {pct} %",
 	"js.upload.network": "Der Server ist nicht erreichbar, deshalb wurde nichts gesendet. Prüf deine Verbindung und versuch es dann erneut.",
 	"js.upload.server": "Der Server hatte ein Problem beim Erstellen des Geheimnisses. Versuch es gleich noch einmal.",
+	"js.upload.badId": "Der Server hat eine ungültige Geheimnis-ID zurückgegeben, daher gibt es keinen Link zum Teilen. Versuch es noch einmal.",
 	"js.upload.rejected": "Der Server hat das Geheimnis abgelehnt.",
 	"js.upload.tooLarge": "Dieses Geheimnis ist zu groß für diesen Server.",
 	"js.meter.tooMany": [

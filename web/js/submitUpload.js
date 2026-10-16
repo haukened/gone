@@ -14,6 +14,7 @@
   const SECRET_ID_RE = /^[0-9a-f]{32}$/;
   const MANAGE_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
   const SERVER_ERROR = xhr.SERVER_ERROR;
+  const BAD_ID = 'js.upload.badId';
 
   // buildPlaintext reads the files and encodes them with message into an
   // envelope. Intermediate file buffers are zeroed.
@@ -71,13 +72,21 @@
       throw new Error(xhr.uploadErrorMessage(res.status));
     }
     if (!res.json || !res.json.id) throw new Error(SERVER_ERROR);
+    // Checked here, before the caller wipes the form, so the sender keeps
+    // their text when the server returns an id that can't make a link.
+    if (!SECRET_ID_RE.test(String(res.json.id))) throw new Error(BAD_ID); // nosemgrep
     return res.json;
   }
 
   // buildShareURL returns the link the recipient opens for protocol version
   // (default v1); the key travels only in the fragment, which browsers never
   // send to the server.
+  //
+  // Returns '' when the server-supplied id is malformed, so a bad id is never
+  // put into a link or QR code.
   function buildShareURL(id, keyBytes, version) {
+    // Anchored fixed-length character class, so it runs in linear time.
+    if (!SECRET_ID_RE.test(String(id))) return ''; // nosemgrep
     return `${location.origin}/secret/${id}#v${version || gc.version}:${gc.exportKeyB64(keyBytes)}`;
   }
 

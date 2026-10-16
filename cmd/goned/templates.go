@@ -13,6 +13,7 @@ import (
 
 	"github.com/haukened/gone/v3/internal/httpx"
 	"github.com/haukened/gone/v3/internal/i18n"
+	wembed "github.com/haukened/gone/v3/web"
 )
 
 // templates holds the page templates rendered by the HTTP handlers, each
@@ -70,7 +71,8 @@ func (a *assetVersions) url(name string) string {
 
 // templateFuncs returns the locale-independent functions available to every
 // page template: asset (fingerprinted static URL), version (the running
-// release), and the argument builders args, dur, bytes, and json.
+// release), dev (true only in development builds, which load web/dev/), and
+// the argument builders args, dur, bytes, and json.
 //
 // Parameters:
 //   - fsys: filesystem the static assets are served from.
@@ -83,6 +85,7 @@ func templateFuncs(fsys fs.FS, ver string) template.FuncMap {
 	return template.FuncMap{
 		"asset":   assets.url,
 		"version": func() string { return ver },
+		"dev":     func() bool { return wembed.Dev },
 		"args":    pairArgs,
 		"dur":     func(sec int, style string) i18n.Duration { return i18n.Duration{Seconds: int64(sec), Style: style} },
 		"bytes":   toBytes,
