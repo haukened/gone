@@ -62,3 +62,17 @@ test('development preview=result&passphrase shows a v2 link and the passphrase n
   const c = boot(t, { url: 'https://gone.test/?preview=result', modules: [...MODULES, 'dev/preview'] });
   assert.equal(c.$('result-pass-note').hidden, true);
 });
+
+test('a required passphrase blocks the send until one is typed', (t) => {
+  const b = boot(t, { pass: true, modules: PASS_MODULES, dataset: { passRequired: '' } });
+  type(b, 'my secret');
+  assert.equal(b.blocked(), true);
+  submit(b);
+  assert.match(b.$('submit-error-content').textContent, /requires a passphrase/);
+  assert.equal(FakeXHR.instances.length, 0);
+  typePass(b, 'abc');
+  submit(b);
+  assert.match(b.$('submit-error-content').textContent, /at least 8 characters\.$/);
+  typePass(b, 'correct horse battery');
+  assert.equal(b.blocked(), false);
+});

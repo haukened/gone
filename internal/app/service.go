@@ -21,6 +21,10 @@ var ErrSizeExceeded = errors.New("size exceeded")
 // overloaded; the request did not change anything and can be retried.
 var ErrBusy = errors.New("storage busy")
 
+// ErrPassphraseRequired indicates the server accepts only passphrase-protected
+// (v2) secrets and the request was v1.
+var ErrPassphraseRequired = errors.New("passphrase required")
+
 // DefaultClaimLease is the claim lease used when Service.ClaimLease is unset.
 const DefaultClaimLease = 2 * time.Minute
 
@@ -34,6 +38,8 @@ type Service struct {
 	MaxTTL     time.Duration
 	ClaimLease time.Duration // window to retry and acknowledge a claim; DefaultClaimLease if <= 0
 	Metrics    Metrics       // optional metrics collector (may be nil)
+
+	RequirePassphrase bool // reject v1 secrets; replies to requests are exempt
 }
 
 // ClaimResult is returned by Service.Claim.

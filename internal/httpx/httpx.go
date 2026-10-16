@@ -3,7 +3,8 @@
 // limits, security headers, streaming semantics, and error translation.
 // Handlers are split across files by route: secrets (create.go, consume.go,
 // manage.go), secret requests (request*.go), pages (index.go, secret.go,
-// about.go, render.go), health probes (health.go), and shared error mapping,
+// about.go, render.go), health probes (health.go), the operator policy
+// (policy.go), and shared error mapping,
 // middleware and rate limiting (errors.go, middleware.go, ratelimit.go).
 package httpx
 
@@ -17,6 +18,7 @@ import (
 
 	"github.com/haukened/gone/v3/internal/app"
 	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/envelope"
 	"github.com/haukened/gone/v3/internal/i18n"
 )
 
@@ -50,6 +52,8 @@ type Handler struct {
 	MaxTTL            time.Duration               // upper TTL bound (from config)
 	TTLOptions        []domain.TTLOption          // explicit configured TTL options
 	I18n              *i18n.Bundle                // optional catalogs; nil renders every page in English
+	RequirePassphrase bool                        // reject v1 secrets (operator policy; replies exempt)
+	MaxFiles          int                         // files per secret offered to clients (advisory; 0 = off)
 
 	CreateLimiter  RateLimiter    // optional limiter for POST /api/secret (nil disables)
 	ReadLimiter    RateLimiter    // optional limiter for /api/secret/{id}[/status|/revoke] (nil disables)
@@ -57,12 +61,13 @@ type Handler struct {
 	Metrics        Metrics        // optional counter sink for rate-limit rejections
 }
 
-// New returns a configured Handler.
+// New returns a configured Handler. MaxFiles starts at the envelope's limit
+// (no file policy); set it after New to change it.
 // svc: application service port implementation.
 // maxBody: maximum allowed request body size (0 disables extra check).
 // readiness: optional probe function for /readyz (nil => always ready).
 func New(svc ServicePort, maxBody int64, readiness func(context.Context) error) *Handler {
-	return &Handler{Service: svc, MaxBody: maxBody, Readiness: readiness}
+	return &Handler{Service: svc, MaxBody: maxBody, Readiness: readiness, MaxFiles: envelope.MaxFiles}
 }
 
 // Router constructs and returns an http.Handler with all routes mounted and
@@ -82,6 +87,7 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("/api/secret/", h.limit(h.ReadLimiter, scopeRead, &xffWarn, h.handleConsumeSecret)) // /api/secret/{id}[/status|/revoke]
 	mux.HandleFunc("/api/request", h.limit(h.CreateLimiter, scopeCreate, &xffWarn, h.handleCreateRequest))
 	mux.HandleFunc("/api/request/", h.limitBy(h.requestLimit, &xffWarn, h.handleRequestRoute)) // /api/request/{id}[/reply|/status|/revoke]
+	mux.HandleFunc("/api/policy", h.handlePolicy)
 	mux.HandleFunc("/healthz", h.handleHealth)
 	mux.HandleFunc("/readyz", h.handleReady)
 	if h.Assets != nil {

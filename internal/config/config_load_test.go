@@ -2,6 +2,7 @@ package config
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,6 +56,23 @@ func TestClaimLeaseConfig(t *testing.T) {
 				t.Fatalf("ClaimLease = %v, want %v", cfg.ClaimLease, tc.want)
 			}
 		})
+	}
+}
+
+func TestLoadPolicy(t *testing.T) {
+	cleanGoneEnvForTest(t)
+	t.Setenv("GONE_REQUIRE_PASSPHRASE", "true")
+	t.Setenv("GONE_MAX_FILES", "0")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if !cfg.RequirePassphrase || cfg.MaxFiles != 0 {
+		t.Fatalf("policy = %v/%d, want true/0", cfg.RequirePassphrase, cfg.MaxFiles)
+	}
+	t.Setenv("GONE_MAX_FILES", "11")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "GONE_MAX_FILES") {
+		t.Fatalf("Load() err = %v, want GONE_MAX_FILES", err)
 	}
 }
 

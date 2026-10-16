@@ -41,6 +41,8 @@ tags:
     description: >-
       Secret requests. Creating one is anonymous; the reply page uses the fill
       token and the requester uses the manage token.
+  - name: policy
+    description: The operator policy clients honour before encrypting.
   - name: health
     description: Liveness and readiness probes.
   - name: i18n
@@ -131,6 +133,15 @@ paths:
             header), `invalid version`, `invalid nonce`, `invalid ttl`,
             `ttl invalid`, `short body` (the body ended before Content-Length
             bytes arrived), or `bad request`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: >-
+            Passphrase required: the operator set GONE_REQUIRE_PASSPHRASE and
+            the secret is version 1. `error` is `passphrase required`. Checked
+            before the body is read.
           content:
             application/json:
               schema:
@@ -631,6 +642,32 @@ paths:
           $ref: '#/components/responses/Internal'
         '503':
           $ref: '#/components/responses/Busy'
+  /api/policy:
+    get:
+      summary: Operator policy
+      operationId: getPolicy
+      description: >-
+        The operator policy, for clients to check before they encrypt.
+        `passphrase_required` is enforced by the server on POST /api/secret
+        (replies to requests are exempt). `max_files` is advisory: the file
+        count is inside the ciphertext, so the server cannot check it. Sent
+        with `Cache-Control: no-store`. Not rate limited. Any other method is
+        405 with `Allow: GET`.
+      tags: [policy]
+      responses:
+        '200':
+          description: The policy
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
   /healthz:
     get:
       summary: Liveness probe
@@ -901,6 +938,18 @@ components:
         expires_at:
           type: string
           format: date-time
+    Policy:
+      type: object
+      required: [passphrase_required, max_files]
+      properties:
+        passphrase_required:
+          type: boolean
+          description: POST /api/secret accepts only version 2 (passphrase) secrets.
+        max_files:
+          type: integer
+          minimum: 0
+          maximum: 10
+          description: Files a secret or reply may carry; 0 means none. Advisory.
     Error:
       type: object
       required: [error]

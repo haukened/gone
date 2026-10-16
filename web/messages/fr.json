@@ -111,6 +111,7 @@
 	"js.common.show": "Afficher",
 	"send.passGenerate": "Générer",
 	"send.passHint": "Le destinataire la saisit avant l’ouverture du secret. Envoyez-la séparément (par exemple par téléphone ou dans une autre application), jamais avec le lien.",
+	"send.passRequired": "Ce serveur exige une phrase secrète pour chaque secret.",
 	"send.submit": "Créer le lien à usage unique",
 	"compose.uploadProgress": "Progression de l’envoi",
 	"compose.submitHint": "Rien ne quitte cet appareil tant que vous n’appuyez pas sur le bouton.",
@@ -548,6 +549,7 @@
 	"js.upload.server": "Le serveur a rencontré un problème en créant le secret. Réessayez dans un instant.",
 	"js.upload.badId": "Le serveur a renvoyé un identifiant de secret invalide, donc il n’y a aucun lien à partager. Réessayez.",
 	"js.upload.rejected": "Le serveur a refusé le secret.",
+	"js.upload.passRequired": "Ce serveur exige une phrase secrète. Ajoutez-en une, puis réessayez.",
 	"js.upload.tooLarge": "Ce secret est trop volumineux pour ce serveur.",
 	"js.meter.tooMany": [
 		{
@@ -657,6 +659,8 @@
 	"js.pass.guessUniverse": "Environ {bits} bits d’entropie, plus que l’âge de l’univers pour la deviner.",
 	"js.pass.weak": "{text} Plus elle est longue, mieux c’est ; vous pouvez aussi appuyer sur Générer.",
 	"js.pass.shortProblem": "Utilisez une phrase secrète d’au moins {min} caractères, ou laissez le champ vide.",
+	"js.pass.required": "Ce serveur exige une phrase secrète. Saisissez-en une ou appuyez sur Générer.",
+	"js.pass.shortRequired": "Utilisez une phrase secrète d’au moins {min} caractères.",
 	"js.reply.badLink": "Ce lien de demande est incomplet. Vérifiez que vous l’avez copié en entier, y compris tout ce qui suit le #.",
 	"js.reply.newer": "Ce lien a été créé par une version plus récente de Gone et ne permet pas de répondre ici.",
 	"js.reply.badKey": "Ce lien de demande est endommagé, rien ne peut donc être chiffré pour lui. Demandez un nouveau lien.",

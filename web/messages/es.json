@@ -111,6 +111,7 @@
 	"js.common.show": "Mostrar",
 	"send.passGenerate": "Generar",
 	"send.passHint": "El destinatario la escribe antes de que se abra el secreto. Envíasela por otro medio (por ejemplo, por teléfono o en otra aplicación), nunca junto con el enlace.",
+	"send.passRequired": "Este servidor exige una frase de contraseña en cada secreto.",
 	"send.submit": "Crear enlace de un solo uso",
 	"compose.uploadProgress": "Progreso de la subida",
 	"compose.submitHint": "Nada sale de este dispositivo hasta que pulses el botón.",
@@ -548,6 +549,7 @@
 	"js.upload.server": "El servidor tuvo un problema al crear el secreto. Vuelve a intentarlo en un momento.",
 	"js.upload.badId": "El servidor devolvió un id de secreto no válido, así que no hay enlace que compartir. Vuelve a intentarlo.",
 	"js.upload.rejected": "El servidor rechazó el secreto.",
+	"js.upload.passRequired": "Este servidor exige una frase de contraseña. Añade una y vuelve a intentarlo.",
 	"js.upload.tooLarge": "Este secreto es demasiado grande para este servidor.",
 	"js.meter.tooMany": [
 		{
@@ -657,6 +659,8 @@
 	"js.pass.guessUniverse": "Unos {bits} bits de entropía; se tardaría más que la edad del universo en adivinarla.",
 	"js.pass.weak": "{text} Cuanto más larga, mejor; o pulsa Generar.",
 	"js.pass.shortProblem": "Usa una frase de contraseña de al menos {min} caracteres, o déjala vacía.",
+	"js.pass.required": "Este servidor exige una frase de contraseña. Escribe una o pulsa Generar.",
+	"js.pass.shortRequired": "Usa una frase de contraseña de al menos {min} caracteres.",
 	"js.reply.badLink": "Este enlace de solicitud no está completo. Comprueba que lo copiaste entero, incluido todo lo que va después de #.",
 	"js.reply.newer": "Este enlace se creó con una versión más reciente de Gone y no se puede responder aquí.",
 	"js.reply.badKey": "Este enlace de solicitud está dañado, así que no se puede cifrar nada para él. Pide un enlace nuevo.",

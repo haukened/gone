@@ -12,6 +12,7 @@ import (
 
 	"github.com/haukened/gone/v3/internal/config"
 	"github.com/haukened/gone/v3/internal/domain"
+	"github.com/haukened/gone/v3/internal/envelope"
 	"github.com/haukened/gone/v3/internal/store/sqlite"
 	wembed "github.com/haukened/gone/v3/web"
 )
@@ -83,7 +84,7 @@ var pageContractCases = []pageContractCase{
 }
 
 // pageRouter builds the production router backed by the real embedded
-// templates and assets, with a temporary SQLite index.
+// templates and assets, with a temporary SQLite index and the default policy.
 //
 // Parameters:
 //   - t: the calling test; resources are released via t.Cleanup.
@@ -91,6 +92,20 @@ var pageContractCases = []pageContractCase{
 // Returns:
 //   - http.Handler: the fully wired router.
 func pageRouter(t *testing.T) http.Handler {
+	t.Helper()
+	return pageRouterWith(t, nil)
+}
+
+// pageRouterWith is pageRouter with a hook that adjusts the configuration,
+// such as the operator policy, before the router is built.
+//
+// Parameters:
+//   - t: the calling test; resources are released via t.Cleanup.
+//   - adjust: changes the configuration; nil keeps it.
+//
+// Returns:
+//   - http.Handler: the fully wired router.
+func pageRouterWith(t *testing.T, adjust func(*config.Config)) http.Handler {
 	t.Helper()
 	tmp := t.TempDir()
 	db, err := sql.Open("sqlite", filepath.Join(tmp, "gone.db"))
@@ -106,9 +121,12 @@ func pageRouter(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatalf("load templates: %v", err)
 	}
-	cfg := &config.Config{MaxBytes: 2048, MinTTL: time.Minute, MaxTTL: time.Hour, TTLOptions: []domain.TTLOption{
+	cfg := &config.Config{MaxBytes: 2048, MinTTL: time.Minute, MaxTTL: time.Hour, MaxFiles: envelope.MaxFiles, TTLOptions: []domain.TTLOption{
 		{Duration: time.Minute, Label: "1m"}, {Duration: time.Hour, Label: "1h"},
 	}}
+	if adjust != nil {
+		adjust(cfg)
+	}
 	svc := buildService(idx, stubBlobStorage{}, cfg, realClock{})
 	return buildHandler(cfg, svc, db, tmp, tmpls, wembed.Assets).Router()
 }

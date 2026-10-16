@@ -33,7 +33,7 @@
 				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-inbox" /></svg><span data-i18n="reply.eyebrow">{{ t "reply.eyebrow" }}</span></p>
 				<h1 id="compose-heading" tabindex="-1" data-i18n="reply.title">{{ rich "reply.title" nil "accent" `<span class="accent">` }}</h1>
 				<p class="lead" data-i18n="reply.lead">{{ t "reply.lead" }}</p>
-				<form id="create-secret" class="form" aria-label="{{ t "reply.form" }}" data-i18n-attr="aria-label:reply.form" data-max-bytes="{{ .MaxBytes }}" data-overhead="65" novalidate>
+				<form id="create-secret" class="form" aria-label="{{ t "reply.form" }}" data-i18n-attr="aria-label:reply.form" data-max-bytes="{{ .MaxBytes }}" data-max-files="{{ .MaxFiles }}" data-overhead="65" novalidate>
 					<p class="callout"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg><span data-i18n="reply.trust">{{ rich "reply.trust" nil "strong" `<strong>` }}</span></p>
 					<div class="field">
 						<div class="label-row">
@@ -43,13 +43,13 @@
 						<textarea id="secret" name="secret" rows="6" placeholder="{{ t "reply.messagePlaceholder" }}" data-i18n-attr="placeholder:reply.messagePlaceholder" aria-describedby="secret-hint" spellcheck="false" autocomplete="off"></textarea>
 					</div>
 					<div class="field">
-						<span class="label" id="files-label" data-i18n="compose.files" data-i18n-args="{{ json (args "max" 10) }}">{{ rich "compose.files" (args "max" 10) "opt" `<span class="opt">` }}</span>
+						{{ if .MaxFiles }}<span class="label" id="files-label" data-i18n="compose.files" data-i18n-args="{{ json (args "max" .MaxFiles) }}">{{ rich "compose.files" (args "max" .MaxFiles) "opt" `<span class="opt">` }}</span>
 						<div id="drop-zone" class="drop">
 							<input id="secret-files" name="secret-files" type="file" class="sr-only" multiple aria-describedby="files-label" />
 							<label for="secret-files" class="btn btn-secondary btn-small"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-clip" /></svg><span data-i18n="compose.addFiles">{{ t "compose.addFiles" }}</span></label>
 							<span data-i18n="compose.dropFiles">{{ t "compose.dropFiles" }}</span>
 						</div>
-						<ul id="file-list" class="files" aria-label="{{ t "compose.attached" }}" data-i18n-attr="aria-label:compose.attached" hidden></ul>
+						<ul id="file-list" class="files" aria-label="{{ t "compose.attached" }}" data-i18n-attr="aria-label:compose.attached" hidden></ul>{{ end }}
 						<div id="size-box" class="meter">
 							<div class="meter-row">{{ with args "used" (bytes 0) "max" (bytes .MaxBytes) }}<span id="size-label" data-i18n="js.meter.size" data-i18n-args="{{ json . }}">{{ ta "js.meter.size" . }}</span>{{ end }}</div>
 							<progress id="size-meter" class="bar" max="1" value="0" aria-labelledby="size-label"></progress>

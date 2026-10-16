@@ -107,6 +107,7 @@
 	"js.common.show": "Anzeigen",
 	"send.passGenerate": "Erzeugen",
 	"send.passHint": "Die empfangende Person gibt sie ein, bevor sich das Geheimnis öffnet. Schick sie getrennt (zum Beispiel per Telefon oder über eine andere App), niemals zusammen mit dem Link.",
+	"send.passRequired": "Dieser Server verlangt für jedes Geheimnis eine Passphrase.",
 	"send.submit": "Einmal-Link erstellen",
 	"compose.uploadProgress": "Fortschritt beim Hochladen",
 	"compose.submitHint": "Nichts verlässt dieses Gerät, bevor du auf die Schaltfläche drückst.",
@@ -539,6 +540,7 @@
 	"js.upload.server": "Der Server hatte ein Problem beim Erstellen des Geheimnisses. Versuch es gleich noch einmal.",
 	"js.upload.badId": "Der Server hat eine ungültige Geheimnis-ID zurückgegeben, daher gibt es keinen Link zum Teilen. Versuch es noch einmal.",
 	"js.upload.rejected": "Der Server hat das Geheimnis abgelehnt.",
+	"js.upload.passRequired": "Dieser Server verlangt eine Passphrase. Füg eine hinzu und versuch es noch einmal.",
 	"js.upload.tooLarge": "Dieses Geheimnis ist zu groß für diesen Server.",
 	"js.meter.tooMany": [
 		{
@@ -643,6 +645,8 @@
 	"js.pass.guessUniverse": "Etwa {bits} Bit Entropie, länger als das Alter des Universums zum Erraten.",
 	"js.pass.weak": "{text} Länger ist besser, oder drück auf Erzeugen.",
 	"js.pass.shortProblem": "Mach die Passphrase mindestens {min} Zeichen lang oder lass sie leer.",
+	"js.pass.required": "Dieser Server verlangt eine Passphrase. Gib eine ein oder drück auf Erzeugen.",
+	"js.pass.shortRequired": "Mach die Passphrase mindestens {min} Zeichen lang.",
 	"js.reply.badLink": "Dieser Anfragelink ist unvollständig. Prüf, ob du ihn ganz kopiert hast, einschließlich allem nach dem #.",
 	"js.reply.newer": "Dieser Link wurde mit einer neueren Version von Gone erstellt und kann hier nicht beantwortet werden.",
 	"js.reply.badKey": "Dieser Anfragelink ist beschädigt, deshalb kann nichts dafür verschlüsselt werden. Bitte um einen neuen Link.",

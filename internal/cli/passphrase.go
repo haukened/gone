@@ -18,6 +18,13 @@ type passOpts struct {
 	generate bool
 }
 
+// set reports whether any passphrase source flag was given.
+//
+// Returns true when the sender chose a passphrase.
+func (p passOpts) set() bool {
+	return countTrue(p.prompt, p.file != "", p.generate) > 0
+}
+
 // register adds the passphrase flags to fs.
 //
 // Parameters:

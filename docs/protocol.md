@@ -390,6 +390,7 @@ The full endpoint reference, including status codes, is in [docs/api.md](api.md)
 - Each `X-Gone-*` header **MUST** appear exactly once. A missing, empty, or repeated header gets `400 missing required headers`.
 - If a present version or nonce header breaks a rule, the server **MUST** respond with `400` and `invalid version` or `invalid nonce`. The application service repeats the same checks, so only valid metadata is ever stored.
 - The server never inspects the body beyond its length, and never parses the v2 header (§4.2). It **MAY** reject bodies shorter than the tag.
+- An operator **MAY** require a passphrase. The server then rejects version 1 with `403 passphrase required`, before reading the body. Replies (§8.6) are unaffected: v3 has no passphrase factor. Clients learn the setting from `GET /api/policy`, which also carries an advisory file limit the server cannot check, since the file count is encrypted (§5).
 - The `201` body carries `id`, `expires_at`, and `manage_token`. The token is 32 bytes from a CSPRNG, encoded as strict base64url (43 characters). The server stores only its SHA-256 and can never return it again.
 
 ### 8.2 Claim: `GET /api/secret/{id}`

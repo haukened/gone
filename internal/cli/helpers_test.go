@@ -127,7 +127,19 @@ func newGoneServer(t *testing.T, te *testEnv) *httptest.Server {
 // Returns the router.
 func newGoneHandler(t *testing.T) http.Handler {
 	t.Helper()
-	cfg := gonecfg.DefaultAppConfig
+	return newGoneHandlerWith(t, gonecfg.DefaultAppConfig)
+}
+
+// newGoneHandlerWith is newGoneHandler for a given configuration, such as
+// one with an operator policy.
+//
+// Parameters:
+//   - t: the test.
+//   - cfg: the server configuration.
+//
+// Returns the router.
+func newGoneHandlerWith(t *testing.T, cfg gonecfg.Config) http.Handler {
+	t.Helper()
 	dir := t.TempDir()
 	db, err := sql.Open(sqlite.DriverName, gonecfg.SQLiteDSNFor(dir))
 	if err != nil {
@@ -153,10 +165,13 @@ func newGoneHandler(t *testing.T) http.Handler {
 		MinTTL:     cfg.MinTTL,
 		MaxTTL:     cfg.MaxTTL,
 		ClaimLease: cfg.ClaimLease,
+
+		RequirePassphrase: cfg.RequirePassphrase,
 	}
 	svc.Requests = svc.Store.(goneapp.RequestStore)
 	h := httpx.New(svc, cfg.MaxBytes, nil)
 	h.MinTTL, h.MaxTTL = cfg.MinTTL, cfg.MaxTTL
+	h.RequirePassphrase, h.MaxFiles = cfg.RequirePassphrase, cfg.MaxFiles
 	h.Requests = svc
 	return h.Router()
 }

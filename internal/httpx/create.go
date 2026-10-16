@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/haukened/gone/v3/internal/app"
 	"github.com/haukened/gone/v3/internal/domain"
 )
 
@@ -104,6 +105,9 @@ func (h *Handler) parseAndValidateCreate(r *http.Request) (*requestMeta, error) 
 	if err != nil {
 		return nil, err
 	}
+	if h.RequirePassphrase && ver == domain.ProtocolV1 {
+		return nil, app.ErrPassphraseRequired
+	}
 	return &requestMeta{contentLength: cl, version: ver, nonce: nonce, ttl: ttl}, nil
 }
 
@@ -123,6 +127,7 @@ func classifyCreateError(err error) (int, string) {
 		"invalid version":          http.StatusBadRequest,
 		"invalid nonce":            http.StatusBadRequest,
 		"invalid ttl":              http.StatusBadRequest,
+		"passphrase required":      http.StatusForbidden,
 	}
 	msg := err.Error()
 	if code, ok := lookup[msg]; ok {

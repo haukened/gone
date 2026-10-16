@@ -107,6 +107,7 @@
 	"js.common.show": "Show",
 	"send.passGenerate": "Generate",
 	"send.passHint": "The recipient types this before the secret opens. Send it separately (for example by phone or a different app), never alongside the link.",
+	"send.passRequired": "This server requires a passphrase on every secret.",
 	"send.submit": "Create one-time link",
 	"compose.uploadProgress": "Upload progress",
 	"compose.submitHint": "Nothing leaves this device until you press the button.",
@@ -539,6 +540,7 @@
 	"js.upload.server": "The server had a problem creating the secret. Try again in a moment.",
 	"js.upload.badId": "The server returned a malformed secret id, so there is no link to share. Try again.",
 	"js.upload.rejected": "The server rejected the secret.",
+	"js.upload.passRequired": "This server requires a passphrase. Add one, then try again.",
 	"js.upload.tooLarge": "This secret is too large for this server.",
 	"js.meter.tooMany": [
 		{
@@ -643,6 +645,8 @@
 	"js.pass.guessUniverse": "About {bits} bits of entropy, longer than the age of the universe to guess.",
 	"js.pass.weak": "{text} Longer is better, or press Generate.",
 	"js.pass.shortProblem": "Make the passphrase at least {min} characters, or leave it empty.",
+	"js.pass.required": "This server requires a passphrase. Type one or press Generate.",
+	"js.pass.shortRequired": "Make the passphrase at least {min} characters.",
 	"js.reply.badLink": "This request link isn’t complete. Check that you copied all of it, including everything after the #.",
 	"js.reply.newer": "This link was made by a newer version of Gone and can’t be answered here.",
 	"js.reply.badKey": "This request link is damaged, so nothing can be encrypted for it. Ask them for a new link.",

@@ -16,7 +16,9 @@
 
   // create wires a file selection to the given elements.
   //
-  // opts: {form, input, dropZone, listEl, isBusy(), onAdd(), onChange()}.
+  // opts: {form, input, dropZone, listEl, disabled, isBusy(), onAdd(),
+  // onChange()}. disabled (the operator turned files off) ignores drops while
+  // still stopping the browser from opening the dropped file.
   // Returns {files(), metas(), count(), add(list), remove(i), clear(), render()}.
   function create(opts) {
     const form = opts.form;
@@ -59,7 +61,7 @@
     }
 
     function add(list) {
-      if (isBusy() || !list) return;
+      if (isBusy() || !list || opts.disabled) return;
       drop.addUnique(selected, list);
       if (input) input.value = '';
       onAdd();

@@ -81,6 +81,13 @@ test('add ignores null lists and busy state', () => {
   assert.equal(counts.add, 0);
 });
 
+test('a disabled selection ignores chosen and dropped files', () => {
+  const { sel, counts } = setup({ disabled: true });
+  sel.add([mk('a', 'x')]);
+  assert.equal(sel.count(), 0);
+  assert.equal(counts.add, 0);
+});
+
 test('remove buttons drop the entry and refocus the input unless busy', () => {
   const { env, sel, input, listEl, state } = setup();
   sel.add([mk('a', '1'), mk('b', '2')]);

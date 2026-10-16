@@ -31,14 +31,15 @@ const shutdownTimeout = 10 * time.Second
 // Parameters:
 //   - idx: metadata index for secrets.
 //   - blobs: filesystem storage for external payloads.
-//   - cfg: configuration supplying size, TTL, and claim limits.
+//   - cfg: configuration supplying size, TTL, and claim limits and the
+//     passphrase policy.
 //   - clock: time source.
 //
 // Returns:
 //   - *app.Service: the configured service (Metrics left unset).
 func buildService(idx store.Index, blobs store.BlobStorage, cfg *config.Config, clock app.Clock) *app.Service {
 	st := store.New(idx, blobs, clock, cfg.InlineMaxBytes)
-	svc := &app.Service{Store: st, Clock: clock, MaxBytes: cfg.MaxBytes, MinTTL: cfg.MinTTL, MaxTTL: cfg.MaxTTL, ClaimLease: cfg.ClaimLease}
+	svc := &app.Service{Store: st, Clock: clock, MaxBytes: cfg.MaxBytes, MinTTL: cfg.MinTTL, MaxTTL: cfg.MaxTTL, ClaimLease: cfg.ClaimLease, RequirePassphrase: cfg.RequirePassphrase}
 	if _, ok := idx.(store.RequestIndex); ok {
 		svc.Requests = st
 	}
@@ -46,10 +47,10 @@ func buildService(idx store.Index, blobs store.BlobStorage, cfg *config.Config, 
 }
 
 // buildHandler wires the HTTP handler with templates, static assets, TTL
-// options, and a readiness probe.
+// options, the operator policy, and a readiness probe.
 //
 // Parameters:
-//   - cfg: configuration supplying size and TTL limits.
+//   - cfg: configuration supplying size and TTL limits and the policy.
 //   - svc: application service backing the API.
 //   - db: database used by the readiness probe.
 //   - blobDir: blob directory used by the readiness probe.
@@ -76,6 +77,8 @@ func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir stri
 	h.MinTTL = cfg.MinTTL
 	h.MaxTTL = cfg.MaxTTL
 	h.TTLOptions = cfg.TTLOptions
+	h.RequirePassphrase = cfg.RequirePassphrase
+	h.MaxFiles = cfg.MaxFiles
 	return h
 }
 

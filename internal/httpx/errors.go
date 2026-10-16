@@ -61,6 +61,7 @@ var serviceErrorTable = []serviceErrorMapping{
 	{app.ErrSizeExceeded, http.StatusRequestEntityTooLarge, "size exceeded", "size_exceeded", slog.LevelWarn},
 	{app.ErrNotFound, http.StatusNotFound, "not found", "not_found", slog.LevelInfo},
 	{domain.ErrTTLInvalid, http.StatusBadRequest, "ttl invalid", "ttl_invalid", slog.LevelWarn},
+	{app.ErrPassphraseRequired, http.StatusForbidden, "passphrase required", "passphrase_required", slog.LevelInfo},
 	{os.ErrNotExist, http.StatusNotFound, "not found", "not_found", slog.LevelInfo},
 	{app.ErrBusy, http.StatusServiceUnavailable, "busy", "busy", slog.LevelWarn},
 	{io.ErrUnexpectedEOF, http.StatusBadRequest, "short body", "short_body", slog.LevelWarn},

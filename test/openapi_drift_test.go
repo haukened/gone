@@ -246,6 +246,10 @@ func errorHandler(err error) http.Handler {
 	return h.Router()
 }
 
+// serviceFreeOps read neither the service nor a rate limiter, so they have
+// no service or rate-limit errors to provoke.
+var serviceFreeOps = map[string]bool{"GET /api/policy": true}
+
 // readOnlyOps cannot report 503 busy: they never take the write lock.
 var readOnlyOps = map[string]bool{"GET /api/request/{id}": true, "GET /api/request/{id}/status": true}
 
@@ -274,7 +278,7 @@ func TestOpenAPIErrorStatuses(t *testing.T) {
 	for _, tc := range cases {
 		handler := tc.handler()
 		for _, op := range apiOps(ops) {
-			if tc.skip != nil && tc.skip(op) {
+			if serviceFreeOps[op.method+" "+op.path] || tc.skip != nil && tc.skip(op) {
 				continue
 			}
 			t.Run(tc.name+" "+op.method+" "+op.path, func(t *testing.T) {

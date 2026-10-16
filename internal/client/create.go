@@ -45,8 +45,9 @@ type createResponse struct {
 //   - ctx: request context.
 //   - req: sealed secret and metadata.
 //
-// Returns the new secret's ID, expiry, and manage token, or a status,
-// protocol, or network error.
+// Returns the new secret's ID, expiry, and manage token,
+// ErrPassphraseRequired for a v1 secret on a server that requires a
+// passphrase, or a status, protocol, or network error.
 func (c *Client) Create(ctx context.Context, req CreateRequest) (CreateResult, error) {
 	hdr := http.Header{}
 	hdr.Set("X-Gone-Version", strconv.Itoa(int(req.Version)))
@@ -59,6 +60,10 @@ func (c *Client) Create(ctx context.Context, req CreateRequest) (CreateResult, e
 	resp, err := c.do(ctx, http.MethodPost, "/api/secret", hdr, body)
 	if err != nil {
 		return CreateResult{}, err
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		discard(resp)
+		return CreateResult{}, &StatusError{Code: resp.StatusCode, kind: ErrPassphraseRequired}
 	}
 	if err = expect(resp, http.StatusCreated); err != nil {
 		return CreateResult{}, err

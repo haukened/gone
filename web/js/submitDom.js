@@ -19,6 +19,13 @@
     return n > 0 ? n : 0;
   }
 
+  // parseMaxFiles reads the operator's file limit (0 turns files off),
+  // never above what an envelope can carry; no attribute means that limit.
+  function parseMaxFiles(raw) {
+    const max = window.goneEnvelope.MAX_FILES;
+    return raw === undefined ? max : Math.min(parsePositiveInt(raw), max);
+  }
+
 
 
   function lookupElements() {
@@ -45,6 +52,8 @@
     uploader: window.goneUpload,
     maxBytes: parsePositiveInt(form.dataset.maxBytes),
     overhead: parsePositiveInt(form.dataset.overhead),
+    maxFiles: parseMaxFiles(form.dataset.maxFiles),
+    passRequired: 'passRequired' in form.dataset,
     idleLabel: window.goneI18n ? window.goneI18n.snapshot(els.primaryLabel) : null,
     fileInput: byId('secret-files'),
     busy: false,

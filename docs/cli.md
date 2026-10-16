@@ -108,6 +108,7 @@ gone send [flags]
 - To send only files, give standard input nothing: `gone send -f report.pdf </dev/null`.
 - The message plus files must fit within the server's size limit (`GONE_MAX_BYTES`, 10 MiB by default); the server also enforces its own minimum and maximum TTL. Independently of the server, `gone` refuses inputs over 64 MiB before encrypting anything (exit 2).
 - An attachment's type is guessed from its file extension. Its name is the file's base name.
+- **Server policy.** Before reading anything, `gone` fetches the server's policy (`GET /api/policy`, see [Policies](configuration.md#policies)). If the server requires a passphrase and no `--passphrase-*` flag is given, or more files are attached than it allows, `gone` exits 2 with error kind `policy` and nothing is read, prompted for or sent. A server older than v3.12 has no policy route and is treated as having no policy.
 - At most one `--passphrase-*` flag may be used. A passphrase must be at least 8 characters. `--passphrase-generate` prints five random words from the EFF short wordlist, joined in CamelCase (about 51 bits), to standard error, so a redirected standard output only captures the link.
 
 Example with files and a passphrase:
@@ -214,7 +215,7 @@ Cancels the request, or deletes a reply before you open it, and forgets it here.
 gone reply <request-link|-> [-f FILE]... [--message-file PATH] [-s URL] [--allow-origin ORIGIN]... [--json] [--insecure] [--timeout DURATION]
 ```
 
-Answers someone's request. The link is checked with the server first, so if the request was already answered, cancelled, or has expired, `gone` exits 3 without reading the message. The message comes from standard input or `--message-file`, plus up to 10 attachments, exactly as for `send`. It is encrypted to the requester's public key from the link: not even you can open it afterwards. Prints `Sent. Only the requester can open it.` and an `Expires:` line with when the reply is deleted if the requester never opens it. A request link of `-` is read from standard input.
+Answers someone's request. The link is checked with the server first, so if the request was already answered, cancelled, or has expired, `gone` exits 3 without reading the message. The message comes from standard input or `--message-file`, plus up to 10 attachments (fewer if the server's policy says so), exactly as for `send`. A reply never needs a passphrase, even on a server that requires one for `send`. It is encrypted to the requester's public key from the link: not even you can open it afterwards. Prints `Sent. Only the requester can open it.` and an `Expires:` line with when the reply is deleted if the requester never opens it. A request link of `-` is read from standard input.
 
 Only answer a request link you trust: anyone can make one, so check it came from the person you expect.
 
@@ -324,7 +325,7 @@ The standard proxy variables (`HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`) are honor
 | ---: | ---------------------------------------------------------------------- |
 | 0    | Success                                                                |
 | 1    | Internal error, or interrupted (Ctrl-C)                                |
-| 2    | Usage error: bad flag, bad link, bad server URL, weak passphrase, or a link for a server you don't use (`untrusted_origin`) |
+| 2    | Usage error: bad flag, bad link, bad server URL, weak passphrase, a link for a server you don't use (`untrusted_origin`), or input the server's policy refuses (`policy`) |
 | 3    | Not found: already opened, revoked, expired, or never existed; for `request open` without `--wait`, no reply yet |
 | 4    | Wrong passphrase (or the link is damaged); the secret is lost          |
 | 5    | Rate limited by the server                                             |
@@ -402,6 +403,7 @@ Errors are one line of JSON on **standard error**, and the exit code is still se
 | `interrupted`      | 1    |
 | `usage`            | 2    |
 | `untrusted_origin` | 2    |
+| `policy`           | 2    |
 | `not_found`        | 3    |
 | `not_ready`        | 3    |
 | `wrong_passphrase` | 4    |

@@ -3,7 +3,7 @@
 The HTTP API of the Gone one-time secret sharing service. The machine-readable OpenAPI specification is [openapi.yaml](openapi.yaml); this page summarizes the same API in prose. The encryption format, link fragment, and client rules are specified in [protocol.md](protocol.md). The command-line client is documented in [cli.md](cli.md).
 
 ## Design Goals
-- **Minimal surface**: Three secret operations (create, claim, acknowledge), two sender operations (status, revoke), secret requests (create, check, reply, status, claim, acknowledge, cancel), and health probes.
+- **Minimal surface**: Three secret operations (create, claim, acknowledge), two sender operations (status, revoke), secret requests (create, check, reply, status, claim, acknowledge, cancel), the operator policy, and health probes.
 - **Zero knowledge**: The server only ever sees ciphertext. Encryption, decryption, and the key stay in the browser.
 - **Streaming-friendly**: Ciphertext is sent and returned as raw `application/octet-stream`, not wrapped in JSON.
 - **Deterministic deletion**: Retrieval is two-phase. `GET` claims the secret and `DELETE` acknowledges receipt, so a secret is deleted only after the recipient has it, or when the claim lease lapses. It is never served to a second party.
@@ -25,11 +25,12 @@ The HTTP API of the Gone one-time secret sharing service. The machine-readable O
 | GET | `/api/request/{id}/reply` | Requester: claim the reply (`X-Gone-Manage`, plus `X-Gone-Claim` on a retry) |
 | DELETE | `/api/request/{id}/reply` | Requester: acknowledge the reply; permanently deletes it (`X-Gone-Claim`) |
 | POST | `/api/request/{id}/revoke` | Requester: cancel the request, or delete an unopened reply (`X-Gone-Manage`) |
+| GET | `/api/policy` | The operator policy clients honour before encrypting: `{"passphrase_required": bool, "max_files": int}`. Never cached and not rate limited. See [Policies](configuration.md#policies). |
 | GET | `/healthz` | Liveness check (`200`, text `ok`). GET and HEAD only. |
 | GET | `/i18n/{tag}.json` | The web pages' message catalog for one language (`en`, `es`, `fr`, `de`, `pt-BR`), used to switch language in place. With the current `?v=` hash it may be cached for a year. |
 | GET | `/readyz` | Readiness check: the database answers a ping and the blob directory is readable (`200`, text `ready`; otherwise `503` with JSON `{"error":"not ready"}`). GET and HEAD only. The result is cached for 2 seconds, and the blob directory check opens the directory and reads at most one entry. |
 
-Other methods on `/api/secret/{id}` return `405` with `Allow: GET, DELETE`. The same applies to `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`), to `/api/request` (`Allow: POST`), `/api/request/{id}` and its `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`), and to `/api/request/{id}/reply` (`Allow: GET, PUT, DELETE`). `/api/secret` answers `405` with `Allow: POST`, and `/healthz` and `/readyz` answer anything but GET and HEAD with `405` and `Allow: GET, HEAD`. Unknown `/api/` paths return a JSON `404`. A trailing slash is never part of a route: `/api/secret/{id}/` and `/api/request/{id}/reply/` are `404`, not aliases. Page routes without an ID (`/secret/`, `/manage/`, `/reply/`, `/request/`) return the HTML 404 page.
+Other methods on `/api/secret/{id}` return `405` with `Allow: GET, DELETE`. The same applies to `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`), to `/api/request` (`Allow: POST`), `/api/request/{id}` and its `/status` (`Allow: GET`) and `/revoke` (`Allow: POST`), and to `/api/request/{id}/reply` (`Allow: GET, PUT, DELETE`). `/api/secret` answers `405` with `Allow: POST` and `/api/policy` with `Allow: GET`, and `/healthz` and `/readyz` answer anything but GET and HEAD with `405` and `Allow: GET, HEAD`. Unknown `/api/` paths return a JSON `404`. A trailing slash is never part of a route: `/api/secret/{id}/` and `/api/request/{id}/reply/` are `404`, not aliases. Page routes without an ID (`/secret/`, `/manage/`, `/reply/`, `/request/`) return the HTML 404 page.
 
 Pages are rendered in the language chosen by the `gone_lang` cookie, else the best match for `Accept-Language`, else English. Page responses carry `Content-Language` and `Vary: Cookie, Accept-Language`. The API itself is not translated: error bodies are always English, and the pages map status codes to their own messages.
 
@@ -44,7 +45,7 @@ Metrics are **not** served on the public listener. When both `GONE_METRICS_ADDR`
    - `Content-Length` (required; chunked uploads are rejected)
 
    Each `X-Gone-*` header must appear exactly once.
-3. The server validates size and TTL, issues an ID, and stores the ciphertext inline in SQLite (≤ `GONE_INLINE_MAX_BYTES`) or as a filesystem blob.
+3. The server validates size and TTL, rejects version `1` with `403` when the operator requires a passphrase (`GONE_REQUIRE_PASSPHRASE`), issues an ID, and stores the ciphertext inline in SQLite (≤ `GONE_INLINE_MAX_BYTES`) or as a filesystem blob.
 4. Response: `201` with JSON `{ "id": "<32-hex>", "expires_at": "RFC3339", "manage_token": "<43-char base64url>" }`. The server keeps only a SHA-256 hash of the manage token.
 5. The client builds the share link `/secret/{id}#v1:<base64url-key>` (or `#v2:` with a passphrase). The key lives only in the URL fragment, which browsers never send to the server. The passphrase never appears in the link.
 6. The client also builds the sender's private manage link `/manage/{id}#<manage_token>`. It cannot decrypt anything; it can only check on or revoke the secret.
@@ -86,7 +87,7 @@ The server treats the body as opaque ciphertext. Inside the encryption:
 - **Text only:** the plaintext is the raw UTF-8 message.
 - **With attachments (envelope v2):** `"GONE2\0\0\0"` magic (8 bytes), a big-endian `u32` header length, a JSON header `{ "v": 2, "msg": <message byte length>, "files": [{ "name", "type", "size" }] }`, then the message bytes, then each file's bytes in order.
 
-File names, types, and sizes are therefore encrypted along with the contents. Decoders sanitize file names and map MIME types onto an allowlist (see [protocol.md §6](protocol.md#6-sanitization)). The web client allows up to 10 files of any type. The message and all files share the `MaxBytes` limit, which includes the 16-byte GCM tag. Encryption uses AES-256-GCM with AAD `gone:v1`. With a passphrase (protocol v2), the AES key also depends on the passphrase through PBKDF2-SHA-256 and HKDF, and the body starts with a 21-byte authenticated header that the server stores without parsing (see [protocol.md §4.2](protocol.md#42-protocol-version-2-passphrase)).
+File names, types, and sizes are therefore encrypted along with the contents. Decoders sanitize file names and map MIME types onto an allowlist (see [protocol.md §6](protocol.md#6-sanitization)). The web client allows up to 10 files of any type, or fewer when the operator sets `GONE_MAX_FILES`. The server cannot check that limit, since the file count is encrypted; see [Policies](configuration.md#policies). The message and all files share the `MaxBytes` limit, which includes the 16-byte GCM tag. Encryption uses AES-256-GCM with AAD `gone:v1`. With a passphrase (protocol v2), the AES key also depends on the passphrase through PBKDF2-SHA-256 and HKDF, and the body starts with a 21-byte authenticated header that the server stores without parsing (see [protocol.md §4.2](protocol.md#42-protocol-version-2-passphrase)).
 
 ## Error Mapping
 All errors are JSON `{ "error": "<message>" }`.
@@ -106,6 +107,7 @@ All errors are JSON `{ "error": "<message>" }`.
 | Unparseable `Content-Length` | 400 | `invalid content length` |
 | Body ends before `Content-Length` bytes arrived (create or reply) | 400 | `short body` |
 | Any other malformed create request | 400 | `bad request` |
+| Version `1` on create when the operator requires a passphrase (`GONE_REQUIRE_PASSPHRASE`; replies are exempt) | 403 | `passphrase required` |
 | Not found / expired / claimed by someone else / wrong token / lease lapsed / opened or revoked (status, revoke) | 404 | `not found` |
 | Method not allowed | 405 | `method not allowed` |
 | Missing `Content-Length` on create or on a reply (`PUT /api/request/{id}/reply`) | 411 | `content length required` |

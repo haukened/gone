@@ -43,6 +43,19 @@ test('typing and attaching files update the meter and button', (t) => {
   assert.equal(b.$('size-warning-text').textContent, 'Too many files: remove 1 to stay within 10.');
 });
 
+test('the operator file limit caps or turns off attachments', (t) => {
+  const capped = boot(t, { dataset: { maxFiles: '2' } });
+  addFiles(capped, Array.from({ length: 3 }, (_, i) => new File(['x'], 'f' + i)));
+  assert.equal(capped.$('size-warning-text').textContent, 'Too many files: remove 1 to stay within 2.');
+  const off = boot(t, { dataset: { maxFiles: '0' } });
+  addFiles(off, [new File(['x'], 'a')]);
+  assert.equal(off.$('file-list').hidden, true);
+  assert.equal(off.blocked(), true);
+  const over = boot(t, { dataset: { maxFiles: '99' } });
+  addFiles(over, Array.from({ length: 11 }, (_, i) => new File(['x'], 'f' + i)));
+  assert.equal(over.$('size-warning-text').textContent, 'Too many files: remove 1 to stay within 10.');
+});
+
 test('submitting an empty or oversized form explains why', (t) => {
   const b = boot(t);
   assert.equal(submit(b).defaultPrevented, true);

@@ -28,10 +28,12 @@ func (tr TemplateRenderer) Execute(w http.ResponseWriter, data any) error {
 // IndexView supplies dynamic config values to the compose templates. Sizes
 // and durations are raw numbers; the templates format them for the locale.
 type IndexView struct {
-	MaxBytes      int64
-	MinTTLSeconds int
-	MaxTTLSeconds int
-	TTLOptions    []TTLOptionView
+	MaxBytes          int64
+	MinTTLSeconds     int
+	MaxTTLSeconds     int
+	TTLOptions        []TTLOptionView
+	RequirePassphrase bool // the send form must collect a passphrase
+	MaxFiles          int  // files a secret or reply may carry; 0 hides file inputs
 }
 
 // TTLOptionView is the subset of a domain TTLOption needed by the template.
@@ -64,9 +66,11 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 // Returns the view.
 func (h *Handler) indexView() IndexView {
 	view := IndexView{
-		MaxBytes:      h.MaxBody,
-		MinTTLSeconds: int(h.MinTTL.Seconds()),
-		MaxTTLSeconds: int(h.MaxTTL.Seconds()),
+		MaxBytes:          h.MaxBody,
+		MinTTLSeconds:     int(h.MinTTL.Seconds()),
+		MaxTTLSeconds:     int(h.MaxTTL.Seconds()),
+		RequirePassphrase: h.RequirePassphrase,
+		MaxFiles:          h.MaxFiles,
 	}
 	view.TTLOptions = ttlOptionViews(h.TTLOptions)
 	return view
