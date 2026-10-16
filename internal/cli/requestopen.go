@@ -30,7 +30,7 @@ func (a *app) runRequestOpen(ctx context.Context, args []string) error {
 	var o getOpts
 	var wait bool
 	fs := newFlagSet("request open")
-	o.register(fs)
+	o.common.register(fs)
 	registerOutputs(&o, fs)
 	fs.BoolVar(&wait, "wait", false, "")
 	db, row, cl, err := a.savedTarget(ctx, fs, args, &o.common)

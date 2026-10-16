@@ -26,7 +26,8 @@ var (
 var ErrLocked = errors.New("the request file is in use by another gone process")
 
 // lock takes the lock file, waiting up to lockWait. A lock older than
-// staleLock is removed: its process died mid-change.
+// staleLock is removed, by one waiter at a time (see breakStale): its
+// process died mid-change.
 //
 // Parameters:
 //   - ctx: context.
@@ -36,19 +37,40 @@ var ErrLocked = errors.New("the request file is in use by another gone process")
 func (d *DB) lock(ctx context.Context) (func(), error) {
 	path := filepath.Join(d.dir, lockName)
 	deadline := time.Now().Add(lockWait)
+	unlock := func() { _ = os.Remove(path) }
 	for {
-		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePerm) // #nosec G304 // nosemgrep
-		if err == nil {
-			_ = f.Close()
-			return func() { _ = os.Remove(path) }, nil
-		}
-		if !errors.Is(err, fs.ErrExist) {
+		ok, err := createLock(path)
+		if err != nil {
 			return nil, err
 		}
-		if err = waitForLock(ctx, path, deadline); err != nil {
+		if ok {
+			return unlock, nil
+		}
+		if ok, err = waitForLock(ctx, path, deadline); err != nil {
 			return nil, err
+		}
+		if ok {
+			return unlock, nil
 		}
 	}
+}
+
+// createLock tries to create the lock file.
+//
+// Parameters:
+//   - path: lock file.
+//
+// Returns true if this call created it, false if it exists, or an I/O error.
+func createLock(path string) (bool, error) {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePerm) // #nosec G304 // nosemgrep
+	if errors.Is(err, fs.ErrExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	_ = f.Close()
+	return true, nil
 }
 
 // waitForLock clears a stale lock or sleeps briefly before the next try.
@@ -58,21 +80,21 @@ func (d *DB) lock(ctx context.Context) (func(), error) {
 //   - path: lock file.
 //   - deadline: when to give up.
 //
-// Returns ErrLocked past the deadline, the context error, or nil to retry.
-func waitForLock(ctx context.Context, path string, deadline time.Time) error {
+// Returns true if it broke a stale lock and now holds the lock, ErrLocked
+// past the deadline, the context error, or false and nil to retry.
+func waitForLock(ctx context.Context, path string, deadline time.Time) (bool, error) {
 	if fi, err := os.Stat(path); err == nil && time.Since(fi.ModTime()) > staleLock {
-		_ = os.Remove(path)
-		return nil
+		return breakStale(path), nil
 	}
 	if time.Now().After(deadline) {
-		return ErrLocked
+		return false, ErrLocked
 	}
 	t := time.NewTimer(lockPoll)
 	defer t.Stop()
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return false, ctx.Err()
 	case <-t.C:
-		return nil
+		return false, nil
 	}
 }

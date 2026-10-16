@@ -181,12 +181,9 @@ func (c *Client) RequestStatus(ctx context.Context, id domain.SecretID, token do
 // Returns the claimed reply, or ErrNotFound, ErrVersionMismatch,
 // ErrIntegrity, ErrProtocol, ErrTooLarge, or a network error.
 func (c *Client) ClaimReply(ctx context.Context, id domain.SecretID, token domain.ManageToken) (Claimed, error) {
-	resp, err := c.manage(ctx, http.MethodGet, requestPath, id, "/reply", token, http.StatusOK)
-	if err != nil {
-		return Claimed{}, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	return readClaim(resp, domain.ProtocolV3, domain.ValidateReplyProtocol)
+	hdr := http.Header{}
+	hdr.Set(headerManage, token.String())
+	return c.claim(ctx, requestPath+id.String()+"/reply", hdr, domain.ProtocolV3, domain.ValidateReplyProtocol)
 }
 
 // AckReply confirms the reply was opened, deleting it. A 404 means it is

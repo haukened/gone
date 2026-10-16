@@ -61,25 +61,11 @@ func (a *app) runSend(ctx context.Context, args []string) error {
 		return err
 	}
 	a.json = o.json
-	cl, err := a.sendClient(o)
+	cl, err := a.serverClient(o.server, o.common)
 	if err != nil {
 		return err
 	}
 	return a.createSendSecret(ctx, cl, o)
-}
-
-// sendClient builds the API client for send options.
-//
-// Parameters:
-//   - o: parsed send options.
-//
-// Returns the client or an origin/configuration error.
-func (a *app) sendClient(o sendOpts) (*client.Client, error) {
-	origin, source, err := resolveServer(a.env, o.server)
-	if err != nil {
-		return nil, err
-	}
-	return newClient(a.env, origin, source, o.common)
 }
 
 // createSendSecret reads, encrypts, uploads, and reports one send request.

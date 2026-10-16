@@ -110,6 +110,15 @@ func TestEscapeTerminal(t *testing.T) {
 		{"bidi\u202etxt", `bidi\u202etxt`},
 		{"iso\u2066x\u2069", `iso\u2066x\u2069`},
 		{"emoji 🎈 é", "emoji 🎈 é"},
+		{"lrm\u200eand\u200frlm", `lrm\u200eand\u200frlm`},
+		{"alm\u061c", `alm\u061c`},
+		{"mvs\u180e", `mvs\u180e`},
+		{"zw\u200b\u200c\u200d", "zw\\u200b\u200c\u200d"},
+		{"zwj 👨\u200d👩\u200d👧 fa می\u200cخواهم", "zwj 👨\u200d👩\u200d👧 fa می\u200cخواهم"},
+		{"wj\u2060\u2061\u2062\u2063\u2064", `wj\u2060\u2061\u2062\u2063\u2064`},
+		{"dep\u2065\u206a\u206f", `dep\u2065\u206a\u206f`},
+		{"bom\ufeffx", `bom\ufeffx`},
+		{"edges \u1fff\u2010 \u2070 \ufefe\uff00", "edges \u1fff\u2010 \u2070 \ufefe\uff00"},
 	}
 	for _, tt := range tests {
 		if got := escapeTerminal(tt.in); got != tt.want {
@@ -124,7 +133,7 @@ func TestEscapeTerminal(t *testing.T) {
 // Parameters:
 //   - f: the fuzz handle.
 func FuzzEscapeTerminal(f *testing.F) {
-	for _, s := range []string{"", "a\x1b[0m", "\r", "\xff\xfe", "\u202e"} {
+	for _, s := range []string{"", "a\x1b[0m", "\r", "\xff\xfe", "\u202e", "\u200e\u200b\u200d\u200c\ufeff\u2060\u061c\u180e", "a\u2064\u206fb"} {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, s string) {
@@ -136,7 +145,7 @@ func FuzzEscapeTerminal(f *testing.F) {
 			if r == '\r' && !strings.HasPrefix(out[i+1:], "\n") {
 				t.Fatalf("bare CR in %q", out)
 			}
-			if r != '\r' && unsafeTerminalRune(r) {
+			if r != '\r' && (unsafeTerminalRune(r) || isUnsafeCodePoint(r)) {
 				t.Fatalf("unsafe rune %U in %q", r, out)
 			}
 		}

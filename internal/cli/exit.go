@@ -43,8 +43,9 @@ func (e *notFoundError) Error() string { return e.msg }
 // failure, so a tampered response cannot be told apart from a bad key.
 const msgIntegrity = "the secret could not be decrypted: the link is wrong or the data was altered"
 
-// usageError reports invalid command-line input.
-type usageError struct{ msg string }
+// usageError reports invalid command-line input. kind overrides the JSON
+// error kind ("usage" when empty).
+type usageError struct{ msg, kind string }
 
 // Error returns the usage message.
 //
@@ -110,7 +111,7 @@ var sentinelClasses = []sentinelClass{
 	{client.ErrInvalidOrigin, exitUsage, "usage", ""},
 	{client.ErrInsecureOrigin, exitUsage, "usage", ""},
 	{client.ErrNotFound, exitNotFound, "not_found", "secret not found: it was already opened, revoked or expired, or never existed"},
-	{errWrongPassphrase, exitPassphrase, "wrong_passphrase", "wrong passphrase (or the link is damaged)"},
+	{errWrongPassphrase, exitPassphrase, "wrong_passphrase", "wrong passphrase (or the link is damaged); the secret was already claimed and can no longer be recovered"},
 	{client.ErrIntegrity, exitIntegrity, "integrity", msgIntegrity},
 	{client.ErrVersionMismatch, exitIntegrity, "integrity", msgIntegrity},
 	{envelope.ErrDecrypt, exitIntegrity, "integrity", msgIntegrity},
@@ -159,7 +160,7 @@ func classify(err error) failure {
 	}
 	var ue *usageError
 	if errors.As(err, &ue) {
-		return failure{code: exitUsage, kind: "usage", msg: ue.msg}
+		return failure{code: exitUsage, kind: cmp(ue.kind, "usage"), msg: ue.msg}
 	}
 	var rl *client.RateLimitError
 	if errors.As(err, &rl) {
