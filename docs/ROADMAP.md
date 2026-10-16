@@ -243,5 +243,6 @@ Decided against since v3.0.0:
 | 5. Optional passphrase | Done |
 | 6. CLI | Done |
 | Request a secret | Done (v3.6.0 web, v3.7.0 CLI) |
-| Browser end-to-end tests | Done (#81) |
+| Browser end-to-end tests | Done (#81; over TLS with rate limits on since v3.11.0, #93) |
+| Security review | Done (v3.11.0, #86–#94): 28 findings fixed; release tags restricted to the maintainer and signed |
 | `gone mcp` | Rejected |

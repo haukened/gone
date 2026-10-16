@@ -25,7 +25,7 @@ The release also contains `SHA256SUMS`, the `goned` server archives for Linux, a
 Every archive carries a [build-provenance attestation](https://docs.github.com/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds) signed by the release workflow. Check it before you run anything:
 
 ```sh
-TAG=v3.10.3
+TAG=v3.11.0
 ARCHIVE=gone_${TAG}_linux_amd64.tar.gz
 
 curl -fsSLO "https://github.com/haukened/gone/releases/download/${TAG}/${ARCHIVE}"

@@ -46,4 +46,4 @@ Every variable is listed in [Configuration](../configuration.md). Apply changes 
 docker compose pull && docker compose up -d
 ```
 
-`compose.yaml` pins Caddy to a tag and digest (bump both together; Dependabot does this if you keep the file in a repository). It uses the `latest` tag for Gone. To control upgrades, pin a release instead, for example `ghcr.io/haukened/gone:v3.10.3`, and [verify it](docker.md#verifying-the-image) before you switch.
+`compose.yaml` pins Caddy to a tag and digest (bump both together; Dependabot does this if you keep the file in a repository). It uses the `latest` tag for Gone. To control upgrades, pin a release instead, for example `ghcr.io/haukened/gone:v3.11.0`, and [verify it](docker.md#verifying-the-image) before you switch.

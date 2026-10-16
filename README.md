@@ -60,10 +60,10 @@ Visit http://localhost:8080, type a secret or attach files, pick an expiry, and 
 
 ## How it works
 
-1. You type a secret or attach files (up to 10, sharing the 10 MB default limit) and choose how long the link should live.
+1. You type a secret or attach files (up to 10, sharing the 10 MB default limit) and choose how long the link should live. The shortest choice is preselected.
 2. Your browser encrypts everything before it leaves your machine. The server stores only the encrypted blob and when to delete it.
 3. You get a link like `https://example/secret/abcd#v1:KEY`. The key is the part after `#`, which browsers never send to a server.
-4. The recipient opens the link. Their browser downloads the blob, decrypts it locally, and tells the server to delete it.
+4. The recipient opens the link. The page removes the key from the address bar as soon as it has read it. Their browser downloads the blob, decrypts it locally, and tells the server to delete it.
 5. A refresh or second visit finds nothing: the secret is gone.
 
 Guarantees, in simple terms:
@@ -98,7 +98,7 @@ gone request --label 'VPN key'                      # ask someone for a secret
 printf 'hunter2' | gone reply '<request-link>'      # answer someone's request
 ```
 
-Messages come from standard input, never from arguments. Scripts and AI agents can handle secrets by reference, so the plaintext never appears in their output. The full guide is [docs/cli.md](docs/cli.md).
+`gone` opens only links from the server you use (`https://gone.hauken.us` until you run `gone set server`); a link for any other server is refused before anything is sent, unless you pass `--allow-origin` for that command. Messages come from standard input, never from arguments. Scripts and AI agents can handle secrets by reference, so the plaintext never appears in their output. The full guide is [docs/cli.md](docs/cli.md).
 
 ## Documentation
 
