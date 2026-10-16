@@ -10,7 +10,8 @@ import (
 )
 
 // manageTarget parses a manage-link command line and connects to its
-// origin.
+// origin, which must be the configured server or allowed with
+// --allow-origin.
 //
 // Parameters:
 //   - name: command name.
@@ -18,29 +19,20 @@ import (
 //
 // Returns the client, the parsed link, flag.ErrHelp, or a usage error.
 func (a *app) manageTarget(name string, args []string) (*client.Client, envelope.ManageLink, error) {
-	var c common
+	var l linkOpts
 	fs := newFlagSet(name)
-	c.register(fs)
+	l.register(fs)
 	raw, err := onePositional(fs, args, "manage link")
 	if err != nil {
 		return nil, envelope.ManageLink{}, err
 	}
-	if err := validateCommon(c); err != nil {
+	if err := l.validate(); err != nil {
 		return nil, envelope.ManageLink{}, err
 	}
-	if raw, err = a.readLinkArg(raw); err != nil {
-		return nil, envelope.ManageLink{}, err
-	}
-	link, err := envelope.ParseManageLink(raw)
-	if err != nil {
-		return nil, envelope.ManageLink{}, usagef("%s: not a valid manage link", name)
-	}
-	cl, err := newClient(a.env, link.Origin, "the manage link", c)
-	if err != nil {
-		return nil, envelope.ManageLink{}, err
-	}
-	a.json = c.json
-	return cl, link, nil
+	link, cl, err := openLinkArg(a, l, raw, envelope.ParseManageLink,
+		func(m envelope.ManageLink) string { return m.Origin },
+		name+": not a valid manage link")
+	return cl, link, err
 }
 
 // runStatus implements "gone status <manage-link>".

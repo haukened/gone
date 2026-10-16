@@ -15,6 +15,10 @@ const maxPassphraseAttempts = 3
 // passphraseLabel prompts for a recipient passphrase.
 const passphraseLabel = "Passphrase: "
 
+// lastAttemptWarning is printed before the final prompt: the secret is
+// already claimed, so failing again abandons it for good.
+const lastAttemptWarning = "Last attempt: a wrong passphrase now will lose this secret for good.\n"
+
 // decrypt opens a claimed secret. For v2 it uses pass when non-nil (one
 // attempt), else prompts up to maxPassphraseAttempts times. The caller must
 // clear the result.
@@ -46,6 +50,9 @@ func (a *app) decrypt(version uint8, key, pass []byte, c client.Claimed) ([]byte
 		}
 		if i < attempts-1 {
 			_, _ = io.WriteString(a.env.Stderr, retry)
+		}
+		if i == attempts-2 {
+			_, _ = io.WriteString(a.env.Stderr, lastAttemptWarning)
 		}
 	}
 	return nil, errWrongPassphrase

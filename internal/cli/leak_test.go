@@ -385,7 +385,18 @@ func (l *leakEnv) sendArgs() []string {
 // Parameters:
 //   - t: the test.
 func TestNoSecretInOutput(t *testing.T) {
-	for _, tc := range append(append([]leakCase{}, leakCases...), requestLeakCases...) {
+	forEachLeakCase(t, requireNoLeak)
+}
+
+// forEachLeakCase runs every leak case, in text and JSON mode, on a fresh
+// environment and hands the environment with its captured output to check.
+//
+// Parameters:
+//   - t: the test.
+//   - check: assertion run after each command.
+func forEachLeakCase(t *testing.T, check func(t *testing.T, name string, l *leakEnv)) {
+	t.Helper()
+	for _, tc := range append(append(append([]leakCase{}, leakCases...), requestLeakCases...), originLeakCases...) {
 		for _, asJSON := range []bool{false, true} {
 			l := newLeakEnv(t)
 			stdin, args, want := tc.setup(l)
@@ -397,7 +408,7 @@ func TestNoSecretInOutput(t *testing.T) {
 			if code := l.te.run(args...); code != want {
 				t.Fatalf("%s (json=%v): exit %d, want %d: %s", tc.name, asJSON, code, want, l.te.stderr)
 			}
-			requireNoLeak(t, tc.name, l)
+			check(t, fmt.Sprintf("%s (json=%v)", tc.name, asJSON), l)
 		}
 	}
 }

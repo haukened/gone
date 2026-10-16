@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"path/filepath"
 	"strings"
+	"unicode/utf8"
 )
 
 // windowsInvalid lists characters Windows forbids in file names that
@@ -15,11 +17,30 @@ var reservedStems = map[string]bool{
 	"CONIN$": true, "CONOUT$": true,
 }
 
+// maxSaveNameBytes caps a saved file name in UTF-8 bytes. Sanitized names
+// may have 255 code points, which can be over 1000 bytes; most file systems
+// refuse names over 255 bytes (ENAMETOOLONG). The cap leaves room for the
+// "_" of a reserved-name fix and a " (999)" collision suffix.
+const maxSaveNameBytes = 200
+
+// maxExtBytes is the longest extension kept when a name is shortened; a
+// longer "extension" is treated as part of the name.
+const maxExtBytes = 32
+
 // saveName applies the portable save-name policy to an already sanitized
 // attachment name. The same policy is used on every OS so a link saves
 // identically everywhere. A leading '.' or '-' becomes '_', so a sender
 // cannot plant hidden startup files (.zshenv, .gitconfig) in the output
 // directory or produce a name that reads as a command-line flag.
+//
+// Guaranteed for every input (see TestSaveName*, FuzzSaveName and the save
+// tests): the result is non-empty, valid UTF-8 and at most
+// maxSaveNameBytes+1 bytes, so name plus a collision suffix always fits in
+// 255 bytes; it has no Windows-invalid character, no leading '.' or '-', no
+// trailing '.' or space and is not a Windows device name in any letter case
+// (CON, con.TXT, Lpt1.log); it is never a path, so os.Root cannot be asked
+// to leave the output directory. Two names that collide after this mapping
+// (a?.txt and a*.txt) are saved side by side with a numbered suffix.
 //
 // Parameters:
 //   - name: name from envelope.Unpack (already sanitized).
@@ -32,7 +53,7 @@ func saveName(name string) string {
 		}
 		return r
 	}, name)
-	name = strings.TrimRight(name, ". ")
+	name = strings.TrimRight(shortenName(name), ". ")
 	if name == "" {
 		return fallbackSaveName
 	}
@@ -108,4 +129,27 @@ func isReservedPortDigit(digit string) bool {
 // Returns true for a single superscript one, two or three.
 func isSuperscriptDigit(s string) bool {
 	return s == "¹" || s == "²" || s == "³"
+}
+
+// shortenName cuts name to maxSaveNameBytes at a code point boundary,
+// keeping a short extension so the file type survives.
+//
+// Parameters:
+//   - name: candidate file name.
+//
+// Returns name, or a valid UTF-8 prefix of its stem plus its extension.
+func shortenName(name string) string {
+	if len(name) <= maxSaveNameBytes {
+		return name
+	}
+	ext := filepath.Ext(name)
+	if len(ext) > maxExtBytes {
+		ext = ""
+	}
+	stem := name[:len(name)-len(ext)]
+	cut := maxSaveNameBytes - len(ext)
+	for cut > 0 && !utf8.RuneStart(stem[cut]) {
+		cut--
+	}
+	return stem[:cut] + ext
 }

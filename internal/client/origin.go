@@ -42,7 +42,9 @@ func CanonicalOrigin(raw string) (string, error) {
 }
 
 // parseOrigin parses a bare http or https origin, lowercasing the scheme
-// and host. A single trailing slash is accepted.
+// and host and dropping a default port (":443" for https, ":80" for http)
+// or an empty one, so equal origins compare equal. A single trailing slash
+// is accepted.
 //
 // Parameters:
 //   - raw: origin string.
@@ -58,8 +60,14 @@ func parseOrigin(raw string) (*url.URL, error) {
 		return nil, ErrInvalidOrigin
 	}
 	u.Host = strings.ToLower(u.Host)
+	if p := u.Port(); p == "" || p == defaultPort[u.Scheme] {
+		u.Host = strings.TrimSuffix(u.Host, ":"+p)
+	}
 	return u, nil
 }
+
+// defaultPort maps a scheme to the port a URL may omit.
+var defaultPort = map[string]string{"https": "443", "http": "80"}
 
 // bareOrigin reports whether u has a host and nothing beyond scheme and
 // host.
@@ -74,19 +82,19 @@ func bareOrigin(u *url.URL) bool {
 		u.RawQuery == "" && u.Fragment == "" && !u.ForceQuery
 }
 
-// loopback reports whether host names this machine: localhost, a
-// *.localhost name, or a loopback IP address. Browsers treat these as
-// secure contexts too.
+// loopback reports whether host certainly names this machine: exactly
+// "localhost", or a literal loopback IP address. Other names, including
+// *.localhost, are resolved through DNS like any host, so plain HTTP to
+// them could leave the machine; they are not loopback here.
 //
 // Parameters:
 //   - host: hostname without port or brackets.
 //
 // Returns true for a loopback host.
 func loopback(host string) bool {
-	h := strings.ToLower(host)
-	if h == "localhost" || strings.HasSuffix(h, ".localhost") {
+	if strings.EqualFold(host, "localhost") {
 		return true
 	}
-	ip := net.ParseIP(h)
+	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
 }

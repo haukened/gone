@@ -20,6 +20,11 @@ import (
 type cliRunner struct {
 	env                   *cli.Env
 	stdin, stdout, stderr *bytes.Buffer
+	// vars is the CLI's environment; GONE_SERVER starts as the test
+	// server, so links from it pass the CLI's origin check.
+	vars map[string]string
+	// cfg is the CLI's config root.
+	cfg string
 }
 
 // newTLSServer serves h over TLS and closes it when the test ends.
@@ -38,7 +43,7 @@ func newTLSServer(t *testing.T, h http.Handler) *httptest.Server {
 }
 
 // newCLI returns a runner that trusts srv's certificate and has an empty
-// config directory and environment.
+// config directory, with GONE_SERVER set to srv.
 //
 // Parameters:
 //   - t: the test.
@@ -51,13 +56,14 @@ func newCLI(t *testing.T, srv *httptest.Server) *cliRunner {
 	pool := x509.NewCertPool()
 	pool.AddCert(srv.Certificate())
 	cfg := t.TempDir()
-	r := &cliRunner{stdin: &bytes.Buffer{}, stdout: &bytes.Buffer{}, stderr: &bytes.Buffer{}}
+	r := &cliRunner{stdin: &bytes.Buffer{}, stdout: &bytes.Buffer{}, stderr: &bytes.Buffer{},
+		vars: map[string]string{"GONE_SERVER": srv.URL}, cfg: cfg}
 	r.env = &cli.Env{
 		Stdin:        r.stdin,
 		Stdout:       r.stdout,
 		Stderr:       r.stderr,
 		ReadPassword: func() ([]byte, error) { return nil, errors.New("no terminal") },
-		Getenv:       func(string) string { return "" },
+		Getenv:       func(k string) string { return r.vars[k] },
 		ConfigDir:    func() (string, error) { return cfg, nil },
 		Version:      "integration",
 		RootCAs:      pool,

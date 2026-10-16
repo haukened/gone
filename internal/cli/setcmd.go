@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/haukened/gone/v3/internal/client"
 )
@@ -24,11 +24,8 @@ func (a *app) runSet(args []string) error {
 		return usagef("usage: gone set server <url> [--insecure]")
 	}
 	origin, err := client.NormalizeOrigin(pos[1], *insecure)
-	if errors.Is(err, client.ErrInsecureOrigin) {
-		return usagef("%q uses http; Gone only talks to https servers (a localhost server may use http with --insecure)", pos[1])
-	}
 	if err != nil {
-		return usagef("%q is not a valid server origin (want https://host[:port])", pos[1])
+		return originErr(err, strconv.Quote(pos[1]))
 	}
 	path, err := saveConfig(a.env, config{Server: origin})
 	if err != nil {

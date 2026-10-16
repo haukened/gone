@@ -152,7 +152,7 @@ func TestGetPromptsForPassphraseWithRetries(t *testing.T) {
 	if code := te.run("get", link, "-o", t.TempDir()); code != exitOK {
 		t.Fatalf("get exit %d: %s", code, te.stderr)
 	}
-	if !strings.Contains(te.stderr.String(), "Wrong passphrase, try again.") {
+	if !strings.Contains(te.stderr.String(), "Wrong passphrase, try again.") || strings.Contains(te.stderr.String(), "Last attempt") {
 		t.Fatalf("stderr %q", te.stderr)
 	}
 	if te.stdout.String() != "secret\n" {
@@ -180,12 +180,32 @@ func TestGetWrongPassphraseExhaustsAttempts(t *testing.T) {
 	if n := strings.Count(te.stderr.String(), "Wrong passphrase, try again."); n != 2 {
 		t.Fatalf("retries = %d: %q", n, te.stderr)
 	}
+	requireLastAttemptWarning(t, te.stderr.String())
 
 	link, _ = sendText(t, te, "x", "-s", srv.URL, "--passphrase-file", pf)
 	te.reset()
 	bad := writeTemp(t, "bad", "nope")
 	if code := te.run("get", link, "--passphrase-file", bad, "-o", t.TempDir()); code != exitPassphrase {
 		t.Fatalf("file exit %d: %s", code, te.stderr)
+	}
+	if msg := te.stderr.String(); strings.Contains(msg, "Last attempt") || !strings.Contains(msg, "can no longer be recovered") {
+		t.Fatalf("file stderr %q", msg)
+	}
+}
+
+// requireLastAttemptWarning checks that the final-attempt warning is shown
+// once, after the second failure, and that the error says the secret is
+// lost.
+//
+// Parameters:
+//   - t: the test.
+//   - msg: captured stderr.
+func requireLastAttemptWarning(t *testing.T, msg string) {
+	t.Helper()
+	at := strings.Index(msg, lastAttemptWarning)
+	if strings.Count(msg, lastAttemptWarning) != 1 || at < strings.LastIndex(msg, "try again.") ||
+		!strings.Contains(msg[at:], "can no longer be recovered") {
+		t.Fatalf("stderr %q", msg)
 	}
 }
 
