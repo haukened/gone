@@ -142,20 +142,23 @@ func readRegularFile(path string, budget int64, what string) ([]byte, error) {
 
 // openLinkArg switches output to JSON when asked, so stdin and link errors
 // are reported in the requested format, then reads and parses a link
-// argument and makes a client for the link's server.
+// argument and makes a client for the link's server, refusing a server
+// that is neither the configured one nor allowed with --allow-origin.
+// Nothing is sent before that check.
 //
 // Parameters:
 //   - a: the running command.
-//   - c: shared flags (--json, --insecure, --timeout).
+//   - l: validated link flags (--json, --insecure, --timeout, --server,
+//     --allow-origin).
 //   - raw: positional link argument ("-" reads stdin).
 //   - parse: link parser for the expected kind of link.
 //   - origin: returns the server origin of a parsed link.
 //   - bad: usage message when parse fails; the input is never echoed.
 //
 // Returns the parsed link and its client, or a usage/I/O/client error.
-func openLinkArg[L any](a *app, c common, raw string, parse func(string) (L, error), origin func(L) string, bad string) (L, *client.Client, error) {
+func openLinkArg[L any](a *app, l linkOpts, raw string, parse func(string) (L, error), origin func(L) string, bad string) (L, *client.Client, error) {
 	var zero L
-	a.json = c.json
+	a.json = l.json
 	raw, err := a.readLinkArg(raw)
 	if err != nil {
 		return zero, nil, err
@@ -164,8 +167,11 @@ func openLinkArg[L any](a *app, c common, raw string, parse func(string) (L, err
 	if err != nil {
 		return zero, nil, usagef("%s", bad)
 	}
-	cl, err := newClient(a.env, origin(link), "the link", c)
+	cl, err := newClient(a.env, origin(link), "the link", l.common)
 	if err != nil {
+		return zero, nil, err
+	}
+	if err := a.checkLinkOrigin(cl.Origin(), l.pin); err != nil {
 		return zero, nil, err
 	}
 	return link, cl, nil

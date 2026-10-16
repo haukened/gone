@@ -80,9 +80,10 @@ func writeBytes(w io.Writer, b []byte) error {
 }
 
 // escapeTerminal makes untrusted text safe to print on a terminal by
-// escaping C0 and C1 control characters, DEL, bidirectional override and
-// isolate controls, a carriage return not followed by a line feed, and
-// invalid UTF-8. Newlines and tabs are kept.
+// escaping C0 and C1 control characters, DEL, bidirectional and zero-width
+// format characters (the set docs/protocol.md section 6 calls unsafe, except ZWNJ and ZWJ), a
+// carriage return not followed by a line feed, and invalid UTF-8. Newlines
+// and tabs are kept.
 // This prevents a sender from injecting terminal escape sequences.
 //
 // Parameters:
@@ -114,8 +115,9 @@ func escapeTerminal(s string) string {
 // Parameters:
 //   - r: code point.
 //
-// Returns true for control characters other than newline and tab, and
-// for bidirectional controls that can visually reorder text.
+// Returns true for control characters other than newline and tab, and for
+// bidirectional and zero-width characters that can visually reorder or hide
+// text.
 func unsafeTerminalRune(r rune) bool {
 	for _, rg := range unsafeTerminalRanges {
 		if r >= rg[0] && r <= rg[1] {
@@ -126,12 +128,21 @@ func unsafeTerminalRune(r rune) bool {
 }
 
 // unsafeTerminalRanges lists inclusive code point ranges escaped on a
-// terminal: C0 controls except tab and newline, DEL and C1 controls, and
-// the bidirectional embedding/override and isolate controls.
+// terminal: C0 controls except tab and newline, DEL and C1 controls, and the
+// invisible or reordering format characters of docs/protocol.md section 6:
+// U+061C, U+180E, U+200B, U+200E-200F, U+202A-202E, U+2060-206F and U+FEFF.
+// U+200C (ZWNJ) and U+200D (ZWJ) are deliberately not escaped: Persian, Arabic,
+// Hindi and other scripts and emoji sequences need them to render correctly,
+// and they can neither reorder nor hide text.
 var unsafeTerminalRanges = [...][2]rune{
 	{0x00, 0x08},
 	{0x0b, 0x1f},
 	{0x7f, 0x9f},
+	{0x061c, 0x061c},
+	{0x180e, 0x180e},
+	{0x200b, 0x200b},
+	{0x200e, 0x200f},
 	{0x202a, 0x202e},
-	{0x2066, 0x2069},
+	{0x2060, 0x206f},
+	{0xfeff, 0xfeff},
 }

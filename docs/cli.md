@@ -128,10 +128,13 @@ gone get <link|-> [flags]
       --passphrase-file PATH read the passphrase from PATH instead of prompting
       --json                 print the result as JSON
       --raw                  print the message without escaping control characters
+  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://gone.hauken.us)
+      --allow-origin ORIGIN  also trust this server for this command; repeat or comma-separate
       --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
 ```
 
+- The link must point at the server you use, or one you allow with `--allow-origin`; otherwise nothing is sent (see [Which servers a link may reach](#which-servers-a-link-may-reach)).
 - The message is written to standard output, attachments to `--out`. The secret is deleted from the server only after everything has been decrypted and written.
 - A link of `-` is read from standard input (surrounding whitespace is ignored), so it stays out of the process list and shell history: `gone get - < link.txt`.
 - `--message-out PATH` writes the message to a new file instead of standard output, with mode `0600`, byte for byte (`--raw` has no effect on it). An empty message still creates an empty file. The file is written to a temporary name in the same directory, synced, then hard-linked into place, so `PATH` either does not exist or is complete. It is never overwritten: if `PATH` exists, even as a dangling symlink, `get` fails with exit 8. On Windows the mode is not applied; the file inherits the directory's permissions.
@@ -139,13 +142,14 @@ gone get <link|-> [flags]
 - If writing fails *after* the link was opened (for example, an attachment cannot be saved), whatever this run wrote is removed and the deletion is not confirmed. The secret is still lost: the server has already handed it out once.
 - **Existing files are never overwritten.** If `report.csv` exists, the attachment is saved as `report (1).csv`, and so on. Files are created exclusively with mode `0600` inside the output directory, and symlinks are not followed out of it.
 - Attachment names are sanitized as in [protocol.md §6.1](protocol.md#61-file-names); Windows reserved names (`CON`, `NUL`, …), trailing dots and spaces, and the characters `<>:"|?*` (replaced with `_` on every platform) are also made safe. A leading `.` or `-` is replaced with `_` (`.zshenv` is saved as `_zshenv`), so a sender cannot plant a hidden dotfile or a name that looks like a command-line option.
-- For a passphrase-protected link, `gone` prompts on the terminal (up to three tries). The ciphertext is downloaded once and every try runs against that copy. An empty or invalid entry (over 1024 bytes, or not UTF-8) uses up a try, like a wrong passphrase. Ctrl-D cancels at once, and because the link has already been opened, cancelling loses the secret. In scripts, use `--passphrase-file`; exactly one trailing newline (`\n` or `\r\n`) is removed from the file. That gives a single try: opening the link has already started the secret's deletion, so a wrong passphrase in the file means the secret is gone.
+- For a passphrase-protected link, `gone` prompts on the terminal (up to three tries). The ciphertext is downloaded once and every try runs against that copy. An empty or invalid entry (over 1024 bytes, or not UTF-8) uses up a try, like a wrong passphrase. Before the third try, `gone` warns that it is the last one: the link has already been opened, so a third wrong passphrase loses the secret for good (exit 4, and the error says so). Ctrl-D cancels at once, and because the link has already been opened, cancelling loses the secret. In scripts, use `--passphrase-file`; exactly one trailing newline (`\n` or `\r\n`) is removed from the file. That gives a single try: opening the link has already started the secret's deletion, so a wrong passphrase in the file means the secret is gone, and the error says it can no longer be recovered.
+- If the download is cut off after the server handed out the secret, `gone` fetches the same ciphertext again with its claim token, up to twice, while the claim lease lasts (two minutes by default; see [protocol.md §8.2](protocol.md#82-claim-get-apisecretid)). Nobody else can fetch it in that time.
 - On a terminal, control characters in the message are escaped so a sender cannot inject terminal escape sequences. `--raw` turns this off. When standard output is a pipe or file, the message is written byte-for-byte. With `--json`, DEL, C1 and bidirectional-override characters are always written as `\uXXXX` escapes, so the output is safe on a terminal and still decodes to the original text. (A message that is not valid UTF-8 can't round-trip through JSON: invalid bytes become U+FFFD. Use plain output for binary messages.)
 
 ### `gone status`
 
 ```text
-gone status <manage-link|-> [--json] [--insecure] [--timeout DURATION]
+gone status <manage-link|-> [-s URL] [--allow-origin ORIGIN]... [--json] [--insecure] [--timeout DURATION]
 ```
 
 Prints `State: pending`, with creation and expiry times, while the secret is still waiting. A manage link of `-` is read from standard input. Once it has been opened, revoked or has expired, the server answers "not found" (exit 3); it does not reveal which.
@@ -153,7 +157,7 @@ Prints `State: pending`, with creation and expiry times, while the secret is sti
 ### `gone revoke`
 
 ```text
-gone revoke <manage-link|-> [--json] [--insecure] [--timeout DURATION]
+gone revoke <manage-link|-> [-s URL] [--allow-origin ORIGIN]... [--json] [--insecure] [--timeout DURATION]
 ```
 
 Deletes the secret. Revoking an already-gone secret exits 3. Revoke is reliable only before the recipient opens the link: someone who has already downloaded the ciphertext keeps it.
@@ -207,7 +211,7 @@ Cancels the request, or deletes a reply before you open it, and forgets it here.
 ### `gone reply`
 
 ```text
-gone reply <request-link|-> [-f FILE]... [--message-file PATH] [--json] [--insecure] [--timeout DURATION]
+gone reply <request-link|-> [-f FILE]... [--message-file PATH] [-s URL] [--allow-origin ORIGIN]... [--json] [--insecure] [--timeout DURATION]
 ```
 
 Answers someone's request. The link is checked with the server first, so if the request was already answered, cancelled, or has expired, `gone` exits 3 without reading the message. The message comes from standard input or `--message-file`, plus up to 10 attachments, exactly as for `send`. It is encrypted to the requester's public key from the link: not even you can open it afterwards. Prints `Sent. Only the requester can open it.` and an `Expires:` line with when the reply is deleted if the requester never opens it. A request link of `-` is read from standard input.
@@ -226,9 +230,9 @@ The file is internal to `gone`: it is a binary (Go gob) file, not meant to be op
 gone set server <url> [--insecure]
 ```
 
-Saves the default server for `send` and `request`. The value must be a bare origin such as `https://gone.example.com`. The file is `gone/config.json` under your user configuration directory (`$XDG_CONFIG_HOME`, or `~/.config` if unset, on Linux; `~/Library/Application Support` on macOS; `%AppData%` on Windows), written with mode `0600`.
+Saves the default server for `send` and `request`. The value must be a bare origin such as `https://gone.example.com`. The file is `gone/config.json` under your user configuration directory (`$XDG_CONFIG_HOME`, or `~/.config` if unset, on Linux; `~/Library/Application Support` on macOS; `%AppData%` on Windows), written with mode `0600`. On Linux and macOS, `gone` refuses to read a config file that other users can write to or that belongs to someone else (exit 8, naming the file), because it decides which server every command trusts. Fix it with `chmod 600` on the file.
 
-`get`, `status`, `revoke` and `reply` always use the server named in the link, and `request list`, `request open` and `request cancel` the server each saved request was made on.
+`get`, `status`, `revoke` and `reply` use the server named in the link, but only if it is the server you use; see [Which servers a link may reach](#which-servers-a-link-may-reach). `request list`, `request open` and `request cancel` use the server each saved request was made on.
 
 ### `gone version`, `gone help`
 
@@ -262,6 +266,7 @@ Guidelines:
 - **Don't use `get --json` without `--message-out`.** Its `message` field is the plaintext.
 - **No prompts.** With `--message-file` (send) and `--passphrase-file` (get), `gone` never reads the terminal. Redirect standard input from `/dev/null` (or a link file) anyway, so nothing can block on a TTY.
 - **Check before the claim.** Everything `get` can verify locally (the link, the passphrase file, `--out` and `--message-out`) is checked before the link is opened. A local mistake exits with 2 or 8 and the link still works. A failure after the link was opened (a wrong passphrase in the file, an integrity error, or a failed write) loses the secret: ask the sender to send it again.
+- **Links from other servers.** A script that opens links from a server other than its default passes `--server URL` or `--allow-origin ORIGIN`, or sets `GONE_SERVER`; any other link exits 2 (`untrusted_origin`) without contacting anything.
 - **Exit codes** are listed in [Exit codes](#exit-codes); with `--json`, errors are JSON on standard error.
 - **Clean up.** Delete the received file when it has been used.
 
@@ -286,11 +291,28 @@ gone reply - --message-file /root/.db-password --json < request-link.txt
 
 ## Server selection and transport
 
-`send` and `request` pick their server from, in order: `--server`, the `GONE_SERVER` environment variable, the saved config, then `https://gone.hauken.us`.
+`send` and `request` pick their server from, in order: `--server`, the `GONE_SERVER` environment variable, the saved config, then `https://gone.hauken.us`. When `--server` or `GONE_SERVER` overrides a server saved with `gone set server`, a one-line notice on standard error names the server in use (`Using https://… (from GONE_SERVER), not the configured server https://….`).
 
-The standard proxy variables (`HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`) are honored for every request.
+### Which servers a link may reach
 
-- **HTTPS only.** `http://` origins and links are refused on every command. The one exception is a server on this machine (`localhost`, `*.localhost`, `127.0.0.0/8` or `::1`) with `--insecure`, for local testing; browsers make the same exception. Any other `http://` server is refused even with `--insecure`.
+A link names its own server, and anyone can make a link that points anywhere. Opening a link sends a request that tells its server your IP address and when you opened it, so `get`, `status`, `revoke` and `reply` only contact a link's server if it is:
+
+- the server you use, chosen exactly as for `send`: `--server`, `GONE_SERVER`, the saved config, then `https://gone.hauken.us`; or
+- named with `--allow-origin ORIGIN` on this command. Repeat the flag or separate origins with commas. Each value must be a bare origin such as `https://gone.example.com`; it applies to this command only.
+
+Any other link is refused before anything is sent, with exit 2 (JSON error kind `untrusted_origin`). The message names both servers, never the link's ID or key:
+
+```text
+gone: refused: this link is for https://gone.example.com, but no server is set, so gone only trusts the default https://gone.hauken.us; nothing was sent. If you trust https://gone.example.com, add --allow-origin https://gone.example.com for this command, or make it your server with: gone set server https://gone.example.com
+```
+
+If you use your own server, run `gone set server https://your.server` once and its links just work. Origins are compared after lowercasing and dropping a default port, so `https://Gone.Example:443` and `https://gone.example` are the same server.
+
+### Transport
+
+The standard proxy variables (`HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`) are honored for every `https://` request. An `http://` server (below) is always contacted directly, never through a proxy.
+
+- **HTTPS only.** `http://` origins and links are refused on every command. The one exception is a server on this machine, named `localhost` or a literal loopback address (`127.0.0.0/8` or `::1`), with `--insecure`, for local testing; browsers make the same exception. Other names, including `*.localhost`, are looked up in DNS like any host, so they are refused. Any other `http://` server is refused even with `--insecure`.
 - **No redirects.** A redirect is treated as a server error, so a secret is never sent to, or fetched from, an origin other than the one you named.
 - **Bounded responses.** Responses larger than the protocol allows are rejected before they are read.
 
@@ -302,13 +324,13 @@ The standard proxy variables (`HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`) are honor
 | ---: | ---------------------------------------------------------------------- |
 | 0    | Success                                                                |
 | 1    | Internal error, or interrupted (Ctrl-C)                                |
-| 2    | Usage error: bad flag, bad link, bad server URL, weak passphrase       |
+| 2    | Usage error: bad flag, bad link, bad server URL, weak passphrase, or a link for a server you don't use (`untrusted_origin`) |
 | 3    | Not found: already opened, revoked, expired, or never existed; for `request open` without `--wait`, no reply yet |
-| 4    | Wrong passphrase (or the link is damaged)                              |
+| 4    | Wrong passphrase (or the link is damaged); the secret is lost          |
 | 5    | Rate limited by the server                                             |
 | 6    | Integrity failure: the ciphertext or payload failed authentication     |
 | 7    | Network or server error, response too large, or deletion not confirmed |
-| 8    | Local I/O error: reading input files, writing attachments or config    |
+| 8    | Local I/O error: reading input files, writing attachments or config, or an unsafe config file |
 
 The server cannot tell "already opened", "revoked" and "expired" apart from the outside, so they share code 3. A request with no reply yet is also exit 3, with error kind `not_ready` in JSON, so a script can tell it from `not_found`.
 
@@ -379,6 +401,7 @@ Errors are one line of JSON on **standard error**, and the exit code is still se
 | `internal`         | 1    |
 | `interrupted`      | 1    |
 | `usage`            | 2    |
+| `untrusted_origin` | 2    |
 | `not_found`        | 3    |
 | `not_ready`        | 3    |
 | `wrong_passphrase` | 4    |
