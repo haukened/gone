@@ -111,6 +111,10 @@ Everything lives in `GONE_DATA_DIR`:
 
 Rows and blobs are deleted on confirmed receipt, revoke, cancel or expiry. An expired secret or reply is deleted, blob included, as soon as anyone asks for it, and otherwise by the janitor within a minute. Nothing about a secret is kept after that.
 
+## Releases
+
+Release binaries and the `ghcr.io/haukened/gone` image are built only from a semver tag (`vMAJOR.MINOR.PATCH`, optionally with a `-prerelease` suffix) whose commit is already on `main`. Any other tag fails the release workflows before anything is built. The full Go test suite, including the browser-crypto interop tests, runs and must pass before the build, in a job with a read-only token. Release builds use no shared CI cache, and only a stable tag moves `:latest`. Each image and archive carries GitHub-signed SLSA build provenance. Before running an image, check that this repository's release workflow built it from that tag: `gh attestation verify oci://ghcr.io/haukened/gone:vX.Y.Z --repo haukened/gone --signer-workflow haukened/gone/.github/workflows/release.yaml --source-ref refs/tags/vX.Y.Z`. Then deploy by digest, or by the `vX.Y.Z` tag, rather than following `:latest`.
+
 ## Development-only features
 
 The pages have design-review preview modes (`?preview=secret`, `?preview=result`, `?preview=pending` and the like) that render a sample state with no request. They would let anyone craft a link that shows attacker-chosen text inside the real interface, so they exist only in development builds (`task dev`, build tag `dev`). They live in `web/dev/`, which `task minify` never copies and the production build (`task prod`, the container image) never embeds. The page scripts read no `preview` parameter themselves. A release's `web/dist` and binary contain no preview code, and a Go test on the embedded assets and an end-to-end test check it.

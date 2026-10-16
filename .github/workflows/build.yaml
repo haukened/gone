@@ -3,7 +3,8 @@ name: Build
 on:
   push:
     branches: [main]
-    tags: ['v*.*.*', 'v*.*', 'v*']
+    # Release tags only; scripts/check-release-ref.sh enforces strict semver.
+    tags: ['v[0-9]+.[0-9]+.[0-9]+', 'v[0-9]+.[0-9]+.[0-9]+-*']
     # No paths-ignore: Codacy shows coverage for the newest commit on main,
     # so a docs-only push that skipped the tests would report 0%.
   pull_request:
@@ -22,20 +23,25 @@ env:
   MINIFY_VERSION: v2.24.17
   TASK_VERSION: v3.54.0
   NODE_VERSION: '24'
-  ESLINT_VERSION: '9.39.5'
-  STYLELINT_VERSION: '17.15.0'
   GOLANGCI_LINT_VERSION: v2.14.0
+  GOVULNCHECK_VERSION: v1.9.0
 
 jobs:
 
   lint:
     runs-on: ubuntu-latest
+    # Tags were linted on main; skipping them also keeps cached tooling out
+    # of tag runs (see the release jobs).
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
+          # zizmor: ignore[cache-poisoning] job never runs on tags; release jobs use no cache
           go-version-file: go.mod
           check-latest: true
 
@@ -67,10 +73,13 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
+          # zizmor: ignore[cache-poisoning] job never runs on tags; release jobs use no cache
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
 
@@ -85,11 +94,17 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      # Reports only vulnerabilities in code the module actually calls.
+      - name: Check for known vulnerabilities
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@"$GOVULNCHECK_VERSION"
+          "$HOME/go/bin/govulncheck" ./...
+
       - name: Install minify
-        run: go install github.com/tdewolff/minify/v2/cmd/minify@${{ env.MINIFY_VERSION }}
+        run: go install github.com/tdewolff/minify/v2/cmd/minify@"$MINIFY_VERSION"
 
       - name: Install Task
-        run: go install github.com/go-task/task/v3/cmd/task@${{ env.TASK_VERSION }}
+        run: go install github.com/go-task/task/v3/cmd/task@"$TASK_VERSION"
 
       # Ensure production pipeline compiles (minify + embed + -tags=prod)
       - name: Build (prod via Taskfile)
@@ -98,6 +113,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
+          # zizmor: ignore[cache-poisoning] job never runs on tags; release jobs use no cache
           node-version: ${{ env.NODE_VERSION }}
 
       # Node is required: the CLI/browser interop tests run the real web
@@ -107,12 +123,15 @@ jobs:
           GONE_REQUIRE_NODE: '1'
         run: go test -race -v -coverprofile=coverage.out ./...
 
+      # ESLint and stylelint are pinned, with their dependencies, in
+      # tools/lint/package-lock.json.
       - name: Lint JavaScript and CSS
         env:
           ESLINT_USE_FLAT_CONFIG: 'false'
         run: |
-          npx --yes eslint@${{ env.ESLINT_VERSION }} --max-warnings 0 web/js web/dev test/js test/interop test/e2e
-          npx --yes stylelint@${{ env.STYLELINT_VERSION }} 'web/css/*.css'
+          npm ci --prefix tools/lint --no-audit --no-fund --ignore-scripts
+          tools/lint/node_modules/.bin/eslint --max-warnings 0 web/js web/dev test/js test/interop test/e2e
+          tools/lint/node_modules/.bin/stylelint 'web/css/*.css'
 
       - name: Run JavaScript tests
         run: >-
@@ -164,10 +183,13 @@ jobs:
     if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
+          # zizmor: ignore[cache-poisoning] job never runs on tags; release jobs use no cache
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
 
@@ -181,8 +203,8 @@ jobs:
 
       - name: Install minify and Task
         run: |
-          go install github.com/tdewolff/minify/v2/cmd/minify@${{ env.MINIFY_VERSION }}
-          go install github.com/go-task/task/v3/cmd/task@${{ env.TASK_VERSION }}
+          go install github.com/tdewolff/minify/v2/cmd/minify@"$MINIFY_VERSION"
+          go install github.com/go-task/task/v3/cmd/task@"$TASK_VERSION"
 
       - name: Build (prod via Taskfile)
         run: $HOME/go/bin/task prod
@@ -190,6 +212,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
+          # zizmor: ignore[cache-poisoning] job never runs on tags; release jobs use no cache
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install Playwright
@@ -199,6 +222,7 @@ jobs:
       - name: Cache browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
+          # zizmor: ignore[cache-poisoning] job never runs on tags; release jobs use no cache
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('test/e2e/package-lock.json') }}
 
@@ -231,10 +255,13 @@ jobs:
     if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
+          # zizmor: ignore[cache-poisoning] job never runs on tags; release jobs use no cache
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
 
@@ -247,41 +274,78 @@ jobs:
           go test -c -o "$RUNNER_TEMP/perf.test" ./test
           TMPDIR=/dev/shm "$RUNNER_TEMP/perf.test" -test.run TestPerfLatencyTarget -test.count=1 -test.v
 
-  # Tagged releases: test, cross-build the gone CLI and goned server,
-  # attest build provenance, and publish archives with SHA256SUMS.
-  # Runs its own tests because verify is skipped on tags.
-  release:
+  # Tagged releases run their own tests, because verify is skipped on tags.
+  # They run in a separate job with a read-only token, so test code and its
+  # dependencies never hold the release job's write and signing permissions.
+  release-test:
+    name: Release tests
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     permissions:
-      contents: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # First: refuse anything but a semver tag on a commit already on main.
+      - name: Check release tag
+        run: scripts/check-release-ref.sh
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
+          # A release must not restore a Go cache another ref wrote.
+          cache: false
 
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install minify
-        run: go install github.com/tdewolff/minify/v2/cmd/minify@${{ env.MINIFY_VERSION }}
-
-      - name: Install Task
-        run: go install github.com/go-task/task/v3/cmd/task@${{ env.TASK_VERSION }}
+          package-manager-cache: false
 
       - name: Run tests
         env:
           GONE_REQUIRE_NODE: '1'
         run: go test -race ./...
+
+  # Then cross-build the gone CLI and goned server, attest build
+  # provenance, and publish archives with SHA256SUMS.
+  release:
+    name: Release binaries
+    needs: release-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write  # create the GitHub release and upload its files
+      id-token: write  # OIDC identity that signs the provenance (Sigstore)
+      attestations: write  # store the attestation
+      artifact-metadata: write  # record the attested artifacts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Checked again here: this job holds the write and signing permissions.
+      - name: Check release tag
+        run: scripts/check-release-ref.sh
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          # A release must not restore a Go cache another ref wrote.
+          cache: false
+
+      - name: Install minify
+        run: go install github.com/tdewolff/minify/v2/cmd/minify@"$MINIFY_VERSION"
+
+      - name: Install Task
+        run: go install github.com/go-task/task/v3/cmd/task@"$TASK_VERSION"
 
       - name: Minify web assets
         run: $HOME/go/bin/task minify

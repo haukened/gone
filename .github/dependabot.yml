@@ -56,3 +56,22 @@ updates:
     groups:
       base-images:
         patterns: ["*"]
+
+  # The Caddy and Gone images in the Compose example. Caddy is pinned by tag
+  # and digest in deploy/compose.yaml.
+  - package-ecosystem: "docker-compose"
+    directory: "/deploy"
+    schedule:
+      interval: "weekly"
+    groups:
+      compose-images:
+        patterns: ["*"]
+
+  # The pinned lint tools (eslint, stylelint) used by CI and task lint-web.
+  - package-ecosystem: "npm"
+    directory: "/tools/lint"
+    schedule:
+      interval: "weekly"
+    groups:
+      lint-tools:
+        patterns: ["*"]
