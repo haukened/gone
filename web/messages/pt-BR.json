@@ -468,12 +468,14 @@
 			}
 		}
 	],
+	"js.consume.headingSecret": "Aqui está o seu {#accent}segredo.{/accent}",
 	"js.consume.download": "Baixar",
 	"js.consume.downloadNamed": "Baixar {name}",
 	"js.common.unexpected": "Algo deu errado. Tente de novo.",
 	"js.common.networkRetry": "Não foi possível conectar ao servidor. Verifique sua conexão e tente de novo.",
 	"js.common.server": "O servidor teve um problema. Tente de novo daqui a pouco.",
 	"js.manage.invalidLink": "Este link de gerenciamento não é válido. Confira se você copiou o link inteiro, incluindo tudo depois do #.",
+	"js.manage.checkTitle": "Verificando seu segredo.",
 	"js.manage.titlePending": "Gone · Seu segredo está aguardando",
 	"js.manage.titleDeleted": "Gone · Segredo apagado",
 	"js.manage.checkFailed": "Não foi possível verificar seu segredo.",
@@ -506,6 +508,7 @@
 		}
 	],
 	"js.request.titleCreated": "Gone · Link de pedido pronto",
+	"js.request.titleCompose": "Gone · Peça um segredo",
 	"js.request.arrivedOpen": "Chegou uma resposta. Abra-a por este pedido.",
 	"js.request.gone": "Este pedido sumiu.",
 	"js.request.openReply": "Abrir a resposta",
@@ -640,5 +643,6 @@
 	"js.reply.badLink": "Este link de pedido está incompleto. Confira se você copiou o link inteiro, incluindo tudo depois do #.",
 	"js.reply.newer": "Este link foi criado por uma versão mais nova do Gone e não pode ser respondido aqui.",
 	"js.reply.badKey": "Este link de pedido está danificado, então nada pode ser criptografado para ele. Peça um novo link.",
-	"js.reply.titleSent": "Gone · Enviado"
+	"js.reply.titleSent": "Gone · Enviado",
+	"js.reply.titleCompose": "Gone · Envie um segredo"
 }

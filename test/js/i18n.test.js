@@ -191,6 +191,25 @@ test('snapshot and restore bring back a key or plain text', () => {
   assert.equal(plainNode.textContent, 'raw');
 });
 
+test('has reports only the loaded messages', () => {
+  const i = boot();
+  assert.equal(i.has('js.greet'), true);
+  assert.equal(i.has('page.notLoaded'), false);
+  assert.equal(i.has('toString'), false);
+});
+
+test('restore keeps the text of a key the page has not loaded', () => {
+  const i = boot();
+  const label = h('span', { textContent: 'Open secret' });
+  label.setAttribute('data-i18n', 'page.notLoaded');
+  const snap = i.snapshot(label);
+  i.set(label, 'js.greet', { name: 'Ana' });
+  i.restore(label, snap);
+  assert.equal(label.textContent, 'Open secret');
+  assert.equal(label.getAttribute('data-i18n'), 'page.notLoaded');
+  assert.equal(label.hasAttribute('data-i18n-args'), false);
+});
+
 test('setTitle updates the title element when there is one', () => {
   const i = boot();
   i.setTitle('js.greet', { name: 'Ana' });

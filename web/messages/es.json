@@ -468,12 +468,14 @@
 			}
 		}
 	],
+	"js.consume.headingSecret": "Aquí tienes tu {#accent}secreto.{/accent}",
 	"js.consume.download": "Descargar",
 	"js.consume.downloadNamed": "Descargar {name}",
 	"js.common.unexpected": "Algo salió mal. Vuelve a intentarlo.",
 	"js.common.networkRetry": "No se pudo conectar con el servidor. Comprueba tu conexión y vuelve a intentarlo.",
 	"js.common.server": "El servidor tuvo un problema. Vuelve a intentarlo en un momento.",
 	"js.manage.invalidLink": "Este enlace de gestión no es válido. Comprueba que lo copiaste entero, incluido todo lo que va después de #.",
+	"js.manage.checkTitle": "Comprobando tu secreto.",
 	"js.manage.titlePending": "Gone · Tu secreto está en espera",
 	"js.manage.titleDeleted": "Gone · Secreto borrado",
 	"js.manage.checkFailed": "No se pudo comprobar tu secreto.",
@@ -506,6 +508,7 @@
 		}
 	],
 	"js.request.titleCreated": "Gone · Enlace de solicitud listo",
+	"js.request.titleCompose": "Gone · Pide un secreto",
 	"js.request.arrivedOpen": "Llegó una respuesta. Ábrela desde esta solicitud.",
 	"js.request.gone": "Esta solicitud ya no existe.",
 	"js.request.openReply": "Abrir la respuesta",
@@ -640,5 +643,6 @@
 	"js.reply.badLink": "Este enlace de solicitud no está completo. Comprueba que lo copiaste entero, incluido todo lo que va después de #.",
 	"js.reply.newer": "Este enlace se creó con una versión más reciente de Gone y no se puede responder aquí.",
 	"js.reply.badKey": "Este enlace de solicitud está dañado, así que no se puede cifrar nada para él. Pide un enlace nuevo.",
-	"js.reply.titleSent": "Gone · Enviado"
+	"js.reply.titleSent": "Gone · Enviado",
+	"js.reply.titleCompose": "Gone · Envía un secreto"
 }

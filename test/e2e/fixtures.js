@@ -1,5 +1,7 @@
 'use strict';
 
+/* global document */ // used only inside page.evaluate and init scripts
+
 // Shared fixtures. Every page a test opens is watched, and the test fails
 // if any of them logs a console error, throws, breaks the CSP, or gets an
 // error status for a page or static asset. API errors are left to the
@@ -15,10 +17,30 @@ const RESOURCE_NOISE = /Failed to load resource|status of \d{3}/;
 
 // reportViolations runs in the page before its own scripts.
 function reportViolations() {
-  /* global document */
   document.addEventListener('securitypolicyviolation', function (e) {
     console.error('CSP violation: ' + e.violatedDirective + ' blocked ' + (e.blockedURI || 'inline'));
   });
+}
+
+// rawKeys returns message keys a page shows instead of their text: an
+// element whose text is its own data-i18n key, or a key-like tab title. A
+// script asking for a key the page didn't embed renders the key itself.
+async function rawKeys(page) {
+  if (page.isClosed()) return [];
+  return page.evaluate(function () {
+      const found = [];
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      const key = el.getAttribute('data-i18n');
+      if (el.textContent.trim() === key) found.push(key);
+    });
+    if (/^[a-z]+(\.[A-Za-z0-9]+)+$/.test(document.title.trim())) found.push('title: ' + document.title);
+    return found;
+  }).catch(function () { return []; });
+}
+
+// checkKeys records the raw keys on page into errors.
+async function checkKeys(page, errors) {
+  for (const key of await rawKeys(page)) errors.push('raw message key: ' + key);
 }
 
 // isAllowed reports whether text matches a pattern the test expects.
@@ -63,19 +85,23 @@ const test = base.test.extend({
   page: async ({ page, errors }, use) => {
     await watch(page, errors, errors.allowed);
     await use(page);
+    await checkKeys(page, errors);
   },
 
   // newPerson opens a page in a fresh browser context: another person,
   // with their own storage and no shared state.
   newPerson: async ({ browser, errors }, use) => {
     const contexts = [];
+    const pages = [];
     await use(async function () {
       const ctx = await browser.newContext();
       contexts.push(ctx);
       const page = await ctx.newPage();
+      pages.push(page);
       await watch(page, errors, errors.allowed);
       return page;
     });
+    for (const page of pages) await checkKeys(page, errors);
     await Promise.all(contexts.map(function (ctx) { return ctx.close(); }));
   },
 });

@@ -15,7 +15,7 @@
     const n = decoded.files.length;
     if (decoded.message && n) return { key: 'js.consume.headingSecretFiles', args: { count: n } };
     if (n) return { key: 'js.consume.headingFiles', args: { count: n } };
-    return { key: 'secret.revealedTitle' };
+    return { key: 'js.consume.headingSecret' };
   }
 
   function showDecoded(decoded) {

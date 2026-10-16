@@ -15,7 +15,7 @@
   const btn = byId('create-request-btn');
   const btnLabel = btn ? btn.querySelector('span') : null;
   const flags = { busy: false, blocked: false, ready: false };
-  const page = { entries: [], titleKey: 'request.pageTitle', listPoll: null, created: false };
+  const page = { entries: [], titleKey: 'js.request.titleCompose', listPoll: null, created: false };
 
   // flagReady marks the tab title when a reply arrives while it is hidden.
   function flagReady() {

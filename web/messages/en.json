@@ -460,12 +460,14 @@
 			}
 		}
 	],
+	"js.consume.headingSecret": "Here’s your {#accent}secret.{/accent}",
 	"js.consume.download": "Download",
 	"js.consume.downloadNamed": "Download {name}",
 	"js.common.unexpected": "Something went wrong. Try again.",
 	"js.common.networkRetry": "Couldn’t reach the server. Check your connection, then try again.",
 	"js.common.server": "The server had a problem. Try again in a moment.",
 	"js.manage.invalidLink": "This manage link isn’t valid. Check that you copied all of it, including everything after the #.",
+	"js.manage.checkTitle": "Checking on your secret.",
 	"js.manage.titlePending": "Gone · Your secret is waiting",
 	"js.manage.titleDeleted": "Gone · Secret deleted",
 	"js.manage.checkFailed": "Couldn’t check your secret.",
@@ -497,6 +499,7 @@
 		}
 	],
 	"js.request.titleCreated": "Gone · Request link ready",
+	"js.request.titleCompose": "Gone · Request a secret",
 	"js.request.arrivedOpen": "A reply arrived. Open it from this request.",
 	"js.request.gone": "This request is gone.",
 	"js.request.openReply": "Open the reply",
@@ -626,5 +629,6 @@
 	"js.reply.badLink": "This request link isn’t complete. Check that you copied all of it, including everything after the #.",
 	"js.reply.newer": "This link was made by a newer version of Gone and can’t be answered here.",
 	"js.reply.badKey": "This request link is damaged, so nothing can be encrypted for it. Ask them for a new link.",
-	"js.reply.titleSent": "Gone · Sent"
+	"js.reply.titleSent": "Gone · Sent",
+	"js.reply.titleCompose": "Gone · Send a secret"
 }

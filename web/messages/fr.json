@@ -468,12 +468,14 @@
 			}
 		}
 	],
+	"js.consume.headingSecret": "Voici votre {#accent}secret.{/accent}",
 	"js.consume.download": "Télécharger",
 	"js.consume.downloadNamed": "Télécharger {name}",
 	"js.common.unexpected": "Un problème est survenu. Réessayez.",
 	"js.common.networkRetry": "Impossible de joindre le serveur. Vérifiez votre connexion, puis réessayez.",
 	"js.common.server": "Le serveur a rencontré un problème. Réessayez dans un instant.",
 	"js.manage.invalidLink": "Ce lien de gestion n’est pas valide. Vérifiez que vous l’avez copié en entier, y compris tout ce qui suit le #.",
+	"js.manage.checkTitle": "Vérification de votre secret.",
 	"js.manage.titlePending": "Gone · Votre secret est en attente",
 	"js.manage.titleDeleted": "Gone · Secret supprimé",
 	"js.manage.checkFailed": "Impossible de vérifier votre secret.",
@@ -506,6 +508,7 @@
 		}
 	],
 	"js.request.titleCreated": "Gone · Lien de demande prêt",
+	"js.request.titleCompose": "Gone · Demandez un secret",
 	"js.request.arrivedOpen": "Une réponse est arrivée. Ouvrez-la depuis cette demande.",
 	"js.request.gone": "Cette demande a disparu.",
 	"js.request.openReply": "Ouvrir la réponse",
@@ -640,5 +643,6 @@
 	"js.reply.badLink": "Ce lien de demande est incomplet. Vérifiez que vous l’avez copié en entier, y compris tout ce qui suit le #.",
 	"js.reply.newer": "Ce lien a été créé par une version plus récente de Gone et ne permet pas de répondre ici.",
 	"js.reply.badKey": "Ce lien de demande est endommagé, rien ne peut donc être chiffré pour lui. Demandez un nouveau lien.",
-	"js.reply.titleSent": "Gone · Envoyé"
+	"js.reply.titleSent": "Gone · Envoyé",
+	"js.reply.titleCompose": "Gone · Envoyez un secret"
 }

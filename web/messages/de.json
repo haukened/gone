@@ -460,12 +460,14 @@
 			}
 		}
 	],
+	"js.consume.headingSecret": "Hier ist dein {#accent}Geheimnis.{/accent}",
 	"js.consume.download": "Herunterladen",
 	"js.consume.downloadNamed": "{name} herunterladen",
 	"js.common.unexpected": "Etwas ist schiefgelaufen. Versuch es erneut.",
 	"js.common.networkRetry": "Der Server ist nicht erreichbar. Prüf deine Verbindung und versuch es dann erneut.",
 	"js.common.server": "Der Server hatte ein Problem. Versuch es gleich noch einmal.",
 	"js.manage.invalidLink": "Dieser Verwaltungslink ist ungültig. Prüf, ob du ihn vollständig kopiert hast, einschließlich allem nach dem #.",
+	"js.manage.checkTitle": "Dein Geheimnis wird geprüft.",
 	"js.manage.titlePending": "Gone · Dein Geheimnis wartet",
 	"js.manage.titleDeleted": "Gone · Geheimnis gelöscht",
 	"js.manage.checkFailed": "Dein Geheimnis konnte nicht geprüft werden.",
@@ -497,6 +499,7 @@
 		}
 	],
 	"js.request.titleCreated": "Gone · Anfragelink bereit",
+	"js.request.titleCompose": "Gone · Ein Geheimnis anfragen",
 	"js.request.arrivedOpen": "Eine Antwort ist eingetroffen. Öffne sie über diese Anfrage.",
 	"js.request.gone": "Diese Anfrage ist weg.",
 	"js.request.openReply": "Antwort öffnen",
@@ -626,5 +629,6 @@
 	"js.reply.badLink": "Dieser Anfragelink ist unvollständig. Prüf, ob du ihn ganz kopiert hast, einschließlich allem nach dem #.",
 	"js.reply.newer": "Dieser Link wurde mit einer neueren Version von Gone erstellt und kann hier nicht beantwortet werden.",
 	"js.reply.badKey": "Dieser Anfragelink ist beschädigt, deshalb kann nichts dafür verschlüsselt werden. Bitte um einen neuen Link.",
-	"js.reply.titleSent": "Gone · Gesendet"
+	"js.reply.titleSent": "Gone · Gesendet",
+	"js.reply.titleCompose": "Gone · Ein Geheimnis senden"
 }

@@ -34,6 +34,7 @@
   const ctx = {
     locale: function () { return locale; },
     t: t,
+    has: has,
     partText: partText,
     patternFor: patternFor,
     tokens: window.goneI18nPattern.tokens
@@ -49,6 +50,12 @@
   // patternFor returns key's pattern for args, or null for an unknown key.
   function patternFor(key, args) {
     return pattern.pick(messages[key], args);
+  }
+
+  // has reports whether key's message is loaded. A page embeds only the js.*
+  // and common.* messages until a language change loads a whole catalog.
+  function has(key) {
+    return Object.prototype.hasOwnProperty.call(messages, key);
   }
 
   // partText renders a text or {var} part; slot markers render as nothing.
@@ -97,6 +104,7 @@
       get locale() { return locale; },
       locales: function () { return (data.locales || []).slice(); },
       t: t,
+      has: has,
       format: ctx.format,
       apply: render.apply,
       setLocale: setLocale,

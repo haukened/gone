@@ -205,6 +205,20 @@ func TestMessages_KeysUsed(t *testing.T) {
 	}
 }
 
+// TestMessages_ScriptKeysAreEmbedded checks that every key a script names is
+// one the page embeds. A page carries only the js.* and common.* messages
+// until a language change fetches a whole catalog, so any other key would
+// render as the key itself.
+func TestMessages_ScriptKeysAreEmbedded(t *testing.T) {
+	scan(t, "../../web/js/*.js", func(s string) {
+		for _, m := range jsKeyRe.FindAllStringSubmatch(s, -1) {
+			if !hasAnyPrefix(m[1], scriptMessagePrefixes) {
+				t.Errorf("web/js uses %q, which pages don't embed; add a js.* message instead", m[1])
+			}
+		}
+	})
+}
+
 // scan calls fn with the contents of each non-test file matching pattern.
 func scan(t *testing.T, pattern string, fn func(string)) {
 	t.Helper()
