@@ -134,8 +134,11 @@ Every response gets:
 - `Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
 - `Referrer-Policy: no-referrer`
 - `X-Content-Type-Options: nosniff`
+- `X-Robots-Tag: noindex`
 
 A Go test (`internal/httpx/csp_doc_test.go`) reads the Content-Security-Policy line above and fails if it differs from the header the server sets.
+
+`X-Robots-Tag: noindex` keeps every page out of search engines, so a secret, manage or reply link that leaks onto a public page is never listed in search results. It covers the home page too: an instance isn't found through search, only through the links people share.
 
 The CSP blocks all inline script and anything from another origin. `frame-ancestors 'none'` replaces `X-Frame-Options`. Nothing loads from anywhere but the operator's server: no CDNs, fonts or analytics.
 

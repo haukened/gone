@@ -37,3 +37,10 @@ test('pages are served with the strict CSP', async ({ page }) => {
   expect(csp).toContain("script-src 'self'");
   expect(csp).toContain("default-src 'none'");
 });
+
+test('pages ask search engines not to index them', async ({ page }) => {
+  for (const path of ['/', '/secret/' + 'a'.repeat(32), '/about']) {
+    const res = await page.goto(path);
+    expect(res.headers()['x-robots-tag'], path).toBe('noindex');
+  }
+});

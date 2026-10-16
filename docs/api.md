@@ -140,6 +140,7 @@ Each client address has two token buckets: one for creating secrets (`POST /api/
 Every response carries:
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: no-referrer`
+- `X-Robots-Tag: noindex`: search engines don't list any page
 - `Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
 - `X-Correlation-ID`: the request's value if it parses as a UUID (returned in canonical form), or a generated UUID v4. A value that isn't a UUID is rejected with `400` on every route.
 

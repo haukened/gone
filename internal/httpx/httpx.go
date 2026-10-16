@@ -147,6 +147,9 @@ func (h *Handler) secureHeaders(next http.Handler) http.Handler {
 		// Avoid inline scripts/styles to keep a strong CSP.
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
+		// Keep every page out of search results: a secret, manage or reply
+		// link that leaks somewhere public must never be listed.
+		w.Header().Set("X-Robots-Tag", "noindex")
 		// Cache defaults per route: index handler will override to no-store; static handler sets long-lived.
 		if ct := w.Header().Get("Content-Type"); ct == "" {
 			w.Header().Set("Cache-Control", "no-store")
