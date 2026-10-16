@@ -230,6 +230,7 @@ Work after the six phases. Each item is still one PR, under the same guiding pri
 
 Decided against since v3.0.0:
 * **`gone mcp`**, a stdio MCP server over the CLI. Coding assistants have a shell and already use the agent-friendly CLI. Listed in [rejected.md](rejected.md).
+* **Sending from Slack or Teams** and **emailing the link** for the sender. The first passes the secret through the chat service before it is encrypted; the second needs Gone to keep email addresses. Both listed in [rejected.md](rejected.md).
 * **Argon2id**, reconfirmed on 2026-10-16. It still needs WebAssembly in the browser; see [Phase 5's decisions](#phase-5-optional-passphrase) and [decisions.md](decisions.md#encryption).
 
 ## Tracking
