@@ -5,22 +5,22 @@ import (
 	"crypto/subtle"
 	"database/sql"
 	"errors"
-	"github.com/haukened/gone/v3/internal/app"
 	"github.com/haukened/gone/v3/internal/store"
 	"time"
 )
 
 // immediateTx runs fn inside a BEGIN IMMEDIATE transaction on a dedicated
 // connection, taking SQLite's write lock up front so concurrent claims and acks
-// serialize. The transaction is committed when fn returns nil or errDeadRow
-// (in which case app.ErrNotFound is returned); otherwise, or if fn panics, it
-// is rolled back.
+// serialize. The transaction is committed when fn returns nil or a
+// deadRowError (in which case app.ErrNotFound, or store.ErrDeadExternal for a
+// row whose payload was external, is returned); otherwise, or if fn panics,
+// it is rolled back.
 //
 // Parameters:
 //   - ctx: request context.
 //   - fn: transactional work bound to the connection.
 //
-// Returns fn's error, app.ErrNotFound for errDeadRow, or a DB error.
+// Returns fn's error, the deadRowError's notFound error, or a DB error.
 func (i *Index) immediateTx(ctx context.Context, fn func(conn *sql.Conn) error) (err error) {
 	release, err := i.acquireWrite(ctx)
 	if err != nil {
@@ -42,7 +42,8 @@ func (i *Index) immediateTx(ctx context.Context, fn func(conn *sql.Conn) error) 
 		}
 	}()
 	fnErr := fn(conn)
-	if fnErr != nil && !errors.Is(fnErr, errDeadRow) {
+	var dead deadRowError
+	if fnErr != nil && !errors.As(fnErr, &dead) {
 		return fnErr
 	}
 	if _, err = conn.ExecContext(ctx, "COMMIT"); err != nil {
@@ -50,7 +51,7 @@ func (i *Index) immediateTx(ctx context.Context, fn func(conn *sql.Conn) error) 
 	}
 	committed = true
 	if fnErr != nil {
-		return app.ErrNotFound
+		return dead.notFound()
 	}
 	return nil
 }

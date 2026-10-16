@@ -76,7 +76,7 @@ func (i *Index) Revoke(ctx context.Context, id, manageHash string, now time.Time
 }
 
 // withManagedRow runs fn on a live, authorized row inside an immediate
-// transaction. Errors from loadManagedRow, including errDeadRow, reach
+// transaction. Errors from loadManagedRow, including deadRowError, reach
 // immediateTx unchanged so a lazy deletion still commits.
 //
 // Parameters:
@@ -98,7 +98,7 @@ func (i *Index) withManagedRow(ctx context.Context, id, manageHash string, now t
 }
 
 // loadManagedRow loads a row for a manage operation. A dead row is deleted
-// (returning errDeadRow so the deletion commits) before the hash is checked,
+// (returning deadRowError so the deletion commits) before the hash is checked,
 // matching the lazy-expiry rule of the claim path.
 //
 // Parameters:
@@ -108,7 +108,7 @@ func (i *Index) withManagedRow(ctx context.Context, id, manageHash string, now t
 //   - manageHash: hex SHA-256 of the presented manage token.
 //   - now: current time used for expiry checks.
 //
-// Returns the live, authorized row, app.ErrNotFound, errDeadRow, or a DB
+// Returns the live, authorized row, app.ErrNotFound, deadRowError, or a DB
 // error.
 func loadManagedRow(ctx context.Context, conn *sql.Conn, id, manageHash string, now time.Time) (*manageRow, error) {
 	row, err := selectManageRow(ctx, conn, id)
@@ -119,7 +119,7 @@ func loadManagedRow(ctx context.Context, conn *sql.Conn, id, manageHash string, 
 		if err = deleteSecret(ctx, conn, id); err != nil {
 			return nil, err
 		}
-		return nil, errDeadRow
+		return nil, deadRowError{external: row.external}
 	}
 	if !hashMatches(row.manageHash, manageHash) {
 		return nil, app.ErrNotFound

@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"io"
 	"os"
@@ -20,6 +21,7 @@ type storeFixture struct {
 	ctx     context.Context
 	store   *store.Store
 	blobDir string
+	db      *sql.DB
 }
 
 // storeNewFixture creates an integrated store backed by SQLite and filesystem blobs.
@@ -32,7 +34,8 @@ type storeFixture struct {
 // Returns: a configured store fixture.
 func storeNewFixture(t *testing.T, now time.Time, inlineMax int64) storeFixture {
 	t.Helper()
-	ix, err := sqlite.New(storeOpenTestDB(t))
+	db := storeOpenTestDB(t)
+	ix, err := sqlite.New(db)
 	if err != nil {
 		t.Fatalf("sqlite.New: %v", err)
 	}
@@ -41,7 +44,7 @@ func storeNewFixture(t *testing.T, now time.Time, inlineMax int64) storeFixture 
 	if err != nil {
 		t.Fatalf("filesystem.New: %v", err)
 	}
-	return storeFixture{ctx: context.Background(), store: store.New(ix, bs, storeFixedClock{now: now}, inlineMax), blobDir: blobDir}
+	return storeFixture{ctx: context.Background(), store: store.New(ix, bs, storeFixedClock{now: now}, inlineMax), blobDir: blobDir, db: db}
 }
 
 // storeSave writes a secret through the fixture store.
@@ -212,4 +215,16 @@ func storeAssertBlobMissing(t *testing.T, dir, id string) {
 	if _, err := os.Stat(filepath.Join(dir, id+".blob")); !os.IsNotExist(err) {
 		t.Fatalf("expected blob removed, err=%v", err)
 	}
+}
+
+func TestStoreSaveRemovesBlobWhenInsertFails(t *testing.T) {
+	now := time.Now().UTC()
+	f := storeNewFixture(t, now, 4)
+	id := "33333333333333333333333333333333"
+	storeSave(t, f, id, app.Meta{Version: 1, NonceB64u: "a"}, []byte("in"), now.Add(time.Hour))
+	data := []byte("external duplicate")
+	if err := f.store.Save(f.ctx, id, app.Meta{Version: 1, NonceB64u: "b"}, storeTestManageHash, storeBytesReader(data), int64(len(data)), now.Add(time.Hour)); err == nil {
+		t.Fatalf("Save of a duplicate id succeeded")
+	}
+	storeAssertBlobMissing(t, f.blobDir, id)
 }

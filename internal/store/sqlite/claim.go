@@ -97,10 +97,6 @@ func (i *Index) claimWhere(ctx context.Context, c claimRequest, allow func(*stor
 	return res, nil
 }
 
-// errDeadRow signals from inside a transaction that an expired or lapsed row
-// was deleted: the deletion must be committed and app.ErrNotFound returned.
-var errDeadRow = errors.New("sqlite: dead row deleted")
-
 // execer is the subset of *sql.Conn / *sql.Tx used to run statements.
 type execer interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
@@ -115,7 +111,7 @@ type execer interface {
 //   - id: secret identifier.
 //   - now: current time used for expiry checks.
 //
-// Returns the live row, app.ErrNotFound if absent, errDeadRow if it was
+// Returns the live row, app.ErrNotFound if absent, a deadRowError if it was
 // deleted, or a DB error.
 func loadLiveRow(ctx context.Context, conn *sql.Conn, id string, now time.Time) (*store.IndexResult, error) {
 	res, err := selectSecretForClaim(ctx, conn, id)
@@ -128,7 +124,7 @@ func loadLiveRow(ctx context.Context, conn *sql.Conn, id string, now time.Time) 
 	if err = deleteSecret(ctx, conn, id); err != nil {
 		return nil, err
 	}
-	return nil, errDeadRow
+	return nil, deadRowError{external: res.External}
 }
 
 // attachExternalReader opens the blob for an external row and sets res.Reader.

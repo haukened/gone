@@ -11,6 +11,9 @@ import (
 
 // Save persists a secret. Data <= inlineMax is stored inline; larger data
 // is written to blob storage and only the reference is kept in the index.
+// The ID is held from before the blob write until the row commits, so
+// Reconcile cannot take the blob for an orphan meanwhile (see blobGuard). If
+// the insert fails, an external payload is removed best-effort.
 //
 // Parameters:
 //   - ctx: request context.
@@ -28,14 +31,20 @@ func (s *Store) Save(ctx context.Context, id string, meta app.Meta, manageHash s
 		return err
 	}
 	createdAt := s.clock.Now()
+	release := s.guard.hold(id)
+	defer release()
 	inline, external, err := s.storePayload(ctx, id, r, size)
 	if err != nil {
 		return err
 	}
-	return s.index.Insert(ctx, NewRow{
+	err = s.index.Insert(ctx, NewRow{
 		ID: id, Meta: meta, Inline: inline, External: external, Size: size,
 		ManageHash: manageHash, CreatedAt: createdAt, ExpiresAt: expiresAt,
 	})
+	if err != nil && external {
+		_ = s.blobs.Delete(id) // best-effort; Reconcile cleans orphans
+	}
+	return err
 }
 
 // validateSaveRequest checks whether the Store can persist a payload of size.

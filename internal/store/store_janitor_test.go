@@ -53,7 +53,7 @@ func TestStoreReconcileDeletesOrphan(t *testing.T) {
 	fixture := storeNewFixture(t, now, 4)
 	id := "77777777777777777777777777777777"
 	storeWriteTempBlob(t, fixture.blobDir, id, []byte("zzz"))
-	time.Sleep(1100 * time.Millisecond)
+	storeBackdateBlob(t, fixture.blobDir, id)
 	if err := fixture.store.Reconcile(fixture.ctx); err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}

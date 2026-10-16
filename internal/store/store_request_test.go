@@ -138,3 +138,26 @@ func TestStoreRequestsUnsupportedIndex(t *testing.T) {
 		t.Errorf("nil store accepted")
 	}
 }
+
+func TestStoreFillLosesToExistingBlob(t *testing.T) {
+	now := time.Unix(1700000000, 0).UTC()
+	f := storeNewFixture(t, now, 4)
+	reqCreate(t, f, now)
+	storeWriteTempBlob(t, f.blobDir, reqID, []byte("first fill"))
+	if _, err := reqFill(f, []byte("larger than inline")); !errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("Fill err = %v, want app.ErrNotFound", err)
+	}
+	if data, err := os.ReadFile(filepath.Join(f.blobDir, reqID+".blob")); err != nil || string(data) != "first fill" {
+		t.Fatalf("first fill's blob = %q, %v", data, err)
+	}
+}
+
+func TestStoreFillShortPayloadFails(t *testing.T) {
+	now := time.Unix(1700000000, 0).UTC()
+	f := storeNewFixture(t, now, 4)
+	reqCreate(t, f, now)
+	_, err := f.store.Fill(f.ctx, reqID, reqFillHash, app.Meta{Version: 3, NonceB64u: "n"}, storeBytesReader([]byte("short")), 64)
+	if err == nil || errors.Is(err, app.ErrNotFound) {
+		t.Fatalf("Fill err = %v, want a write error", err)
+	}
+}

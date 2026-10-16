@@ -22,6 +22,7 @@ type Store struct {
 	clock     app.Clock
 	inlineMax int64
 	metrics   app.Metrics
+	guard     blobGuard // keeps Reconcile off blobs whose row is pending
 }
 
 // New returns a Store implementation of app.SecretStore.
@@ -46,7 +47,8 @@ func (s *Store) WithMetrics(m app.Metrics) *Store {
 // Claim reserves a secret for one client and returns its ciphertext without
 // deleting it. Inline payloads are returned from memory; external payloads are
 // streamed from blob storage via a plain (non-deleting) reader so the client
-// can retry within the claim lease. Deletion happens on Ack or expiry.
+// can retry within the claim lease. Deletion happens on Ack or expiry; a row
+// found dead here is deleted together with its blob.
 //
 // Parameters:
 //   - ctx: request context.
@@ -60,7 +62,8 @@ func (s *Store) Claim(ctx context.Context, id, claimHash string, retry bool, cla
 	if s == nil || s.index == nil || s.blobs == nil || s.clock == nil {
 		return app.Claimed{}, errors.New("store not properly initialized")
 	}
-	return buildClaimed(s.index.Claim(ctx, id, claimHash, retry, s.clock.Now(), claimedUntil, s.blobs.Open))
+	res, err := s.index.Claim(ctx, id, claimHash, retry, s.clock.Now(), claimedUntil, s.blobs.Open)
+	return buildClaimed(res, s.sweepDead(id, err))
 }
 
 // buildClaimed converts an IndexResult into app.Claimed depending on storage mode.
@@ -111,7 +114,8 @@ func (s *Store) Ack(ctx context.Context, id, claimHash string) error {
 	return nil
 }
 
-// Status reports a pending secret to the sender holding its manage token.
+// Status reports a pending secret to the sender holding its manage token. A
+// row found dead is deleted together with its blob.
 //
 // Parameters:
 //   - ctx: request context.
@@ -123,7 +127,8 @@ func (s *Store) Status(ctx context.Context, id, manageHash string) (app.SecretSt
 	if s == nil || s.index == nil || s.clock == nil {
 		return app.SecretStatus{}, errors.New("store not properly initialized")
 	}
-	return s.index.Status(ctx, id, manageHash, s.clock.Now())
+	st, err := s.index.Status(ctx, id, manageHash, s.clock.Now())
+	return st, s.sweepDead(id, err)
 }
 
 // Revoke deletes a pending secret on behalf of its sender. The index row is
@@ -143,7 +148,7 @@ func (s *Store) Revoke(ctx context.Context, id, manageHash string) error {
 	}
 	external, err := s.index.Revoke(ctx, id, manageHash, s.clock.Now())
 	if err != nil {
-		return err
+		return s.sweepDead(id, err)
 	}
 	if external {
 		_ = s.blobs.Delete(id) // best-effort; Reconcile cleans orphans

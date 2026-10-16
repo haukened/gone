@@ -24,18 +24,20 @@ type Index interface {
 	// unclaimed and records claimHash with a lease ending at claimedUntil. A retry
 	// (retry=true) requires claimHash to match the stored hash while the lease is
 	// valid. Rows past their TTL or claim lease are deleted and app.ErrNotFound is
-	// returned. For external payloads, openExternal is called while the
-	// transaction is held; if opening fails, the claim is rolled back.
+	// returned, or ErrDeadExternal if the payload was external. For external
+	// payloads, openExternal is called while the transaction is held; if
+	// opening fails, the claim is rolled back.
 	Claim(ctx context.Context, id, claimHash string, retry bool, now, claimedUntil time.Time, openExternal ExternalOpener) (*IndexResult, error)
 	// Ack deletes a claimed row when claimHash matches the stored claim and
 	// reports whether its payload was external. Returns app.ErrNotFound otherwise.
 	Ack(ctx context.Context, id, claimHash string) (external bool, err error)
 	// Status returns a live row's creation and expiry times when manageHash
-	// matches. Dead rows are deleted lazily. Returns app.ErrNotFound otherwise.
+	// matches. Dead rows are deleted lazily, reported as ErrDeadExternal if
+	// their payload was external. Returns app.ErrNotFound otherwise.
 	Status(ctx context.Context, id, manageHash string, now time.Time) (app.SecretStatus, error)
 	// Revoke deletes a live row when manageHash matches, regardless of any
 	// claim lease, and reports whether its payload was external. Dead rows are
-	// deleted lazily. Returns app.ErrNotFound otherwise.
+	// deleted lazily as in Status. Returns app.ErrNotFound otherwise.
 	Revoke(ctx context.Context, id, manageHash string, now time.Time) (external bool, err error)
 	DeleteExpired(ctx context.Context, t time.Time) (expired []ExpiredRecord, err error)
 	// ListExternalIDs returns IDs of secrets whose payloads are stored externally.
@@ -65,7 +67,8 @@ type RequestIndex interface {
 	// manage hash matches.
 	ClaimReply(ctx context.Context, id, manageHash, claimHash string, retry bool, now, claimedUntil time.Time, openExternal ExternalOpener) (*IndexResult, error)
 	// CancelRequest deletes an open request or an unopened reply whose manage
-	// hash matches, and reports whether a reply payload was external.
+	// hash matches, and reports whether a reply payload was external. A dead
+	// reply is deleted lazily as in Index.Status.
 	CancelRequest(ctx context.Context, id, manageHash string, now time.Time) (external bool, err error)
 }
 
@@ -115,6 +118,9 @@ type IndexResult struct {
 // Delete on acknowledgement, expiry, or reconciliation; reconciliation uses List
 // to clean orphans left by crashes between index removal and blob deletion.
 type BlobStorage interface {
+	// Write stores exactly size bytes from r as the blob for id. It never
+	// replaces a blob: if one exists for id it fails with an error matching
+	// fs.ErrExist.
 	Write(id string, r io.Reader, size int64) error
 	// Open returns a reader for the blob without deleting it on close.
 	Open(id string) (io.ReadCloser, error)

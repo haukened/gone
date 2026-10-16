@@ -117,7 +117,12 @@ func newHandler(t *testing.T, clk *fakeClock, lim limits) http.Handler {
 //   - *app.Service: the service.
 func newService(t *testing.T, cfg *config.Config) *app.Service {
 	t.Helper()
-	dir := t.TempDir()
+	return newServiceAt(t, cfg, t.TempDir())
+}
+
+// newServiceAt is newService with its database and blobs under dir.
+func newServiceAt(t *testing.T, cfg *config.Config, dir string) *app.Service {
+	t.Helper()
 	db, err := sql.Open(sqlite.DriverName, config.SQLiteDSNFor(dir))
 	if err != nil {
 		t.Fatalf("open db: %v", err)

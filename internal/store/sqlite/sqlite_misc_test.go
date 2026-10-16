@@ -109,7 +109,8 @@ func TestIndexImmediateTx(t *testing.T) {
 		wantExists bool
 	}{
 		{name: "commit on nil", fnErr: nil, wantErr: nil, wantExists: false},
-		{name: "commit and not found on dead row", fnErr: errDeadRow, wantErr: app.ErrNotFound, wantExists: false},
+		{name: "commit and not found on dead row", fnErr: deadRowError{}, wantErr: app.ErrNotFound, wantExists: false},
+		{name: "commit and dead external on dead blob row", fnErr: deadRowError{external: true}, wantErr: store.ErrDeadExternal, wantExists: false},
 		{name: "rollback on not found", fnErr: app.ErrNotFound, wantErr: app.ErrNotFound, wantExists: true},
 		{name: "rollback on other error", fnErr: sentinel, wantErr: sentinel, wantExists: true},
 	}
