@@ -94,3 +94,17 @@ test('showAckResult reveals the warning only on failure', (t) => {
   view.showAckResult(false);
   assert.equal($('ack-warning').hidden, false);
 });
+
+test('cleanup removes the file list and forgets the files', (t) => {
+  const { $, view } = setup(t);
+  view.showDecoded({ message: 'm', files: [file('a.txt', 'A'), file('b.txt', 'B')] });
+  assert.equal($('file-output-list').children.length, 2);
+  view.cleanup();
+  assert.equal($('file-output-list').children.length, 0);
+  assert.equal($('file-section').hidden, true);
+  const ev = { preventDefault() { this.prevented = true; } };
+  view.guardUnload(ev);
+  assert.equal(ev.prevented, undefined);
+  view.guardUnload(ev, true);
+  assert.equal(ev.prevented, true);
+});

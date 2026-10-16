@@ -49,6 +49,14 @@
     ctx.syncOpen();
   }
 
+  // enableOpen undoes disableOpen, for a page that was locked by a link
+  // problem and has been given a good link.
+  function enableOpen() {
+    state.locked = false;
+    if (dom.pass) dom.pass.readOnly = state.busy;
+    ctx.syncOpen();
+  }
+
   window.goneConsumeViewStatus = Object.freeze({
     setStatus: ctx.setStatus,
     setProgress: setProgress,
@@ -56,6 +64,7 @@
     showError: showError,
     clearError: function () { if (dom.errorBox) dom.errorBox.hidden = true; },
     setOpening: setOpening,
-    disableOpen: disableOpen
+    disableOpen: disableOpen,
+    enableOpen: enableOpen
   });
 })();

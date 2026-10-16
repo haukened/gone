@@ -63,5 +63,14 @@
     }
   }
 
-  window.goneConsumeViewFiles = Object.freeze({ showFiles: showFiles });
+  // clear removes the file list from the page and forgets the files, for
+  // when the page is left and might be restored from the back-forward cache.
+  function clear() {
+    state.files = [];
+    state.pending = 0;
+    if (dom.fileList) dom.fileList.replaceChildren();
+    if (dom.fileSection) dom.fileSection.hidden = true;
+  }
+
+  window.goneConsumeViewFiles = Object.freeze({ showFiles: showFiles, clear: clear });
 })();

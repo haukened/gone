@@ -86,7 +86,7 @@ const MODULE_DEPS = {
 
 // reset installs a fresh fake browser at url and removes loaded gone modules.
 // opts: {storage, storageThrows, readyState, indexedDB}.
-// Returns {document, alerts, clipboard, storage, selection, windowListeners}.
+// Returns {document, alerts, replaced (history.replaceState URLs), clipboard, storage, selection, windowListeners}.
 function reset(url, opts) {
   const o = opts || {};
   GONE_GLOBALS.forEach((g) => { delete globalThis[g]; });
@@ -99,6 +99,7 @@ function reset(url, opts) {
 function baseEnv(opts) {
   return {
     alerts: [],
+    replaced: [],
     clipboard: { text: '', fail: false },
     storage: opts.storage || {},
     windowListeners: {},
@@ -111,6 +112,12 @@ function defineBrowserGlobals(url, env, opts) {
   define('document', env.document);
   define('location', new URL(url || 'https://gone.test/'));
   define('alert', (m) => env.alerts.push(m));
+  define('history', {
+    replaceState: (state, title, to) => {
+      env.replaced.push(to);
+      globalThis.location.href = new URL(to, globalThis.location.href).href;
+    }
+  });
   define('requestAnimationFrame', (fn) => { fn(); return 1; });
   defineNavigator(env);
   define('localStorage', storageFor(env, opts));
@@ -119,6 +126,7 @@ function defineBrowserGlobals(url, env, opts) {
   define('getSelection', () => selectionFor(env));
   delete globalThis.matchMedia;
   define('addEventListener', (type, fn) => { env.windowListeners[type] = fn; });
+  define('removeEventListener', (type, fn) => { if (env.windowListeners[type] === fn) delete env.windowListeners[type]; });
 }
 
 function defineNavigator(env) {

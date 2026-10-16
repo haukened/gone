@@ -49,7 +49,7 @@
   }
 
   const dom = lookupDom();
-  const state = { plaintext: null, files: [], urls: [], pending: 0, busy: false, locked: false };
+  const state = { plaintext: null, files: [], urls: [], pending: 0, busy: false, locked: false, revealed: false };
   state.openLabel = window.goneI18n.snapshot(dom.openLabel);
   const ctx = { util: window.goneUtil, i18n: window.goneI18n, icons: window.goneIcons, byId: byId, dom: dom, state: state, pass: null };
 

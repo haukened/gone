@@ -125,6 +125,26 @@
     return typeof t === 'string' && TOKEN_RE.test(t);
   }
 
+  function replaceWithoutFragment() {
+    try {
+      history.replaceState(null, '', location.pathname + location.search);
+    } catch (e) {
+      console.warn('[gone] could not clear the address bar fragment', e);
+    }
+  }
+
+  // clearFragment replaces the address-bar URL with the same path and query
+  // but no fragment, so a link key or token that a page script has already
+  // read does not linger in the address bar, history or session restore.
+  // Call it after reading location.hash; the page keeps its in-memory copy.
+  // While the page is still loading it waits for the load event, so the
+  // same-document navigation never overlaps the load (WebKit's automation
+  // can stall on that).
+  function clearFragment() {
+    if (document.readyState === 'complete') replaceWithoutFragment();
+    else window.addEventListener('load', replaceWithoutFragment, { once: true });
+  }
+
   window.goneUtil = Object.freeze({
     logTiming: logTiming,
     sleep: sleep,
@@ -135,6 +155,7 @@
     flashCopied: flashCopied,
     copyText: copyText,
     showView: showView,
-    isToken: isToken
+    isToken: isToken,
+    clearFragment: clearFragment
   });
 })();

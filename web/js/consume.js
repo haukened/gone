@@ -67,25 +67,57 @@
     return parsed;
   }
 
+  // page is what the one Open click handler runs. problem is set while the
+  // link can't work: only then may a later hashchange (the full link pasted
+  // into this tab) set the page up again. A page set up for a valid link is
+  // never touched again, so a claim in flight is never replaced.
+  const page = { handler: null, problem: '' };
+
+  // reportProblem makes Open explain the problem, without any request.
+  function reportProblem(problem) {
+    page.handler = function () {
+      view.showError(problem);
+      view.disableOpen();
+    };
+  }
+
+  // configure reads and validates the link, then clears the fragment from
+  // the address bar and points Open at the right handler.
+  function configure() {
+    const checked = validate();
+    // The key now lives only in memory; a reload shows the incomplete-link page.
+    util.clearFragment();
+    // Missing WebCrypto says nothing about the link, so Open is locked at
+    // once; the insecure-page banner explains why.
+    if (!util.cryptoAvailable()) view.disableOpen();
+    page.problem = checked.problem;
+    if (checked.problem) {
+      reportProblem(checked.problem);
+      return;
+    }
+    if (checked.frag.version === window.goneCrypto.versionV2) view.showPassphrase();
+    page.handler = opener.create(source(checked.frag));
+  }
+
+  // onHashChange recovers a page that was showing a link problem when the
+  // person pastes the full link into this tab. That is a same-document
+  // navigation, so no script would otherwise run again.
+  function onHashChange() {
+    if (!page.problem || !location.hash || !util.cryptoAvailable()) return;
+    view.clearError();
+    view.enableOpen();
+    configure();
+  }
+
   function start() {
     // Development builds only: web/dev/js/preview.js defines the hook.
     if (window.gonePreview && window.gonePreview.consume(view)) return;
     // Every link gets the same Open page, valid or not, so loading it reveals
     // nothing. A link that can't work says why only when Open is pressed,
     // still without touching the network.
-    const checked = validate();
-    // Missing WebCrypto says nothing about the link, so Open is locked at
-    // once; the insecure-page banner explains why.
-    if (!util.cryptoAvailable()) view.disableOpen();
-    if (checked.problem) {
-      view.onOpen(function () {
-        view.showError(checked.problem);
-        view.disableOpen();
-      });
-      return;
-    }
-    if (checked.frag.version === window.goneCrypto.versionV2) view.showPassphrase();
-    view.onOpen(opener.create(source(checked.frag)));
+    view.onOpen(function () { page.handler(); });
+    window.addEventListener('hashchange', onHashChange);
+    configure();
   }
 
   start();

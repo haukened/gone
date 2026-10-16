@@ -38,7 +38,7 @@ Every variable is listed in [Configuration](configuration.md). The container ima
 | `task test` | Go tests (`go test ./...`), then the JavaScript unit tests. |
 | `task test-js` | JavaScript unit tests in `test/js/`, with `node --test` and no dependencies. |
 | `task cover` / `task cover-js` | The same, with coverage. Go and JS line coverage are kept at or near 100%. |
-| `task e2e` | Browser end-to-end tests in `test/e2e/`: a production build in Chromium, Firefox and WebKit with Playwright. Run `task e2e-install` once first to install the browsers. |
+| `task e2e` | Browser end-to-end tests in `test/e2e/`: a production build, served over HTTPS, in Chromium, Firefox and WebKit with Playwright. Run `task e2e-install` once first to install the browsers. It needs Go, which builds the test TLS proxy. |
 | `task perf` | The latency target: p95 under 50 ms at 100 requests per second, against the real stack. |
 | `task lint` | golangci-lint (configured in `.golangci.yml`) for the default and `dev` build tags. |
 | `task lint-web` | ESLint and stylelint through `npx`, as CI runs them. |
@@ -54,7 +54,11 @@ Every variable is listed in [Configuration](configuration.md). The container ima
 - **End-to-end tests** start the real `bin/goned` with its templates and CSP, and drive real browsers through sending, opening, managing, requesting, replying and switching languages.
   - Each test fails on any console error, uncaught exception, CSP violation, or error status for a page or asset.
   - Pass Playwright arguments after `--`, for example `task e2e -- --project=webkit request.spec.js`.
-  - `GONE_E2E_PORT` changes the port; the default is `8199`.
+  - `GONE_E2E_PORT` changes the port; the default is `8199`. A second server for the rate-limit tests uses the next port.
+  - The tests run over HTTPS, so the `Secure` cookie, WebCrypto's secure-context check and the 429 paths are exercised in a browser. `goned` serves plain HTTP behind `test/e2e/tlsproxy`, a small TLS-terminating reverse proxy (`httputil.ReverseProxy`) with a self-signed certificate made in memory at startup and trusted by nothing, so Playwright runs with `ignoreHTTPSErrors`. `test/e2e/servers.js` holds the ports and rate settings that `playwright.config.js` and the specs share.
+  - Set `GONE_E2E_PLAIN=1` to serve plain `http://127.0.0.1` straight from `goned`, without the proxy, to debug a failure. The HTTPS-only checks in `https.spec.js` are skipped then.
+  - The main server runs with the default rate limits and `GONE_RATE_BURST=1000`: every browser connects from `127.0.0.1`, so a lower burst would make the suite trip its own limiter. `ratelimit.spec.js` uses the second server, with a burst of 3, and gives each test its own client with an `X-Forwarded-For` header (the proxy's address is trusted, and the proxy appends the real peer).
+  - Browsers started by Playwright can't be made to use the back-forward cache deterministically, so `leave.spec.js` checks a page's `pagehide` cleanup by dispatching the event.
 - **The latency test** runs only with `GONE_PERF=1`, which `task perf` sets.
   - `GONE_PERF_DURATION` changes the run length (default `10s`).
   - `GONE_PERF_RPS` offers a different rate, to find a machine's limit.

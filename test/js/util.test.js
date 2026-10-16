@@ -159,3 +159,29 @@ test('isToken is 43 characters of strict base64url', () => {
     assert.equal(u.isToken(bad), false, String(bad));
   }
 });
+
+test('clearFragment drops the fragment but keeps path and query', (t) => {
+  const env = reset('https://gone.test/secret/abc?debug=timing#v1:KEY');
+  load('util');
+  window.goneUtil.clearFragment();
+  assert.deepEqual(env.replaced, ['/secret/abc?debug=timing']);
+  assert.equal(globalThis.location.hash, '');
+  assert.equal(globalThis.location.search, '?debug=timing');
+
+  const logs = captureConsole(t);
+  globalThis.history = { replaceState() { throw new Error('blocked'); } };
+  window.goneUtil.clearFragment();
+  assert.equal(logs.warn.length, 1);
+  assert.match(logs.warn[0], /could not clear/);
+});
+
+test('clearFragment waits for the load event while the page is loading', () => {
+  const env = reset('https://gone.test/secret/abc#v1:KEY', { readyState: 'interactive' });
+  load('util');
+  window.goneUtil.clearFragment();
+  assert.deepEqual(env.replaced, []);
+  assert.equal(globalThis.location.hash, '#v1:KEY');
+  env.windowListeners.load();
+  assert.deepEqual(env.replaced, ['/secret/abc']);
+  assert.equal(globalThis.location.hash, '');
+});

@@ -18,6 +18,7 @@
     clearError: status.clearError,
     setOpening: status.setOpening,
     disableOpen: status.disableOpen,
+    enableOpen: status.enableOpen,
     onOpen: messages.onOpen,
     showPassphrase: ctx.pass.show,
     passphrase: ctx.pass.value,

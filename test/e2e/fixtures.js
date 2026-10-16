@@ -89,12 +89,13 @@ const test = base.test.extend({
   },
 
   // newPerson opens a page in a fresh browser context: another person,
-  // with their own storage and no shared state.
+  // with their own storage and no shared state. opts are extra context
+  // options (a baseURL, extraHTTPHeaders).
   newPerson: async ({ browser, errors }, use) => {
     const contexts = [];
     const pages = [];
-    await use(async function () {
-      const ctx = await browser.newContext();
+    await use(async function (opts) {
+      const ctx = await browser.newContext(opts);
       contexts.push(ctx);
       const page = await ctx.newPage();
       pages.push(page);

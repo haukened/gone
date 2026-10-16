@@ -118,7 +118,7 @@ test('status codes map to messages and retryability', async (t) => {
     [400, /isn.t valid/, false],
     [404, /This secret is gone/, false],
     [410, /This secret is gone/, false],
-    [429, /Too many requests/, false],
+    [429, /Too many requests/, true],
     [403, /server had a problem/, false]
   ];
   for (const [status, msg, retryable] of cases) {

@@ -42,6 +42,8 @@ Properties:
   - They travel only in the URL fragment and the `X-Gone-Manage` header, never in a path, query or log.
   - The server stores only a SHA-256 hash and compares it in constant time.
   - The custom header forces a CORS preflight that the server never grants, so other sites can't revoke your secrets.
+- **The fragment doesn't stay in the address bar.** Once the secret, manage and reply pages have read it, they replace the URL with the same path and no fragment (`history.replaceState`), so the link key, manage token and fill token don't linger in the address bar, tab history or session restore. The page keeps its copy in memory, and a reload shows the "link is incomplete" page instead of claiming anything. Pasting the full link into the same tab afterwards sets the page up again (the pages listen for `hashchange` while the link is unusable), without starting a second claim. Copy a link from the result page, not from the address bar.
+- **Leaving a page removes the secret from it.** When a page with a revealed secret is hidden or unloaded (`pagehide`, which also fires when the browser puts it in the back-forward cache), the page zeroes its plaintext, revokes the file URLs, empties the message and file list and shows the "gone" view, so a page restored from the cache holds nothing. A secret with downloaded files not yet saved also asks the browser to confirm before leaving.
 - **No tombstones.** Status and revoke answer `404` alike for opened, revoked, expired, unknown and wrong-token secrets. The server's answers reveal nothing beyond "still waiting".
 
 ## Optional passphrase (protocol v2)
@@ -52,7 +54,7 @@ A sender can add a passphrase. The link keeps the same shape with a `v2:` prefix
 2. It stretches the passphrase with PBKDF2-SHA-256 at 600,000 iterations. The passphrase is first normalized to NFC and encoded as UTF-8.
 3. HKDF-SHA-256 combines the stretched passphrase with the link key to make the AES-GCM key.
 4. The upload is a 21-byte header (KDF ID, iteration count, salt) followed by the ciphertext. The header is bound into the additional data (`gone:v2` plus the header), so it can't be altered. The server stores the body as opaque bytes and never sees the passphrase.
-5. The recipient's page asks for the passphrase before fetching anything. A wrong passphrase can be retried against the one download as often as needed, with no second request. The secret is confirmed, and so deleted, only after it decrypts.
+5. The recipient's page asks for the passphrase before fetching anything. A wrong passphrase can be retried against the one download as often as needed, with no second request. The secret is confirmed, and so deleted, only after it decrypts. While the page holds that download, which is already claimed and can't be fetched again, leaving it (closing the tab, reloading, following a link) makes the browser ask first (`beforeunload`); if the person leaves anyway, the held bytes are zeroed.
 
 Generated passphrases are five words from the [EFF short wordlist](https://www.eff.org/dice), about 51 bits of entropy. The list is © Electronic Frontier Foundation, used under [CC BY 3.0 US](https://creativecommons.org/licenses/by/3.0/us/).
 
@@ -128,6 +130,8 @@ Every response gets:
 - `Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
 - `Referrer-Policy: no-referrer`
 - `X-Content-Type-Options: nosniff`
+
+A Go test (`internal/httpx/csp_doc_test.go`) reads the Content-Security-Policy line above and fails if it differs from the header the server sets.
 
 The CSP blocks all inline script and anything from another origin. `frame-ancestors 'none'` replaces `X-Frame-Options`. Nothing loads from anywhere but the operator's server: no CDNs, fonts or analytics.
 
