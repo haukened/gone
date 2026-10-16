@@ -228,9 +228,9 @@ Work after the six phases. Each item is still one PR, under the same guiding pri
 | v3.10.2 | Every source file split back to a Codacy A grade; no behavior change (#74). |
 | next | Browser end-to-end tests in CI (#81). Documentation split into topic pages under `docs/`. |
 
-Decided against since v3.0.0, with reasons in [rejected.md](rejected.md):
-* **`gone mcp`**, a stdio MCP server over the CLI. Coding assistants have a shell and already use the agent-friendly CLI.
-* **Argon2id.** It still needs WebAssembly in the browser.
+Decided against since v3.0.0:
+* **`gone mcp`**, a stdio MCP server over the CLI. Coding assistants have a shell and already use the agent-friendly CLI. Listed in [rejected.md](rejected.md).
+* **Argon2id**, reconfirmed on 2026-10-16. It still needs WebAssembly in the browser; see [Phase 5's decisions](#phase-5-optional-passphrase).
 
 ## Tracking
 | Phase | Status |
