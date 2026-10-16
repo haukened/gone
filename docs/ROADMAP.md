@@ -16,7 +16,7 @@ Gone v3 adds abuse protection, a second factor for secrets, sender control, a co
 * Front-end frameworks or a build-time JS toolchain. The UI stays vanilla JS under a strict CSP.
 * Running WebAssembly in the browser. Encryption stays on WebCrypto (see [Phase 2](#phase-2-protocol-spec-and-go-envelope)).
 
-Every feature we have decided against, with the reason and what would make us look again, is in [rejected.md](rejected.md).
+Features we have decided against are in [rejected.md](rejected.md); technical alternatives we turned down are in [decisions.md](decisions.md). Each lists the reason and what would make us look again.
 
 ## Guiding principles
 * **One phase, one pull request.** Each phase is reviewable, passes Codacy on its own, and leaves `main` releasable.
@@ -230,7 +230,7 @@ Work after the six phases. Each item is still one PR, under the same guiding pri
 
 Decided against since v3.0.0:
 * **`gone mcp`**, a stdio MCP server over the CLI. Coding assistants have a shell and already use the agent-friendly CLI. Listed in [rejected.md](rejected.md).
-* **Argon2id**, reconfirmed on 2026-10-16. It still needs WebAssembly in the browser; see [Phase 5's decisions](#phase-5-optional-passphrase).
+* **Argon2id**, reconfirmed on 2026-10-16. It still needs WebAssembly in the browser; see [Phase 5's decisions](#phase-5-optional-passphrase) and [decisions.md](decisions.md#encryption).
 
 ## Tracking
 | Phase | Status |

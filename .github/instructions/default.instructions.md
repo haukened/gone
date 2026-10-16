@@ -41,7 +41,7 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - `internal/sqlrows/`: Small SQL row helpers.
 - `web/`: Templates, CSS (`web/css/`), and vanilla JS (`web/js/`) for the web interface.
 - `test/`: Go integration tests; `test/js/` JS unit tests; `test/interop/` browser-crypto/CLI interop; `test/vectors/` shared test vectors; `test/e2e/` browser end-to-end tests (Playwright, its own `package.json`; nothing there ships).
-- `docs/`: `README.md` (index), `api.md` and `openapi.yaml` (HTTP API), `protocol.md`, `cli.md`, `configuration.md`, `metrics.md`, `security.md`, `development.md`, `deploy/` (`docker.md`, `compose.md`, `reverse-proxy.md`), `ROADMAP.md`, `rejected.md` (rejected features), plus `brand/` and `img/`.
+- `docs/`: `README.md` (index), `api.md` and `openapi.yaml` (HTTP API), `protocol.md`, `cli.md`, `configuration.md`, `metrics.md`, `security.md`, `development.md`, `deploy/` (`docker.md`, `compose.md`, `reverse-proxy.md`), `ROADMAP.md`, `rejected.md` (rejected features), `decisions.md` (technical decisions), plus `brand/` and `img/`.
 - `scripts/`: Release tooling (`release.sh`).
 
 ## Testing Requirements

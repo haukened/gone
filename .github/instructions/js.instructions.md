@@ -97,7 +97,7 @@ Tests: zero-dependency `node:test` suites live in `test/js/` (run `task test-js`
 ## Migration Path (Optional Future)
 - Phase 1: Split by responsibility into IIFE scripts (done; see `web/js/`). Move to ES modules if the script graph grows further.
 - Phase 2: Add JSDoc typedefs for encrypted payload structure.
-- TypeScript, a bundler and front-end frameworks are not planned: they need a build-time JS toolchain, which is a non-goal. See the [roadmap's non-goals](../../docs/ROADMAP.md#non-goals).
+- TypeScript, a bundler and front-end frameworks are not planned: they need a build-time JS toolchain, which is a non-goal. See [Technical decisions](../../docs/decisions.md#web-client).
 
 ## Anti‑Patterns to Avoid
 - Reintroducing `var`.

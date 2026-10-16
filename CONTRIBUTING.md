@@ -64,7 +64,7 @@ Update the docs in the same PR when behavior changes:
 - [docs/cli.md](docs/cli.md) for the CLI;
 - [docs/deploy/](docs/deploy/) for deployment.
 
-A feature we decide against goes in [docs/rejected.md](docs/rejected.md), with its reason and what would make us revisit it. [docs/README.md](docs/README.md) is the index of all of them.
+A feature we decide against goes in [docs/rejected.md](docs/rejected.md), and a technical alternative we turn down goes in [docs/decisions.md](docs/decisions.md), each with its reason and what would make us revisit it. [docs/README.md](docs/README.md) is the index of all of them.
 
 ## Translations
 

@@ -107,7 +107,7 @@ Messages come from standard input, never from arguments. Scripts and AI agents c
 | **Run it** | [Docker](docs/deploy/docker.md) · [Compose with Caddy](docs/deploy/compose.md) · [Reverse proxy](docs/deploy/reverse-proxy.md) · [Configuration](docs/configuration.md) · [Metrics](docs/metrics.md) |
 | **Use it** | [CLI](docs/cli.md) · [HTTP API](docs/api.md) ([OpenAPI](docs/openapi.yaml)) · [Protocol](docs/protocol.md) |
 | **Trust it** | [Security and architecture](docs/security.md) · [Reporting a vulnerability](SECURITY.md) |
-| **Build it** | [Contributing](CONTRIBUTING.md) · [Development](docs/development.md) · [Roadmap](docs/ROADMAP.md) · [Rejected features](docs/rejected.md) |
+| **Build it** | [Contributing](CONTRIBUTING.md) · [Development](docs/development.md) · [Roadmap](docs/ROADMAP.md) · [Rejected features](docs/rejected.md) · [Technical decisions](docs/decisions.md) |
 
 The full index is [docs/README.md](docs/README.md).
 

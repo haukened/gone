@@ -9,7 +9,7 @@ A "no" here isn't forever unless it says **Never**. If a revisit trigger has hap
 - a secret opens once;
 - once it's gone, nothing about it is kept.
 
-This page is about features: what you'd be able to do. How Gone is built, for example which algorithms or libraries it uses, is explained in [ROADMAP.md](ROADMAP.md) and [protocol.md](protocol.md).
+This page is about features: what you'd be able to do. How Gone is built, and the technical alternatives we turned down (algorithms, libraries, tooling), is in [Technical decisions](decisions.md).
 
 ## Sending and receiving
 

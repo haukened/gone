@@ -35,5 +35,6 @@ Start with the [README](../README.md) for what Gone is and a one-command quick s
 | [Development](development.md) | Building, running and testing from source |
 | [Translations](../CONTRIBUTING.md#translations) and [the catalog conventions](../web/messages/README.md) | Fixing a translation or adding a language |
 | [Roadmap](ROADMAP.md) | What has been built, phase by phase, and what's next |
-| [Rejected features](rejected.md) | What we decided against, why, and when we'd look again |
+| [Rejected features](rejected.md) | Features we've said no to, why, and when we'd look again |
+| [Technical decisions](decisions.md) | How Gone is built, and the alternatives we turned down |
 | [DESIGN.md](../DESIGN.md) and [PRODUCT.md](../PRODUCT.md) | The visual system and the product principles |
