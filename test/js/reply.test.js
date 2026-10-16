@@ -7,7 +7,8 @@ const { reset, load, h, waitFor, captureConsole } = require('./harness');
 const { fakeResponse, installFetch, FakeXHR } = require('./fakes');
 
 const ID = 'a'.repeat(32);
-const FILL = 'F'.repeat(43);
+// A fill token is strict base64url: the last character carries two zero bits.
+const FILL = 'F'.repeat(42) + 'A';
 const MODULES = ['util', 'crypto', 'cryptoV3', 'fileMeta', 'envelope', 'icons', 'submitFiles', 'submitMeter', 'submitUpload', 'reply', 'submit'];
 const json = (status, body) => () => Object.assign(fakeResponse({ status }), { json: async () => body });
 const b64u = (b) => Buffer.from(b).toString('base64url');

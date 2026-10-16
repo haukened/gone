@@ -2,12 +2,12 @@
 
 // Endpoint pinning and the only fetch entry point for secret consumption.
 (function consumeApiEndpointModule() {
-  if (window.goneConsumeApiEndpoint || !window.goneConsumeApiErrors) return;
+  if (window.goneConsumeApiEndpoint || !window.goneConsumeApiErrors || !window.goneUtil) return;
   const errs = window.goneConsumeApiErrors;
+  const util = window.goneUtil;
   const API_PATH = '/api/secret/';
   const REQUEST_PATH = '/api/request/';
   const SECRET_ID_RE = /^[0-9a-f]{32}$/;
-  const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
   const api = { endpoint: '', headers: {} };
   const allowedEndpoints = new Set();
 
@@ -45,7 +45,7 @@
   // manage token (docs/protocol.md section 8.6).
   function registerReplyEndpoint(id, manageToken) {
     checkID(id);
-    if (typeof manageToken !== 'string' || !TOKEN_RE.test(manageToken)) throw errs.FetchError(errs.INVALID_LINK, false);
+    if (!util.isToken(manageToken)) throw errs.FetchError(errs.INVALID_LINK, false);
     pin(pinnedURL(`${REQUEST_PATH}${id}/reply`), { 'X-Gone-Manage': manageToken });
   }
 

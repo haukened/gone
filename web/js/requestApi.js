@@ -6,11 +6,10 @@
 // match the 32-hex pattern, on this page's origin. Claiming and acknowledging
 // the reply go through consumeApi. Exposed as window.goneRequestApi.
 (function requestApiModule() {
-  if (window.goneRequestApi || !window.goneRequestApiFetch) return;
+  if (window.goneRequestApi || !window.goneRequestApiFetch || !window.goneUtil) return;
 
   const API_PATH = '/api/request';
   const ID_RE = /^[0-9a-f]{32}$/;
-  const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
   const http = window.goneRequestApiFetch;
   const RequestError = http.RequestError;
   const SERVER_ERROR = http.SERVER_ERROR;
@@ -23,9 +22,7 @@
     return typeof id === 'string' && ID_RE.test(id);
   }
 
-  function isToken(token) {
-    return typeof token === 'string' && TOKEN_RE.test(token);
-  }
+  const isToken = window.goneUtil.isToken;
 
   // actionURL builds /api/request/{id}/{action} on this origin.
   function actionURL(id, action) {

@@ -114,6 +114,17 @@
     if (heading) heading.focus();
   }
 
+  // TOKEN_RE matches a bearer token (manage, fill or claim): 32 bytes as
+  // strict base64url, so 43 characters whose last one leaves its two unused
+  // bits zero (docs/protocol.md sections 2.1 and 8). Anchored and
+  // fixed-length, so it runs in linear time.
+  const TOKEN_RE = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
+
+  // isToken reports whether t is a well-formed bearer token.
+  function isToken(t) {
+    return typeof t === 'string' && TOKEN_RE.test(t);
+  }
+
   window.goneUtil = Object.freeze({
     logTiming: logTiming,
     sleep: sleep,
@@ -123,6 +134,7 @@
     el: el,
     flashCopied: flashCopied,
     copyText: copyText,
-    showView: showView
+    showView: showView,
+    isToken: isToken
   });
 })();

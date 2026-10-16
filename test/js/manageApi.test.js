@@ -2,14 +2,14 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reset, load } = require('./harness');
+const { reset, load, loadRaw } = require('./harness');
 const { installFetch } = require('./fakes');
 
 // tr renders a message key (as carried by errors) in English.
 const tr = (k) => window.goneI18n.t(k);
 
 const ID = '0123456789abcdef0123456789abcdef';
-const TOKEN = 'aZ09_-'.repeat(7) + 'x';
+const TOKEN = 'aZ09_-'.repeat(7) + 'w';
 const STATUS_URL = `https://gone.test/api/secret/${ID}/status`;
 const REVOKE_URL = `https://gone.test/api/secret/${ID}/revoke`;
 
@@ -39,12 +39,18 @@ test('loads once and exposes a frozen API', () => {
   assert.match(tr(api.INVALID_LINK), /isn\u2019t valid/);
 });
 
-test('isToken accepts only 43-char base64url', () => {
+test('isToken accepts only 43-char strict base64url', () => {
   const api = setup();
   assert.equal(api.isToken(TOKEN), true);
-  for (const bad of [TOKEN + 'a', TOKEN.slice(1), 'A'.repeat(42) + '=', 'A'.repeat(42) + '+', '', undefined, 42]) {
+  for (const bad of [TOKEN + 'a', TOKEN.slice(1), TOKEN.slice(0, -1) + 'x', 'A'.repeat(42) + 'B', 'A'.repeat(42) + '=', 'A'.repeat(42) + '+', '', undefined, 42]) {
     assert.equal(api.isToken(bad), false, String(bad));
   }
+});
+
+test('needs goneUtil', () => {
+  reset('https://gone.test/manage/' + ID);
+  loadRaw('manageApi');
+  assert.equal(window.goneManageApi, undefined);
 });
 
 test('ManageError and isManageError', () => {
@@ -76,6 +82,7 @@ test('requests are refused before registration or with a bad token', async () =>
   await assert.rejects(api.status(TOKEN), (e) => /unexpected address/.test(tr(e.message)));
   api.registerEndpoint(ID);
   await assert.rejects(api.revoke('nope'), (e) => e.message === api.INVALID_LINK && !e.retryable);
+  await assert.rejects(api.status(TOKEN.slice(0, -1) + 'x'), (e) => e.message === api.INVALID_LINK && !e.retryable);
   assert.equal(calls.length, 0);
 });
 

@@ -179,6 +179,17 @@ test('AEAD v3 vectors', async (t) => {
   }
 });
 
+test('AEAD v3 seal error vectors', async (t) => {
+  const v3 = v3Module();
+  const cases = readVectors('aead_v3').seal_errors;
+  assert.ok(cases.length > 0);
+  for (const c of cases) {
+    await t.test(c.name, async () => {
+      await assert.rejects(v3.encryptV3(hex(c.plaintext), hex(c.pub_r)), (e) => e.code === c.error);
+    });
+  }
+});
+
 test('reply fragment vectors', () => {
   const v3 = v3Module();
   for (const c of readVectors('fragment_v3')) {

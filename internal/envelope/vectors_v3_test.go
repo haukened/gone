@@ -26,10 +26,11 @@ type aeadV3Case struct {
 }
 
 type aeadV3Vectors struct {
-	Description string       `json:"description"`
-	AAD         string       `json:"aad"`
-	HKDFInfo    string       `json:"hkdf_info"`
-	Cases       []aeadV3Case `json:"cases"`
+	Description string            `json:"description"`
+	AAD         string            `json:"aad"`
+	HKDFInfo    string            `json:"hkdf_info"`
+	Cases       []aeadV3Case      `json:"cases"`
+	SealErrors  []aeadV3SealError `json:"seal_errors"`
 }
 
 // p256Key builds a deterministic P-256 private key from a raw scalar.
@@ -79,6 +80,7 @@ func buildAEADV3(t *testing.T) aeadV3Vectors {
 	for _, p := range pts {
 		v.Cases = append(v.Cases, sealV3Vector(t, p.name, privR, p256Key(t, p.d), nonce, p.pt))
 	}
+	v.SealErrors = buildAEADV3SealErrors(t, privR.PublicKey().Bytes())
 	return appendAEADV3Negatives(t, v, privR, nonce, v.Cases[0])
 }
 
@@ -141,6 +143,7 @@ func appendAEADV3Negatives(t *testing.T, v aeadV3Vectors, privR *ecdh.PrivateKey
 		{"compressed ephemeral point", privR, nonce, mut(func(b []byte) { b[0] = 0x02 })},
 		{"wrong nonce", privR, seq(0xb1, domain.NonceSize), blob},
 		{"truncated blob", privR, nonce, blob[:domain.V3HeaderSize+domain.TagSize-1]},
+		{"hybrid ephemeral point", privR, nonce, sealV3Hybrid(t, p256Key(t, hexBytes(base.PrivE)), privR.PublicKey(), nonce, hexBytes(base.Plaintext))},
 	}
 	for _, n := range neg {
 		_, err := OpenV3(n.key, n.nonce, n.blob)
@@ -186,6 +189,8 @@ func fragmentV3Inputs(t *testing.T) []string {
 		"v1:" + pub + "." + fill,
 		"v4:" + pub + "." + fill,
 		"v3:" + strings.Repeat("A", 600),
+		"v3:" + pub + "." + fill[:42] + "B",
+		"v3:" + domain.EncodeB64URL(hybridPoint(p256Key(t, seq(0x01, 32)).PublicKey().Bytes())) + "." + fill,
 	}
 }
 

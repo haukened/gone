@@ -7,7 +7,7 @@ const { installFetch } = require('./fakes');
 const { managePage } = require('./managePage');
 
 const ID = '0123456789abcdef0123456789abcdef';
-const TOKEN = 'B'.repeat(43);
+const TOKEN = 'B'.repeat(42) + 'A';
 const URL_OK = `https://gone.test/manage/${ID}#${TOKEN}`;
 const PENDING = { state: 'pending', created_at: '2030-01-01T00:00:00Z', expires_at: '2030-01-02T00:00:00Z' };
 
@@ -59,6 +59,7 @@ test('malformed links are rejected before any request', async (t) => {
   const bad = [
     `https://gone.test/manage/${ID}`,
     `https://gone.test/manage/${ID}#${TOKEN}x`,
+    `https://gone.test/manage/${ID}#${TOKEN.slice(0, -1)}B`,
     `https://gone.test/manage/${ID.toUpperCase()}#${TOKEN}`,
     `https://gone.test/manage/#${TOKEN}`
   ];

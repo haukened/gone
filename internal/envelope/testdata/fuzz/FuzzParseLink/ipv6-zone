@@ -1,0 +1,2 @@
+go test fuzz v1
+string("http://[fe80::1%25en0]:8080/secret/0123456789abcdef0123456789abcdef#v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")

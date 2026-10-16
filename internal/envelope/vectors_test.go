@@ -39,6 +39,7 @@ func errCode(err error) string {
 		{ErrMalformed, "malformed"},
 		{ErrInvalidPassphrase, "invalid_passphrase"},
 		{ErrDecrypt, "decrypt"},
+		{ErrInvalidKey, "invalid_key"},
 	}
 	for _, c := range codes {
 		if errors.Is(err, c.err) {

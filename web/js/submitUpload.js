@@ -12,7 +12,6 @@
   const xhr = window.goneSubmitXhr;
 
   const SECRET_ID_RE = /^[0-9a-f]{32}$/;
-  const MANAGE_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
   const SERVER_ERROR = xhr.SERVER_ERROR;
   const BAD_ID = 'js.upload.badId';
 
@@ -96,8 +95,8 @@
   // Returns '' when id or token is malformed, so the result view can omit
   // the manage section rather than show a broken link.
   function buildManageURL(id, token) {
-    // Both patterns are anchored fixed-length character classes, so they run in linear time.
-    if (!SECRET_ID_RE.test(String(id)) || !MANAGE_TOKEN_RE.test(String(token))) return ''; // nosemgrep
+    // The ID pattern is an anchored fixed-length character class, so it runs in linear time.
+    if (!SECRET_ID_RE.test(String(id)) || !util.isToken(token)) return ''; // nosemgrep
     return `${location.origin}/manage/${id}#${token}`;
   }
 
