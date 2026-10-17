@@ -22,7 +22,7 @@ Zero-knowledge, one-time, self-hostable, tiny. Gone's honesty is structural — 
 
 - Sender: desktop browser, mid-conversation, wants a link in seconds. Pastes text and/or drops files, picks an expiry, copies the link, pastes it into chat/email.
 - Recipient: any device, frequently mobile, arrives cold from a link; must understand that opening reveals and burns the secret, then copy what they need.
-- Operator: self-hosts via a single container behind their own domain; configures size and TTL limits.
+- Operator: self-hosts via a single container behind their own domain; configures size and TTL limits, and optionally requires a passphrase, limits attachments, brands the instance, or requires sign-in through their own proxy to create.
 
 ## Capabilities and Constraints
 
@@ -31,6 +31,7 @@ Zero-knowledge, one-time, self-hostable, tiny. Gone's honesty is structural — 
 - Receive: the page removes the key from the address bar once it has read it (a re-pasted link is read again); confirm-to-reveal, passphrase prompt for v2 links (retries against one download), decrypt locally, then the text stays covered until **Show** (for screen sharing) with **Copy** alongside and an "always show on this device" option; download attachments; states for expired, already opened/not found, wrong passphrase, and decryption failure. Leaving the page while a passphrase-protected download is waiting for the right passphrase warns first, since leaving loses the secret.
 - Manage: the sender's manage link shows whether the secret is still waiting and can delete it before it is opened. It can never reveal the secret.
 - Request: the requester makes a request link (an optional label that stays in their browser, and how long to wait). Their browser keeps a non-extractable private key in IndexedDB; whoever holds the link sends one reply encrypted to it. The requester's page lists the requests saved in that browser, checks them while it's open, and opens a reply once. A reply can only be opened in the browser that asked; there is no way to move it elsewhere.
+- Operator controls: a passphrase required on every secret (enforced by the server; replies to requests exempt) and a file limit (honoured by the web UI and CLI); the operator's name, logo, accent colour and footer links, with "Powered by Gone" kept; and for private instances, sign-in through the operator's proxy to create secrets and requests, shown as a "Sign in required" page with an optional sign-in button. Opening and replying never need sign-in, and Gone never records who signed in. Every page carries `X-Robots-Tag: noindex`.
 - Technical: Go html/template pages, vanilla JS with WebCrypto, strict CSP (self-only scripts/styles/fonts, no inline), no third-party assets or CDNs, no innerHTML, requires HTTPS (or localhost); on an insecure page it warns and turns off sending.
 - Languages: English, Spanish, French, German and Brazilian Portuguese. The first visit follows the browser's languages; a picker in the header switches language in place, without a reload, and remembers the choice in a cookie. Non-English text is machine-translated and says so.
 - Pages: send (home), result, receive, manage, request (new request and the list), request detail (waiting, open the reply, cancel), reply (answer a request), about, error.

@@ -226,6 +226,7 @@ Work after the six phases. Each item is still one PR, under the same guiding pri
 | v3.9.0 | Prometheus `/metrics` on the token-protected metrics listener (#64). |
 | v3.10.0 | Translations (English, Spanish, French, German, Brazilian Portuguese) with a live language picker (#66). |
 | v3.10.2 | Every source file split back to a Codacy A grade; no behavior change (#74). |
+| v3.12.0 | Operator controls: a passphrase can be required on every secret and attachments limited or turned off (#96); an instance can carry its operator's name, logo, accent colour and contact, imprint and privacy links, with "Powered by Gone" kept (#98); every page tells search engines not to index it (#99); and a private instance can require sign-in through the operator's proxy to create secrets and requests, while opening and replying stay open (#100). |
 | v3.11.0 | Security review release: 28 findings fixed across the store, web client, CLI, server and CI (#86–#93); browser end-to-end tests in CI, now over TLS (#81, #93); documentation split into topic pages under `docs/`. |
 
 Decided against since v3.0.0:
@@ -245,4 +246,8 @@ Decided against since v3.0.0:
 | Request a secret | Done (v3.6.0 web, v3.7.0 CLI) |
 | Browser end-to-end tests | Done (#81; over TLS with rate limits on since v3.11.0, #93) |
 | Security review | Done (v3.11.0, #86–#94): 28 findings fixed; release tags restricted to the maintainer and signed |
+| Operator policies | Done (v3.12.0, #96): `GONE_REQUIRE_PASSPHRASE` enforced by the server; `GONE_MAX_FILES` honoured by the web UI and CLI |
+| Operator branding | Done (v3.12.0, #98): name, logo, accent colour and footer links; "Powered by Gone" stays |
+| Search engines | Done (v3.12.0, #99): `X-Robots-Tag: noindex` on every response |
+| Sign-in for private instances | Done (v3.12.0, #100): signed tokens from Cloudflare Access, Google IAP, Pomerium, Teleport and OIDC; trusted headers from Authelia, authentik, Tailscale and `custom`; no identity kept |
 | `gone mcp` | Rejected |

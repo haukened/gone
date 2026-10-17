@@ -85,7 +85,8 @@ Guarantees, in simple terms:
   - The first visit follows the browser's languages. A regional variant falls back to its language, so `es-MX` gets Spanish and `pt-PT` gets Brazilian Portuguese; anything else gets English.
   - The globe button switches the language in place, without losing what's on the page. The choice is kept in a `gone_lang` cookie that holds only the language.
   - Translations other than English are machine-made; [corrections are welcome](CONTRIBUTING.md#translations).
-- **Self-hosted:** one static binary or a small container, SQLite storage, no external services, and a strict Content Security Policy. Nothing loads from anywhere but your server.
+- **Self-hosted:** one static binary or a small container, SQLite storage, no external services, and a strict Content Security Policy. Nothing loads from anywhere but your server, and every page asks search engines not to list it.
+- **Your rules:** an operator can require a passphrase on every secret, and limit or turn off attachments. See [Policies](docs/configuration.md#policies).
 - **Your name on it:** an operator can show their own name, logo and accent colour, and link their contact, imprint and privacy pages, with "Powered by Gone" kept in the footer. See [Branding your instance](docs/branding.md).
 - **Private instances:** require sign-in through your own proxy (Cloudflare Access, oauth2-proxy, Pomerium, Authelia and others) to create secrets, while anyone with a link can still open it. Gone checks the proxy's signed token or trusted header and never records who. See [Sign-in for private instances](docs/sign-in.md).
 
