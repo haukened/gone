@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Gone Secret Sharing API
-  version: 3.10.3
+  version: 3.12.0
   description: |
     Minimal API for one-time secret creation and consumption.
     Secrets are created with a TTL and may be stored inline or in external blob storage.

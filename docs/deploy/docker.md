@@ -19,7 +19,7 @@ This only works from the same machine. Another device visiting `http://<this-ip>
 
 | Tag | What it is |
 | --- | ---------- |
-| `vX.Y.Z` (for example `v3.11.0`) | One release. Pin this in production. |
+| `vX.Y.Z` (for example `v3.12.0`) | One release. Pin this in production. |
 | `latest` | The newest release. Pre-release tags never move `latest`. |
 
 ## Data
@@ -30,7 +30,7 @@ Everything Gone stores lives in `/data` inside the container: the SQLite databas
 docker run -d --name gone \
   -p 127.0.0.1:8080:8080 \
   -v gone-data:/data \
-  ghcr.io/haukened/gone:v3.11.0
+  ghcr.io/haukened/gone:v3.12.0
 ```
 
 The image runs as UID `65532` with no shell or package manager, and works with a read-only root filesystem (`--read-only`), since it writes only to `/data`. Back up the volume while Gone is stopped, or accept that a live copy may hold secrets that expire soon after. Everything in it is ciphertext.
@@ -66,7 +66,7 @@ See [Metrics](../metrics.md) for the Prometheus setup and the list of metrics.
 Every release image is built by the release workflow with an SBOM and SLSA provenance, and GitHub signs an attestation for its digest. Check that an image came from this repository's workflow before running it:
 
 ```sh
-gh attestation verify oci://ghcr.io/haukened/gone:v3.11.0 --repo haukened/gone
+gh attestation verify oci://ghcr.io/haukened/gone:v3.12.0 --repo haukened/gone
 ```
 
 ## Building the image yourself
