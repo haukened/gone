@@ -27,6 +27,7 @@ const (
 	CounterRequestsOpened       = "requests_opened_total"
 	CounterRequestsCancelled    = "requests_cancelled_total"
 	CounterRequestsExpired      = "requests_expired_total"
+	CounterSignInDenied         = "sign_in_denied_total"
 	// Future: CounterOrphanBlobsDeleted = "secrets_orphan_blobs_deleted_total"
 )
 

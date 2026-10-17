@@ -123,6 +123,7 @@ var sentinelClasses = []sentinelClass{
 	{client.ErrTooLarge, exitNetwork, "too_large", "the secret is larger than the server accepts"},
 	{client.ErrServer, exitNetwork, "server", ""},
 	{client.ErrPassphraseRequired, exitUsage, "policy", msgPolicyNeedsPhrase},
+	{client.ErrSignInRequired, exitUsage, "policy", msgSignInRequired},
 	{client.ErrRejected, exitNetwork, "server", ""},
 	{client.ErrProtocol, exitNetwork, "server", ""},
 	{context.Canceled, exitInternal, "interrupted", "interrupted"},

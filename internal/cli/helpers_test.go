@@ -14,6 +14,7 @@ import (
 	"time"
 
 	goneapp "github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/auth"
 	gonecfg "github.com/haukened/gone/v3/internal/config"
 	"github.com/haukened/gone/v3/internal/httpx"
 	"github.com/haukened/gone/v3/internal/store"
@@ -172,6 +173,7 @@ func newGoneHandlerWith(t *testing.T, cfg gonecfg.Config) http.Handler {
 	h := httpx.New(svc, cfg.MaxBytes, nil)
 	h.MinTTL, h.MaxTTL = cfg.MinTTL, cfg.MaxTTL
 	h.RequirePassphrase, h.MaxFiles = cfg.RequirePassphrase, cfg.MaxFiles
+	h.Auth = auth.New(cfg.AuthSettings(), cfg.TrustedPrefixes, nil)
 	h.Requests = svc
 	return h.Router()
 }

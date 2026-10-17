@@ -1,0 +1,19 @@
+# Caddy in front of Authelia and Gone, for the plain-header stack.
+{
+	local_certs
+	auto_https disable_redirects
+}
+
+https://gone.example.test {
+	tls internal
+	forward_auth authelia:9091 {
+		uri /api/authz/forward-auth
+		copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
+	}
+	reverse_proxy gone-authelia:8080
+}
+
+https://auth.example.test {
+	tls internal
+	reverse_proxy authelia:9091
+}

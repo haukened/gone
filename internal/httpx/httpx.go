@@ -4,7 +4,8 @@
 // Handlers are split across files by route: secrets (create.go, consume.go,
 // manage.go), secret requests (request*.go), pages (index.go, secret.go,
 // about.go, render.go), health probes (health.go), the operator policy
-// (policy.go) and branding assets (brand.go), and shared error mapping,
+// (policy.go), branding assets (brand.go), sign-in for creating
+// (signin.go), and shared error mapping,
 // middleware and rate limiting (errors.go, middleware.go, ratelimit.go).
 package httpx
 
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/auth"
 	"github.com/haukened/gone/v3/internal/brand"
 	"github.com/haukened/gone/v3/internal/domain"
 	"github.com/haukened/gone/v3/internal/envelope"
@@ -56,6 +58,7 @@ type Handler struct {
 	RequirePassphrase bool                        // reject v1 secrets (operator policy; replies exempt)
 	MaxFiles          int                         // files per secret offered to clients (advisory; 0 = off)
 	Brand             *brand.Brand                // optional operator branding; nil means none
+	Auth              *auth.Gate                  // sign-in for creating (GONE_AUTH); nil means off
 
 	CreateLimiter  RateLimiter    // optional limiter for POST /api/secret (nil disables)
 	ReadLimiter    RateLimiter    // optional limiter for /api/secret/{id}[/status|/revoke] (nil disables)
@@ -85,9 +88,9 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("/request", h.handleRequestPage)
 	mux.HandleFunc("/request/", h.handleRequestPage) // expect /request/{id}
 	mux.HandleFunc("/reply/", h.handleReplyPage)     // expect /reply/{id}
-	mux.HandleFunc("/api/secret", h.limit(h.CreateLimiter, scopeCreate, &xffWarn, h.handleCreateSecret))
+	mux.HandleFunc("/api/secret", h.limit(h.CreateLimiter, scopeCreate, &xffWarn, h.requireSignIn(h.handleCreateSecret)))
 	mux.HandleFunc("/api/secret/", h.limit(h.ReadLimiter, scopeRead, &xffWarn, h.handleConsumeSecret)) // /api/secret/{id}[/status|/revoke]
-	mux.HandleFunc("/api/request", h.limit(h.CreateLimiter, scopeCreate, &xffWarn, h.handleCreateRequest))
+	mux.HandleFunc("/api/request", h.limit(h.CreateLimiter, scopeCreate, &xffWarn, h.requireSignIn(h.handleCreateRequest)))
 	mux.HandleFunc("/api/request/", h.limitBy(h.requestLimit, &xffWarn, h.handleRequestRoute)) // /api/request/{id}[/reply|/status|/revoke]
 	mux.HandleFunc("/api/policy", h.handlePolicy)
 	mux.HandleFunc(brand.LogoPath, h.brandAsset(brandLogo))

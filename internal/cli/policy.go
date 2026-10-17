@@ -9,6 +9,9 @@ import (
 	"github.com/haukened/gone/v3/internal/envelope"
 )
 
+// msgSignInRequired explains why the CLI can't create on a sign-in server.
+const msgSignInRequired = "this server requires signing in through its web page; the gone CLI can't create secrets or requests there yet"
+
 // msgPolicyNeedsPhrase explains a server's passphrase policy and the fix.
 const msgPolicyNeedsPhrase = "this server requires a passphrase; add --passphrase-generate, --passphrase-prompt or --passphrase-file"
 
@@ -60,7 +63,8 @@ func checkFiles(n int, p client.Policy) error {
 }
 
 // checkSendPolicy checks "gone send" options against the server's policy
-// before anything is read, prompted for or encrypted.
+// before anything is read, prompted for or encrypted: sign-in first, then
+// the passphrase rule, then the file limit.
 //
 // Parameters:
 //   - o: parsed send options.
@@ -68,8 +72,30 @@ func checkFiles(n int, p client.Policy) error {
 //
 // Returns nil or a policy error.
 func checkSendPolicy(o sendOpts, p client.Policy) error {
+	if p.SignInRequired {
+		return policyErrorf(msgSignInRequired)
+	}
 	if p.PassphraseRequired && !o.pass.set() {
 		return policyErrorf(msgPolicyNeedsPhrase)
 	}
 	return checkFiles(len(o.files), p)
+}
+
+// checkRequestPolicy refuses "gone request" on a server that requires
+// sign-in, before a key pair is made or anything is saved.
+//
+// Parameters:
+//   - ctx: request context.
+//   - cl: client for the server.
+//
+// Returns nil, a policy error, or a client error.
+func checkRequestPolicy(ctx context.Context, cl *client.Client) error {
+	p, err := serverPolicy(ctx, cl)
+	if err != nil {
+		return err
+	}
+	if p.SignInRequired {
+		return policyErrorf(msgSignInRequired)
+	}
+	return nil
 }

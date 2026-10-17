@@ -25,7 +25,7 @@ The HTTP API of the Gone one-time secret sharing service. The machine-readable O
 | GET | `/api/request/{id}/reply` | Requester: claim the reply (`X-Gone-Manage`, plus `X-Gone-Claim` on a retry) |
 | DELETE | `/api/request/{id}/reply` | Requester: acknowledge the reply; permanently deletes it (`X-Gone-Claim`) |
 | POST | `/api/request/{id}/revoke` | Requester: cancel the request, or delete an unopened reply (`X-Gone-Manage`) |
-| GET | `/api/policy` | The operator policy clients honour before encrypting: `{"passphrase_required": bool, "max_files": int}`. Never cached and not rate limited. See [Policies](configuration.md#policies). |
+| GET | `/api/policy` | The operator policy clients honour before encrypting: `{"passphrase_required": bool, "max_files": int, "sign_in_required": bool}`. Never cached and not rate limited. See [Policies](configuration.md#policies). |
 | GET | `/brand/logo` | The operator's logo, when `GONE_BRAND_LOGO` is set (`image/svg+xml` or `image/png`; otherwise the HTML 404 page). An SVG carries its own sandboxed CSP. GET and HEAD only. See [Branding your instance](branding.md). |
 | GET | `/brand/accent.css` | The operator's accent colours as CSS custom properties, when `GONE_BRAND_ACCENT` is set (otherwise the HTML 404 page). GET and HEAD only. |
 | GET | `/healthz` | Liveness check (`200`, text `ok`). GET and HEAD only. |
@@ -111,6 +111,7 @@ All errors are JSON `{ "error": "<message>" }`.
 | Unparseable `Content-Length` | 400 | `invalid content length` |
 | Body ends before `Content-Length` bytes arrived (create or reply) | 400 | `short body` |
 | Any other malformed create request | 400 | `bad request` |
+| Create (`POST /api/secret` or `POST /api/request`) without proof of sign-in when the operator set `GONE_AUTH` (sends `WWW-Authenticate: Bearer realm="gone"`). See [sign-in.md](sign-in.md). | 401 | `sign in required` |
 | Version `1` on create when the operator requires a passphrase (`GONE_REQUIRE_PASSPHRASE`; replies are exempt) | 403 | `passphrase required` |
 | Not found / expired / claimed by someone else / wrong token / lease lapsed / opened or revoked (status, revoke) | 404 | `not found` |
 | Method not allowed | 405 | `method not allowed` |

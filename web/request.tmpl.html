@@ -16,7 +16,7 @@
 				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-inbox" /></svg><span data-i18n="request.eyebrow">{{ t "request.eyebrow" }}</span></p>
 				<h1 data-i18n="request.title">{{ rich "request.title" nil "accent" `<span class="accent">` }}</h1>
 				<p class="lead" data-i18n="request.lead">{{ t "request.lead" }}</p>
-				<form id="create-request" class="form" aria-label="{{ t "request.form" }}" data-i18n-attr="aria-label:request.form" novalidate>
+				{{ if .NeedsSignIn }}{{ template "signin" . }}{{ else }}<form id="create-request" class="form" aria-label="{{ t "request.form" }}" data-i18n-attr="aria-label:request.form" novalidate>
 					<div class="field">
 						<div class="label-row">
 							<label class="label" for="request-label" data-i18n="request.label">{{ rich "request.label" nil "opt" `<span class="opt">` }}</label>
@@ -49,7 +49,7 @@
 					<ul id="request-list" class="request-list" hidden></ul>
 					<p id="request-empty" class="note" data-i18n="request.empty">{{ t "request.empty" }}</p>
 					<span id="request-list-status" class="status" role="status"></span>
-				</section>
+				</section>{{ end }}
 			</div>
 		</div>
 		<div id="view-created" class="view" hidden>

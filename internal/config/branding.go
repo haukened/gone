@@ -20,6 +20,9 @@ const (
 var scalarKeys = map[string]bool{
 	"brand_name": true, "brand_logo": true, "brand_accent": true,
 	"contact_url": true, "imprint_url": true, "privacy_url": true,
+	"auth": true, "auth_team": true, "auth_audience": true, "auth_issuer": true, "auth_host": true,
+	"auth_jwks_url": true, "auth_alg": true, "auth_header": true, "auth_format": true,
+	"auth_value": true, "auth_signin_url": true,
 }
 
 // validateBranding checks the operator branding settings and derives the

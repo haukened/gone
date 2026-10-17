@@ -102,6 +102,11 @@ A request runs the other way. See [protocol.md §4.3](protocol.md#43-protocol-ve
 
 **Operator branding** ([branding.md](branding.md)): the logo is read once at startup, checked to be a PNG or an SVG, and served from memory at `/brand/logo`. An SVG gets its own policy, `default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox`, so it can't run scripts or load anything even when opened directly; the pages show it with `<img>`, where SVG scripts never run. The accent arrives as a same-origin stylesheet, so the page CSP is unchanged. The operator's files and links are trusted like the rest of the configuration: footer links must be `https://` (or `mailto:` for contact), and the name is escaped like any other text.
 
+**Sign-in for private instances** ([sign-in.md](sign-in.md)): with `GONE_AUTH` set, creating secrets and requests needs proof of sign-in from the operator's proxy; opening, replying and managing never do.
+- **Signed providers:** the token's signature is checked against the provider's published keys, with the algorithm pinned per provider, so a token naming `none` or an HMAC algorithm is refused. Issuer, audience and expiry are checked with 60 seconds of leeway, and the subject must be present. Keys are fetched over `https://` only, at most 1 MiB, and an unknown key ID refetches them at most once every 5 minutes. Until keys load, nobody is signed in: Gone fails closed.
+- **Plain-header providers:** the header counts only from an address in `GONE_TRUSTED_PROXIES`, which they require. Gone can't tell whether the proxy removed a header a visitor sent, so the proxy must, and Gone must be unreachable except through it.
+- **Identity:** Gone keeps no identity. It answers "signed in or not", and refusals are counted without anything about the visitor.
+
 **QR codes** are offered only for share links, never for request or reply links. A QR code hides the address it opens, so it's easy to swap for a phishing link. That matters most for a link that asks someone to type a secret into it.
 
 **Operating tips**

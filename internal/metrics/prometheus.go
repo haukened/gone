@@ -52,6 +52,7 @@ var counterHelp = map[string]string{
 	CounterRequestsOpened:       "Request replies opened and deleted.",
 	CounterRequestsCancelled:    "Requests or unopened replies the requester cancelled.",
 	CounterRequestsExpired:      "Requests the janitor removed because nobody answered in time.",
+	CounterSignInDenied:         "Create requests refused with 401 because sign-in is required (GONE_AUTH).",
 }
 
 // summaryHelp describes each summary the application records.

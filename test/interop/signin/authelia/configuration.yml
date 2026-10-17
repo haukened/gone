@@ -1,0 +1,39 @@
+# Authelia for the plain-header stack. Every secret here is test-only.
+server:
+  address: 'tcp://:9091'
+log:
+  level: warn
+identity_validation:
+  reset_password:
+    jwt_secret: 'interop-only-jwt-secret-0123456789abcdef0123456789abcdef'
+authentication_backend:
+  file:
+    path: /config/users.yml
+access_control:
+  default_policy: deny
+  rules:
+    # The paths Gone's recipients and repliers need without signing in
+    # (docs/sign-in.md, "Paths to leave open").
+    - domain: gone.example.test
+      resources:
+        - '^/(secret|manage|reply)/'
+        - '^/request/.'
+        - '^/api/(secret|request)/'
+        - '^/api/policy$'
+        - '^/(static|i18n)/'
+        - '^/(healthz|readyz)$'
+      policy: bypass
+    - domain: gone.example.test
+      policy: one_factor
+session:
+  secret: 'interop-only-session-secret-0123456789abcdef'
+  cookies:
+    - domain: example.test
+      authelia_url: 'https://auth.example.test:18443'
+storage:
+  encryption_key: 'interop-only-storage-key-0123456789abcdef'
+  local:
+    path: /data/db.sqlite3
+notifier:
+  filesystem:
+    filename: /data/notification.txt

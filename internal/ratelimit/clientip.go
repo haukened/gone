@@ -145,3 +145,17 @@ func maskClient(addr netip.Addr) netip.Prefix {
 	}
 	return netip.PrefixFrom(addr, bits).Masked()
 }
+
+// PeerTrusted reports whether the connection's peer is a trusted proxy. It
+// looks only at the TCP peer, never at X-Forwarded-For.
+//
+// Parameters:
+//   - remoteAddr: http.Request.RemoteAddr ("ip:port").
+//   - trusted: trusted proxy prefixes.
+//
+// Returns:
+//   - bool: true when the peer is inside a trusted prefix.
+func PeerTrusted(remoteAddr string, trusted []netip.Prefix) bool {
+	addr, ok := parseHop(remoteAddr)
+	return ok && isTrusted(addr, trusted)
+}

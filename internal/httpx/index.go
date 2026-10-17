@@ -32,8 +32,10 @@ type IndexView struct {
 	MinTTLSeconds     int
 	MaxTTLSeconds     int
 	TTLOptions        []TTLOptionView
-	RequirePassphrase bool // the send form must collect a passphrase
-	MaxFiles          int  // files a secret or reply may carry; 0 hides file inputs
+	RequirePassphrase bool   // the send form must collect a passphrase
+	MaxFiles          int    // files a secret or reply may carry; 0 hides file inputs
+	NeedsSignIn       bool   // show the sign-in view instead of the form
+	SignInURL         string // the sign-in button's target; "" shows no button
 }
 
 // TTLOptionView is the subset of a domain TTLOption needed by the template.
@@ -57,7 +59,9 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Standard HTML + no-store headers applied via shared helper.
-	renderTemplate(w, r, h.IndexTmpl, h.indexView())
+	view := h.indexView()
+	view.NeedsSignIn, view.SignInURL = h.needsSignIn(r, "/")
+	renderTemplate(w, r, h.IndexTmpl, view)
 }
 
 // indexView builds the size and TTL values shared by the pages with a

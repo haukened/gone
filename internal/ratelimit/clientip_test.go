@@ -116,3 +116,23 @@ func FuzzClientKey(f *testing.F) {
 		}
 	})
 }
+
+func TestPeerTrusted(t *testing.T) {
+	trusted := []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8"), netip.MustParsePrefix("::1/128")}
+	cases := map[string]bool{
+		"10.1.2.3:443":        true,
+		"[::1]:8080":          true,
+		"[::ffff:10.0.0.1]:1": true,
+		"192.0.2.1:443":       false,
+		"garbage":             false,
+		"":                    false,
+	}
+	for addr, want := range cases {
+		if got := PeerTrusted(addr, trusted); got != want {
+			t.Errorf("PeerTrusted(%q) = %v, want %v", addr, got, want)
+		}
+	}
+	if PeerTrusted("10.1.2.3:443", nil) {
+		t.Error("no trusted prefixes must trust nobody")
+	}
+}

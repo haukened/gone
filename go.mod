@@ -3,6 +3,7 @@ module github.com/haukened/gone/v3
 go 1.27.2
 
 require (
+	github.com/go-jose/go-jose/v4 v4.1.6
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/google/uuid v1.6.0
 	github.com/knadh/koanf/providers/env/v2 v2.0.2

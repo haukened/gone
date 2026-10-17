@@ -14,6 +14,9 @@ type Policy struct {
 	// The server cannot check it (the file count is encrypted), so clients
 	// honour it before sealing.
 	MaxFiles int `json:"max_files"`
+	// SignInRequired means creating secrets and requests needs the
+	// operator's sign-in, which the CLI can't do yet.
+	SignInRequired bool `json:"sign_in_required"`
 }
 
 // Policy fetches the server's operator policy (GET /api/policy).
@@ -38,9 +41,10 @@ func (c *Client) Policy(ctx context.Context) (Policy, error) {
 	var p struct {
 		PassphraseRequired *bool `json:"passphrase_required"`
 		MaxFiles           *int  `json:"max_files"`
+		SignInRequired     bool  `json:"sign_in_required"` // absent before v3.12
 	}
 	if json.Unmarshal(raw, &p) != nil || p.PassphraseRequired == nil || p.MaxFiles == nil || *p.MaxFiles < 0 {
 		return Policy{}, ErrProtocol
 	}
-	return Policy{PassphraseRequired: *p.PassphraseRequired, MaxFiles: *p.MaxFiles}, nil
+	return Policy{PassphraseRequired: *p.PassphraseRequired, MaxFiles: *p.MaxFiles, SignInRequired: p.SignInRequired}, nil
 }

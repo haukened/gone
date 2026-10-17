@@ -61,7 +61,7 @@ func TestBuildHandler_Policy(t *testing.T) {
 	h := buildHandler(cfg, svc, db, t.TempDir(), minimalTemplates(), wembed.Assets).Router()
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/policy", nil))
-	if want := `{"passphrase_required":true,"max_files":2}`; strings.TrimSpace(rr.Body.String()) != want {
+	if want := `{"passphrase_required":true,"max_files":2,"sign_in_required":false}`; strings.TrimSpace(rr.Body.String()) != want {
 		t.Fatalf("policy body = %q, want %q", rr.Body.String(), want)
 	}
 }
