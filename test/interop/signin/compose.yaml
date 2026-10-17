@@ -22,6 +22,8 @@ services:
   dex:
     image: ghcr.io/dexidp/dex:v2.44.0
     command: ["dex", "serve", "/etc/dex/config.yaml"]
+    environment:
+      DEX_ALICE_HASH: ${DEX_ALICE_HASH:?run.sh sets DEX_ALICE_HASH}
     volumes:
       - ./dex.yaml:/etc/dex/config.yaml:ro
       - ./certs:/certs:ro

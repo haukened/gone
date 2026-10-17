@@ -5,6 +5,7 @@ exclude_paths:
   - "**/*_test.go"
   - "test/js/**"
   - "test/e2e/**"
+  - "test/interop/signin/authelia/**" # Authelia's config; Semgrep's duplicate-id rule is for Semgrep rule files
   - "test/vectors/**"
   - "tools/lint/**"
   - "**/package-lock.json"

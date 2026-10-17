@@ -2,9 +2,9 @@
 # Makes a throwaway CA and a server certificate for Dex, for the sign-in
 # interop stacks. Written to ./certs, which is ignored by git.
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit 1
 mkdir -p certs
-cd certs
+cd certs || exit 1
 [ -f ca.pem ] && [ -f dex.pem ] && exit 0
 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 2 \
   -subj "/CN=gone interop CA" -keyout ca-key.pem -out ca.pem 2>/dev/null
