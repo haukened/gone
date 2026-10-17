@@ -1,0 +1,6 @@
+# Test-only user: alice / password.
+users:
+  alice:
+    displayname: Alice
+    email: alice@example.com
+    password: "$argon2id$v=19$m=65536,t=3,p=4$Ass9powCKc+TAgADSqVBjg$1+f+19v/jTYB4jzcvesmlpf5plZOO0zA1KSjP5sxEK4"

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/haukened/gone/v3/internal/app"
+	"github.com/haukened/gone/v3/internal/auth"
 	"github.com/haukened/gone/v3/internal/brand"
 	"github.com/haukened/gone/v3/internal/config"
 	"github.com/haukened/gone/v3/internal/httpx"
@@ -48,7 +49,8 @@ func buildService(idx store.Index, blobs store.BlobStorage, cfg *config.Config, 
 }
 
 // buildHandler wires the HTTP handler with templates, static assets, TTL
-// options, the operator policy, and a readiness probe.
+// options, the operator policy, sign-in, and a readiness probe. A signed
+// sign-in provider loads its keys only once serve calls Auth.Start.
 //
 // Parameters:
 //   - cfg: configuration supplying size and TTL limits and the policy.
@@ -81,6 +83,7 @@ func buildHandler(cfg *config.Config, svc *app.Service, db *sql.DB, blobDir stri
 	h.RequirePassphrase = cfg.RequirePassphrase
 	h.MaxFiles = cfg.MaxFiles
 	h.Brand = tmpls.brand
+	h.Auth = auth.New(cfg.AuthSettings(), cfg.TrustedPrefixes, nil)
 	return h
 }
 
@@ -274,6 +277,7 @@ func (c *components) serve(ctx context.Context) error {
 	defer jan.Stop()
 
 	h := buildHandler(c.cfg, svc, c.db, c.blobDir, tmpls, c.assets)
+	h.Auth.Start(ctx)
 	applyRateLimits(ctx, h, c.cfg, c.mgr)
 	srv := newServer(c.cfg, h.Router())
 	slog.Info("starting server", "addr", c.cfg.Addr, "pid", os.Getpid())

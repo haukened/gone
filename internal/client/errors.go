@@ -24,6 +24,9 @@ var (
 	// ErrPassphraseRequired is returned for HTTP 403 from POST /api/secret:
 	// the operator requires a passphrase on every secret.
 	ErrPassphraseRequired = errors.New("this server requires a passphrase")
+	// ErrSignInRequired is returned for HTTP 401: the server (or a proxy in
+	// front of it) needs a sign-in the client doesn't have.
+	ErrSignInRequired = errors.New("this server requires signing in")
 	// ErrRejected is returned for any other 4xx response.
 	ErrRejected = errors.New("request rejected by server")
 	// ErrServer is returned for 5xx and any unexpected status, including 3xx.
@@ -98,6 +101,8 @@ func statusError(resp *http.Response) error {
 		return &RateLimitError{RetryAfter: retryAfter(resp.Header.Get("Retry-After"))}
 	case code == http.StatusNotFound:
 		return &StatusError{Code: code, kind: ErrNotFound}
+	case code == http.StatusUnauthorized:
+		return &StatusError{Code: code, kind: ErrSignInRequired}
 	case code == http.StatusRequestEntityTooLarge:
 		return &StatusError{Code: code, kind: ErrTooLarge}
 	case code >= 400 && code < 500:

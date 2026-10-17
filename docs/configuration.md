@@ -26,6 +26,17 @@ The server, `goned`, is configured only through environment variables. There are
 | `GONE_CONTACT_URL` | Footer link to your contact page: an `https://` URL or a `mailto:` address. | (empty) |
 | `GONE_IMPRINT_URL` | Footer link to your imprint (legal notice) page, `https://` only. | (empty) |
 | `GONE_PRIVACY_URL` | Footer link to your privacy policy, `https://` only. | (empty) |
+| `GONE_AUTH` | Require sign-in to create secrets and requests: `none`, `cloudflare`, `google-iap`, `pomerium`, `teleport`, `oidc`, `authelia`, `authentik`, `tailscale` or `custom`. Opening and replying never need it. See [Sign-in](#sign-in). | `none` |
+| `GONE_AUTH_TEAM` | `cloudflare`: your Zero Trust team name (`acme`) or domain (`acme.cloudflareaccess.com`). | (empty) |
+| `GONE_AUTH_AUDIENCE` | `cloudflare`, `google-iap`, `teleport`, `oidc`: the expected token audience (the Access AUD tag, the IAP audience, the Teleport app URI, or the OIDC client ID). | (empty) |
+| `GONE_AUTH_ISSUER` | `teleport`: the cluster name. `oidc`: the issuer URL (`https://` only), also used to find its keys. | (empty) |
+| `GONE_AUTH_HOST` | `pomerium`: the route's host name. `teleport`: the proxy address its keys are served from. | (empty) |
+| `GONE_AUTH_JWKS_URL` | `pomerium`, `oidc`: fetch keys from this `https://` URL instead, for example an internal address. | (empty) |
+| `GONE_AUTH_ALG` | `oidc`: the ID token's algorithm, `RS256` or `ES256`. | `RS256` |
+| `GONE_AUTH_HEADER` | `custom`: the header to read (letters, digits and dashes). `oidc`: read the token from this header instead of `Authorization`. | (empty) |
+| `GONE_AUTH_FORMAT` | `custom`: `any` (not empty), `email`, or `exact` (must equal `GONE_AUTH_VALUE`). | `any` |
+| `GONE_AUTH_VALUE` | `custom` with `exact`: the value the proxy sends, compared in constant time. Under 16 characters logs a warning. | (empty) |
+| `GONE_AUTH_SIGNIN_URL` | Adds a **Sign in with your identity provider** button to the sign-in-required page: an `https://` URL or a path starting with `/`. `{return}` becomes the page's path. | (empty) |
 
 ### Expiry format
 
@@ -53,6 +64,16 @@ In short:
 - **Accent:** your two colours replace Gone's violet in heading highlights, focus rings and progress bars. Each must reach 4.5:1 contrast on its theme's background, or the server won't start.
 - **Footer:** your links come first. The version line reads "Powered by Gone", and it, the copyright notice and the project links **can't be removed**.
 - **Everything else stays Gone:** page titles, the favicon, the About page and the page text.
+
+### Sign-in
+
+`GONE_AUTH` makes creating secrets and requests require sign-in through your proxy, for a private instance. Opening, replying and the manage links stay open, so recipients never need an account. [Sign-in for private instances](sign-in.md) covers every provider, the paths to leave open, and recipes.
+
+In short:
+- **Signed providers** (`cloudflare`, `google-iap`, `pomerium`, `teleport`, `oidc`) verify the token's signature, issuer, audience and expiry. They start without `GONE_TRUSTED_PROXIES` but warn.
+- **Plain-header providers** (`authelia`, `authentik`, `tailscale`, `custom`) refuse to start without `GONE_TRUSTED_PROXIES`, and believe the header only from those addresses.
+- A setting that doesn't apply to the chosen provider stops the server.
+- Gone never stores or logs who signed in.
 
 ### Derived settings
 

@@ -115,6 +115,9 @@ func (a *app) runRequestCreate(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err = checkRequestPolicy(ctx, cl); err != nil {
+		return err
+	}
 	out, err := a.waitOutputs(o)
 	if err != nil {
 		return err

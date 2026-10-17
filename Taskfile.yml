@@ -123,6 +123,12 @@ tasks:
       - npm ci --no-audit --no-fund
       - npx playwright test {{.CLI_ARGS}}
 
+  interop-signin:
+    desc: Check sign-in against real proxies in Docker (Dex + oauth2-proxy, Authelia + Caddy); not run in CI
+    deps: [build-prod]
+    cmds:
+      - test/interop/signin/run.sh
+
   e2e-install:
     desc: Install the browsers the end-to-end tests use (Chromium, Firefox, WebKit)
     dir: test/e2e

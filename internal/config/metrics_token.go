@@ -10,8 +10,9 @@ const minMetricsTokenLen = 16
 // never includes the token.
 const metricsTokenWarning = "GONE_METRICS_TOKEN is shorter than 16 characters; a future release will refuse it; generate one with: openssl rand -base64 24" // #nosec G101 -- a log message naming the variable, not a credential
 
-// warnings returns the non-fatal findings for cfg. An empty token (metrics
-// off) is not a finding.
+// warnings returns the non-fatal findings for cfg: a short metrics token
+// (an empty token means metrics are off, not a finding) and the sign-in
+// warnings.
 //
 // Parameters:
 //   - cfg: the validated configuration.
@@ -19,8 +20,9 @@ const metricsTokenWarning = "GONE_METRICS_TOKEN is shorter than 16 characters; a
 // Returns:
 //   - []string: warning messages, nil when there are none.
 func warnings(cfg *Config) []string {
+	var out []string
 	if cfg.MetricsToken != "" && len(cfg.MetricsToken) < minMetricsTokenLen {
-		return []string{metricsTokenWarning}
+		out = append(out, metricsTokenWarning)
 	}
-	return nil
+	return append(out, authWarnings(cfg)...)
 }

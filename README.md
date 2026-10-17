@@ -87,6 +87,7 @@ Guarantees, in simple terms:
   - Translations other than English are machine-made; [corrections are welcome](CONTRIBUTING.md#translations).
 - **Self-hosted:** one static binary or a small container, SQLite storage, no external services, and a strict Content Security Policy. Nothing loads from anywhere but your server.
 - **Your name on it:** an operator can show their own name, logo and accent colour, and link their contact, imprint and privacy pages, with "Powered by Gone" kept in the footer. See [Branding your instance](docs/branding.md).
+- **Private instances:** require sign-in through your own proxy (Cloudflare Access, oauth2-proxy, Pomerium, Authelia and others) to create secrets, while anyone with a link can still open it. Gone checks the proxy's signed token or trusted header and never records who. See [Sign-in for private instances](docs/sign-in.md).
 
 ### From the command line
 

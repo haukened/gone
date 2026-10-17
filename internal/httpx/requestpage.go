@@ -29,7 +29,9 @@ func (h *Handler) renderRequestPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "request template unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	renderTemplate(w, r, h.RequestTmpl, h.indexView())
+	view := h.indexView()
+	view.NeedsSignIn, view.SignInURL = h.needsSignIn(r, "/request")
+	renderTemplate(w, r, h.RequestTmpl, view)
 }
 
 // handleReplyPage serves the reply page at /reply/{id}. The page reads the

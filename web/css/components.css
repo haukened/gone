@@ -934,6 +934,18 @@ textarea:focus-visible,
   padding-block: 1rem 0.75rem;
 }
 
+/* Sign-in required (GONE_AUTH): replaces a create form for a visitor the
+   operator's proxy hasn't signed in. */
+.signin {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.signin h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
 /* Delete zone and its inline confirm */
 .zone {
   display: grid;

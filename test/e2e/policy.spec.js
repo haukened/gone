@@ -48,7 +48,7 @@ test('the server refuses a secret without a passphrase', async ({ page }) => {
   expect(res.status()).toBe(403);
   expect(await res.json()).toEqual({ error: 'passphrase required' });
   const policy = await page.request.get('/api/policy');
-  expect(await policy.json()).toEqual({ passphrase_required: true, max_files: 0 });
+  expect(await policy.json()).toEqual({ passphrase_required: true, max_files: 0, sign_in_required: false });
 });
 
 test('a reply needs no passphrase and offers no files', async ({ page, newPerson }) => {

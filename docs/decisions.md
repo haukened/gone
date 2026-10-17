@@ -22,6 +22,9 @@ Each phase of [the roadmap](ROADMAP.md) also records the decisions made while bu
 | An ordered write gate. Contention answers `503 busy`. | Letting SQLite's busy handler race | Writers weren't served in order, and a timeout surfaced as a `500`. | — |
 | Rate limits are per process, in memory. | A shared store, such as Redis | Gone runs as one process. Large floods belong at the edge anyway. | Gone is commonly run with several replicas |
 | `GONE_REQUIRE_PASSPHRASE` covers only new secrets (`POST /api/secret`). Replies to requests are exempt. | Requiring a passphrase on replies too, or turning requests off while the setting is on | A passphrase protects against a leaked link. A secret link carries its own decryption key, so the passphrase is a second factor that travels another way. A reply link carries no decryption key: only the requester's public key and a fill token that allows one reply. The reply is encrypted to a private key that never leaves the requester's browser or CLI, and only the requester's manage token can claim it. So whoever intercepts a reply link can send the one reply, but can never read one. Requiring a passphrase anyway would need a new protocol version and a second channel running backwards, from the person replying to the requester, and the server could still only check a version number. Turning requests off would remove the one mode that never puts a key in a link. | An operator needs replies covered for a reason other than a leaked link |
+| Sign-in for private instances (`GONE_AUTH`) checks that the proxy signed someone in, never who. Nothing about the user is stored, logged or shown. | Accounts in Gone, or recording who created what | Gone keeps no record of who sent what; the operator's proxy already knows who its users are. | Never for accounts |
+| User-level audit logging is out of scope. | Logging the identity behind each create | It would be exactly the record Gone promises not to keep. A possible future enterprise-only feature, possibly under a different licence. | An enterprise deployment asks for it |
+| Signed sign-in tokens are verified against the provider's keys. Plain identity headers are believed only from `GONE_TRUSTED_PROXIES`, and such providers refuse to start without it. | Trusting any non-empty identity header | A plain header proves nothing if someone reaches Gone without the proxy; every vendor that sends one says to firewall the app. | — |
 | Configuration from environment variables only | Config files or command-line flags | One way to configure, and it suits containers. | Never |
 
 ## Web client
@@ -44,10 +47,11 @@ Each phase of [the roadmap](ROADMAP.md) also records the decisions made while bu
 
 ## Dependencies
 
-The server compiles in 16 external modules. Each new one needs a written reason in its PR.
+The server compiles in 17 external modules. Each new one needs a written reason in its PR.
 
 | Decision | Instead of | Why | Revisit when |
 | -------- | ---------- | --- | ------------ |
 | Prometheus text format written by hand | `client_golang` | It would add about 10 modules for a small text format. | — |
 | Locale matching written by hand | A locale-matching library | Matching five locales takes a few dozen lines. | Gone supports many more locales |
+| `github.com/go-jose/go-jose/v4` verifies sign-in tokens (v3.12). It adds one module and has no dependencies of its own. It parses key sets and requires the allowed algorithms to be listed when a token is parsed, so each provider pins its algorithm and a token's own `alg` is never trusted. | A hand-written verifier; `golang-jwt/jwt`, which needs a separate key-set parser | Token verification is security-critical, and go-jose is widely used and reviewed. | — |
 | Plain validation code | `go-playground/validator` | It was the only reason `x/crypto` was in the server's build. Dropping it removed six modules. | — |

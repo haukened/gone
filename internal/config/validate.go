@@ -25,7 +25,7 @@ const maxClaimLease = 15 * time.Minute
 // Returns:
 //   - error: the first invalid setting, named by its environment variable.
 func validate(cfg *Config) error {
-	for _, check := range []func(*Config) error{validatePaths, validateSizes, validateTTLs, validateRateBurst, validateMaxFiles, validateBranding} {
+	for _, check := range []func(*Config) error{validatePaths, validateSizes, validateTTLs, validateRateBurst, validateMaxFiles, validateBranding, validateAuth} {
 		if err := check(cfg); err != nil {
 			return err
 		}

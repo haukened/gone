@@ -39,6 +39,7 @@ Every variable is listed in [Configuration](configuration.md). The container ima
 | `task test-js` | JavaScript unit tests in `test/js/`, with `node --test` and no dependencies. |
 | `task cover` / `task cover-js` | The same, with coverage. Go and JS line coverage are kept at or near 100%. |
 | `task e2e` | Browser end-to-end tests in `test/e2e/`: a production build, served over HTTPS, in Chromium, Firefox and WebKit with Playwright. Run `task e2e-install` once first to install the browsers. It needs Go, which builds the test TLS proxy. |
+| `task interop-signin` | Sign-in against real proxies in Docker: Dex with oauth2-proxy, and Authelia behind Caddy. Not run in CI; see [test/interop/signin](../test/interop/signin/README.md). |
 | `task perf` | The latency target: p95 under 50 ms at 100 requests per second, against the real stack. |
 | `task lint` | golangci-lint (configured in `.golangci.yml`) for the default and `dev` build tags. |
 | `task lint-web` | ESLint (flat config in `eslint.config.cjs`) and stylelint, at the versions pinned in `tools/lint`, as CI runs them. |

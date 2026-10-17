@@ -1,0 +1,100 @@
+# Sign-in interop stacks for docs/sign-in.md. Run with run.sh (task
+# interop-signin). Test-only credentials; nothing here is for production.
+name: gone-signin-interop
+
+x-gone: &gone
+  image: alpine:3.22
+  command: ["/gone/goned"]
+  volumes:
+    - ../../../bin/goned:/gone/goned:ro
+    - ./certs:/certs:ro
+  tmpfs: [/data]
+
+networks:
+  signin:
+    ipam:
+      config:
+        - subnet: 172.31.251.0/24
+
+services:
+  # Signed tokens: Dex issues ID tokens, oauth2-proxy checks them and passes
+  # them on, and Gone verifies them again against Dex's keys.
+  dex:
+    image: ghcr.io/dexidp/dex:v2.44.0
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    volumes:
+      - ./dex.yaml:/etc/dex/config.yaml:ro
+      - ./certs:/certs:ro
+    ports: ["127.0.0.1:15556:5556"]
+    networks: { signin: { ipv4_address: 172.31.251.10 } }
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
+    environment:
+      SSL_CERT_FILE: /certs/ca.pem
+    command:
+      - --provider=oidc
+      - --oidc-issuer-url=https://dex:5556/dex
+      - --client-id=gone
+      - --client-secret=interop-only-client-secret
+      - --cookie-secret=interop-only-cookie-secret-32by!
+      - --cookie-secure=false
+      - --email-domain=*
+      - --http-address=0.0.0.0:4180
+      - --upstream=http://gone-oidc:8080
+      - --pass-authorization-header=true
+      - --skip-jwt-bearer-tokens=true
+      - --skip-provider-button=true
+      - --skip-auth-route=^/(secret|manage|reply)/
+      - --skip-auth-route=^/request/.
+      - --skip-auth-route=^/api/(secret|request)/
+      - --skip-auth-route=^/api/policy$
+      - --skip-auth-route=^/(static|i18n)/
+      - --skip-auth-route=^/(healthz|readyz)$
+    volumes: ["./certs:/certs:ro"]
+    ports: ["127.0.0.1:14180:4180"]
+    depends_on: [dex]
+    networks: { signin: { ipv4_address: 172.31.251.11 } }
+
+  gone-oidc:
+    <<: *gone
+    environment:
+      GONE_ADDR: ":8080"
+      GONE_DATA_DIR: /data
+      GONE_AUTH: oidc
+      GONE_AUTH_ISSUER: https://dex:5556/dex
+      GONE_AUTH_AUDIENCE: gone
+      GONE_AUTH_SIGNIN_URL: /oauth2/start?rd={return}
+      GONE_TRUSTED_PROXIES: 172.31.251.11
+      SSL_CERT_FILE: /certs/ca.pem
+    ports: ["127.0.0.1:18081:8080"]
+    depends_on: [dex]
+    networks: { signin: { ipv4_address: 172.31.251.12 } }
+
+  # Plain header: Caddy asks Authelia, copies Remote-User, and Gone believes
+  # it only from Caddy's address.
+  authelia:
+    image: authelia/authelia:4.39
+    volumes:
+      - ./authelia:/config:ro
+    tmpfs: [/data]
+    networks: { signin: { ipv4_address: 172.31.251.20 } }
+
+  caddy:
+    image: caddy:2.11
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports: ["127.0.0.1:18443:443"]
+    depends_on: [authelia, gone-authelia]
+    networks: { signin: { ipv4_address: 172.31.251.21 } }
+
+  gone-authelia:
+    <<: *gone
+    environment:
+      GONE_ADDR: ":8080"
+      GONE_DATA_DIR: /data
+      GONE_AUTH: authelia
+      GONE_AUTH_SIGNIN_URL: https://auth.example.test:18443/?rd=https://gone.example.test:18443{return}
+      GONE_TRUSTED_PROXIES: 172.31.251.21
+    ports: ["127.0.0.1:18082:8080"]
+    networks: { signin: { ipv4_address: 172.31.251.22 } }

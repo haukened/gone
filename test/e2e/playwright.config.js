@@ -9,9 +9,7 @@
 const path = require('node:path');
 const { defineConfig, devices } = require('@playwright/test');
 
-const { plain, servers } = require('./servers');
-
-const dataRoot = path.join(__dirname, '.data');
+const { plain, servers, idp, dataRoot } = require('./servers');
 const binary = path.resolve(__dirname, '../../bin/goned');
 
 // gonedServer starts the prod binary for one of the servers in servers.js on
@@ -40,15 +38,19 @@ function gonedServer(name) {
   };
 }
 
-// proxyServer builds and starts the TLS proxy in front of every server.
+// proxyServer builds and starts the TLS proxy in front of every server, with
+// the sign-in stand-ins and their identity provider. It starts first and is
+// ready once its own issuer answers, so the certificate file exists before
+// the signin server first fetches keys.
 function proxyServer() {
   const pairs = Object.values(servers).map(function (s) {
-    return `127.0.0.1:${s.port}=127.0.0.1:${s.backendPort}`;
+    return `127.0.0.1:${s.port}=127.0.0.1:${s.backendPort}${s.signIn ? '+' + s.signIn : ''}`;
   });
   const exe = path.join(dataRoot, 'tlsproxy');
+  const idpArgs = `idp=127.0.0.1:${idp.port} certout="${idp.certFile}"`;
   return {
-    command: `mkdir -p "${dataRoot}" && go build -o "${exe}" ./tlsproxy && exec "${exe}" ${pairs.join(' ')}`,
-    url: `${servers.main.origin}/readyz`,
+    command: `mkdir -p "${dataRoot}" && go build -o "${exe}" ./tlsproxy && exec "${exe}" ${idpArgs} ${pairs.join(' ')}`,
+    url: `${idp.origin}/.well-known/openid-configuration`,
     ignoreHTTPSErrors: true,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
@@ -76,5 +78,5 @@ module.exports = defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   // A fresh data directory each run for each server; see servers.js.
-  webServer: [gonedServer('main'), gonedServer('rate'), gonedServer('policy'), gonedServer('brand')].concat(plain ? [] : [proxyServer()]),
+  webServer: (plain ? [] : [proxyServer()]).concat(Object.keys(servers).map(gonedServer)),
 });

@@ -143,6 +143,7 @@ func TestPages_PseudoLocaleCoversAllText(t *testing.T) {
 	}{
 		{"default", pageRouter(t), ""},
 		{"branded", pageRouterWith(t, brandAll(t)), testBrandName},
+		{"sign-in", pageRouterWith(t, signInConfig("/login")), ""},
 	}
 	for _, run := range runs {
 		allowed := func(w string) bool { return untranslatedAllowed[w] || strings.Contains(run.operator, w) }

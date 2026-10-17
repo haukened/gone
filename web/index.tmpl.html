@@ -16,7 +16,7 @@
 				<p class="eyebrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span data-i18n="send.eyebrow">{{ t "send.eyebrow" }}</span></p>
 				<h1 data-i18n="send.title">{{ rich "send.title" nil "accent" `<span class="accent">` }}</h1>
 				<p class="lead" data-i18n="send.lead">{{ t "send.lead" }}</p>
-				<form id="create-secret" class="form" aria-label="{{ t "send.form" }}" data-i18n-attr="aria-label:send.form" data-max-bytes="{{ .MaxBytes }}" data-max-files="{{ .MaxFiles }}"{{ if .RequirePassphrase }} data-pass-required{{ end }} novalidate>
+				{{ if .NeedsSignIn }}{{ template "signin" . }}{{ else }}<form id="create-secret" class="form" aria-label="{{ t "send.form" }}" data-i18n-attr="aria-label:send.form" data-max-bytes="{{ .MaxBytes }}" data-max-files="{{ .MaxFiles }}"{{ if .RequirePassphrase }} data-pass-required{{ end }} novalidate>
 					<div class="field">
 						<div class="label-row">
 							<label class="label" for="secret" data-i18n="compose.message">{{ t "compose.message" }}</label>
@@ -75,7 +75,7 @@
 						<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-warn" /></svg>
 						<p id="submit-error-content" role="alert"></p>
 					</div>
-				</form>
+				</form>{{ end }}
 				<section class="rail" aria-labelledby="next-heading">
 					<h2 id="next-heading" data-i18n="send.next">{{ t "send.next" }}</h2>
 					<ol class="life">

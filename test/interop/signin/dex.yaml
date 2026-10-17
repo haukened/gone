@@ -1,0 +1,22 @@
+# Dex, the identity provider for the oidc stack. Test-only credentials.
+issuer: https://dex:5556/dex
+storage:
+  type: memory
+web:
+  https: 0.0.0.0:5556
+  tlsCert: /certs/dex.pem
+  tlsKey: /certs/dex-key.pem
+oauth2:
+  skipApprovalScreen: true
+  passwordConnector: local   # lets the harness get an ID token without a browser
+staticClients:
+  - id: gone
+    secret: interop-only-client-secret
+    name: Gone
+    redirectURIs: ['http://127.0.0.1:14180/oauth2/callback']
+enablePasswordDB: true
+staticPasswords:
+  - email: alice@example.com
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"   # "password"
+    username: alice
+    userID: 08a8684b-db88-4b73-90a9-3cd1661f5466

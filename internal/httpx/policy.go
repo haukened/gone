@@ -6,6 +6,7 @@ import "net/http"
 type policyView struct {
 	PassphraseRequired bool `json:"passphrase_required"`
 	MaxFiles           int  `json:"max_files"`
+	SignInRequired     bool `json:"sign_in_required"`
 }
 
 // handlePolicy implements GET /api/policy: the operator policy clients honour
@@ -23,5 +24,5 @@ func (h *Handler) handlePolicy(w http.ResponseWriter, r *http.Request) {
 		h.writeError(r.Context(), w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
-	writeJSON(w, http.StatusOK, policyView{PassphraseRequired: h.RequirePassphrase, MaxFiles: h.MaxFiles})
+	writeJSON(w, http.StatusOK, policyView{PassphraseRequired: h.RequirePassphrase, MaxFiles: h.MaxFiles, SignInRequired: h.Auth != nil})
 }

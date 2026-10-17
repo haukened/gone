@@ -12,7 +12,7 @@ func TestPolicy(t *testing.T) {
 	var method, path string
 	c, _ := newTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		method, path = r.Method, r.URL.Path
-		_, _ = io.WriteString(w, `{"passphrase_required":true,"max_files":0,"extra":1}`)
+		_, _ = io.WriteString(w, `{"passphrase_required":true,"max_files":0,"sign_in_required":true,"extra":1}`)
 	})
 	p, err := c.Policy(context.Background())
 	if err != nil {
@@ -21,7 +21,7 @@ func TestPolicy(t *testing.T) {
 	if method != http.MethodGet || path != "/api/policy" {
 		t.Fatalf("request = %s %s", method, path)
 	}
-	if p != (Policy{PassphraseRequired: true, MaxFiles: 0}) {
+	if p != (Policy{PassphraseRequired: true, MaxFiles: 0, SignInRequired: true}) {
 		t.Fatalf("policy = %+v", p)
 	}
 }

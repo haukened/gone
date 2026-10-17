@@ -46,6 +46,20 @@ type Config struct {
 	AccentLight string `koanf:"-"`
 	AccentDark  string `koanf:"-"`
 
+	// Sign-in for private instances (GONE_AUTH*): see AuthSettings and
+	// docs/sign-in.md. Off unless Auth names a provider.
+	Auth          string `koanf:"auth"`
+	AuthTeam      string `koanf:"auth_team"`
+	AuthAudience  string `koanf:"auth_audience"`
+	AuthIssuer    string `koanf:"auth_issuer"`
+	AuthHost      string `koanf:"auth_host"`
+	AuthKeysURL   string `koanf:"auth_jwks_url"`
+	AuthAlg       string `koanf:"auth_alg"`
+	AuthHeader    string `koanf:"auth_header"`
+	AuthFormat    string `koanf:"auth_format"`
+	AuthValue     string `koanf:"auth_value"`
+	AuthSignInURL string `koanf:"auth_signin_url"`
+
 	// Rate limiting: raw settings loaded from GONE_RATE_* and
 	// GONE_TRUSTED_PROXIES, and the typed values derived from them.
 	RateCreate      string         `koanf:"rate_create"`

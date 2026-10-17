@@ -139,6 +139,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/SignInRequired'
         '403':
           description: >-
             Passphrase required: the operator set GONE_REQUIRE_PASSPHRASE and
@@ -384,6 +386,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/SignInRequired'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '429':
@@ -855,6 +859,20 @@ components:
       schema:
         type: integer
   responses:
+    SignInRequired:
+      description: >-
+        Sign-in required: the operator set GONE_AUTH and the request carries no
+        valid proof of sign-in from their proxy. `error` is `sign in required`.
+        Checked before the body is read.
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+            example: Bearer realm="gone"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
     MethodNotAllowed:
       description: Method not allowed. The Allow header lists the methods the path accepts.
       headers:
@@ -1007,6 +1025,11 @@ components:
       type: object
       required: [passphrase_required, max_files]
       properties:
+        sign_in_required:
+          type: boolean
+          description: >-
+            Creating secrets and requests needs the operator's sign-in
+            (GONE_AUTH). Absent before v3.12.
         passphrase_required:
           type: boolean
           description: POST /api/secret accepts only version 2 (passphrase) secrets.

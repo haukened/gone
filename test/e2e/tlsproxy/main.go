@@ -4,9 +4,14 @@
 // the browsers a real secure origin: the Secure cookie attribute, the
 // secure-context checks and HTTPS-only behaviour are then exercised for real.
 //
-// Usage: tlsproxy listen=target [listen=target ...]
+// Usage: tlsproxy [idp=ADDR certout=PATH] listen=target[+mode] ...
 //
 //	tlsproxy 127.0.0.1:8199=127.0.0.1:8299
+//	tlsproxy idp=127.0.0.1:8206 certout=/tmp/cert.pem 127.0.0.1:8203=127.0.0.1:8303+oidc
+//
+// A "+custom" or "+oidc" mode puts a sign-in stand-in in front of that
+// backend (signin.go). idp= serves a minimal OpenID issuer for "+oidc", and
+// certout= writes the certificate so goned can trust that issuer.
 //
 // A throwaway self-signed certificate for 127.0.0.1, ::1 and localhost is
 // generated in memory at startup and never written to disk. It is trusted by
@@ -73,35 +78,81 @@ func newProxy(target string) *httputil.ReverseProxy {
 	return p
 }
 
-// serve listens on addr with TLS and proxies to target until it fails.
-func serve(addr, target string, cert tls.Certificate, errs chan<- error) {
+// serve listens on addr with TLS and serves h until it fails.
+func serve(addr string, h http.Handler, cert tls.Certificate, errs chan<- error) {
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           newProxy(target),
+		Handler:           h,
 		TLSConfig:         &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12},
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	errs <- fmt.Errorf("%s: %w", addr, srv.ListenAndServeTLS("", ""))
 }
 
-// run parses the listen=target pairs and serves them all.
+// run parses the arguments and serves every mapping, plus the stand-in
+// issuer when idp= is given.
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: tlsproxy listen=target [listen=target ...]")
+		return errors.New("usage: tlsproxy [idp=ADDR certout=PATH] listen=target[+mode] [listen=target[+mode]]")
 	}
 	cert, err := selfSigned()
 	if err != nil {
 		return err
 	}
-	errs := make(chan error, len(args))
-	for _, a := range args {
-		listen, target, ok := strings.Cut(a, "=")
-		if !ok || listen == "" || target == "" {
-			return fmt.Errorf("bad mapping %q: want listen=target", a)
-		}
-		go serve(listen, target, cert, errs)
+	opts, maps := splitArgs(args)
+	issuer, err := startIDP(opts, cert)
+	if err != nil {
+		return err
+	}
+	errs := make(chan error, len(maps)+1)
+	if issuer != nil {
+		go serve(opts["idp"], issuer, cert, errs)
+	}
+	if err := serveMappings(maps, cert, issuer, errs); err != nil {
+		return err
 	}
 	return <-errs
+}
+
+// serveMappings starts a proxy for each listen=target[+mode] mapping.
+func serveMappings(maps []string, cert tls.Certificate, issuer *idp, errs chan<- error) error {
+	for _, a := range maps {
+		listen, target, ok := strings.Cut(a, "=")
+		if !ok || listen == "" || target == "" {
+			return fmt.Errorf("bad mapping %q: want listen=target[+mode]", a)
+		}
+		target, mode, _ := strings.Cut(target, "+")
+		go serve(listen, withSignIn(newProxy(target), mode, issuer), cert, errs)
+	}
+	return nil
+}
+
+// splitArgs separates the idp= and certout= options from the mappings.
+func splitArgs(args []string) (map[string]string, []string) {
+	opts := map[string]string{}
+	var maps []string
+	for _, a := range args {
+		if k, v, _ := strings.Cut(a, "="); k == "idp" || k == "certout" {
+			opts[k] = v
+			continue
+		}
+		maps = append(maps, a)
+	}
+	return opts, maps
+}
+
+// startIDP prepares the stand-in issuer when idp= is set, writing the
+// certificate to certout= first.
+func startIDP(opts map[string]string, cert tls.Certificate) (*idp, error) {
+	if opts["idp"] == "" {
+		return nil, nil
+	}
+	if path := opts["certout"]; path != "" {
+		if err := writeCert(path, cert.Certificate[0]); err != nil {
+			return nil, fmt.Errorf("write certificate: %w", err)
+		}
+	}
+	return newIDP(opts["idp"])
 }
 
 func main() {

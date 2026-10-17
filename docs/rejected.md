@@ -28,7 +28,7 @@ This page is about features: what you'd be able to do. How Gone is built, and th
 
 | Feature | Decided | Why not | Revisit when |
 | ------- | ------- | ------- | ------------ |
-| **Accounts and sign-in**, including teams and an admin dashboard | 2026-10-02 | Anyone can send without signing up, and Gone keeps no record of who sent what. An account is that record. | Never |
+| **Accounts**, including sign-up, teams and an admin dashboard | 2026-10-02 | Anyone can send without signing up, and Gone keeps no record of who sent what. An account is that record. A private instance can still require its operator's own sign-in to create ([sign-in](sign-in.md), v3.12): the proxy signs people in, and Gone checks only that someone did, never who. | Never |
 | **A history of secrets** sent, opened or expired | 2026-10-05 | Even without the contents, a history proves a secret existed after it's gone. Operators can see overall counts in [metrics](metrics.md). | Never |
 | **A paid plan** or premium features | 2026-10-05 | Security shouldn't live behind a paywall. Everything Gone does is free on every instance. | Never |
 

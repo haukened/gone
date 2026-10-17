@@ -99,3 +99,13 @@
 	</div>
 </footer>
 {{ end }}
+
+{{/* signin replaces a create form when the operator requires sign-in
+     (GONE_AUTH) and this visitor isn't signed in. Takes the IndexView. */}}
+{{ define "signin" }}
+<section id="sign-in" class="signin" aria-labelledby="sign-in-heading">
+	<h2 id="sign-in-heading" data-i18n="common.signInHeading">{{ t "common.signInHeading" }}</h2>
+	<p class="callout"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-lock" /></svg><span data-i18n="common.signInText">{{ t "common.signInText" }}</span></p>
+	{{ with .SignInURL }}<a id="sign-in-link" class="btn btn-primary btn-block" href="{{ . }}"><span data-i18n="common.signInButton">{{ t "common.signInButton" }}</span><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg></a>{{ end }}
+</section>
+{{ end }}

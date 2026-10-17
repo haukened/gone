@@ -2,6 +2,7 @@ package cli
 
 import (
 	"net/http"
+	"net/netip"
 	"strings"
 	"testing"
 
@@ -76,6 +77,43 @@ func TestSendPolicyOldServer(t *testing.T) {
 	}))
 	te.stdin.WriteString("x")
 	if code := te.run("send", "-s", srv.URL); code != exitUsage || !strings.Contains(te.stderr.String(), "requires a passphrase") {
+		t.Fatalf("exit %d, stderr %q", code, te.stderr)
+	}
+}
+
+// TestSignInPolicy checks send and request stop on a server that requires
+// sign-in, before reading input or making a key pair.
+func TestSignInPolicy(t *testing.T) {
+	te := newTestEnv(t)
+	cfg := gonecfg.DefaultAppConfig
+	cfg.Auth, cfg.AuthHeader = "custom", "X-Gone-User"
+	cfg.TrustedPrefixes = []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}
+	url := newTLS(t, te, newGoneHandlerWith(t, cfg)).URL
+	for _, args := range [][]string{{"send", "-s", url, "--passphrase-generate"}, {"request", "-s", url}, {"request", "-s", url, "--json"}} {
+		te.reset()
+		te.stdin.WriteString("x")
+		if code := te.run(args...); code != exitUsage || !strings.Contains(te.stderr.String(), "requires signing in") {
+			t.Errorf("%v: exit %d, stderr %q", args, code, te.stderr)
+		}
+	}
+	if rows := savedRows(t, te); len(rows) != 0 {
+		t.Fatalf("a refused request was saved: %+v", rows)
+	}
+}
+
+// TestSignIn401 checks a 401 from a server without a policy route reads as
+// the sign-in requirement.
+func TestSignIn401(t *testing.T) {
+	te := newTestEnv(t)
+	srv := newTLS(t, te, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/secret" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	te.stdin.WriteString("x")
+	if code := te.run("send", "-s", srv.URL, "--json"); code != exitUsage || !strings.Contains(te.stderr.String(), `"error":"policy"`) {
 		t.Fatalf("exit %d, stderr %q", code, te.stderr)
 	}
 }
