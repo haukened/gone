@@ -96,6 +96,38 @@ func sleep(ctx context.Context, d time.Duration) bool {
 func (k *keySource) load(ctx context.Context) error {
 	k.fetchMu.Lock()
 	defer k.fetchMu.Unlock()
+	return k.store(ctx)
+}
+
+// refetch is load for an unknown key ID: requests that queued behind
+// another refetch reuse its result instead of fetching again, so a burst of
+// forged key IDs costs the provider one request.
+//
+// Parameters:
+//   - ctx: cancellation.
+//   - seen: when the keys were last fetched, as this request saw it.
+//
+// Returns the fetch error, if any; nil when another request just fetched.
+func (k *keySource) refetch(ctx context.Context, seen time.Time) error {
+	k.fetchMu.Lock()
+	defer k.fetchMu.Unlock()
+	k.mu.RLock()
+	fetched := k.fetchedAt.After(seen)
+	k.mu.RUnlock()
+	if fetched {
+		return nil
+	}
+	return k.store(ctx)
+}
+
+// store fetches the keys and records the attempt. The caller holds
+// k.fetchMu.
+//
+// Parameters:
+//   - ctx: cancellation.
+//
+// Returns the fetch error, if any.
+func (k *keySource) store(ctx context.Context) error {
 	keys, keysURL, err := k.fetch(ctx)
 	k.mu.Lock()
 	k.fetchedAt = k.now()
@@ -124,11 +156,11 @@ func (k *keySource) lookup(ctx context.Context, kid string, alg jose.SignatureAl
 		return key
 	}
 	k.mu.RLock()
-	stale := k.now().Sub(k.fetchedAt) >= refetchAfter
+	seen := k.fetchedAt
 	k.mu.RUnlock()
 	// The refetch outlives the request: a client that hangs up mustn't cancel
 	// it, or a forged key ID could keep rotated keys from ever loading.
-	if !stale || k.load(context.WithoutCancel(ctx)) != nil {
+	if k.now().Sub(seen) < refetchAfter || k.refetch(context.WithoutCancel(ctx), seen) != nil {
 		return nil
 	}
 	return k.find(kid, alg)

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/netip"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -315,5 +316,28 @@ func TestRefetchSurvivesHangUp(t *testing.T) {
 	tok := mint(t, rotated, validClaims(pc.issuer, pc.audience))
 	if !g.SignedIn(req(peer, pc.header, tok)) {
 		t.Fatal("the rotated key wasn't loaded by the refetch the forged token triggered")
+	}
+}
+
+// TestConcurrentUnknownKeysFetchOnce checks a burst of tokens with unknown
+// key IDs costs the provider one fetch, not one each.
+func TestConcurrentUnknownKeysFetchOnce(t *testing.T) {
+	pc := signedProviders()[0]
+	ks := newKeyServer(t, keyFor(t, jose.RS256, "k1").jwk())
+	g := signedGate(t, pc.s, ks)
+	g.signed.keys.now = func() time.Time { return testNow.Add(10 * time.Minute) }
+	before := ks.hits.Load()
+	forged := mint(t, keyFor(t, jose.RS256, "forged"), validClaims(pc.issuer, pc.audience))
+	var wg sync.WaitGroup
+	for range 20 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			g.SignedIn(req(peer, pc.header, forged))
+		}()
+	}
+	wg.Wait()
+	if got := ks.hits.Load() - before; got != 1 {
+		t.Fatalf("20 concurrent unknown key IDs fetched %d times, want 1", got)
 	}
 }
