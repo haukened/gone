@@ -12,7 +12,6 @@ import (
 	"math/big"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -102,15 +101,15 @@ func withSignIn(next http.Handler, mode string, p *idp) http.Handler {
 }
 
 // login is the stub sign-in page: it sets the test cookie and sends the
-// browser back to rd, a same-origin path (no "//" and no backslash, which
-// browsers read as another host).
+// browser back to the page it came from. Only Gone's two create pages are
+// possible targets, so nothing from the request is ever redirected to.
 func login(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{Name: signInCookie, Value: "1", Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
-	rd := r.URL.Query().Get("rd")
-	if !strings.HasPrefix(rd, "/") || strings.HasPrefix(rd, "//") || strings.Contains(rd, `\`) {
-		rd = "/"
+	target := "/"
+	if r.URL.Query().Get("rd") == "/request" {
+		target = "/request"
 	}
-	http.Redirect(w, r, rd, http.StatusFound)
+	http.Redirect(w, r, target, http.StatusFound)
 }
 
 // writeCert writes the proxy's certificate as PEM, so goned can trust the
