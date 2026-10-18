@@ -60,9 +60,13 @@ jobs:
     # osv-scanner.toml beside each manifest (tools/gosec, tools/lint), so an
     # ignore there covers that tool's manifest only and cannot hide the same
     # advisory in the server's go.mod. Passing --config would apply one file
-    # to every manifest instead.
+    # to every manifest instead. Call analysis is off: govulncheck above
+    # already checks what the server calls, and OSV-Scanner's own call
+    # analysis can't load the gosec module (a tool, no packages), which made
+    # it exit 127. Without it, every advisory in a manifest is reported,
+    # called or not.
     - name: Run OSV-Scanner
-      run: '"$(go env GOPATH)/bin/osv-scanner" scan source -r .'
+      run: '"$(go env GOPATH)/bin/osv-scanner" scan source --no-call-analysis=go -r .'
 
   # Fuzz each target for 90 s. Regular `go test` only replays the seed
   # corpus; this explores new inputs. Targets are found by name, so a new
