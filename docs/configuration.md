@@ -74,6 +74,7 @@ In short:
 - **Plain-header providers** (`authelia`, `authentik`, `tailscale`, `custom`) refuse to start without `GONE_TRUSTED_PROXIES`, and believe the header only from those addresses.
 - A setting that doesn't apply to the chosen provider stops the server.
 - Gone never stores or logs who signed in.
+- `cloudflare`, `google-iap`, `pomerium`, `teleport`, `authentik` and `tailscale` are built from vendor documentation but not yet tested against the live products; see [Providers](sign-in.md#providers).
 
 ### Derived settings
 
