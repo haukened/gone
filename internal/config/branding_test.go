@@ -15,6 +15,12 @@ func TestParseAccent(t *testing.T) {
 		{name: "spaces", raw: " #1d4ed8 / #93c5fd ", light: "#1d4ed8", dark: "#93c5fd"},
 		{name: "light too pale", raw: "#ffff00/#93c5fd", wantErr: "light-theme colour #ffff00"},
 		{name: "dark too dark", raw: "#1d4ed8/#000080", wantErr: "dark-theme colour #000080"},
+		// Neighbouring greys either side of 4.5:1 on each theme's
+		// backgrounds pin the threshold itself.
+		{name: "light just passes", raw: "#6b6b6b/#cfc6f7", light: "#6b6b6b", dark: "#cfc6f7"},
+		{name: "light just fails", raw: "#6c6c6c/#cfc6f7", wantErr: "contrast of 4.48:1"},
+		{name: "dark just passes", raw: "#4b3f8a/#838383", light: "#4b3f8a", dark: "#838383"},
+		{name: "dark just fails", raw: "#4b3f8a/#828282", wantErr: "contrast of 4.49:1"},
 		{name: "one colour", raw: "#1d4ed8", wantErr: "#rrggbb/#rrggbb"},
 		{name: "short hex", raw: "#123/#abc", wantErr: "#rrggbb/#rrggbb"},
 		{name: "not hex", raw: "#12345g/#abcdef", wantErr: "#rrggbb/#rrggbb"},

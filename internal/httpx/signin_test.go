@@ -94,6 +94,35 @@ func TestSignInRoutes(t *testing.T) {
 	}
 }
 
+// TestSignInLeavesPublicRoutesOpen checks opening, status, revoking and
+// replying never need sign-in: only creating does. Any status but 401 is
+// fine here; the handlers' own checks are tested elsewhere.
+func TestSignInLeavesPublicRoutesOpen(t *testing.T) {
+	h, m := signInHandler(t)
+	router := h.Router()
+	const id = "0123456789abcdef0123456789abcdef"
+	routes := []struct{ method, path string }{
+		{http.MethodGet, "/api/secret/" + id},
+		{http.MethodDelete, "/api/secret/" + id},
+		{http.MethodGet, "/api/secret/" + id + "/status"},
+		{http.MethodPost, "/api/secret/" + id + "/revoke"},
+		{http.MethodGet, "/api/request/" + id},
+		{http.MethodPut, "/api/request/" + id + "/reply"},
+		{http.MethodGet, "/api/request/" + id + "/status"},
+		{http.MethodPost, "/api/request/" + id + "/revoke"},
+	}
+	for _, rt := range routes {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(rt.method, rt.path, bytes.NewReader([]byte("x"))))
+		if w.Code == http.StatusUnauthorized {
+			t.Errorf("%s %s needs sign-in", rt.method, rt.path)
+		}
+	}
+	if n := m.counts[metrics.CounterSignInDenied]; n != 0 {
+		t.Fatalf("sign_in_denied_total = %d", n)
+	}
+}
+
 func TestNeedsSignIn(t *testing.T) {
 	h, _ := signInHandler(t)
 	need, url := h.needsSignIn(httptest.NewRequest(http.MethodGet, "/?rd=https://evil.example", nil), "/request")

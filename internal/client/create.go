@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -61,8 +62,7 @@ func (c *Client) Create(ctx context.Context, req CreateRequest) (CreateResult, e
 	if err != nil {
 		return CreateResult{}, err
 	}
-	if resp.StatusCode == http.StatusForbidden {
-		discard(resp)
+	if resp.StatusCode == http.StatusForbidden && passphraseRefusal(resp) {
 		return CreateResult{}, &StatusError{Code: resp.StatusCode, kind: ErrPassphraseRequired}
 	}
 	if err = expect(resp, http.StatusCreated); err != nil {
@@ -73,6 +73,27 @@ func (c *Client) Create(ctx context.Context, req CreateRequest) (CreateResult, e
 		return CreateResult{}, err
 	}
 	return parseCreate(raw)
+}
+
+// passphraseRefusal reports whether a 403 is the server's own "passphrase
+// required" refusal, not one from a proxy or firewall in front of it. It
+// reads a bounded part of the body and closes it only when it matches;
+// otherwise the body is left for expect to drain.
+//
+// Parameters:
+//   - resp: a 403 response.
+//
+// Returns true for the server's refusal.
+func passphraseRefusal(resp *http.Response) bool {
+	var body struct {
+		Error string `json:"error"`
+	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxErrorBody))
+	if err != nil || json.Unmarshal(raw, &body) != nil || body.Error != "passphrase required" {
+		return false
+	}
+	discard(resp)
+	return true
 }
 
 // parseCreate decodes and validates a create reply.

@@ -134,8 +134,13 @@ func (k *keySource) store(ctx context.Context) error {
 	if err == nil {
 		k.keys, k.keysURL = keys, keysURL
 	}
+	kept := len(k.keys) > 0
 	k.mu.Unlock()
-	if err != nil {
+	switch {
+	case err == nil:
+	case kept:
+		slog.Warn("sign-in: could not refresh the provider's signing keys; keeping the last ones loaded", "url", k.url, "err", err)
+	default:
 		slog.Warn("sign-in: could not load the provider's signing keys; creating is refused until they load", "url", k.url, "err", err)
 	}
 	return err

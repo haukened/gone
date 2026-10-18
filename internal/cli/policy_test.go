@@ -65,12 +65,14 @@ func TestReplyPolicy(t *testing.T) {
 }
 
 // TestSendPolicyOldServer checks a server without /api/policy is treated as
-// having none, and that a 403 from create still reads as the passphrase rule.
+// having none, and that the server's 403 from create still reads as the
+// passphrase rule.
 func TestSendPolicyOldServer(t *testing.T) {
 	te := newTestEnv(t)
 	srv := newTLS(t, te, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/secret" {
 			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"passphrase required"}`))
 			return
 		}
 		http.NotFound(w, r)

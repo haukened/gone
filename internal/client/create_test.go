@@ -99,6 +99,8 @@ func TestCreateErrors(t *testing.T) {
 	}{
 		{"too large", http.StatusRequestEntityTooLarge, `{"error":"size exceeded"}`, ErrTooLarge},
 		{"passphrase required", http.StatusForbidden, `{"error":"passphrase required"}`, ErrPassphraseRequired},
+		{"proxy forbidden", http.StatusForbidden, `<html>Access denied</html>`, ErrRejected},
+		{"other forbidden", http.StatusForbidden, `{"error":"blocked by policy"}`, ErrRejected},
 		{"sign in required", http.StatusUnauthorized, `{"error":"sign in required"}`, ErrSignInRequired},
 		{"server", http.StatusInternalServerError, `{"error":"internal"}`, ErrServer},
 		{"bad json", http.StatusCreated, `{`, ErrProtocol},

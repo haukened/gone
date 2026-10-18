@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 )
@@ -64,12 +65,28 @@ func (k *keySource) discoverKeys(ctx context.Context) (string, error) {
 		return "", err
 	}
 	if doc.Issuer != k.issuer {
-		return "", fmt.Errorf("discovery issuer %q does not match GONE_AUTH_ISSUER", doc.Issuer)
+		return "", issuerMismatch(doc.Issuer, k.issuer)
 	}
 	if u, err := url.Parse(doc.KeysURI); err != nil || u.Scheme != "https" || u.Host == "" {
 		return "", errors.New("discovery jwks_uri is not an https URL")
 	}
 	return doc.KeysURI, nil
+}
+
+// issuerMismatch explains a discovery issuer that differs from
+// GONE_AUTH_ISSUER. Tokens carry the provider's issuer exactly, so Gone
+// doesn't normalise it; a trailing slash is the usual slip and is named.
+//
+// Parameters:
+//   - got: the discovery document's issuer.
+//   - want: GONE_AUTH_ISSUER.
+//
+// Returns the error.
+func issuerMismatch(got, want string) error {
+	if strings.TrimSuffix(got, "/") == strings.TrimSuffix(want, "/") {
+		return fmt.Errorf("discovery issuer %q does not match GONE_AUTH_ISSUER %q: set it exactly as the provider writes it, trailing slash included", got, want)
+	}
+	return fmt.Errorf("discovery issuer %q does not match GONE_AUTH_ISSUER", got)
 }
 
 // getJSON fetches an https URL and decodes at most maxKeysBody bytes of

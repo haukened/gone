@@ -60,7 +60,7 @@ Replies to [requests](api.md#request-workflow) never need a passphrase. A reply 
 The six branding settings put your name, logo and accent colour on an unmodified copy of Gone and link your contact, imprint and privacy pages from the footer. Each is optional and works alone; unbranded instances look exactly as before. [Branding your instance](branding.md) shows each setting with screenshots of the result.
 
 In short:
-- **Header:** the logo and name replace the Gone wordmark. Footer links alone don't change it.
+- **Header:** the logo and name replace the Gone wordmark. An accent alone recolours the page but keeps the wordmark, and footer links alone don't change it.
 - **Accent:** your two colours replace Gone's violet in heading highlights, focus rings and progress bars. Each must reach 4.5:1 contrast on its theme's background, or the server won't start.
 - **Footer:** your links come first. The version line reads "Powered by Gone", and it, the copyright notice and the project links **can't be removed**.
 - **Everything else stays Gone:** page titles, the favicon, the About page and the page text.
