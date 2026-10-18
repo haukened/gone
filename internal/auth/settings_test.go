@@ -17,6 +17,8 @@ func TestValidate(t *testing.T) {
 		{name: "none", s: Settings{Provider: None}},
 		{name: "leftover option", s: Settings{Team: "acme"}, wantErr: "GONE_AUTH_TEAM: set without GONE_AUTH"},
 		{name: "leftover sign-in url", s: Settings{SignInURL: "/login"}, wantErr: "GONE_AUTH_SIGNIN_URL: set without GONE_AUTH"},
+		{name: "option with none", s: Settings{Provider: None, Team: "acme"}, wantErr: "GONE_AUTH_TEAM: set with GONE_AUTH=none"},
+		{name: "sign-in url with none", s: Settings{Provider: None, SignInURL: "/login"}, wantErr: "GONE_AUTH_SIGNIN_URL: set with GONE_AUTH=none"},
 		{name: "unknown", s: Settings{Provider: "okta"}, wantErr: `GONE_AUTH: unknown provider "okta"`},
 		{name: "cloudflare", s: Settings{Provider: "cloudflare", Team: "acme", Audience: "tag"}},
 		{name: "cloudflare team domain", s: Settings{Provider: "cloudflare", Team: "acme.cloudflareaccess.com", Audience: "tag"}},

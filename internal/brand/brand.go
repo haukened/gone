@@ -65,12 +65,22 @@ type Brand struct {
 	Links  []Link
 }
 
-// Branded reports whether the header is rebranded: a name, logo or accent
-// is set. Footer links alone don't count; the footer then still says Gone.
+// Branded reports whether the instance is rebranded: a name, logo or accent
+// is set, so the footer says "Powered by Gone". Footer links alone don't
+// count; the footer then still says Gone.
 //
 // Returns true when the instance shows the operator's branding.
 func (b *Brand) Branded() bool {
 	return b != nil && (b.Name != "" || b.Logo != nil || b.Accent != nil)
+}
+
+// HasMark reports whether the operator's name or logo replaces the Gone
+// wordmark in the header. An accent alone recolours the page but keeps the
+// wordmark.
+//
+// Returns true when the header shows the operator's mark.
+func (b *Brand) HasMark() bool {
+	return b != nil && (b.Name != "" || b.Logo != nil)
 }
 
 // LogoURL returns the fingerprinted logo URL, or "" without a logo.

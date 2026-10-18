@@ -1,9 +1,11 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -112,8 +114,12 @@ func TestDiscovery(t *testing.T) {
 		t.Fatalf("keys from %q: %d", src.keysURL, len(src.keys))
 	}
 	issuer = "https://someone-else.example"
-	if err := src.load(context.Background()); err == nil || !strings.Contains(err.Error(), "does not match GONE_AUTH_ISSUER") {
+	if err := src.load(context.Background()); err == nil || !strings.Contains(err.Error(), "does not match GONE_AUTH_ISSUER") || strings.Contains(err.Error(), "trailing slash") {
 		t.Fatalf("issuer mismatch: %v", err)
+	}
+	issuer = disc.URL + "/"
+	if err := src.load(context.Background()); err == nil || !strings.Contains(err.Error(), "trailing slash included") {
+		t.Fatalf("trailing slash: %v", err)
 	}
 	if len(src.keys) != 1 {
 		t.Fatal("a failed refresh dropped the last good keys")
@@ -121,6 +127,32 @@ func TestDiscovery(t *testing.T) {
 	issuer, keysURI = disc.URL, "http://plain.example/keys"
 	if err := src.load(context.Background()); err == nil || !strings.Contains(err.Error(), "not an https URL") {
 		t.Fatalf("plain jwks_uri: %v", err)
+	}
+}
+
+// TestFailedLoadLog checks the warning says whether creating still works:
+// a failed first load refuses it, a failed refresh keeps the last keys.
+func TestFailedLoadLog(t *testing.T) {
+	var buf bytes.Buffer
+	orig := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(orig) })
+
+	k := keyFor(t, jose.RS256, "k1")
+	ks := newKeyServer(t, k.jwk())
+	ks.code = http.StatusInternalServerError
+	src := newKeySource(endpoints{keysURL: ks.srv.URL + "/keys"}, ks.srv.Client())
+	if src.load(context.Background()) == nil || !strings.Contains(buf.String(), "creating is refused until they load") {
+		t.Fatalf("first load: %s", buf.String())
+	}
+	ks.code = http.StatusOK
+	if err := src.load(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	buf.Reset()
+	ks.code = http.StatusInternalServerError
+	if src.load(context.Background()) == nil || !strings.Contains(buf.String(), "keeping the last ones loaded") || strings.Contains(buf.String(), "refused") {
+		t.Fatalf("refresh: %s", buf.String())
 	}
 }
 

@@ -102,12 +102,18 @@ func originOf(u *url.URL) string {
 }
 
 // isOrigin reports whether u is an absolute http(s) URL with a host and no
-// user info.
+// user info, whose origin parses back to the same host. net/url accepts a
+// raw non-ASCII byte in an IPv6 zone but refuses it escaped, so such a host
+// could be read from a link but never written into one.
 //
 // Parameters:
 //   - u: parsed URL.
 //
 // Returns true when u can serve as a link origin.
 func isOrigin(u *url.URL) bool {
-	return (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" && u.User == nil
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil {
+		return false
+	}
+	back, err := url.Parse(originOf(u))
+	return err == nil && back.Host == u.Host
 }

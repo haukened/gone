@@ -80,8 +80,9 @@ func TestPages_BrandedHeaderFooter(t *testing.T) {
 	}
 }
 
-// TestPages_BrandVariants covers a logo without a name, and footer links
-// without branding: those keep the Gone wordmark and footer.
+// TestPages_BrandVariants covers a logo without a name, an accent alone
+// (which keeps the Gone wordmark but says "Powered by Gone"), and footer
+// links without branding, which keep the Gone wordmark and footer.
 func TestPages_BrandVariants(t *testing.T) {
 	all := brandAll(t)
 	logoOnly := func(c *config.Config) { all(c); c.BrandName, c.AccentLight, c.AccentDark = "", "", "" }
@@ -93,6 +94,17 @@ func TestPages_BrandVariants(t *testing.T) {
 	}
 	if strings.Contains(body, `brand-name`) || strings.Contains(body, `/brand/accent.css`) {
 		t.Error("logo only: unexpected name or accent")
+	}
+
+	accentOnly := func(c *config.Config) { c.AccentLight, c.AccentDark = "#1d4ed8", "#93c5fd" }
+	_, body = get(pageRouterWith(t, accentOnly), "/")
+	for _, w := range []string{`<span class="brand-g"></span>one</a>`, `/brand/accent.css?v=`, `>Powered by Gone v0.0.0-test</a>`} {
+		if !strings.Contains(body, w) {
+			t.Errorf("accent only: missing %s", w)
+		}
+	}
+	if strings.Contains(body, `brand-operator`) {
+		t.Error("accent only: the Gone wordmark was replaced")
 	}
 
 	linksOnly := func(c *config.Config) { c.ImprintURL = "https://example.com/imprint" }

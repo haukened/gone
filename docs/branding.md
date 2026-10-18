@@ -53,7 +53,7 @@ On screens narrower than 40rem the logo stands alone, so the links keep their ro
 GONE_BRAND_ACCENT="#0f766e/#5eead4"
 ```
 
-Two colours, `#light/#dark`: the first for the light theme, the second for the dark theme. They replace Gone's violet in the highlighted word of each heading, focus rings, progress bars, links on the About page, and the soft tints such as the current page's tab. Buttons, text, the glass panes and the backdrop keep Gone's colours.
+Two colours, `#light/#dark`: the first for the light theme, the second for the dark theme. They replace Gone's violet in the highlighted word of each heading, focus rings, progress bars, links on the About page, and the soft tints such as the current page's tab. Buttons, text, the glass panes and the backdrop keep Gone's colours. On its own, the accent keeps the Gone wordmark in the header.
 
 Without branding, with the message box focused:
 

@@ -104,6 +104,34 @@ func TestSignedTokenRejections(t *testing.T) {
 	}
 }
 
+// TestSignedHeaderCap checks a valid token is refused only for its size:
+// the largest one that fits is accepted, the next one over is not.
+func TestSignedHeaderCap(t *testing.T) {
+	pc := signedProviders()[0]
+	k := keyFor(t, jose.RS256, "k1")
+	g := signedGate(t, pc.s, newKeyServer(t, k.jwk()))
+	padded := func(n int) string {
+		return mint(t, k, struct {
+			jwt.Claims
+			Pad string `json:"pad"`
+		}{validClaims(pc.issuer, pc.audience), strings.Repeat("a", n)})
+	}
+	n := (maxSignedHeader - len(padded(0))) * 3 / 4
+	for len(padded(n+1)) <= maxSignedHeader {
+		n++
+	}
+	fits, over := padded(n), padded(n+1)
+	if len(fits) > maxSignedHeader || len(over) <= maxSignedHeader {
+		t.Fatalf("lengths %d and %d don't straddle %d", len(fits), len(over), maxSignedHeader)
+	}
+	if !g.SignedIn(req(peer, pc.header, fits)) {
+		t.Fatal("a token within the cap was refused")
+	}
+	if g.SignedIn(req(peer, pc.header, over)) {
+		t.Fatal("a token over the cap was accepted")
+	}
+}
+
 func TestSignedHeaderRepeated(t *testing.T) {
 	pc := signedProviders()[0]
 	k := keyFor(t, jose.RS256, "k1")

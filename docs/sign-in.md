@@ -104,7 +104,7 @@ GONE_AUTH_SIGNIN_URL=/oauth2/start?rd={return}
 GONE_TRUSTED_PROXIES=127.0.0.1
 ```
 
-Set `--cookie-refresh` shorter than your provider's ID token lifetime, so the token Gone checks has not expired. Gone reads the keys from the issuer's `/.well-known/openid-configuration`.
+Set `--cookie-refresh` shorter than your provider's ID token lifetime, so the token Gone checks has not expired. Gone reads the keys from the issuer's `/.well-known/openid-configuration`. Write `GONE_AUTH_ISSUER` exactly as that document's `issuer` does, trailing slash included: tokens carry it verbatim.
 
 ### Pomerium
 

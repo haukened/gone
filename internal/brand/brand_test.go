@@ -64,6 +64,22 @@ func TestLoadAll(t *testing.T) {
 	}
 }
 
+func TestAccentAloneKeepsTheWordmark(t *testing.T) {
+	b, err := Load(&config.Config{AccentLight: "#1d4ed8", AccentDark: "#93c5fd"})
+	if err != nil || !b.Branded() || b.HasMark() {
+		t.Fatalf("brand = %+v, err %v", b, err)
+	}
+	for _, c := range []*config.Config{{BrandName: "Acme"}, {BrandLogo: writeFile(t, "logo.svg", []byte(testSVG))}} {
+		if b, err := Load(c); err != nil || !b.HasMark() {
+			t.Fatalf("brand = %+v, err %v", b, err)
+		}
+	}
+	var nilBrand *Brand
+	if nilBrand.HasMark() {
+		t.Fatal("nil Brand has no mark")
+	}
+}
+
 func TestLinksAloneAreNotBranded(t *testing.T) {
 	b, err := Load(&config.Config{ImprintURL: "https://example.com/imprint"})
 	if err != nil || b.Branded() || len(b.Links) != 1 {

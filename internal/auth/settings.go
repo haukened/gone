@@ -102,13 +102,17 @@ func (s Settings) Validate(trusted bool) ([]string, error) {
 //
 // Returns an error naming the first one, or nil.
 func (s Settings) noneHasOptions() error {
+	without := "without GONE_AUTH"
+	if s.Provider == None {
+		without = "with GONE_AUTH=none"
+	}
 	for _, o := range optionNames {
 		if o.get(s) != "" {
-			return fmt.Errorf("%s: set without GONE_AUTH; choose a provider or remove it", o.name)
+			return fmt.Errorf("%s: set %s; choose a provider or remove it", o.name, without)
 		}
 	}
 	if s.SignInURL != "" {
-		return errors.New("GONE_AUTH_SIGNIN_URL: set without GONE_AUTH; choose a provider or remove it")
+		return fmt.Errorf("GONE_AUTH_SIGNIN_URL: set %s; choose a provider or remove it", without)
 	}
 	return nil
 }
