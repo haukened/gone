@@ -1,0 +1,353 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Gone Helm chart values",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^(sha256:[0-9a-f]{64})?$"
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array"
+    },
+    "nameOverride": {
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "type": "string"
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxBytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "inlineMaxBytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "ttlOptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^([0-9]+(ns|us|µs|ms|s|m|h))+$"
+          }
+        },
+        "claimLease": {
+          "type": "string"
+        },
+        "rateCreate": {
+          "type": "string",
+          "pattern": "^(|0|[0-9]+/[smh])$"
+        },
+        "rateRead": {
+          "type": "string",
+          "pattern": "^(|0|[0-9]+/[smh])$"
+        },
+        "rateBurst": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "trustedProxies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requirePassphrase": {
+          "type": "boolean"
+        },
+        "maxFiles": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "brand": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "accent": {
+          "type": "string",
+          "pattern": "^(|#[0-9A-Fa-f]{6}/#[0-9A-Fa-f]{6})$"
+        },
+        "logo": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "existingConfigMap": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            }
+          }
+        },
+        "contactURL": {
+          "type": "string",
+          "pattern": "^(|https://.+|mailto:.+)$"
+        },
+        "imprintURL": {
+          "type": "string",
+          "pattern": "^(|https://.+)$"
+        },
+        "privacyURL": {
+          "type": "string",
+          "pattern": "^(|https://.+)$"
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "none or a signed provider. Plain-header providers (authelia, authentik, tailscale, custom) are refused on Kubernetes with an explanation; see docs/deploy/kubernetes.md#sign-in."
+        },
+        "team": {
+          "type": "string"
+        },
+        "audience": {
+          "type": "string"
+        },
+        "issuer": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "jwksURL": {
+          "type": "string",
+          "pattern": "^(|https://.+)$"
+        },
+        "alg": {
+          "enum": [
+            "",
+            "RS256",
+            "ES256"
+          ]
+        },
+        "header": {
+          "type": "string"
+        },
+        "signInURL": {
+          "type": "string"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "token": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            }
+          }
+        },
+        "serviceMonitor": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "interval": {
+              "type": "string"
+            },
+            "labels": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "existingClaim": {
+          "type": "string"
+        },
+        "storageClass": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer"
+          ]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "annotations": {
+          "type": "object"
+        }
+      }
+    },
+    "httpRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "parentRefs": {
+          "type": "array"
+        },
+        "hostnames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "labels": {
+          "type": "object"
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "from": {
+          "type": "array"
+        },
+        "metricsFrom": {
+          "type": "array"
+        },
+        "keysTo": {
+          "type": "array"
+        }
+      }
+    },
+    "resources": {
+      "type": "object"
+    },
+    "podSecurityContext": {
+      "type": "object"
+    },
+    "securityContext": {
+      "type": "object"
+    },
+    "extraEnv": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "podAnnotations": {
+      "type": "object"
+    },
+    "podLabels": {
+      "type": "object"
+    },
+    "nodeSelector": {
+      "type": "object"
+    },
+    "tolerations": {
+      "type": "array"
+    },
+    "affinity": {
+      "type": "object"
+    },
+    "priorityClassName": {
+      "type": "string"
+    },
+    "global": {
+      "type": "object"
+    },
+    "replicaCount": {
+      "description": "Not supported: Gone always runs one replica. Set only to 1; anything else is refused with the reason."
+    }
+  }
+}

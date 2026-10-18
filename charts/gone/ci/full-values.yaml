@@ -1,0 +1,51 @@
+# Every optional template on, with a signed sign-in provider.
+config:
+  maxBytes: 5242880
+  ttlOptions: [5m, 1h, 24h]
+  rateCreate: 20/m
+  rateBurst: 5
+  trustedProxies: [10.244.0.0/16]
+policy:
+  requirePassphrase: true
+  maxFiles: 0
+brand:
+  name: "Acme, Inc"
+  accent: "#1d4ed8/#93c5fd"
+  logo:
+    existingConfigMap: gone-logo
+    key: logo.svg
+  contactURL: mailto:it@example.com
+  imprintURL: https://example.com/imprint
+  privacyURL: https://example.com/privacy
+auth:
+  provider: oidc
+  issuer: https://idp.example.com/realms/acme
+  audience: gone
+  signInURL: /oauth2/start?rd={return}
+metrics:
+  enabled: true
+  token:
+    existingSecret: gone-metrics
+  serviceMonitor:
+    enabled: true
+persistence:
+  existingClaim: gone-data
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: eg
+      namespace: envoy-gateway-system
+  hostnames: [gone.example.com]
+networkPolicy:
+  enabled: true
+  from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: envoy-gateway-system
+  metricsFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+extraEnv:
+  - name: GONE_CLAIM_LEASE
+    value: 5m

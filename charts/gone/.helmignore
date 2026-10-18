@@ -1,0 +1,3 @@
+ci/
+*.md.orig
+.DS_Store

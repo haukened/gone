@@ -1,0 +1,140 @@
+{{- include "gone.validate" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gone.fullname" . }}
+  labels:
+    {{- include "gone.labels" . | nindent 4 }}
+spec:
+  # One replica, always: SQLite and the blob directory have one writer, and
+  # Recreate stops the old pod before the new one opens the volume.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "gone.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Restart the pod when a setting changes.
+        checksum/config: {{ toJson (list .Values.config .Values.policy .Values.brand .Values.auth .Values.metrics .Values.extraEnv) | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "gone.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      # Without this, every Service in the namespace adds variables to Gone's
+      # environment, and a Service named "gone" adds GONE_* ones.
+      enableServiceLinks: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: gone
+          image: {{ include "gone.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+            {{- end }}
+          env:
+            - name: GONE_ADDR
+              value: ":8080"
+            # A directory Gone creates and owns inside the volume: Gone
+            # makes its data directory private (0700), which it can't do to
+            # a volume root owned by root.
+            - name: GONE_DATA_DIR
+              value: /data/gone
+            {{- with include "gone.env" . }}
+            {{- . | nindent 12 }}
+            {{- end }}
+            {{- if .Values.brand.logo.existingConfigMap }}
+            - name: GONE_BRAND_LOGO
+              value: {{ printf "/etc/gone/brand/%s" .Values.brand.logo.key | quote }}
+            {{- end }}
+            {{- if .Values.metrics.enabled }}
+            - name: GONE_METRICS_ADDR
+              value: ":9090"
+            - name: GONE_METRICS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.metrics.token.existingSecret }}
+                  key: {{ .Values.metrics.token.key }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            {{- if .Values.brand.logo.existingConfigMap }}
+            - name: brand
+              mountPath: /etc/gone/brand
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "gone.claimName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if .Values.brand.logo.existingConfigMap }}
+        - name: brand
+          configMap:
+            name: {{ .Values.brand.logo.existingConfigMap }}
+            items:
+              - key: {{ .Values.brand.logo.key }}
+                path: {{ .Values.brand.logo.key }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
