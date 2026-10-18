@@ -20,6 +20,7 @@ concurrency:
 
 env:
   IMAGE_NAME: ghcr.io/haukened/gone
+  CHART_REPO: ghcr.io/haukened/charts
   GO_VERSION: '1.27.2'
   NODE_VERSION: '24'
 
@@ -141,9 +142,42 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
+      # The Helm chart, versioned with the release: chart 3.13.0 runs image
+      # v3.13.0. It is pushed beside the image as an OCI artifact and
+      # attested the same way:
+      #   gh attestation verify oci://ghcr.io/haukened/charts/gone:<version> --repo haukened/gone
+      - name: Install helm
+        run: |
+          test/helm/install-tools.sh "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Package and push the chart
+        id: chart
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          helm package charts/gone --version "${REF_NAME#v}" --app-version "$REF_NAME" -d "$RUNNER_TEMP/chart"
+          echo "$TOKEN" | helm registry login ghcr.io -u "$ACTOR" --password-stdin
+          helm push "$RUNNER_TEMP/chart/gone-${REF_NAME#v}.tgz" "oci://$CHART_REPO" 2>&1 | tee "$RUNNER_TEMP/push.log"
+          digest=$(sed -n 's/^Digest: \(sha256:[0-9a-f]\{64\}\)$/\1/p' "$RUNNER_TEMP/push.log")
+          test -n "$digest"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Attest chart provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.CHART_REPO }}/gone
+          subject-digest: ${{ steps.chart.outputs.digest }}
+          push-to-registry: true
+
       - name: Summary
         env:
           TAGS: ${{ steps.tags.outputs.list }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           echo "## Image" >> "$GITHUB_STEP_SUMMARY"
           echo "$TAGS" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Chart" >> "$GITHUB_STEP_SUMMARY"
+          echo "oci://$CHART_REPO/gone --version ${REF_NAME#v}" >> "$GITHUB_STEP_SUMMARY"

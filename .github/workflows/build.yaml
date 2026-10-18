@@ -243,6 +243,82 @@ jobs:
           path: test/e2e/playwright-report
           retention-days: 7
 
+  # The Helm chart without a cluster: helm lint, every scenario in
+  # charts/gone/ci rendered and validated with kubeconform, and the
+  # settings the chart must refuse (test/helm/lint.sh).
+  helm:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install helm and kubeconform
+        run: |
+          test/helm/install-tools.sh "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Check the chart
+        run: test/helm/lint.sh
+
+  # The Helm chart installed on kind, on the oldest and newest Kubernetes
+  # it supports; the newest also routes through Envoy Gateway
+  # (test/helm/run.sh). The node images are pinned by digest from the kind
+  # release notes.
+  helm-install:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kubernetes: '1.34'
+            node: kindest/node:v1.34.11@sha256:44e222ee2132dab25ff87301682f89eb82c7880ea3a1bf543bfe9708fd08d67d
+            envoy: '0'
+          - kubernetes: '1.37'
+            node: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+            envoy: '1'
+    name: helm-install (${{ matrix.kubernetes }})
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # zizmor: ignore[cache-poisoning] job never runs on tags; release jobs use no cache
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - name: Restore Go module cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/go/bin
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+
+      - name: Install minify and Task
+        run: |
+          go install github.com/tdewolff/minify/v2/cmd/minify@"$MINIFY_VERSION"
+          go install github.com/go-task/task/v3/cmd/task@"$TASK_VERSION"
+
+      - name: Build (prod via Taskfile)
+        run: $HOME/go/bin/task build-prod
+
+      - name: Install helm, kind and kubectl
+        run: |
+          test/helm/install-tools.sh "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Install and test the chart
+        env:
+          NODE_IMAGE: ${{ matrix.node }}
+          ENVOY: ${{ matrix.envoy }}
+        run: test/helm/run.sh
+
   # Latency target (p95 under 50ms at 100 req/s) against the real stack.
   # The data directory is on RAM (/dev/shm): shared runner disks stall on
   # fsync for hundreds of milliseconds at random, which failed this job on
