@@ -249,5 +249,5 @@ Decided against since v3.0.0:
 | Operator policies | Done (v3.12.0, #96): `GONE_REQUIRE_PASSPHRASE` enforced by the server; `GONE_MAX_FILES` honoured by the web UI and CLI |
 | Operator branding | Done (v3.12.0, #98): name, logo, accent colour and footer links; "Powered by Gone" stays |
 | Search engines | Done (v3.12.0, #99): `X-Robots-Tag: noindex` on every response |
-| Sign-in for private instances | Done (v3.12.0, #100): signed tokens from Cloudflare Access, Google IAP, Pomerium, Teleport and OIDC; trusted headers from Authelia, authentik, Tailscale and `custom`; no identity kept |
+| Sign-in for private instances | Done (v3.12.0, #100): signed tokens from Cloudflare Access, Google IAP, Pomerium, Teleport and OIDC; trusted headers from Authelia, authentik, Tailscale and `custom`; no identity kept. OIDC, Authelia and `custom` are tested end to end; the rest are built from vendor docs and not yet tested live |
 | `gone mcp` | Rejected |

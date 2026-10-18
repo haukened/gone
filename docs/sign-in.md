@@ -25,17 +25,19 @@ List only your proxy's own address in `GONE_TRUSTED_PROXIES`, never a whole netw
 
 ## Providers
 
-| `GONE_AUTH` | Product | Kind | Header Gone reads | You set |
-| ----------- | ------- | ---- | ----------------- | ------- |
-| `cloudflare` | Cloudflare Access | signed (RS256) | `Cf-Access-Jwt-Assertion` | `GONE_AUTH_TEAM`, `GONE_AUTH_AUDIENCE` |
-| `google-iap` | Google Cloud Identity-Aware Proxy | signed (ES256) | `X-Goog-Iap-Jwt-Assertion` | `GONE_AUTH_AUDIENCE` |
-| `pomerium` | Pomerium | signed (ES256) | `X-Pomerium-Jwt-Assertion` | `GONE_AUTH_HOST` (optionally `GONE_AUTH_JWKS_URL`) |
-| `teleport` | Teleport Application Access | signed (RS256) | `Teleport-Jwt-Assertion` | `GONE_AUTH_HOST`, `GONE_AUTH_ISSUER`, `GONE_AUTH_AUDIENCE` |
-| `oidc` | Any OpenID Connect provider's ID token, passed on by oauth2-proxy, Vouch or a similar proxy | signed (RS256 or ES256) | `Authorization: Bearer`, or `GONE_AUTH_HEADER` | `GONE_AUTH_ISSUER`, `GONE_AUTH_AUDIENCE` (optionally `GONE_AUTH_ALG`, `GONE_AUTH_HEADER`, `GONE_AUTH_JWKS_URL`) |
-| `authelia` | Authelia | plain | `Remote-User` | `GONE_TRUSTED_PROXIES` |
-| `authentik` | authentik proxy outpost | plain | `X-Authentik-Username` | `GONE_TRUSTED_PROXIES` |
-| `tailscale` | Tailscale Serve | plain | `Tailscale-User-Login` | `GONE_TRUSTED_PROXIES` (usually `127.0.0.1`) |
-| `custom` | Anything else that sets a header: Okta Access Gateway, F5 BIG-IP APM, Microsoft Entra application proxy's header-based sign-on, or nginx or Caddy renaming a header | plain | `GONE_AUTH_HEADER` | `GONE_AUTH_HEADER`, `GONE_TRUSTED_PROXIES` (optionally `GONE_AUTH_FORMAT`, `GONE_AUTH_VALUE`) |
+| `GONE_AUTH` | Product | Kind | Header Gone reads | You set | Tested |
+| ----------- | ------- | ---- | ----------------- | ------- | ------ |
+| `cloudflare` | Cloudflare Access | signed (RS256) | `Cf-Access-Jwt-Assertion` | `GONE_AUTH_TEAM`, `GONE_AUTH_AUDIENCE` | Not yet |
+| `google-iap` | Google Cloud Identity-Aware Proxy | signed (ES256) | `X-Goog-Iap-Jwt-Assertion` | `GONE_AUTH_AUDIENCE` | Not yet |
+| `pomerium` | Pomerium | signed (ES256) | `X-Pomerium-Jwt-Assertion` | `GONE_AUTH_HOST` (optionally `GONE_AUTH_JWKS_URL`) | Not yet |
+| `teleport` | Teleport Application Access | signed (RS256) | `Teleport-Jwt-Assertion` | `GONE_AUTH_HOST`, `GONE_AUTH_ISSUER`, `GONE_AUTH_AUDIENCE` | Not yet |
+| `oidc` | Any OpenID Connect provider's ID token, passed on by oauth2-proxy, Vouch or a similar proxy | signed (RS256 or ES256) | `Authorization: Bearer`, or `GONE_AUTH_HEADER` | `GONE_AUTH_ISSUER`, `GONE_AUTH_AUDIENCE` (optionally `GONE_AUTH_ALG`, `GONE_AUTH_HEADER`, `GONE_AUTH_JWKS_URL`) | Yes |
+| `authelia` | Authelia | plain | `Remote-User` | `GONE_TRUSTED_PROXIES` | Yes |
+| `authentik` | authentik proxy outpost | plain | `X-Authentik-Username` | `GONE_TRUSTED_PROXIES` | Not yet |
+| `tailscale` | Tailscale Serve | plain | `Tailscale-User-Login` | `GONE_TRUSTED_PROXIES` (usually `127.0.0.1`) | Not yet |
+| `custom` | Anything else that sets a header: Okta Access Gateway, F5 BIG-IP APM, Microsoft Entra application proxy's header-based sign-on, or nginx or Caddy renaming a header | plain | `GONE_AUTH_HEADER` | `GONE_AUTH_HEADER`, `GONE_TRUSTED_PROXIES` (optionally `GONE_AUTH_FORMAT`, `GONE_AUTH_VALUE`) | Yes |
+
+**Built but untested.** Support for Cloudflare Access, Google IAP, Pomerium, Teleport, authentik and Tailscale is built from each vendor's documentation of what it sends and covered by unit tests, but not yet tested against the live product. Google IAP's key parsing is checked against Google's real published keys. `oidc` (Dex behind oauth2-proxy) and `authelia` (behind Caddy) are tested end to end with the real software, and `custom` in Gone's browser tests. If an untested provider refuses someone it should let in, Gone fails closed: creating answers 401 and `sign_in_denied_total` goes up, but nobody gets in who shouldn't. Please [open an issue](https://github.com/haukened/gone/issues/new/choose) if that happens, or to tell us one works.
 
 Every variable is described in [Configuration](configuration.md#sign-in). A setting that doesn't apply to your provider stops the server, so a typo can't go unnoticed.
 
@@ -68,6 +70,8 @@ When sign-in is on and a visitor isn't signed in:
 ## Recipes
 
 ### Cloudflare Access
+
+Built from Cloudflare's documentation, not yet tested against a live Cloudflare Access; see [built but untested](#providers).
 
 1. In Cloudflare Zero Trust, add a self-hosted application for your Gone hostname with a policy for the people allowed to create.
 2. Add a second application, or path rules, with the **Bypass** action for the [paths to leave open](#paths-to-leave-open).
@@ -107,6 +111,8 @@ GONE_TRUSTED_PROXIES=127.0.0.1
 Set `--cookie-refresh` shorter than your provider's ID token lifetime, so the token Gone checks has not expired. Gone reads the keys from the issuer's `/.well-known/openid-configuration`. Write `GONE_AUTH_ISSUER` exactly as that document's `issuer` does, trailing slash included: tokens carry it verbatim.
 
 ### Pomerium
+
+Built from Pomerium's documentation, not yet tested against a live Pomerium; see [built but untested](#providers).
 
 Turn on `pass_identity_headers` for the Gone route. Add a second route for the [paths to leave open](#paths-to-leave-open) with `allow_public_unauthenticated_access: true`.
 
