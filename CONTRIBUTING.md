@@ -16,7 +16,7 @@ We aim to acknowledge new issues within 14 days. Not every request will be accep
 2. **Fork and branch.** Work on a branch in your fork, named for the change (for example `fix/claim-timeout`).
 3. **Commit with signed commits.** `main` only accepts signed commits ([GitHub's guide](https://docs.github.com/authentication/managing-commit-signature-verification/signing-commits)). Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): `fix(cli): ...`, `feat: ...`, `docs: ...`, `ci: ...`, `test: ...`.
 4. **Open a pull request** against `main` and fill in the template. Keep each PR to one change.
-5. **Pass the checks.** Every PR runs lint, tests with the race detector, the browser end-to-end tests, CodeQL, Codacy (static analysis and coverage), and the latency check. All required checks must pass, and the branch must be up to date with `main`.
+5. **Pass the checks.** Every PR runs lint, tests with the race detector, the browser end-to-end tests, the Helm chart checks (lint, and an install on kind), CodeQL, Codacy (static analysis and coverage), and the latency check. All required checks must pass, and the branch must be up to date with `main`.
 6. **Merge.** A maintainer merges with a merge commit.
 
 ## Requirements for acceptable contributions

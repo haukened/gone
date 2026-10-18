@@ -71,7 +71,7 @@ In short:
 
 In short:
 - **Signed providers** (`cloudflare`, `google-iap`, `pomerium`, `teleport`, `oidc`) verify the token's signature, issuer, audience and expiry. They start without `GONE_TRUSTED_PROXIES` but warn.
-- **Plain-header providers** (`authelia`, `authentik`, `tailscale`, `custom`) refuse to start without `GONE_TRUSTED_PROXIES`, and believe the header only from those addresses.
+- **Plain-header providers** (`authelia`, `authentik`, `tailscale`, `custom`) refuse to start without `GONE_TRUSTED_PROXIES`, and believe the header only from those addresses. In a Kubernetes pod they log a warning, and the Helm chart refuses them; see [Kubernetes](deploy/kubernetes.md#sign-in).
 - A setting that doesn't apply to the chosen provider stops the server.
 - Gone never stores or logs who signed in.
 - `cloudflare`, `google-iap`, `pomerium`, `teleport`, `authentik` and `tailscale` are built from vendor documentation but not yet tested against the live products; see [Providers](sign-in.md#providers).

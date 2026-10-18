@@ -41,7 +41,7 @@ Settings are environment variables (`-e GONE_...`). The full list is in [Configu
 
 The image has a Docker `HEALTHCHECK` that runs `goned healthcheck` every 30 seconds. It is a one-shot probe, not a second server. It calls the running server's `/readyz` on `GONE_ADDR`, using loopback when the address is `:port` or unspecified. It exits `0` when ready and `1` otherwise, and `docker ps` shows the result.
 
-Kubernetes and other orchestrators can probe the endpoints directly:
+Kubernetes and other orchestrators can probe the endpoints directly (the [Helm chart](kubernetes.md) does):
 - `/healthz` (`200 ok` while the process is up);
 - `/readyz` (`200 ready` when the database and blob directory are usable, else `503`; the result is cached for 2 seconds).
 
