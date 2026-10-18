@@ -47,3 +47,44 @@ func TestLoadAuthOffIsQuiet(t *testing.T) {
 		t.Fatalf("leftover option: %v", err)
 	}
 }
+
+// TestLoadAuthKubernetesWarning checks a plain-header provider warns when
+// Gone runs in a Kubernetes pod, and that signed providers and other hosts
+// don't.
+func TestLoadAuthKubernetesWarning(t *testing.T) {
+	plain := func(t *testing.T) {
+		t.Helper()
+		cleanGoneEnvForTest(t)
+		t.Setenv("GONE_AUTH", "authelia")
+		t.Setenv("GONE_TRUSTED_PROXIES", "127.0.0.1")
+	}
+	kube := func(cfg *Config) bool {
+		for _, w := range cfg.Warnings {
+			if strings.HasPrefix(w, "GONE_AUTH=authelia on Kubernetes:") && strings.Contains(w, "docs/deploy/kubernetes.md#sign-in") {
+				return true
+			}
+		}
+		return false
+	}
+
+	plain(t)
+	t.Setenv("KUBERNETES_SERVICE_HOST", "10.96.0.1")
+	cfg, err := Load()
+	if err != nil || !kube(cfg) {
+		t.Fatalf("authelia on Kubernetes: %v %v", err, cfg.Warnings)
+	}
+
+	t.Setenv("KUBERNETES_SERVICE_HOST", "")
+	if cfg, err = Load(); err != nil || kube(cfg) || len(cfg.Warnings) != 0 {
+		t.Fatalf("authelia elsewhere: %v %v", err, cfg.Warnings)
+	}
+
+	cleanGoneEnvForTest(t)
+	t.Setenv("KUBERNETES_SERVICE_HOST", "10.96.0.1")
+	t.Setenv("GONE_AUTH", "google-iap")
+	t.Setenv("GONE_AUTH_AUDIENCE", "/projects/1/global/backendServices/2")
+	t.Setenv("GONE_TRUSTED_PROXIES", "10.244.0.0/16")
+	if cfg, err = Load(); err != nil || len(cfg.Warnings) != 0 {
+		t.Fatalf("signed provider on Kubernetes: %v %v", err, cfg.Warnings)
+	}
+}

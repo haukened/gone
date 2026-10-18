@@ -126,3 +126,16 @@ func TestResolve(t *testing.T) {
 		}
 	}
 }
+
+func TestPlainHeader(t *testing.T) {
+	for _, p := range []string{"authelia", "authentik", "tailscale", Custom} {
+		if !(Settings{Provider: p}).PlainHeader() {
+			t.Errorf("%s: want plain header", p)
+		}
+	}
+	for _, p := range []string{"", None, "cloudflare", "google-iap", "pomerium", "teleport", "oidc", "okta"} {
+		if (Settings{Provider: p}).PlainHeader() {
+			t.Errorf("%q: not a plain-header provider", p)
+		}
+	}
+}

@@ -3,6 +3,7 @@ package config
 
 import (
 	"net/netip"
+	"os"
 	"strings"
 	"time"
 
@@ -203,7 +204,8 @@ func Load() (*Config, error) {
 	if err = validate(&cfg); err != nil {
 		return nil, err
 	}
-	cfg.Warnings = warnings(&cfg)
+	// Kubernetes sets KUBERNETES_SERVICE_HOST in every pod.
+	cfg.Warnings = warnings(&cfg, os.Getenv("KUBERNETES_SERVICE_HOST") != "")
 
 	return &cfg, nil
 }
