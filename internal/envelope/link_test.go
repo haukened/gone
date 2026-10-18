@@ -108,6 +108,7 @@ func checkParseLinkCases(t *testing.T, id string, frag string) {
 		{"/secret/" + id + "#" + frag, ErrInvalidLink},
 		{"https:///secret/" + id + "#" + frag, ErrInvalidLink},
 		{"%%", ErrInvalidLink},
+		{"http://[::%25\xf9]/secret/" + id + "#" + frag, ErrInvalidLink},
 	}
 	for _, c := range cases {
 		if _, err := ParseLink(c.in); !errors.Is(err, c.want) {
