@@ -10,6 +10,7 @@ Start with the [README](../README.md) for what Gone is and a one-command quick s
 | [Docker Compose with Caddy](deploy/compose.md) | A ready-made HTTPS setup with automatic certificates |
 | [Behind a reverse proxy](deploy/reverse-proxy.md) | nginx, Traefik, a Cloudflare Tunnel or any other TLS proxy, and `GONE_TRUSTED_PROXIES` |
 | [Running Gone on Kubernetes](deploy/kubernetes.md) | The Helm chart: install, Gateway API routing, storage, one replica, and which sign-in providers work there |
+| [Running Gone from a package](deploy/packages.md) | The `gone-server` .deb and .rpm: a hardened systemd service for running Gone without Docker |
 | [Configuration](configuration.md) | Every environment variable, with defaults and limits |
 | [Sign-in for private instances](sign-in.md) | Limiting who can create secrets to people your sign-in proxy has signed in |
 | [Branding your instance](branding.md) | Your name, logo, accent colour and footer links, with screenshots of each |

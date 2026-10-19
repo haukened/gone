@@ -129,6 +129,23 @@ tasks:
     cmds:
       - test/interop/signin/run.sh
 
+  shellcheck:
+    desc: Check every shell script with shellcheck (pinned, in Docker, as CI does)
+    cmds:
+      - scripts/shellcheck.sh
+
+  packages:
+    desc: Build a test release (v0.0.0-dev) with its .deb and .rpm packages, then lint and install them in Debian, Ubuntu and Fedora containers
+    deps: [minify]
+    cmds:
+      - scripts/release.sh v0.0.0-dev
+      - test/packages/run.sh
+
+  install-test:
+    desc: Check install.sh against the release in dist/ (run task packages first)
+    cmds:
+      - test/install/run.sh
+
   helm-lint:
     desc: Check the Helm chart without a cluster (helm lint, kubeconform, refused settings); needs helm and kubeconform
     cmds:

@@ -10,7 +10,48 @@ The server binary is `goned`. You only need `gone` to send and receive secrets.
 
 ## Install
 
-Each [GitHub release](https://github.com/haukened/gone/releases) contains static binaries (no libc dependency):
+### Install script (Linux and macOS)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/haukened/gone/main/install.sh | sh
+```
+
+The script:
+- **Downloads** the archive for your system from the latest [GitHub release](https://github.com/haukened/gone/releases).
+- **Checks the checksum** against the release's `SHA256SUMS`, and stops without installing anything if it doesn't match.
+- **Checks the build provenance** with `gh attestation verify` when the [GitHub CLI](https://cli.github.com/) is installed and signed in. Otherwise it says the check was skipped and how to run it.
+- **Installs** `gone` into `~/.local/bin`, without sudo.
+
+Options, given after `sh -s --`:
+- `--version vX.Y.Z` installs that release instead of the latest.
+- `--dir DIR` installs somewhere else.
+
+Running the script again updates `gone`.
+
+If you'd rather read a script before running it, download it first:
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/haukened/gone/main/install.sh
+less install.sh
+sh install.sh
+```
+
+The script's work happens in a function called on its last line, so a download that's cut off partway runs nothing.
+
+### Packages (Debian, Ubuntu, Fedora, RHEL)
+
+Each release has `.deb` and `.rpm` packages for amd64 and arm64. Download one from the [release page](https://github.com/haukened/gone/releases), then:
+
+```sh
+sudo apt install ./gone_3.13.0_amd64.deb       # Debian, Ubuntu
+sudo dnf install ./gone-3.13.0-1.x86_64.rpm    # Fedora, RHEL
+```
+
+The `gone` package holds only the CLI. The server is the separate `gone-server` package; see [Running Gone from a package](deploy/packages.md). The packages aren't in a repository yet, so `apt upgrade` won't update them: install the next release's package the same way.
+
+### Archives
+
+Each release also contains static binaries (no libc dependency):
 
 | OS      | Architectures  | Archive                           |
 | ------- | -------------- | --------------------------------- |
@@ -18,11 +59,14 @@ Each [GitHub release](https://github.com/haukened/gone/releases) contains static
 | macOS   | amd64, arm64   | `gone_<tag>_darwin_<arch>.tar.gz` |
 | Windows | amd64, arm64   | `gone_<tag>_windows_<arch>.zip`   |
 
-The release also contains `SHA256SUMS`, the `goned` server archives for Linux, and the signed build provenance as `gone_<tag>.sigstore.json` (a Sigstore bundle, for offline checks with `gh attestation verify ... --bundle`) and `gone_<tag>.intoto.jsonl` (the same statement as an in-toto DSSE envelope).
+The release also contains:
+- **`SHA256SUMS`**, covering every file.
+- **The `goned` server archives** for Linux.
+- **The signed build provenance** in two forms: `gone_<tag>.sigstore.json` (a Sigstore bundle, for offline checks with `gh attestation verify ... --bundle`) and `gone_<tag>.intoto.jsonl` (the same statement as an in-toto DSSE envelope).
 
-### Verify, then install
+#### Verify, then install
 
-Every archive carries a [build-provenance attestation](https://docs.github.com/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds) signed by the release workflow. Check it before you run anything:
+Every archive and package carries a [build-provenance attestation](https://docs.github.com/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds) signed by the release workflow. Check it before you run anything:
 
 ```sh
 TAG=v3.12.0
@@ -42,7 +86,7 @@ install -m 0755 "gone_${TAG}_linux_amd64/gone" ~/.local/bin/gone
 gone version
 ```
 
-On macOS, a downloaded binary may be quarantined by Gatekeeper. After verifying it, clear the flag with `xattr -d com.apple.quarantine ./gone`.
+On macOS, an archive downloaded in a browser is quarantined, and Gatekeeper refuses to run the unsigned `gone`. After verifying it, clear the flag with `xattr -d com.apple.quarantine ~/.local/bin/gone`. The install script and `curl` downloads aren't quarantined.
 
 ### Build from source
 

@@ -1,0 +1,4 @@
+# rpmlint filters for test/packages/run.sh.
+# Gone's binaries are static (CGO off) by design, so one build runs on every
+# distribution and the package matches the attested release archive.
+addFilter("statically-linked-binary")
