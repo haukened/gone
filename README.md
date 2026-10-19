@@ -92,7 +92,13 @@ Guarantees, in simple terms:
 
 ### From the command line
 
-The `gone` CLI does the same from a terminal and works with secrets sent from the browser, and the other way round. Download it from the [releases page](https://github.com/haukened/gone/releases) and verify it with `gh attestation verify <archive> --repo haukened/gone`.
+The `gone` CLI does the same from a terminal and works with secrets sent from the browser, and the other way round. On Linux or macOS, install it with:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/haukened/gone/main/install.sh | sh
+```
+
+The script checks the download against the release's checksums (and its signed provenance, if the GitHub CLI is signed in) and installs into `~/.local/bin` without sudo. There are also `.deb` and `.rpm` packages and archives for Linux, macOS and Windows on the [releases page](https://github.com/haukened/gone/releases); see [installing the CLI](docs/cli.md#install).
 
 ```sh
 printf 'hunter2' | gone send --ttl 30m              # prints the link and your manage link
@@ -107,7 +113,7 @@ printf 'hunter2' | gone reply '<request-link>'      # answer someone's request
 
 | | |
 | --- | --- |
-| **Run it** | [Docker](docs/deploy/docker.md) · [Compose with Caddy](docs/deploy/compose.md) · [Reverse proxy](docs/deploy/reverse-proxy.md) · [Configuration](docs/configuration.md) · [Metrics](docs/metrics.md) |
+| **Run it** | [Docker](docs/deploy/docker.md) · [Compose with Caddy](docs/deploy/compose.md) · [Reverse proxy](docs/deploy/reverse-proxy.md) · [Kubernetes](docs/deploy/kubernetes.md) · [Linux packages](docs/deploy/packages.md) · [Configuration](docs/configuration.md) · [Metrics](docs/metrics.md) |
 | **Use it** | [CLI](docs/cli.md) · [HTTP API](docs/api.md) ([OpenAPI](docs/openapi.yaml)) · [Protocol](docs/protocol.md) |
 | **Trust it** | [Security and architecture](docs/security.md) · [Reporting a vulnerability](SECURITY.md) |
 | **Build it** | [Contributing](CONTRIBUTING.md) · [Development](docs/development.md) · [Roadmap](docs/ROADMAP.md) · [Rejected features](docs/rejected.md) · [Technical decisions](docs/decisions.md) |
