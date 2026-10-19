@@ -6,7 +6,7 @@
 
 # ----------- Builder Stage -----------
 # Build on the native platform and cross-compile; CGO is disabled so no target toolchain is needed.
-FROM --platform=$BUILDPLATFORM dhi.io/golang:1.27-debian13-dev@sha256:14f0d1c5ac2d37de2e896d661a126f776439836ad19c022be23133d281746264 AS builder
+FROM --platform=$BUILDPLATFORM dhi.io/golang:1.27-debian13-dev@sha256:40fddb9244a96d22d30a3bc2dba2d2f11389bbfdd4cfea1dadf68776a4e897e3 AS builder
 
 ARG MINIFY_VERSION=v2.24.17
 
