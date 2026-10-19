@@ -19,6 +19,15 @@ updates:
     schedule:
       interval: "weekly"
 
+  # nfpm, which builds the release's .deb and .rpm packages (tools/nfpm/go.mod).
+  - package-ecosystem: "gomod"
+    directory: "/tools/nfpm"
+    schedule:
+      interval: "weekly"
+    groups:
+      nfpm:
+        patterns: ["*"]
+
   # The gosec scanner the weekly Security Scan builds (tools/gosec/go.mod).
   - package-ecosystem: "gomod"
     directory: "/tools/gosec"

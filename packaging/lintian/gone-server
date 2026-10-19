@@ -1,0 +1,6 @@
+# Gone's binaries are static (CGO off) by design, so one build runs on every
+# distribution and the package matches the attested release archive.
+gone-server: statically-linked-binary [usr/bin/goned]
+# The same maintainer scripts serve the .deb and the .rpm, so they call
+# systemctl directly rather than Debian's deb-systemd-helper.
+gone-server: maintainer-script-calls-systemctl *

@@ -1,0 +1,65 @@
+# nfpm config for the goned server package (.deb and .rpm), with a systemd
+# service. scripts/release.sh sets PKG_VERSION and PKG_ARCH and fills in ${BIN}
+# (the built binary), ${CHANGELOG} and ${DEB_CHANGELOG}.
+name: gone-server
+arch: ${PKG_ARCH}
+platform: linux
+version: ${PKG_VERSION}
+version_schema: semver
+section: net
+priority: optional
+maintainer: David Haukeness <david@hauken.us>
+vendor: haukened
+homepage: https://github.com/haukened/gone
+license: AGPL-3.0-only
+# RPM's changelog, written by release.sh: one entry pointing at the GitHub
+# release. (nfpm's Debian changelog doesn't pass lintian, so release.sh
+# drops this line for the .deb, which gets ${DEB_CHANGELOG} instead.)
+changelog: ${CHANGELOG}
+description: |-
+  Self-hosted server for sending secrets that open once
+  goned stores only encrypted data: secrets are encrypted in the sender's
+  browser or CLI, and each is deleted once opened or expired. This package
+  runs it as a hardened systemd service listening on 127.0.0.1:8080;
+  put a TLS proxy in front of it.
+contents:
+  - src: ${BIN}
+    dst: /usr/bin/goned
+    file_info:
+      mode: 0755
+  - src: packaging/gone.service
+    dst: /usr/lib/systemd/system/gone.service
+    file_info:
+      mode: 0644
+  - src: packaging/gone.env
+    dst: /etc/default/gone
+    type: config|noreplace
+    file_info:
+      mode: 0644
+  # The licence: Debian's copyright file, and RPM's %license.
+  - src: LICENSE
+    dst: /usr/share/doc/gone-server/copyright
+    packager: deb
+    file_info:
+      mode: 0644
+  - src: LICENSE
+    dst: /usr/share/licenses/gone-server/LICENSE
+    type: license
+    packager: rpm
+    file_info:
+      mode: 0644
+  # Debian only: the changelog and lintian overrides.
+  - src: ${DEB_CHANGELOG}
+    dst: /usr/share/doc/gone-server/changelog.gz
+    packager: deb
+    file_info:
+      mode: 0644
+  - src: packaging/lintian/gone-server
+    dst: /usr/share/lintian/overrides/gone-server
+    packager: deb
+    file_info:
+      mode: 0644
+scripts:
+  postinstall: packaging/scripts/postinstall.sh
+  preremove: packaging/scripts/preremove.sh
+  postremove: packaging/scripts/postremove.sh
