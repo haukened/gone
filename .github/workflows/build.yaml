@@ -57,12 +57,11 @@ jobs:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --build-tags dev ./...
 
-      # install.sh runs under any POSIX sh; the rest are bash. shellcheck is
-      # on the runner image.
+      # install.sh and the package scripts run under any POSIX sh; the rest
+      # are bash. shellcheck is pinned by digest (task shellcheck runs the
+      # same image): the runner's own copy is older and reports differently.
       - name: Run shellcheck
-        run: |
-          shellcheck -s sh install.sh packaging/scripts/*.sh
-          shellcheck scripts/*.sh test/helm/*.sh test/packages/run.sh test/install/run.sh test/interop/signin/*.sh
+        run: scripts/shellcheck.sh
   # Fast correctness check for PRs and branch pushes. No artifacts.
   verify:
     runs-on: ubuntu-latest
