@@ -1,0 +1,21 @@
+apiVersion: v2
+name: gone
+description: Gone, a self-hosted zero-knowledge service for sending a secret that can be opened once
+type: application
+# version and appVersion are stamped from the release tag when the chart is
+# published (release.yaml); they move in lockstep with Gone.
+version: 0.0.0-dev
+appVersion: v0.0.0-dev
+kubeVersion: ">=1.34.0-0"
+home: https://github.com/haukened/gone
+sources:
+  - https://github.com/haukened/gone
+icon: https://raw.githubusercontent.com/haukened/gone/main/docs/brand/gone-mark.svg
+keywords:
+  - secrets
+  - one-time
+  - zero-knowledge
+  - password-sharing
+maintainers:
+  - name: haukened
+    url: https://github.com/haukened

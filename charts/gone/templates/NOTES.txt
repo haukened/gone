@@ -1,0 +1,24 @@
+Gone {{ .Chart.AppVersion }} is installed as {{ include "gone.fullname" . }} in {{ .Release.Namespace }}.
+{{- if .Values.httpRoute.enabled }}
+{{- $gateways := list }}
+{{- range .Values.httpRoute.parentRefs }}{{ $gateways = append $gateways .name }}{{ end }}
+
+It is routed through {{ join ", " $gateways }}{{ with .Values.httpRoute.hostnames }} for {{ join ", " . }}{{ end }}.
+Serve it over HTTPS: browsers only run Gone's encryption on HTTPS pages.
+{{- else }}
+
+Nothing routes to it yet. To try it from this machine:
+  kubectl --namespace {{ .Release.Namespace }} port-forward service/{{ include "gone.fullname" . }} 8080:{{ .Values.service.port }}
+then open http://localhost:8080. For everyone else, enable httpRoute and serve it over HTTPS.
+{{- end }}
+{{- if not .Values.persistence.enabled }}
+
+WARNING: persistence is off. Every restart loses every secret.
+{{- end }}
+{{- if and .Values.httpRoute.enabled (not (compact .Values.config.trustedProxies)) }}
+
+NOTE: config.trustedProxies is empty, so Gone sees the Gateway's address as
+every visitor's and they share one rate limit. Set it to your pod network.
+{{- end }}
+
+Guide: https://github.com/haukened/gone/blob/main/docs/deploy/kubernetes.md

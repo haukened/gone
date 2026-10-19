@@ -1,0 +1,5 @@
+# No volume: an emptyDir, and a warning in the notes.
+persistence:
+  enabled: false
+image:
+  digest: sha256:0000000000000000000000000000000000000000000000000000000000000000

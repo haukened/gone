@@ -1,0 +1,182 @@
+# Gone's Helm chart. Every setting maps to a GONE_* environment variable; an
+# empty value leaves Gone's own default in place. See
+# https://github.com/haukened/gone/blob/main/docs/deploy/kubernetes.md and
+# https://github.com/haukened/gone/blob/main/docs/configuration.md.
+#
+# Gone always runs as one replica: its SQLite database and blob directory
+# have one writer. There is no replicaCount.
+
+image:
+  repository: ghcr.io/haukened/gone
+  # Defaults to the chart's appVersion.
+  tag: ""
+  # Pin by digest (sha256:...) to ignore the tag.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Server settings. Empty means Gone's default (in brackets).
+config:
+  # GONE_MAX_BYTES, the largest secret in bytes [10485760].
+  maxBytes: null
+  # GONE_INLINE_MAX_BYTES, secrets up to this size live in SQLite [8192].
+  inlineMaxBytes: null
+  # GONE_TTL_OPTIONS, the expiry choices [5m, 30m, 1h, 2h, 4h, 8h, 24h].
+  ttlOptions: []
+  # GONE_CLAIM_LEASE [2m].
+  claimLease: ""
+  # GONE_RATE_CREATE and GONE_RATE_READ, as N/s, N/m or N/h; "0" turns a
+  # limit off [10/m and 30/m].
+  rateCreate: ""
+  rateRead: ""
+  # GONE_RATE_BURST [10].
+  rateBurst: null
+  # GONE_TRUSTED_PROXIES: the addresses whose X-Forwarded-For Gone believes.
+  # On Kubernetes that is usually the pod network, because the Gateway's
+  # pods change address. See the guide for what that does and doesn't trust.
+  trustedProxies: []
+
+# Operator policies.
+policy:
+  # GONE_REQUIRE_PASSPHRASE: refuse secrets without a passphrase.
+  requirePassphrase: false
+  # GONE_MAX_FILES, 0 to 10; 0 turns attachments off [10].
+  maxFiles: null
+
+# Operator branding. See docs/branding.md.
+brand:
+  # GONE_BRAND_NAME, up to 40 characters.
+  name: ""
+  # GONE_BRAND_ACCENT, "#light/#dark".
+  accent: ""
+  # GONE_BRAND_LOGO: an SVG or PNG in a ConfigMap you create, e.g.
+  #   kubectl create configmap gone-logo --from-file=logo.svg
+  logo:
+    existingConfigMap: ""
+    key: ""
+  # GONE_CONTACT_URL (https:// or mailto:), GONE_IMPRINT_URL and
+  # GONE_PRIVACY_URL (https://).
+  contactURL: ""
+  imprintURL: ""
+  privacyURL: ""
+
+# Sign-in for private instances. See docs/sign-in.md.
+#
+# Only signed providers are supported on Kubernetes: cloudflare, google-iap,
+# pomerium, teleport and oidc. Plain-header providers (authelia, authentik,
+# tailscale, custom) are refused, because any pod in the cluster could send
+# the header Gone trusts. The guide explains why and what to use instead:
+# docs/deploy/kubernetes.md#sign-in
+auth:
+  # GONE_AUTH: none, cloudflare, google-iap, pomerium, teleport or oidc.
+  provider: none
+  # GONE_AUTH_TEAM (cloudflare).
+  team: ""
+  # GONE_AUTH_AUDIENCE (cloudflare, google-iap, teleport, oidc).
+  audience: ""
+  # GONE_AUTH_ISSUER (teleport, oidc).
+  issuer: ""
+  # GONE_AUTH_HOST (pomerium, teleport).
+  host: ""
+  # GONE_AUTH_JWKS_URL (pomerium, oidc).
+  jwksURL: ""
+  # GONE_AUTH_ALG (oidc): RS256 or ES256.
+  alg: ""
+  # GONE_AUTH_HEADER (oidc), when the token isn't in Authorization.
+  header: ""
+  # GONE_AUTH_SIGNIN_URL: target of the "Sign in" button.
+  signInURL: ""
+
+# Prometheus metrics on a separate port (9090), behind a bearer token.
+metrics:
+  enabled: false
+  # The token, from a Secret you create, e.g.
+  #   kubectl create secret generic gone-metrics --from-literal=token="$(openssl rand -base64 24)"
+  token:
+    existingSecret: ""
+    key: token
+  # A ServiceMonitor for the Prometheus Operator. Needs its CRDs.
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    labels: {}
+
+persistence:
+  # Without persistence, every restart loses every secret.
+  enabled: true
+  # Use a claim you created instead of making one. It must be ReadWriteOnce.
+  existingClaim: ""
+  # "" uses the cluster's default storage class.
+  storageClass: ""
+  size: 1Gi
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+# A Gateway API HTTPRoute. You bring the Gateway (for example Envoy Gateway)
+# and its TLS: browsers only run Gone's encryption on HTTPS pages.
+httpRoute:
+  enabled: false
+  # The Gateway(s) to attach to, e.g. [{name: eg, namespace: envoy-gateway-system}].
+  parentRefs: []
+  hostnames: []
+  annotations: {}
+  labels: {}
+
+# A NetworkPolicy for Gone's pod. Only works if your CNI enforces policies.
+networkPolicy:
+  enabled: false
+  # Who may reach the web port, as NetworkPolicy peers, e.g. the Gateway's
+  # namespace. Empty allows nobody.
+  from: []
+  # Who may reach the metrics port.
+  metricsFrom: []
+  # Egress is limited to DNS, plus HTTPS when a signed sign-in provider
+  # needs to fetch its keys. Set to the provider's addresses to narrow it.
+  keysTo:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    - ipBlock:
+        cidr: ::/0
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 256Mi
+
+# Meets the Pod Security "restricted" level. On OpenShift, set runAsUser,
+# runAsGroup and fsGroup to null so the platform assigns them.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+# Extra environment variables, as {name, value} or {name, valueFrom}.
+# Sign-in (GONE_AUTH*) and the addresses and data directory the chart
+# manages can't be set here.
+extraEnv: []
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+priorityClassName: ""

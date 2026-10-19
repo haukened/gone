@@ -6,6 +6,7 @@ exclude_paths:
   - "test/js/**"
   - "test/e2e/**"
   - "test/interop/signin/authelia/**" # Authelia's config; Semgrep's duplicate-id rule is for Semgrep rule files
+  - "charts/gone/templates/**" # Helm templates: not YAML until rendered; test/helm/lint.sh checks the rendered output
   - "test/vectors/**"
   - "tools/lint/**"
   - "**/package-lock.json"

@@ -40,6 +40,15 @@ func (s Settings) Enabled() bool {
 	return s.Provider != "" && s.Provider != None
 }
 
+// PlainHeader reports whether the provider trusts a plain header from a
+// trusted proxy rather than verifying a signed token.
+//
+// Returns true for authelia, authentik, tailscale and custom.
+func (s Settings) PlainHeader() bool {
+	sp, ok := specs[s.Provider]
+	return s.Enabled() && ok && !sp.signed
+}
+
 // option is one optional GONE_AUTH_* setting, as a bit.
 type option uint16
 

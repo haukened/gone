@@ -16,13 +16,14 @@ const metricsTokenWarning = "GONE_METRICS_TOKEN is shorter than 16 characters; a
 //
 // Parameters:
 //   - cfg: the validated configuration.
+//   - onKubernetes: whether Gone runs in a Kubernetes pod.
 //
 // Returns:
 //   - []string: warning messages, nil when there are none.
-func warnings(cfg *Config) []string {
+func warnings(cfg *Config, onKubernetes bool) []string {
 	var out []string
 	if cfg.MetricsToken != "" && len(cfg.MetricsToken) < minMetricsTokenLen {
 		out = append(out, metricsTokenWarning)
 	}
-	return append(out, authWarnings(cfg)...)
+	return append(out, authWarnings(cfg, onKubernetes)...)
 }

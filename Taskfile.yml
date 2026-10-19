@@ -129,6 +129,17 @@ tasks:
     cmds:
       - test/interop/signin/run.sh
 
+  helm-lint:
+    desc: Check the Helm chart without a cluster (helm lint, kubeconform, refused settings); needs helm and kubeconform
+    cmds:
+      - test/helm/lint.sh
+
+  helm-test:
+    desc: Install the Helm chart on a kind cluster and test it (ENVOY=0 skips Envoy Gateway, KEEP=1 keeps the cluster)
+    deps: [build-prod]
+    cmds:
+      - test/helm/run.sh
+
   e2e-install:
     desc: Install the browsers the end-to-end tests use (Chromium, Firefox, WebKit)
     dir: test/e2e

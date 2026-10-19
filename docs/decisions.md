@@ -27,6 +27,17 @@ Each phase of [the roadmap](ROADMAP.md) also records the decisions made while bu
 | Signed sign-in tokens are verified against the provider's keys. Plain identity headers are believed only from `GONE_TRUSTED_PROXIES`, and such providers refuse to start without it. | Trusting any non-empty identity header | A plain header proves nothing if someone reaches Gone without the proxy; every vendor that sends one says to firewall the app. | — |
 | Configuration from environment variables only | Config files or command-line flags | One way to configure, and it suits containers. | Never |
 
+## Deployment
+
+| Decision | Instead of | Why | Revisit when |
+| -------- | ---------- | --- | ------------ |
+| The Helm chart lives in this repository and its version follows Gone's (chart `3.13.0` runs `v3.13.0`) | A separate chart repository with its own version | One release makes the image and the chart together, so they can't drift, and the chart's install test runs against the code in the same pull request. | The chart needs releases of its own |
+| The chart is published as an OCI artifact on GHCR, attested like the image | A `gh-pages` Helm repository index, or cosign | It sits beside the image, needs no extra hosting, and `gh attestation verify` checks it the same way. | — |
+| The chart runs one replica with the `Recreate` strategy, and refuses `replicaCount` | Several replicas, or a rolling update | SQLite, the blob directory and the rate limits each assume one process; two pods would lose or corrupt secrets. | Gone gains a shared store |
+| Plain-header sign-in (`authelia`, `authentik`, `tailscale`, `custom`) isn't supported on Kubernetes. The chart refuses it; `goned` only warns when it finds itself in a pod. | Allowing it with a pod-network `GONE_TRUSTED_PROXIES`, or a NetworkPolicy | Proxy pods have no fixed address, and trusting the pod network lets any pod forge the header. A NetworkPolicy only helps where the network plugin enforces it, and fails open silently where it doesn't. `goned` warns rather than refusing because a proxy sidecar in Gone's own pod, trusted on `127.0.0.1`, is safe. See [Kubernetes](deploy/kubernetes.md#why-plain-header-sign-in-isnt-supported). | Never |
+| The chart routes with the Gateway API (an HTTPRoute) and has no Ingress template | An Ingress, or both | The Gateway API is where Kubernetes routing is heading. An Ingress is a few lines to write by hand. | Users ask for an Ingress template |
+| The chart doesn't install cert-manager or a Gateway controller | Bundling them as chart dependencies | Both install cluster-wide resources (CRDs and webhooks) that clash with copies a cluster already has, and make upgrades and uninstalls risky. | — |
+
 ## Web client
 
 | Decision | Instead of | Why | Revisit when |

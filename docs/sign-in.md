@@ -39,6 +39,8 @@ List only your proxy's own address in `GONE_TRUSTED_PROXIES`, never a whole netw
 
 **Built but untested.** Support for Cloudflare Access, Google IAP, Pomerium, Teleport, authentik and Tailscale is built from each vendor's documentation of what it sends and covered by unit tests, but not yet tested against the live product. Google IAP's key parsing is checked against Google's real published keys. `oidc` (Dex behind oauth2-proxy) and `authelia` (behind Caddy) are tested end to end with the real software, and `custom` in Gone's browser tests. If an untested provider refuses someone it should let in, Gone fails closed: creating answers 401 and `sign_in_denied_total` goes up, but nobody gets in who shouldn't. Please [open an issue](https://github.com/haukened/gone/issues/new/choose) if that happens, or to tell us one works.
 
+**On Kubernetes,** only the signed providers are supported, because any pod in the cluster could send a plain header. [Running Gone on Kubernetes](deploy/kubernetes.md#sign-in) explains why and what to use instead.
+
 Every variable is described in [Configuration](configuration.md#sign-in). A setting that doesn't apply to your provider stops the server, so a typo can't go unnoticed.
 
 **Signed providers fetch keys.** Gone downloads the provider's public keys when it starts and every hour after, and again when it sees a key it doesn't know (at most once every 5 minutes). It's Gone's only outbound connection. Until the keys load, nobody counts as signed in, and creating is refused.

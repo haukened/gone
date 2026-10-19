@@ -1,6 +1,10 @@
 package config
 
-import "github.com/haukened/gone/v3/internal/auth"
+import (
+	"fmt"
+
+	"github.com/haukened/gone/v3/internal/auth"
+)
 
 // AuthSettings returns the GONE_AUTH* settings for the auth package.
 //
@@ -24,14 +28,25 @@ func validateAuth(cfg *Config) error {
 	return err
 }
 
+// kubernetesPlainHeaderWarning is logged when a plain-header provider runs
+// on Kubernetes, where proxy pod addresses change and trusting the pod
+// network trusts every pod in the cluster.
+const kubernetesPlainHeaderWarning = "GONE_AUTH=%s on Kubernetes: any pod that can reach Gone can forge this header unless the proxy runs in Gone's own pod and GONE_TRUSTED_PROXIES is 127.0.0.1 only; use a signed provider. See docs/deploy/kubernetes.md#sign-in"
+
 // authWarnings returns the sign-in startup warnings, such as a provider
-// without GONE_TRUSTED_PROXIES.
+// without GONE_TRUSTED_PROXIES, or a plain-header provider on Kubernetes.
 //
 // Parameters:
 //   - cfg: the validated configuration.
+//   - onKubernetes: whether Gone runs in a Kubernetes pod
+//     (KUBERNETES_SERVICE_HOST is set).
 //
 // Returns the warnings, nil when there are none.
-func authWarnings(cfg *Config) []string {
-	w, _ := cfg.AuthSettings().Validate(len(cfg.TrustedPrefixes) > 0)
+func authWarnings(cfg *Config, onKubernetes bool) []string {
+	s := cfg.AuthSettings()
+	w, _ := s.Validate(len(cfg.TrustedPrefixes) > 0)
+	if onKubernetes && s.PlainHeader() {
+		w = append(w, fmt.Sprintf(kubernetesPlainHeaderWarning, s.Provider))
+	}
 	return w
 }

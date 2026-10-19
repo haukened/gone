@@ -1,0 +1,45 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gone.fullname" . }}
+  labels:
+    {{- include "gone.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gone.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    {{- with .Values.networkPolicy.from }}
+    - from:
+        {{- toYaml . | nindent 8 }}
+      ports:
+        - port: http
+          protocol: TCP
+    {{- end }}
+    {{- if and .Values.metrics.enabled .Values.networkPolicy.metricsFrom }}
+    - from:
+        {{- toYaml .Values.networkPolicy.metricsFrom | nindent 8 }}
+      ports:
+        - port: metrics
+          protocol: TCP
+    {{- end }}
+  egress:
+    # DNS, so a signed provider's key URL resolves.
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    {{- if include "gone.signedAuth" . }}
+    # The sign-in provider's signing keys, over HTTPS.
+    - to:
+        {{- toYaml .Values.networkPolicy.keysTo | nindent 8 }}
+      ports:
+        - port: 443
+          protocol: TCP
+    {{- end }}
+{{- end }}

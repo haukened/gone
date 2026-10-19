@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "gone.fullname" . }}-test
+  labels:
+    {{- include "gone.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    runAsGroup: 101
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: ready
+      # curl 8.23.0
+      image: curlimages/curl@sha256:a134550be58ab783810e613ae96fd253c38f7bdd16d9bf9be350700c7a29ac06
+      securityContext:
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      args:
+        - --fail-with-body
+        - --silent
+        - --show-error
+        - --max-time
+        - "10"
+        - http://{{ include "gone.fullname" . }}:{{ .Values.service.port }}/readyz
+        - --next
+        - --fail-with-body
+        - --silent
+        - --show-error
+        - --max-time
+        - "10"
+        - http://{{ include "gone.fullname" . }}:{{ .Values.service.port }}/api/policy
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          memory: 32Mi
