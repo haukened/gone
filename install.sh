@@ -130,7 +130,9 @@ main() {
 	tar -xzf "$tmp/$archive" -C "$tmp"
 	[ -f "$tmp/$name/gone" ] || die "$archive doesn't contain gone"
 	old=""
-	[ -x "$dir/gone" ] && old=$("$dir/gone" version 2>/dev/null | awk '{print $2}') || true
+	if [ -x "$dir/gone" ]; then
+		old=$("$dir/gone" version 2>/dev/null | awk '{print $2}') || old=""
+	fi
 	mkdir -p "$dir"
 	cp "$tmp/$name/gone" "$dir/.gone.new.$$"
 	chmod 0755 "$dir/.gone.new.$$"

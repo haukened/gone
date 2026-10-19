@@ -88,7 +88,7 @@ exercise() {
 	local ready=no
 	for _ in $(seq 30); do on 'curl -sf http://127.0.0.1:8080/readyz' >/dev/null 2>&1 && { ready=yes; break; }; sleep 1; done
 	check "$1: serves /readyz on 127.0.0.1:8080" yes "$ready"
-	check "$1: page shows the release" yes "$(on 'curl -s http://127.0.0.1:8080/' | grep -q "$tag" && echo yes || echo no)"
+	check "$1: page shows the release" yes "$(grep -q "$tag" <<<"$(on 'curl -s http://127.0.0.1:8080/')" && echo yes || echo no)"
 	check "$1: not listening beyond localhost" refused "$(on "curl -s -o /dev/null --max-time 3 http://\$(hostname -i | awk '{print \$1}'):8080/healthz && echo open || echo refused")"
 	local pid user
 	pid=$(on 'systemctl show -p MainPID --value gone')

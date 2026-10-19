@@ -48,7 +48,7 @@ def handler(root, tag):
             if body:
                 self.wfile.write(data)
 
-        def log_message(self, *args):  # pylint: disable=arguments-differ
+        def log_message(self, format, *args):  # pylint: disable=redefined-builtin
             """Keeps the test output quiet."""
 
     return Releases

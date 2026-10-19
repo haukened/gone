@@ -73,13 +73,14 @@ check "  and installs nothing" none "$(installed "$work/e")"
 check "  and says why" yes "$(grep -q "doesn't match SHA256SUMS" "$work/out" && echo yes || echo no)"
 
 # A download cut off part-way runs nothing: main() is called on the last line.
-head -c "$(($(wc -c <install.sh) - 20))" install.sh >"$work/cut.sh"
+size=$(wc -c <install.sh)
+head -c "$((size - 20))" install.sh >"$work/cut.sh"
 env GONE_RELEASES_URL="$url" sh -s -- --dir "$work/f" <"$work/cut.sh" >/dev/null 2>&1
 check "a cut-off script installs nothing" none "$(installed "$work/f")"
-head -c "$(($(wc -c <install.sh) / 2))" install.sh >"$work/half.sh"
+head -c "$((size / 2))" install.sh >"$work/half.sh"
 env GONE_RELEASES_URL="$url" sh -s -- --dir "$work/f" <"$work/half.sh" >/dev/null 2>&1
 check "a half-downloaded script installs nothing" none "$(installed "$work/f")"
-check "--help works when piped" yes "$(sh -s -- --help <install.sh 2>&1 | grep -q 'usage: install.sh' && echo yes || echo no)"
+check "--help works when piped" yes "$(grep -q 'usage: install.sh' <<<"$(sh -s -- --help <install.sh 2>&1)" && echo yes || echo no)"
 
 # An unknown architecture fails with a message.
 mkdir -p "$work/bin"
