@@ -56,6 +56,13 @@ jobs:
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --build-tags dev ./...
+
+      # install.sh runs under any POSIX sh; the rest are bash. shellcheck is
+      # on the runner image.
+      - name: Run shellcheck
+        run: |
+          shellcheck -s sh install.sh packaging/scripts/*.sh
+          shellcheck scripts/*.sh test/helm/*.sh test/packages/run.sh test/install/run.sh test/interop/signin/*.sh
   # Fast correctness check for PRs and branch pushes. No artifacts.
   verify:
     runs-on: ubuntu-latest
@@ -242,6 +249,69 @@ jobs:
           name: playwright-report
           path: test/e2e/playwright-report
           retention-days: 7
+
+  # A dry run of the release build (scripts/release.sh), then the .deb and
+  # .rpm packages linted and installed on Debian, Ubuntu and Fedora
+  # containers running systemd (test/packages/run.sh). The release goes on
+  # to the install job.
+  packages:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # zizmor: ignore[cache-poisoning] job never runs on tags; release jobs use no cache
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - name: Install minify and Task
+        run: |
+          go install github.com/tdewolff/minify/v2/cmd/minify@"$MINIFY_VERSION"
+          go install github.com/go-task/task/v3/cmd/task@"$TASK_VERSION"
+
+      - name: Build a release
+        run: |
+          $HOME/go/bin/task minify
+          scripts/release.sh v0.0.0-ci
+
+      - name: Check the packages
+        run: test/packages/run.sh
+
+      - name: Keep the release for the install job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: dist/
+          retention-days: 1
+
+  # install.sh against that release, served the way GitHub serves releases,
+  # on Linux and macOS (test/install/run.sh).
+  install:
+    needs: packages
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Get the release
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: dist/
+
+      - name: Check install.sh
+        run: test/install/run.sh
 
   # The Helm chart without a cluster: helm lint, every scenario in
   # charts/gone/ci rendered and validated with kubeconform, and the
@@ -431,7 +501,7 @@ jobs:
         id: attest
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: 'dist/*.tar.gz, dist/*.zip'
+          subject-path: 'dist/*.tar.gz, dist/*.zip, dist/*.deb, dist/*.rpm'
 
       # Attach the signed provenance to the release too, so it can be checked
       # offline (gh attestation verify --bundle) and is visible to Scorecard:
@@ -454,6 +524,8 @@ jobs:
           files: |
             dist/*.tar.gz
             dist/*.zip
+            dist/*.deb
+            dist/*.rpm
             dist/SHA256SUMS
             dist/*.sigstore.json
             dist/*.intoto.jsonl
