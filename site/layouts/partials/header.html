@@ -1,0 +1,20 @@
+{{- $here := .RelPermalink -}}
+<header class="site">
+	<div class="wrap">
+		<a class="brand" href="{{ "/" | relURL }}" aria-label="Gone home"><span class="brand-g"></span>one</a>
+		<nav class="nav" aria-label="Site">
+			{{- range site.Menus.main }}
+			{{- $current := and (not (strings.HasPrefix .URL "http")) (strings.HasPrefix $here (relURL .URL)) }}
+			<a href="{{ if strings.HasPrefix .URL "http" }}{{ .URL }}{{ else }}{{ .URL | relURL }}{{ end }}"{{ if $current }} aria-current="page"{{ end }}>{{ .Name }}</a>
+			{{- end }}
+		</nav>
+		<div class="site-tools">
+			<a class="btn btn-primary btn-small" href="{{ site.Params.app }}">Use Gone<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg></a>
+			<button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false" hidden>
+				<svg class="ico when-light" aria-hidden="true" focusable="false"><use href="#i-moon" /></svg>
+				<svg class="ico when-dark" aria-hidden="true" focusable="false"><use href="#i-sun" /></svg>
+				<span class="sr-only">Dark mode</span>
+			</button>
+		</div>
+	</div>
+</header>

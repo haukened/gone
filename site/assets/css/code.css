@@ -1,0 +1,7 @@
+/* Code colouring for Chroma's classes, from the app's tokens, so it suits the
+   light and dark themes alike. Restrained, like the rest of the design: most
+   text stays ink. */
+.chroma .c, .chroma .c1, .chroma .cm, .chroma .cs, .chroma .ch { color: var(--color-ink-3); }
+.chroma .s, .chroma .s1, .chroma .s2, .chroma .sb, .chroma .sh, .chroma .se, .chroma .sd, .chroma .si { color: var(--color-accent); }
+.chroma .k, .chroma .kd, .chroma .kn, .chroma .kr, .chroma .kt, .chroma .nb, .chroma .nt { color: var(--color-ink); font-weight: 600; }
+.chroma .nv, .chroma .na, .chroma .no { color: var(--color-ink-2); }

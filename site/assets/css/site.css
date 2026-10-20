@@ -1,0 +1,54 @@
+/* The website's own layout, on top of the app's stylesheets (tokens, base,
+   layout, components, pages), which are bundled before this file. Only what
+   the app doesn't have lives here. */
+
+/* The page body between header and footer. The app's .main centres a single
+   pane; the site's pages are wider and scroll. */
+.site-main {
+  flex: 1;
+  padding-block: clamp(0.5rem, 3vw, 2.25rem) var(--space-7);
+}
+
+.hero {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  max-width: 47.5rem;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.hero .lead {
+  margin-inline: auto;
+}
+
+/* The header on narrow screens. The app fits its two short links between the
+   brand and the tools; the site has four links and a "Use Gone" button, so
+   the links take a row of their own under the brand and tools. */
+@media (max-width: 48rem) {
+  .site .wrap {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "brand tools"
+      "nav nav";
+    row-gap: 0;
+    padding-block: var(--space-2);
+  }
+
+  .site .brand {
+    grid-area: brand;
+  }
+
+  .site .site-tools {
+    grid-area: tools;
+    justify-self: end;
+  }
+
+  .site .nav {
+    grid-area: nav;
+    justify-self: stretch;
+    justify-content: safe center;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}

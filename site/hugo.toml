@@ -9,8 +9,27 @@ enableRobotsTXT = true
 
 [params]
 repo = "https://github.com/haukened/gone"
+# The public instance, for people who just want to send a secret.
+app = "https://gone.hauken.us"
 # The git ref the docs come from; links to repository files point at it.
 docsRef = "main"
+
+[[menus.main]]
+name = "Why Gone"
+url = "/why/"
+weight = 1
+[[menus.main]]
+name = "Docs"
+url = "/docs/"
+weight = 2
+[[menus.main]]
+name = "Trust"
+url = "/trust/"
+weight = 3
+[[menus.main]]
+name = "GitHub"
+url = "https://github.com/haukened/gone"
+weight = 4
 
 [markup.goldmark.parser]
 autoHeadingIDType = "github"
@@ -23,6 +42,32 @@ noClasses = false
 [[module.mounts]]
 source = "content"
 target = "content"
+[[module.mounts]]
+source = "assets"
+target = "assets"
+[[module.mounts]]
+source = "static"
+target = "static"
+
+# The web app's own design system, shared rather than copied: its
+# stylesheets and theme toggle are bundled from web/, its fonts and marks are
+# served beside them so the stylesheets' relative paths work, and its icon
+# sprite is read out of the app's template.
+[[module.mounts]]
+source = "../web/css"
+target = "assets/app/css"
+[[module.mounts]]
+source = "../web/js/theme.js"
+target = "assets/app/js/theme.js"
+[[module.mounts]]
+source = "../web/partials.tmpl.html"
+target = "assets/app/partials.tmpl.html"
+[[module.mounts]]
+source = "../web/fonts"
+target = "static/fonts"
+[[module.mounts]]
+source = "../web/img"
+target = "static/img"
 [[module.mounts]]
 source = "../docs"
 target = "content/docs"

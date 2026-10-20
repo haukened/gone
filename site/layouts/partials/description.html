@@ -1,0 +1,4 @@
+{{- /* A page's description: its front matter, else (the docs) its first
+       paragraph, cut to a sentence or two. */ -}}
+{{- with .Description }}{{ return . }}{{ end -}}
+{{- return (.Summary | plainify | htmlUnescape | truncate 160) -}}
