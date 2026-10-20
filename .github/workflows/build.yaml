@@ -143,7 +143,7 @@ jobs:
       - name: Lint JavaScript and CSS
         run: |
           npm ci --prefix tools/lint --no-audit --no-fund --ignore-scripts
-          tools/lint/node_modules/.bin/eslint --max-warnings 0 web/js web/dev test/js test/interop test/e2e
+          tools/lint/node_modules/.bin/eslint --max-warnings 0 web/js web/dev site/assets/js test/js test/interop test/e2e
           tools/lint/node_modules/.bin/stylelint 'web/css/*.css'
 
       - name: Run JavaScript tests

@@ -6,20 +6,20 @@
 (function () {
   'use strict';
 
-  var COPIED_MS = 2200;
+  const COPIED_MS = 2200;
 
   // statusFor returns the live region that announces a copy: the nearest
   // [data-copy-status] in the same section.
   function statusFor(btn) {
-    var box = btn.closest('section, .pane, main');
+    const box = btn.closest('section, .pane, main');
     return box ? box.querySelector('[data-copy-status]') : null;
   }
 
   // flash shows "Copied" on the button and in the status, then restores both.
   function flash(btn, message) {
-    var label = btn.querySelector('span');
-    var status = statusFor(btn);
-    var before = label ? label.textContent : '';
+    const label = btn.querySelector('span');
+    const status = statusFor(btn);
+    const before = label ? label.textContent : '';
     if (label) label.textContent = message;
     if (status) status.textContent = message === 'Copied' ? 'Copied to the clipboard.' : message;
     window.setTimeout(function () {
@@ -29,7 +29,7 @@
   }
 
   function copy(btn) {
-    var target = document.getElementById(btn.getAttribute('data-copy'));
+    const target = document.getElementById(btn.getAttribute('data-copy'));
     if (!target) return;
     navigator.clipboard.writeText(target.textContent.trim()).then(function () {
       flash(btn, 'Copied');

@@ -7,7 +7,7 @@
 
   function select(tabs, panels, index, focus) {
     tabs.forEach(function (tab, i) {
-      var on = i === index;
+      const on = i === index;
       tab.setAttribute('aria-selected', on ? 'true' : 'false');
       tab.tabIndex = on ? 0 : -1;
       panels[i].hidden = !on;
@@ -27,9 +27,9 @@
   }
 
   function wire(box) {
-    var list = box.querySelector('[role="tablist"]');
-    var tabs = Array.prototype.slice.call(box.querySelectorAll('[role="tab"]'));
-    var panels = tabs.map(function (tab) {
+    const list = box.querySelector('[role="tablist"]');
+    const tabs = Array.prototype.slice.call(box.querySelectorAll('[role="tab"]'));
+    const panels = tabs.map(function (tab) {
       return document.getElementById(tab.getAttribute('aria-controls'));
     });
     if (!list || tabs.length < 2 || panels.indexOf(null) !== -1) return;
@@ -38,7 +38,7 @@
     tabs.forEach(function (tab, i) {
       tab.addEventListener('click', function () { select(tabs, panels, i, false); });
       tab.addEventListener('keydown', function (e) {
-        var to = nextIndex(e.key, i, tabs.length);
+        const to = nextIndex(e.key, i, tabs.length);
         if (to === -1) return;
         e.preventDefault();
         select(tabs, panels, to, true);

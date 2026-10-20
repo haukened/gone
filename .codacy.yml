@@ -10,3 +10,4 @@ exclude_paths:
   - "test/vectors/**" # protocol test vectors: fixed keys and ciphertexts by design
   - "tools/lint/**" # the ESLint and stylelint toolchain, never shipped
   - "**/package-lock.json" # generated lockfiles; OSV-Scanner checks their dependencies
+  - "**/go.sum" # generated Go module checksums; OSV-Scanner checks the modules
