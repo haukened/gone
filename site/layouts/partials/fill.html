@@ -1,0 +1,3 @@
+{{- /* Fills {tag} (v3.12.0) and {version} (3.12.0) from the site's release. */ -}}
+{{- $tag := site.Params.release -}}
+{{- return (replace (replace . "{tag}" $tag) "{version}" (strings.TrimPrefix "v" $tag)) -}}

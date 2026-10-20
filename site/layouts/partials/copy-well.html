@@ -1,0 +1,7 @@
+{{- /* A command in a mono well with its copy button, as the app shows a
+       link. The button stays hidden until copy.js finds a clipboard. */ -}}
+<div class="linkbox cmd">
+	<code id="{{ .id }}">{{ .command }}</code>
+	<button class="btn btn-primary" type="button" data-copy="{{ .id }}" hidden>{{ partial "icon.html" "copy" }}<span>Copy</span></button>
+</div>
+{{- /* */ -}}

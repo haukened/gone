@@ -13,6 +13,9 @@ repo = "https://github.com/haukened/gone"
 app = "https://gone.hauken.us"
 # The git ref the docs come from; links to repository files point at it.
 docsRef = "main"
+# The newest stable release, which the docs describe and install commands
+# name. task site and CI set it from git (HUGO_PARAMS_RELEASE).
+release = "v3.12.0"
 
 [[menus.main]]
 name = "Why Gone"

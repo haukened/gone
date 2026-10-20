@@ -52,3 +52,364 @@
     scrollbar-width: none;
   }
 }
+
+/* ---------------------------------------------------------------- Home */
+
+.home {
+  display: grid;
+  gap: clamp(3rem, 8vw, 6rem);
+}
+
+.home a:not(.btn) {
+  color: var(--color-accent);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.home a:not(.btn):hover {
+  text-decoration: underline;
+}
+
+.home a:not(.btn) .ico {
+  width: 0.95em;
+  height: 0.95em;
+  vertical-align: -0.12em;
+}
+
+.section-title {
+  margin-bottom: var(--space-3);
+  font-size: var(--step-2);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.section-lead {
+  max-width: 60ch;
+  margin-bottom: var(--space-5);
+  color: var(--color-ink-2);
+}
+
+/* The install box: the hero's centre. Tabs reuse the app's segmented
+   control look; each command sits in the app's link box. */
+.install {
+  display: grid;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 47.5rem;
+  margin-inline: auto;
+}
+
+.install-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink-2);
+}
+
+.tab-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: 1.6rem;
+  box-shadow: inset 0 1px 2px var(--well-shade);
+}
+
+.tab-track[hidden] {
+  display: none;
+}
+
+.tab-track [role="tab"] {
+  flex: 1 0 auto;
+  min-height: 2.625rem;
+  padding: 0 0.75rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-ink-2);
+  white-space: nowrap;
+  cursor: pointer;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  transition: color 0.25s, background-color 0.25s, box-shadow 0.25s;
+}
+
+.tab-track [role="tab"]:hover {
+  color: var(--color-ink);
+}
+
+.tab-track [role="tab"][aria-selected="true"] {
+  color: var(--color-ink);
+  background: var(--lens);
+  border-color: var(--edge);
+  box-shadow: inset 0 1px 0 var(--spec), 0 4px 14px -6px var(--shadow);
+}
+
+.tab-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.tab-title {
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.is-tabbed .tab-title {
+  display: none;
+}
+
+/* Without the tab script, the panels stack with a rule between them. */
+.install:not(.is-tabbed) .tab-panel + .tab-panel {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--hair);
+}
+
+.linkbox.cmd code {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0 0.6rem 0 0.75rem;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--color-ink);
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+
+.install-more {
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+/* For people who only want to send a secret: the public instance. */
+.web-cta {
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  max-width: 47.5rem;
+  margin: calc(-1 * clamp(1.5rem, 5vw, 4rem)) auto 0;
+}
+
+.web-cta > span {
+  flex: 1 1 18rem;
+}
+
+.web-cta .btn {
+  flex: none;
+}
+
+.promises {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-6);
+}
+
+.promise .ico,
+.feature-grid .ico {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-bottom: var(--space-3);
+  color: var(--color-accent);
+}
+
+.promise h2 {
+  margin-bottom: var(--space-2);
+  font-size: var(--step-1);
+}
+
+.promise p,
+.feature-grid p,
+.run-options p,
+.open-facts span {
+  color: var(--color-ink-2);
+}
+
+.how {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(2rem, 6vw, 4rem);
+  align-items: center;
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-5);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  position: relative;
+  padding-left: 3rem;
+  color: var(--color-ink-2);
+  counter-increment: step;
+}
+
+.steps li::before {
+  position: absolute;
+  top: -0.1rem;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--color-accent);
+  content: counter(step);
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-pill);
+}
+
+.steps strong {
+  color: var(--color-ink);
+}
+
+.shot {
+  padding: 0.6rem;
+  margin: 0;
+}
+
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: calc(var(--radius-pane) - 0.6rem);
+}
+
+.cli {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.cli .section-lead {
+  margin-bottom: var(--space-2);
+}
+
+.cli-commands {
+  display: grid;
+  gap: var(--space-4);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.cli-commands li {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cli-commands .hint {
+  padding-left: 1rem;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--space-6);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.feature-grid li {
+  padding: var(--space-5) 0;
+  border-top: 1px solid var(--hair);
+}
+
+.feature-grid h3,
+.run-options h3 {
+  margin-bottom: var(--space-1);
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.feature-grid p {
+  font-size: 0.9375rem;
+}
+
+/* One pane, its options divided by hairlines rather than cards. Each
+   option's left and top hairline is clipped at the pane's edge. */
+.run-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.run-options li {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  padding: var(--space-5);
+  box-shadow: -1px 0 0 var(--hair), 0 -1px 0 var(--hair);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  margin-left: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  vertical-align: 0.15em;
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-accent-line);
+  border-radius: var(--radius-pill);
+}
+
+.open-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-5);
+  padding: 0;
+  margin: 0 0 var(--space-4);
+  list-style: none;
+}
+
+.open-facts li {
+  display: grid;
+  gap: var(--space-1);
+}
+
+@media (max-width: 48rem) {
+  .how {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 30rem) {
+  .feature-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .install-more {
+    text-align: left;
+  }
+}
+
+/* Grid items default to their content's width, and a one-line command is
+   wide: let the columns shrink so the command scrolls inside its well
+   instead of widening the page. */
+.home,
+.install,
+.tab-panel,
+.cli,
+.cli-commands li {
+  grid-template-columns: minmax(0, 1fr);
+}

@@ -29,7 +29,7 @@ No. There are no accounts. An operator can require sign-in through their own sig
 Yes. The `gone` CLI sends and opens secrets, works with links made in the browser, and lets scripts handle secrets without printing them. ([The gone CLI](/docs/cli/))
 
 **Do I have to run it in Docker?**
-No. Gone is one static binary. Run it in Docker, on Kubernetes, or from a Debian or RPM package with a systemd service. ([Install](/install/))
+No. Gone is one static binary. Run it in Docker, on Kubernetes, or from a Debian or RPM package with a systemd service. ([Running Gone](/docs/))
 
 **Is it really free?**
 Yes. Every feature works on every instance, under the AGPL-3.0 licence. There's no paid tier and none planned. ([Rejected features](/docs/rejected/))
