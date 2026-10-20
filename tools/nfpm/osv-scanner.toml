@@ -1,0 +1,6 @@
+# OSV-Scanner (and so Scorecard's Vulnerabilities check) reads this file for
+# the go.mod beside it: the nfpm tool module only, never the server's.
+
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+reason = "golang.org/x/crypto/openpgp is deprecated with no fix in any version. nfpm builds no x/crypto/openpgp package (go list -deps): its OpenPGP code is ProtonMail/go-crypto, and it reaches x/crypto only for bcrypt through sprig. govulncheck -mode=binary on the built nfpm finds nothing called. It is a CI-only packaging tool, not shipped."
