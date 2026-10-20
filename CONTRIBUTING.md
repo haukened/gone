@@ -21,6 +21,8 @@ We aim to acknowledge new issues within 14 days. Not every request will be accep
 
 ## Requirements for acceptable contributions
 
+**Suppressions state their reason where they're written.** A `#nosec`, `//nolint`, `shellcheck disable`, `eslint-disable`, `pylint: disable` or `zizmor: ignore` says why on the same line or in a comment just above it, and every path excluded in `.codacy.yml` has a comment. A dependency vulnerability that can't be fixed is ignored only in the `osv-scanner.toml` beside its manifest, with a reason and an `ignoreUntil` date at most a year away, so it gets rechecked. `test/suppressions_test.go` enforces all of this.
+
 ### Code
 - **Go:** idiomatic Go, formatted with `go fmt`. `task lint` (golangci-lint with `.golangci.yml`) must report no issues.
 - **GoDoc on every function**, including what the parameters and return values mean.

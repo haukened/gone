@@ -143,7 +143,7 @@ func (d *DB) write(data []byte) error {
 // Parameters:
 //   - dir: directory.
 func syncDir(dir string) {
-	if f, err := os.Open(dir); err == nil { // #nosec G304 // nosemgrep
+	if f, err := os.Open(dir); err == nil { // #nosec G304 -- the CLI's own config directory // nosemgrep
 		_ = f.Sync()
 		_ = f.Close()
 	}

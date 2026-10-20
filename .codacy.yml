@@ -1,12 +1,12 @@
 exclude_paths:
-  - ".github/**/*"
-  - ".codacy/**"
-  - ".golangci.yml"
-  - "**/*_test.go"
-  - "test/js/**"
-  - "test/e2e/**"
+  - ".github/**/*" # CI workflows and repo config: CodeQL's actions analysis covers the workflows
+  - ".codacy/**" # Codacy's own CLI configuration
+  - ".golangci.yml" # linter configuration, not code
+  - "**/*_test.go" # tests use fixed keys, fake secrets and long table-driven functions on purpose
+  - "test/js/**" # JavaScript tests: fixtures and harnesses, checked by ESLint in CI
+  - "test/e2e/**" # browser tests: Playwright fixtures and specs, checked by ESLint in CI
   - "test/interop/signin/authelia/**" # Authelia's config; Semgrep's duplicate-id rule is for Semgrep rule files
   - "charts/gone/templates/**" # Helm templates: not YAML until rendered; test/helm/lint.sh checks the rendered output
-  - "test/vectors/**"
-  - "tools/lint/**"
-  - "**/package-lock.json"
+  - "test/vectors/**" # protocol test vectors: fixed keys and ciphertexts by design
+  - "tools/lint/**" # the ESLint and stylelint toolchain, never shipped
+  - "**/package-lock.json" # generated lockfiles; OSV-Scanner checks their dependencies
