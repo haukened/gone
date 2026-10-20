@@ -129,6 +129,20 @@ tasks:
     cmds:
       - test/interop/signin/run.sh
 
+  site:
+    desc: Build the website into site/public with the pinned Hugo (tools/hugo); fails on a broken link or heading anchor
+    env:
+      CGO_ENABLED: '0'
+    cmds:
+      - go tool -modfile=tools/hugo/go.mod hugo --source site --minify --cleanDestinationDir
+
+  site-serve:
+    desc: Preview the website at http://127.0.0.1:8088, rebuilding on save (over SSH - ssh -L 8088:localhost:8088 <host>)
+    env:
+      CGO_ENABLED: '0'
+    cmds:
+      - go tool -modfile=tools/hugo/go.mod hugo server --source site --bind 127.0.0.1 --port 8088 --baseURL http://localhost:8088/ --disableFastRender
+
   shellcheck:
     desc: Check every shell script with shellcheck (pinned, in Docker, as CI does)
     cmds:

@@ -1,0 +1,9 @@
+{{- /* Images: a relative path is resolved against the page's source file
+       and served from the mounted docs images. */ -}}
+{{- $u := urls.Parse .Destination -}}
+{{- $src := .Destination -}}
+{{- if not $u.IsAbs -}}
+  {{- $src = relURL (partial "repo-path.html" (dict "page" .Page "rel" $u.Path)) -}}
+{{- end -}}
+<img src="{{ $src }}" alt="{{ .PlainText }}"{{ with .Title }} title="{{ . }}"{{ end }} loading="lazy">
+{{- /* */ -}}

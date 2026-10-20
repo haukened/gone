@@ -1,6 +1,6 @@
 ---
 name: Gone
-description: One-time secret sharing behind frosted glass. Moonstone: calm, private, premium.
+description: "One-time secret sharing behind frosted glass. Moonstone: calm, private, premium."
 colors:
   pearl: "#eeecf1"
   dusk: "#121019"

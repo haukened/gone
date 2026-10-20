@@ -1,0 +1,7 @@
+# OSV-Scanner (and so Scorecard's Vulnerabilities check) reads this file for
+# the go.mod beside it: the Hugo tool module only, never the server's.
+
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+ignoreUntil = 2027-04-20
+reason = "golang.org/x/crypto/openpgp is deprecated with no fix in any version. Hugo builds no x/crypto/openpgp package (go list -deps shows only x/crypto/pbkdf2), and govulncheck -mode=binary on the built hugo finds nothing called. It is a build tool for the static website, never shipped."

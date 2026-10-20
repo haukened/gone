@@ -1,0 +1,68 @@
+# The Gone website. Build: hugo --source site --minify. Preview: hugo server
+# --source site --bind 127.0.0.1 --port 8088. The docs are mounted from the
+# repository (or a release checkout, see GONE_DOCS_ROOT), never copied.
+baseURL = "https://haukened.github.io/gone/"
+locale = "en"
+title = "Gone"
+disableKinds = ["taxonomy", "term", "rss"]
+enableRobotsTXT = true
+
+[params]
+repo = "https://github.com/haukened/gone"
+# The git ref the docs come from; links to repository files point at it.
+docsRef = "main"
+
+[markup.goldmark.parser]
+autoHeadingIDType = "github"
+[markup.goldmark.renderer]
+# The docs carry trusted raw HTML (<picture>, tables, <img width>).
+unsafe = true
+[markup.highlight]
+noClasses = false
+
+[[module.mounts]]
+source = "content"
+target = "content"
+[[module.mounts]]
+source = "../docs"
+target = "content/docs"
+[[module.mounts]]
+source = "../SECURITY.md"
+target = "content/docs/security-policy.md"
+[[module.mounts]]
+source = "../CONTRIBUTING.md"
+target = "content/docs/contributing.md"
+[[module.mounts]]
+source = "../TRADEMARKS.md"
+target = "content/docs/trademarks.md"
+[[module.mounts]]
+source = "../DESIGN.md"
+target = "content/docs/design.md"
+[[module.mounts]]
+source = "../docs/img"
+target = "static/docs/img"
+[[module.mounts]]
+source = "../docs/brand"
+target = "static/docs/brand"
+files = ["**", "! **.md"]
+[[module.mounts]]
+source = "../docs/openapi.yaml"
+target = "static/docs/openapi.yaml"
+
+# The whole repository, read only to check that a link to a repository file
+# (shown on GitHub) points at something that exists. Nothing from it is
+# published.
+[[module.mounts]]
+source = ".."
+target = "assets/repo"
+disableWatch = true
+files = ["! .git/**", "! **/node_modules/**", "! site/public/**", "! site/resources/**"]
+
+# docs/README.md is GitHub's docs index; the site has its own landing page
+# (content/docs/_index.md), and links to the README point there.
+[[cascade]]
+[cascade.build]
+render = "never"
+list = "never"
+[cascade.target]
+path = "/docs/readme"

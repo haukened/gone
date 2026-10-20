@@ -19,6 +19,15 @@ updates:
     schedule:
       interval: "weekly"
 
+  # Hugo, which builds the website from site/ (tools/hugo/go.mod).
+  - package-ecosystem: "gomod"
+    directory: "/tools/hugo"
+    schedule:
+      interval: "weekly"
+    groups:
+      hugo:
+        patterns: ["*"]
+
   # nfpm, which builds the release's .deb and .rpm packages (tools/nfpm/go.mod).
   - package-ecosystem: "gomod"
     directory: "/tools/nfpm"

@@ -1,0 +1,56 @@
+{{- /*
+Links in Markdown. A relative link to a Markdown file becomes that page's
+site URL; a relative link to any other repository file becomes a GitHub link
+at the docs' ref. A link to a page or heading that doesn't exist fails the
+build, so a broken link can't be published.
+*/ -}}
+{{- $dest := .Destination -}}
+{{- $u := urls.Parse $dest -}}
+{{- $href := $dest -}}
+{{- if or $u.IsAbs (hasPrefix $dest "mailto:") (hasPrefix $dest "#") -}}
+  {{- /* external or same-page: as written */ -}}
+{{- else if hasPrefix $dest "/" -}}
+  {{- /* a site page, written from the site root: its real URL, which
+         includes the base path on GitHub Pages */ -}}
+  {{- $p := site.GetPage (strings.TrimSuffix "/" $u.Path) -}}
+  {{- if not $p -}}
+    {{- errorf "%s: link to %q: no such page on the site" .Page.File.Path $dest -}}
+  {{- else -}}
+    {{- $href = $p.RelPermalink -}}
+    {{- with $u.Fragment -}}
+      {{- if not ($p.Fragments.Identifiers.Contains .) -}}
+        {{- errorf "%s: link to %q: %s has no heading #%s" $.Page.File.Path $dest $p.File.Path . -}}
+      {{- end -}}
+      {{- $href = printf "%s#%s" $href . -}}
+    {{- end -}}
+  {{- end -}}
+{{- else if strings.HasSuffix $u.Path ".md" -}}
+  {{- $p := partial "page-for.html" (dict "page" .Page "rel" $u.Path) -}}
+  {{- if not $p -}}
+    {{- /* A repository document that isn't on the site: link to it on GitHub. */ -}}
+    {{- $repoPath := partial "repo-path.html" (dict "page" .Page "rel" $u.Path) -}}
+    {{- if not (partial "repo-has.html" $repoPath) -}}
+      {{- errorf "%s: link to %q: no such file in the repository" .Page.File.Path $dest -}}
+    {{- end -}}
+    {{- $href = printf "%s/blob/%s/%s" site.Params.repo site.Params.docsRef $repoPath -}}
+    {{- with $u.Fragment }}{{ $href = printf "%s#%s" $href . }}{{ end -}}
+  {{- else -}}
+    {{- $href = $p.RelPermalink -}}
+    {{- with $u.Fragment -}}
+      {{- if not ($p.Fragments.Identifiers.Contains .) -}}
+        {{- errorf "%s: link to %q: %s has no heading #%s" $.Page.File.Path $dest $p.File.Path . -}}
+      {{- end -}}
+      {{- $href = printf "%s#%s" $href . -}}
+    {{- end -}}
+  {{- end -}}
+{{- else -}}
+  {{- $repoPath := strings.TrimSuffix "/" (partial "repo-path.html" (dict "page" .Page "rel" $u.Path)) -}}
+  {{- if not (partial "repo-has.html" $repoPath) -}}
+    {{- errorf "%s: link to %q: no such file in the repository" .Page.File.Path $dest -}}
+  {{- end -}}
+  {{- $kind := cond (strings.HasSuffix $u.Path "/") "tree" "blob" -}}
+  {{- $href = printf "%s/%s/%s/%s" site.Params.repo $kind site.Params.docsRef $repoPath -}}
+  {{- with $u.Fragment }}{{ $href = printf "%s#%s" $href . }}{{ end -}}
+{{- end -}}
+<a href="{{ $href }}"{{ with .Title }} title="{{ . }}"{{ end }}>{{ .Text }}</a>
+{{- /* */ -}}

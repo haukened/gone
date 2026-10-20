@@ -1,0 +1,6 @@
+{{- /* The repository path a relative link in a page's source file points
+       at. The source file's real path comes from its mount, so links work
+       the same from docs/, docs/deploy/ and the root documents. */ -}}
+{{- $root := path.Dir hugo.WorkingDir -}}
+{{- $fileRel := strings.TrimPrefix (printf "%s/" $root) .page.File.Filename -}}
+{{- return path.Clean (path.Join (path.Dir $fileRel) .rel) -}}
