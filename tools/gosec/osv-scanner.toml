@@ -3,4 +3,5 @@
 
 [[IgnoredVulns]]
 id = "GO-2026-5932"
+ignoreUntil = 2027-04-20
 reason = "golang.org/x/crypto/openpgp is deprecated with no fix in any version. gosec reaches x/crypto through its AI autofix clients (genai -> cloud auth -> s2a-go) but builds no openpgp package (go list -deps), and govulncheck finds nothing called. It is a CI-only scanner, not shipped."

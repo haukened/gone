@@ -35,7 +35,7 @@ const breakName = ".break"
 // Returns true if the caller now holds the lock.
 func breakStale(path string) bool {
 	brk := path + breakName
-	f, err := os.OpenFile(brk, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePerm) // #nosec G304 // nosemgrep
+	f, err := os.OpenFile(brk, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePerm) // #nosec G304 -- the lock path plus a fixed suffix // nosemgrep
 	if err != nil {
 		if errors.Is(err, fs.ErrExist) {
 			dropStaleBreak(brk)

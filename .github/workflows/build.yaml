@@ -25,6 +25,7 @@ env:
   NODE_VERSION: '24'
   GOLANGCI_LINT_VERSION: v2.14.0
   GOVULNCHECK_VERSION: v1.9.0
+  OSV_SCANNER_VERSION: v2.7.0
 
 jobs:
 
@@ -105,6 +106,14 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@"$GOVULNCHECK_VERSION"
           "$HOME/go/bin/govulncheck" ./...
+
+      # Every manifest in the repo, tools and test packages included, so a new
+      # vulnerable dependency, or a new ignore in an osv-scanner.toml, shows up
+      # in its pull request rather than in the weekly Security Scan.
+      - name: Check dependencies against OSV
+        run: |
+          go install github.com/google/osv-scanner/v2/cmd/osv-scanner@"$OSV_SCANNER_VERSION"
+          "$HOME/go/bin/osv-scanner" scan source --no-call-analysis=go -r .
 
       - name: Install minify
         run: go install github.com/tdewolff/minify/v2/cmd/minify@"$MINIFY_VERSION"

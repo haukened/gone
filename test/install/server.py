@@ -15,10 +15,12 @@ def handler(root, tag):
     class Releases(http.server.BaseHTTPRequestHandler):
         """Answers GitHub's release URLs from a local directory."""
 
+        # http.server dispatches to do_HEAD by this exact name.
         def do_HEAD(self):  # pylint: disable=invalid-name
             """Answers a HEAD request without a body."""
             self.respond(body=False)
 
+        # http.server dispatches to do_GET by this exact name.
         def do_GET(self):  # pylint: disable=invalid-name
             """Answers a GET request."""
             self.respond(body=True)
@@ -48,6 +50,7 @@ def handler(root, tag):
             if body:
                 self.wfile.write(data)
 
+        # The override must keep http.server's parameter names, format included.
         def log_message(self, format, *args):  # pylint: disable=redefined-builtin
             """Keeps the test output quiet."""
 
