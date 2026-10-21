@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  GO_VERSION: '1.27.2'
+  GO_VERSION: '1.27.3'
   GOVULNCHECK_VERSION: v1.9.0
   OSV_SCANNER_VERSION: v2.7.0
 

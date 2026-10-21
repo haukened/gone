@@ -4,7 +4,7 @@
 // Go 1.27's export data, which made every package fail to type-check.
 module github.com/haukened/gone/v3/tools/gosec
 
-go 1.27.2
+go 1.27.3
 
 tool github.com/securego/gosec/v2/cmd/gosec
 

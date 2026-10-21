@@ -21,7 +21,7 @@ concurrency:
 env:
   IMAGE_NAME: ghcr.io/haukened/gone
   CHART_REPO: ghcr.io/haukened/charts
-  GO_VERSION: '1.27.2'
+  GO_VERSION: '1.27.3'
   NODE_VERSION: '24'
 
 jobs:
