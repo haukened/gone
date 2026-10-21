@@ -4,4 +4,4 @@
 // dependencies (flatted) ships a Go package.
 module github.com/haukened/gone/v3/tools/lint
 
-go 1.27.2
+go 1.27.3

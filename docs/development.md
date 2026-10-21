@@ -4,7 +4,7 @@ How to build, run and test Gone from source. The pull request process and coding
 
 ## Requirements
 
-- **Go 1.27.2 or newer.** Gone is pure Go: SQLite comes from [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite). It builds with `CGO_ENABLED=0` into a fully static binary.
+- **Go 1.27.3 or newer.** Gone is pure Go: SQLite comes from [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite). It builds with `CGO_ENABLED=0` into a fully static binary.
 - **[Task](https://taskfile.dev/docs/installation)**, which runs the build steps in `Taskfile.yml`.
 - **Node 20.19 or newer**, for the JavaScript tests and linters. The web client itself needs no npm install.
 - **[minify](https://github.com/tdewolff/minify)**, for production builds only.
