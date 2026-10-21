@@ -628,13 +628,16 @@
 
 /* ---------------------------------------------------------------- Docs */
 
-/* Sidebar, the page on its pane, and "On this page", on one wide frame. */
+/* Sidebar, text and "On this page" straight on the backdrop, like the best
+   docs sites: only callouts and code are boxed. The text keeps a reading
+   measure; the frame centres the three columns. */
 .docs-layout {
   display: grid;
-  grid-template-columns: 13.5rem minmax(0, 1fr) 12rem;
-  gap: clamp(1.5rem, 3vw, 2.5rem);
+  grid-template-columns: 15.5rem minmax(0, 46rem) 13rem;
+  justify-content: center;
+  gap: clamp(2rem, 4vw, 3.5rem);
   align-items: start;
-  max-width: 84rem;
+  max-width: 90rem;
 }
 
 .docs-side,
@@ -643,96 +646,220 @@
   top: var(--space-5);
   max-height: calc(100vh - 2 * var(--space-5));
   overflow-y: auto;
+  padding-bottom: var(--space-5);
   scrollbar-width: thin;
 }
 
-.docs-nav-group + .docs-nav-group {
+/* The sidebar: section names in ink, groups as quiet subheadings, pages on a
+   hairline with the current one marked by an accent bar. */
+.docs-nav-section + .docs-nav-section {
   margin-top: var(--space-5);
 }
 
 .docs-nav-title {
   margin-bottom: var(--space-2);
-  padding-left: 0.75rem;
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--color-ink-3);
-  text-transform: uppercase;
+  color: var(--color-ink);
 }
 
-.docs-nav-group ul,
-.docs-onpage ul {
-  display: grid;
-  gap: 2px;
+.docs-nav-group {
+  margin: var(--space-3) 0 var(--space-1);
+  padding-left: 0.875rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink-3);
+}
+
+.docs-nav-section ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--hair);
+}
+
+.docs-nav-section a {
+  display: block;
+  margin-left: -1px;
+  padding: 0.3rem 0.75rem 0.3rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--color-ink-2);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.docs-nav-section a:hover {
+  color: var(--color-ink);
+  border-left-color: var(--color-ink-3);
+}
+
+.docs-nav-section a[aria-current="page"] {
+  font-weight: 500;
+  color: var(--color-ink);
+  border-left-color: var(--color-accent);
+}
+
+/* The page. */
+.docs-page {
+  min-width: 0;
+}
+
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  font-size: 0.8125rem;
+  color: var(--color-ink-3);
+  list-style: none;
+}
+
+.crumbs li + li::before {
+  margin-right: 0.4rem;
+  content: "›";
+}
+
+.crumbs a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.crumbs a:hover {
+  color: var(--color-accent);
+}
+
+.docs-page > h1 {
+  margin-bottom: var(--space-4);
+}
+
+/* The docs have no front matter: their first paragraph is the lead. */
+.docs-prose > p:first-child {
+  margin-bottom: var(--space-5);
+  font-size: 1.1875rem;
+  line-height: 1.6;
+  color: var(--color-ink-2);
+}
+
+/* "On this page": h2s, with h3s indented under them. */
+.docs-onpage-title {
+  margin-bottom: var(--space-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.docs-toc ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.docs-nav-group a,
-.docs-onpage a {
+.docs-toc ul ul {
+  padding-left: 0.75rem;
+}
+
+.docs-toc a {
   display: block;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.875rem;
-  line-height: 1.35;
-  color: var(--color-ink-2);
-  text-decoration: none;
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  transition: color 0.2s, background-color 0.2s;
-}
-
-.docs-nav-group a:hover,
-.docs-onpage a:hover {
-  color: var(--color-ink);
-  background: var(--well);
-}
-
-.docs-nav-group a[aria-current="page"] {
-  color: var(--color-ink);
-  font-weight: 500;
-  background: var(--lens);
-  border-color: var(--edge);
-  box-shadow: inset 0 1px 0 var(--spec), 0 4px 14px -8px var(--shadow);
-}
-
-.docs-onpage a {
-  padding-block: 0.3rem;
+  padding: 0.25rem 0;
   font-size: 0.8125rem;
-  border-radius: 8px;
+  line-height: 1.4;
+  color: var(--color-ink-3);
+  text-decoration: none;
+  transition: color 0.15s;
 }
 
-.docs-onpage ul ul a {
-  padding-left: 1.5rem;
+.docs-toc a:hover,
+.docs-toc a[aria-current="true"] {
+  color: var(--color-ink);
 }
 
-.docs-page {
-  min-width: 0;
+.docs-toc a[aria-current="true"] {
+  font-weight: 500;
 }
 
-.docs-page > .eyebrow {
-  margin-bottom: var(--space-3);
-}
-
-.docs-menu {
+/* Narrow screens: "Menu" and "On this page" as drop-downs in a bar that
+   stays at the top while reading. Native <details>, so no script. */
+.docs-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: none;
-  margin-bottom: var(--space-4);
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-2) 0;
+  background: var(--frost);
+  backdrop-filter: blur(var(--blur)) saturate(130%);
+  border-bottom: 1px solid var(--hair);
 }
 
-.docs-menu nav {
-  padding-bottom: var(--space-4);
+.docs-drop {
+  position: relative;
 }
 
-.docs-toc-inline {
+.docs-drop summary {
+  display: inline-flex;
+  gap: 0.6rem;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  list-style: none;
+  cursor: pointer;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-pill);
+}
+
+.docs-drop summary::-webkit-details-marker {
   display: none;
 }
 
+.docs-drop summary::after {
+  width: 0.4rem;
+  height: 0.4rem;
+  content: "";
+  border-right: 1.6px solid var(--color-ink-3);
+  border-bottom: 1.6px solid var(--color-ink-3);
+  transform: translateY(-0.12rem) rotate(45deg);
+}
+
+.docs-drop[open] summary::after {
+  transform: translateY(0.1rem) rotate(-135deg);
+}
+
+.docs-drop-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  width: min(20rem, calc(100vw - 2rem));
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: var(--space-4);
+  background: var(--pane-solid);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-well);
+  box-shadow: 0 24px 60px -24px var(--shadow), 0 2px 6px -2px var(--shadow);
+}
+
+.docs-drop-toc {
+  margin-left: auto;
+}
+
+.docs-drop-toc .docs-drop-panel {
+  right: 0;
+  left: auto;
+}
+
+/* The page's footer: previous and next, then edit and feedback links. */
 .docs-foot {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
   margin-top: var(--space-7);
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--hair);
 }
 
 .docs-pager {
@@ -744,12 +871,11 @@
 .docs-pager a {
   display: grid;
   gap: 0.15rem;
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1rem;
   font-weight: 500;
   color: var(--color-ink);
   text-decoration: none;
-  background: var(--well);
-  border: 1px solid var(--well-edge);
+  border: 1px solid var(--hair);
   border-radius: var(--radius-well);
   transition: border-color 0.2s;
 }
@@ -769,41 +895,42 @@
   text-align: right;
 }
 
-.docs-edit {
+.docs-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding-top: var(--space-4);
   font-size: 0.875rem;
+  border-top: 1px solid var(--hair);
 }
 
-.docs-edit a {
+.docs-meta a {
   color: var(--color-ink-2);
   text-decoration: none;
 }
 
-.docs-edit a:hover {
+.docs-meta a:hover {
   color: var(--color-accent);
 }
 
-.docs-edit .ico {
-  width: 0.9em;
-  height: 0.9em;
-  vertical-align: -0.1em;
-}
-
-/* Without "On this page" beside it, the page shows its sections as pills. */
-@media (max-width: 75rem) {
+/* Without room for "On this page" beside the text, it moves to the bar. */
+@media (max-width: 80rem) {
   .docs-layout {
-    grid-template-columns: 13.5rem minmax(0, 1fr);
+    grid-template-columns: 15.5rem minmax(0, 46rem);
   }
 
-  .docs-onpage {
+  .docs-onpage,
+  .docs-drop-menu {
     display: none;
   }
 
-  .docs-toc-inline {
-    display: block;
+  .docs-bar:has(.docs-drop-toc) {
+    display: flex;
   }
 }
 
-/* One column: the sidebar folds into a "Docs menu" disclosure. */
+/* One column: the sidebar moves to the bar's Menu. */
 @media (max-width: 52rem) {
   .docs-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -813,16 +940,23 @@
     display: none;
   }
 
-  .docs-menu {
+  .docs-bar {
+    display: flex;
+  }
+
+  .docs-drop-menu {
     display: block;
   }
 }
 
-/* The docs landing page: the four ways in, on one pane split by hairlines. */
+/* ---------------------------------------------------------------- Docs landing */
+
+/* Where each kind of reader starts, on one pane split by hairlines, then a
+   row of links for looking something up. */
 .docs-home {
   display: grid;
   gap: var(--space-6);
-  max-width: 60rem;
+  max-width: 64rem;
 }
 
 .docs-intro {
@@ -836,59 +970,87 @@
   margin: 0 auto;
 }
 
-/* One section per row, its pages in two columns, so a one-page section
-   doesn't leave a hole beside a nine-page one. */
 .docs-doors {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
   padding: 0;
   overflow: hidden;
+  list-style: none;
 }
 
+/* Each entry point's title, text, button and links share rows with its
+   neighbours (subgrid), so the buttons line up whatever the text length. */
 .docs-door {
-  padding: clamp(1.25rem, 4vw, 2rem);
-}
-
-.docs-door + .docs-door {
-  border-top: 1px solid var(--hair);
+  display: grid;
+  grid-row: span 4;
+  grid-template-rows: subgrid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  box-shadow: -1px 0 0 var(--hair);
 }
 
 .docs-door h2 {
-  margin-bottom: var(--space-3);
   font-size: var(--step-1);
-  font-weight: 500;
+  font-weight: 600;
+}
+
+.docs-door p {
+  font-size: 0.9375rem;
+  color: var(--color-ink-2);
+}
+
+.docs-door .btn {
+  justify-self: start;
 }
 
 .docs-door ul {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4) var(--space-6);
+  align-content: start;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3) 0 0;
+  font-size: 0.875rem;
+  list-style: none;
+  border-top: 1px solid var(--hair);
+}
+
+.docs-door ul a,
+.docs-quick a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.docs-door ul a:hover,
+.docs-quick a:hover {
+  text-decoration: underline;
+}
+
+.docs-quick {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2) var(--space-4);
+  font-size: 0.9375rem;
+  color: var(--color-ink-2);
+}
+
+.docs-quick ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.docs-door li {
-  display: grid;
-  gap: 0.15rem;
-}
-
-.docs-door a {
-  font-weight: 500;
-  color: var(--color-accent);
-  text-decoration: none;
-}
-
-.docs-door a:hover {
-  text-decoration: underline;
-}
-
-.docs-door span {
-  font-size: 0.875rem;
-  color: var(--color-ink-2);
-}
-
-@media (max-width: 48rem) {
-  .docs-door ul {
+@media (max-width: 52rem) {
+  .docs-doors {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .docs-door {
+    box-shadow: 0 -1px 0 var(--hair);
   }
 }

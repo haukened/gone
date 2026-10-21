@@ -7,44 +7,63 @@
 {{- $split := partial "split-title.html" . -}}
 {{- $root := path.Dir hugo.WorkingDir -}}
 {{- $source := strings.TrimPrefix (printf "%s/" $root) .File.Filename -}}
+{{- /* Shown twice (beside the text, and in the narrow-screen bar), so without its id. */ -}}
+{{- $toc := "" }}{{ if .Fragments.Headings }}{{ $toc = replace .TableOfContents ` id="TableOfContents"` "" | safeHTML }}{{ end -}}
+{{- $hasToc := findRE `<a href` $toc 1 -}}
 <div class="wrap docs-layout">
-	<nav class="docs-side" aria-label="Documentation">
-		{{ partial "docs-nav.html" . }}
-	</nav>
+	<aside class="docs-side">
+		<nav aria-label="Documentation">{{ partial "docs-nav.html" . }}</nav>
+	</aside>
 
-	<div class="docs-main">
-		<details class="disclosure docs-menu">
-			<summary>Docs menu</summary>
-			<nav aria-label="Documentation">{{ partial "docs-nav.html" . }}</nav>
-		</details>
+	<article class="docs-page">
+		{{- /* Narrow screens: the sidebar and the page's contents as two
+		       drop-downs that need no script. */}}
+		<div class="docs-bar">
+			<details class="docs-drop docs-drop-menu">
+				<summary>Menu</summary>
+				<div class="docs-drop-panel"><nav aria-label="Documentation">{{ partial "docs-nav.html" . }}</nav></div>
+			</details>
+			{{- if $hasToc }}
+			<details class="docs-drop docs-drop-toc">
+				<summary>On this page</summary>
+				<div class="docs-drop-panel docs-toc">{{ $toc }}</div>
+			</details>
+			{{- end }}
+		</div>
 
-		<article class="pane docs-page">
-			<p class="eyebrow">{{ $entry.section }}</p>
-			<h1>{{ $split.title }}</h1>
-			<div class="docs-toc-inline">{{ partial "page-toc.html" . }}</div>
-			<div class="prose">
-				{{ $split.body }}
-			</div>
-			<p class="sr-only" role="status" data-copy-status></p>
+		<nav class="crumbs" aria-label="Breadcrumb">
+			<ol>
+				<li><a href="{{ (site.GetPage "/docs").RelPermalink }}">Docs</a></li>
+				<li>{{ $entry.section }}</li>
+				{{- with $entry.group }}<li>{{ . }}</li>{{ end }}
+			</ol>
+		</nav>
+		<h1>{{ $split.title }}</h1>
+		<div class="prose docs-prose">
+			{{ $split.body }}
+		</div>
+		<p class="sr-only" role="status" data-copy-status></p>
 
-			<footer class="docs-foot">
-				<nav class="docs-pager" aria-label="Previous and next">
-					{{- if gt $i 0 }}{{ with index $order (sub $i 1) }}
-					<a class="docs-prev" href="{{ .page.RelPermalink }}"><span>Previous</span>{{ .label }}</a>
-					{{- end }}{{ end }}
-					{{- if lt (add $i 1) (len $order) }}{{ with index $order (add $i 1) }}
-					<a class="docs-next" href="{{ .page.RelPermalink }}"><span>Next</span>{{ .label }}</a>
-					{{- end }}{{ end }}
-				</nav>
-				<p class="docs-edit"><a href="{{ site.Params.repo }}/blob/{{ site.Params.docsRef }}/{{ $source }}">View this page on GitHub {{ partial "icon.html" "arrow" }}</a></p>
-			</footer>
-		</article>
-	</div>
+		<footer class="docs-foot">
+			<nav class="docs-pager" aria-label="Previous and next">
+				{{- if gt $i 0 }}{{ with index $order (sub $i 1) }}
+				<a class="docs-prev" href="{{ .page.RelPermalink }}" rel="prev"><span>Previous</span>{{ .label }}</a>
+				{{- end }}{{ end }}
+				{{- if lt (add $i 1) (len $order) }}{{ with index $order (add $i 1) }}
+				<a class="docs-next" href="{{ .page.RelPermalink }}" rel="next"><span>Next</span>{{ .label }}</a>
+				{{- end }}{{ end }}
+			</nav>
+			<p class="docs-meta">
+				<a href="{{ site.Params.repo }}/blob/{{ site.Params.docsRef }}/{{ $source }}">Edit this page on GitHub</a>
+				<a href="{{ site.Params.repo }}/issues/new?title={{ printf "Docs: %s" $entry.label | urlquery }}&amp;body={{ printf "Page: %s\n\n" .Permalink | urlquery }}">Question or mistake? Open an issue</a>
+			</p>
+		</footer>
+	</article>
 
-	{{- with .TableOfContents }}
-	<aside class="docs-onpage" aria-labelledby="onpage-title">
-		<p id="onpage-title" class="docs-nav-title">On this page</p>
-		{{ . }}
+	{{- if $hasToc }}
+	<aside class="docs-onpage docs-toc" aria-labelledby="onpage-title">
+		<p id="onpage-title" class="docs-onpage-title">On this page</p>
+		{{ $toc }}
 	</aside>
 	{{- end }}
 </div>

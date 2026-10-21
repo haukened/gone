@@ -119,3 +119,14 @@ render = "never"
 list = "never"
 [cascade.target]
 path = "/docs/readme"
+
+# Folder READMEs are GitHub's index pages for docs/deploy/ and docs/brand/;
+# on the site they get the folder's own address rather than .../readme/.
+[[cascade]]
+url = "/docs/self-host/"
+[cascade.target]
+path = "/docs/deploy/readme"
+[[cascade]]
+url = "/docs/brand/"
+[cascade.target]
+path = "/docs/brand/readme"

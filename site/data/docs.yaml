@@ -1,35 +1,79 @@
-# The docs' sidebar: its sections and page order, which also sets each page's
-# previous and next links. Paths are relative to docs/ as mounted (the root
-# documents appear under their mounted names). Every docs page must be listed
-# here; the build fails if one isn't, so no page goes unreachable.
+# The docs' sidebar: its sections, optional groups within a section, and page
+# order, which also sets each page's previous and next links. Paths are
+# relative to docs/ as mounted (the root documents appear under their mounted
+# names). Every docs page must be listed exactly once; the build fails if one
+# isn't, so no page goes unreachable.
 sections:
   - title: Use the CLI
     pages:
       - { page: cli.md, label: The gone CLI }
-  - title: Run Gone
+      - { page: cli-reference.md, label: Command reference }
+  - title: Self-host
     pages:
-      - { page: deploy/compose.md, label: Docker Compose with Caddy }
-      - { page: deploy/docker.md, label: Docker }
-      - { page: deploy/reverse-proxy.md, label: Behind a reverse proxy }
-      - { page: deploy/kubernetes.md, label: Kubernetes }
-      - { page: deploy/packages.md, label: Linux packages }
-      - { page: configuration.md, label: Configuration }
-      - { page: sign-in.md, label: Sign-in }
-      - { page: branding.md, label: Branding }
-      - { page: metrics.md, label: Metrics }
-  - title: How it works
+      - { page: deploy/README.md, label: Overview }
+    groups:
+      - title: Install
+        pages:
+          - { page: deploy/compose.md, label: Docker Compose with Caddy }
+          - { page: deploy/docker.md, label: Docker }
+          - { page: deploy/kubernetes.md, label: Kubernetes }
+          - { page: deploy/packages.md, label: Linux packages }
+      - title: Configure
+        pages:
+          - { page: deploy/reverse-proxy.md, label: Behind a reverse proxy }
+          - { page: sign-in.md, label: Require sign-in }
+          - { page: branding.md, label: Branding }
+      - title: Operate
+        pages:
+          - { page: metrics.md, label: Metrics }
+          - { page: operating.md, label: Upgrade and maintain }
+  - title: Security
     pages:
       - { page: security.md, label: Security model }
-      - { page: protocol.md, label: Protocol }
-      - { page: api.md, label: API }
+      - { page: verify.md, label: Verify a release }
       - { page: decisions.md, label: Technical decisions }
-      - { page: rejected.md, label: Rejected ideas }
+      - { page: security-policy.md, label: Report a vulnerability }
+  - title: Reference
+    pages:
+      - { page: configuration.md, label: Configuration }
+      - { page: api.md, label: HTTP API }
+      - { page: protocol.md, label: Protocol specification }
   - title: The project
     pages:
-      - { page: ROADMAP.md, label: Roadmap }
       - { page: contributing.md, label: Contributing }
       - { page: development.md, label: Development }
-      - { page: security-policy.md, label: Reporting a vulnerability }
-      - { page: trademarks.md, label: Trademarks }
+      - { page: ROADMAP.md, label: Roadmap }
+      - { page: rejected.md, label: Rejected features }
       - { page: design.md, label: Design system }
       - { page: brand/README.md, label: Brand mark }
+      - { page: trademarks.md, label: Trademarks }
+
+# The docs landing page: where each kind of reader starts, most readers first.
+doors:
+  - title: Share secrets from your terminal
+    text: Install the gone CLI, send your first secret, and use it from scripts and AI agents.
+    start: { page: cli.md, label: Install the CLI }
+    more:
+      - cli-reference.md
+  - title: Host Gone yourself
+    text: Run your own instance with Docker, Kubernetes or a Linux package, behind your own HTTPS.
+    start: { page: deploy/README.md, label: Choose how to run it }
+    more:
+      - deploy/compose.md
+      - configuration.md
+      - operating.md
+  - title: Check how Gone keeps a secret
+    text: What Gone protects, what it can't, and how to check that a release came from this source.
+    start: { page: security.md, label: Read the security model }
+    more:
+      - verify.md
+      - protocol.md
+
+# The row of quick links under the doors.
+quick:
+  - configuration.md
+  - cli-reference.md
+  - api.md
+  - protocol.md
+  - contributing.md
+  - ROADMAP.md
