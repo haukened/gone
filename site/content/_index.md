@@ -17,7 +17,7 @@ install:
     - id: unix
       label: Linux & macOS
       commands:
-        - curl -fsSL https://raw.githubusercontent.com/haukened/gone/main/install.sh | sh
+        - curl -fsSL https://getgone.dev/install.sh | sh
       hint: Installs into ~/.local/bin without sudo, after checking the download against the release's checksums.
       link:
         text: Read the script first

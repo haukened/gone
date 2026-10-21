@@ -13,8 +13,6 @@
   display: grid;
   justify-items: center;
   gap: var(--space-4);
-  max-width: 47.5rem;
-  margin-inline: auto;
   text-align: center;
 }
 
@@ -55,9 +53,12 @@
 
 /* ---------------------------------------------------------------- Home */
 
+/* One measure for every section, so the page keeps a single edge from the
+   hero down; wide enough for the install command on one line. */
 .home {
   display: grid;
   gap: clamp(3rem, 8vw, 6rem);
+  max-width: 60rem;
 }
 
 .home a:not(.btn) {
@@ -94,9 +95,6 @@
 .install {
   display: grid;
   gap: var(--space-4);
-  width: 100%;
-  max-width: 47.5rem;
-  margin-inline: auto;
 }
 
 .install-title {
@@ -191,9 +189,7 @@
 .web-cta {
   flex-wrap: wrap;
   align-items: center;
-  width: 100%;
-  max-width: 47.5rem;
-  margin: calc(-1 * clamp(1.5rem, 5vw, 4rem)) auto 0;
+  margin-top: calc(-1 * clamp(1.5rem, 5vw, 4rem));
 }
 
 .web-cta > span {
@@ -412,4 +408,487 @@
 .cli,
 .cli-commands li {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* ---------------------------------------------------------------- Pages */
+
+/* Why, Choose, Trust, Privacy: one pane at the app's reading width, like its
+   About page. */
+.page-wrap {
+  max-width: calc(47.5rem + 2 * clamp(1rem, 4vw, 2.5rem));
+}
+
+.page > h1,
+.docs-page > h1 {
+  margin-bottom: var(--space-5);
+}
+
+.page > h1 code,
+.docs-page > h1 code {
+  font-size: 0.85em;
+}
+
+.page .toc,
+.docs-page .toc {
+  margin-bottom: var(--space-4);
+}
+
+/* ---------------------------------------------------------------- Prose */
+
+/* The app's .prose covers headings, paragraphs, lists and inline code; the
+   docs also need code blocks, tables, callouts, images and quotes. */
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose h2 {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--hair);
+}
+
+.prose h2,
+.prose h3,
+.prose h4 {
+  scroll-margin-top: var(--space-5);
+}
+
+.prose h4 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--step-0);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.prose h2 code,
+.prose h3 code {
+  font-size: 0.85em;
+}
+
+.prose a code {
+  color: inherit;
+}
+
+.prose li > ul,
+.prose li > ol {
+  margin: var(--space-2) 0 0;
+}
+
+.prose hr {
+  margin: var(--space-6) 0;
+  border: 0;
+  border-top: 1px solid var(--hair);
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-well);
+}
+
+.prose blockquote {
+  max-width: 64ch;
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--color-accent-line);
+}
+
+.prose kbd {
+  padding: 0.05rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+}
+
+/* Alerts (> [!NOTE]) as the app's callout, stacked rather than in a row. */
+.prose .callout {
+  display: block;
+  max-width: 64ch;
+  margin: 0 0 var(--space-4);
+  font-size: 0.9375rem;
+}
+
+.prose .callout p,
+.prose .callout ul {
+  margin-bottom: var(--space-2);
+}
+
+.prose .callout > :last-child {
+  margin-bottom: 0;
+}
+
+.callout-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+  text-transform: uppercase;
+}
+
+.callout-warning,
+.callout-caution {
+  background: var(--danger-soft);
+  border-color: var(--danger-line);
+}
+
+.callout-warning .callout-title,
+.callout-caution .callout-title {
+  color: var(--danger);
+}
+
+/* Code blocks: a recessed mono well that scrolls sideways, with its copy
+   button in the top right corner. */
+.codeblock {
+  position: relative;
+  margin: 0 0 var(--space-4);
+}
+
+.codeblock pre {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-ink);
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-well);
+  box-shadow: inset 0 1px 2px var(--well-shade);
+  scrollbar-width: thin;
+}
+
+.codeblock pre code {
+  padding: 0;
+  font-size: inherit;
+  background: none;
+  border: 0;
+}
+
+.codeblock-copy {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.codeblock:hover .codeblock-copy,
+.codeblock-copy:focus-visible,
+.codeblock-copy:active {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .codeblock-copy {
+    opacity: 1;
+  }
+}
+
+/* Tables: hairline rows in a wrapper that scrolls on narrow screens. */
+.table-wrap {
+  margin: 0 0 var(--space-5);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.prose table {
+  width: 100%;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  border-collapse: collapse;
+}
+
+.prose th,
+.prose td {
+  padding: 0.55rem 0.75rem 0.55rem 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--hair);
+}
+
+.prose th {
+  font-weight: 600;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.prose td code {
+  overflow-wrap: anywhere;
+}
+
+.prose .align-center {
+  text-align: center;
+}
+
+.prose .align-right {
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------- Docs */
+
+/* Sidebar, the page on its pane, and "On this page", on one wide frame. */
+.docs-layout {
+  display: grid;
+  grid-template-columns: 13.5rem minmax(0, 1fr) 12rem;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  align-items: start;
+  max-width: 84rem;
+}
+
+.docs-side,
+.docs-onpage {
+  position: sticky;
+  top: var(--space-5);
+  max-height: calc(100vh - 2 * var(--space-5));
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.docs-nav-group + .docs-nav-group {
+  margin-top: var(--space-5);
+}
+
+.docs-nav-title {
+  margin-bottom: var(--space-2);
+  padding-left: 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-3);
+  text-transform: uppercase;
+}
+
+.docs-nav-group ul,
+.docs-onpage ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.docs-nav-group a,
+.docs-onpage a {
+  display: block;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--color-ink-2);
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.docs-nav-group a:hover,
+.docs-onpage a:hover {
+  color: var(--color-ink);
+  background: var(--well);
+}
+
+.docs-nav-group a[aria-current="page"] {
+  color: var(--color-ink);
+  font-weight: 500;
+  background: var(--lens);
+  border-color: var(--edge);
+  box-shadow: inset 0 1px 0 var(--spec), 0 4px 14px -8px var(--shadow);
+}
+
+.docs-onpage a {
+  padding-block: 0.3rem;
+  font-size: 0.8125rem;
+  border-radius: 8px;
+}
+
+.docs-onpage ul ul a {
+  padding-left: 1.5rem;
+}
+
+.docs-page {
+  min-width: 0;
+}
+
+.docs-page > .eyebrow {
+  margin-bottom: var(--space-3);
+}
+
+.docs-menu {
+  display: none;
+  margin-bottom: var(--space-4);
+}
+
+.docs-menu nav {
+  padding-bottom: var(--space-4);
+}
+
+.docs-toc-inline {
+  display: none;
+}
+
+.docs-foot {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-7);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--hair);
+}
+
+.docs-pager {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.docs-pager a {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  text-decoration: none;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-well);
+  transition: border-color 0.2s;
+}
+
+.docs-pager a:hover {
+  border-color: var(--color-accent-line);
+}
+
+.docs-pager span {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-ink-3);
+}
+
+.docs-next {
+  grid-column: 2;
+  text-align: right;
+}
+
+.docs-edit {
+  font-size: 0.875rem;
+}
+
+.docs-edit a {
+  color: var(--color-ink-2);
+  text-decoration: none;
+}
+
+.docs-edit a:hover {
+  color: var(--color-accent);
+}
+
+.docs-edit .ico {
+  width: 0.9em;
+  height: 0.9em;
+  vertical-align: -0.1em;
+}
+
+/* Without "On this page" beside it, the page shows its sections as pills. */
+@media (max-width: 75rem) {
+  .docs-layout {
+    grid-template-columns: 13.5rem minmax(0, 1fr);
+  }
+
+  .docs-onpage {
+    display: none;
+  }
+
+  .docs-toc-inline {
+    display: block;
+  }
+}
+
+/* One column: the sidebar folds into a "Docs menu" disclosure. */
+@media (max-width: 52rem) {
+  .docs-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .docs-side {
+    display: none;
+  }
+
+  .docs-menu {
+    display: block;
+  }
+}
+
+/* The docs landing page: the four ways in, on one pane split by hairlines. */
+.docs-home {
+  display: grid;
+  gap: var(--space-6);
+  max-width: 60rem;
+}
+
+.docs-intro {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.docs-intro .lead {
+  margin: 0 auto;
+}
+
+/* One section per row, its pages in two columns, so a one-page section
+   doesn't leave a hole beside a nine-page one. */
+.docs-doors {
+  display: grid;
+  padding: 0;
+  overflow: hidden;
+}
+
+.docs-door {
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.docs-door + .docs-door {
+  border-top: 1px solid var(--hair);
+}
+
+.docs-door h2 {
+  margin-bottom: var(--space-3);
+  font-size: var(--step-1);
+  font-weight: 500;
+}
+
+.docs-door ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.docs-door li {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.docs-door a {
+  font-weight: 500;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.docs-door a:hover {
+  text-decoration: underline;
+}
+
+.docs-door span {
+  font-size: 0.875rem;
+  color: var(--color-ink-2);
+}
+
+@media (max-width: 48rem) {
+  .docs-door ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

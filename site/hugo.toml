@@ -1,7 +1,7 @@
 # The Gone website. Build: hugo --source site --minify. Preview: hugo server
 # --source site --bind 127.0.0.1 --port 8088. The docs are mounted from the
 # repository (or a release checkout, see GONE_DOCS_ROOT), never copied.
-baseURL = "https://haukened.github.io/gone/"
+baseURL = "https://getgone.dev/"
 locale = "en"
 title = "Gone"
 disableKinds = ["taxonomy", "term", "rss"]
@@ -18,20 +18,20 @@ docsRef = "main"
 release = "v3.12.0"
 
 [[menus.main]]
-name = "Why Gone"
-url = "/why/"
+name = "Home"
+url = "/"
 weight = 1
 [[menus.main]]
 name = "Docs"
 url = "/docs/"
 weight = 2
 [[menus.main]]
-name = "Trust"
-url = "/trust/"
+name = "Why Gone"
+url = "/why/"
 weight = 3
 [[menus.main]]
-name = "GitHub"
-url = "https://github.com/haukened/gone"
+name = "Trust"
+url = "/trust/"
 weight = 4
 
 [markup.goldmark.parser]
@@ -86,6 +86,11 @@ target = "content/docs/trademarks.md"
 [[module.mounts]]
 source = "../DESIGN.md"
 target = "content/docs/design.md"
+# The CLI installer, served at /install.sh so the home page's command is
+# short; the same file as in the repository, never a copy.
+[[module.mounts]]
+source = "../install.sh"
+target = "static/install.sh"
 [[module.mounts]]
 source = "../docs/img"
 target = "static/docs/img"

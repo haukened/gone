@@ -1,0 +1,8 @@
+{{- /* A fenced code block: highlighted, in a scrolling well, with a copy
+       button that copy.js shows where there is a clipboard. */ -}}
+{{- $id := printf "code-%d" .Ordinal -}}
+<div class="codeblock">
+<div class="codeblock-code" id="{{ $id }}">{{ transform.Highlight .Inner (.Type | default "text") .Options }}</div>
+<button class="btn btn-quiet btn-small codeblock-copy" type="button" data-copy="{{ $id }}" hidden>{{ partial "icon.html" "copy" }}<span>Copy</span></button>
+</div>
+{{- /* */ -}}

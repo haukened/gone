@@ -1,0 +1,12 @@
+{{- /* The docs pages in sidebar order, from data/docs.yaml: a list of
+       dicts with the page, its sidebar label and its section's title. */ -}}
+{{- $out := slice -}}
+{{- range site.Data.docs.sections -}}
+  {{- $section := .title -}}
+  {{- range .pages -}}
+    {{- $p := site.GetPage (printf "/docs/%s" (strings.TrimSuffix ".md" .page)) -}}
+    {{- if not $p -}}{{- errorf "data/docs.yaml lists %q, which isn't a docs page" .page -}}{{- end -}}
+    {{- $out = $out | append (dict "page" $p "label" .label "section" $section) -}}
+  {{- end -}}
+{{- end -}}
+{{- return $out -}}

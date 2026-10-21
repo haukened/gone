@@ -1,0 +1,13 @@
+{{- /* A page's rendered content split into its first <h1> (as HTML, so
+       inline code in a title survives) and the rest, so a layout can place
+       the title above the page's contents list. The docs and the site pages
+       both start with a "# " heading. */ -}}
+{{- $html := .Content -}}
+{{- $title := "" -}}
+{{- with findRESubmatch `(?s)\A\s*(?:<!--.*?-->\s*)*<h1[^>]*>(.*?)</h1>` $html 1 -}}
+  {{- $title = index (index . 0) 1 -}}
+  {{- $html = replaceRE `(?s)\A\s*(?:<!--.*?-->\s*)*<h1[^>]*>.*?</h1>` "" $html 1 -}}
+{{- else -}}
+  {{- $title = partial "title.html" . -}}
+{{- end -}}
+{{- return dict "title" ($title | safeHTML) "body" ($html | safeHTML) -}}

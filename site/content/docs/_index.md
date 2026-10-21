@@ -1,5 +1,4 @@
 ---
 title: Documentation
+description: Use the gone CLI, run your own server, and see exactly how Gone keeps a secret.
 ---
-
-Spike placeholder: the docs landing page with four doors.

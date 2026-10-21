@@ -1,0 +1,14 @@
+{{- /* The docs sidebar: each section's pages, the current one marked. */ -}}
+{{- $here := . -}}
+{{- $order := partialCached "docs-order.html" . "docs-order" -}}
+{{- range site.Data.docs.sections }}
+{{- $section := .title }}
+<div class="docs-nav-group">
+	<p class="docs-nav-title">{{ $section }}</p>
+	<ul>
+		{{- range where $order "section" $section }}
+		<li><a href="{{ .page.RelPermalink }}"{{ if eq .page $here }} aria-current="page"{{ end }}>{{ .label }}</a></li>
+		{{- end }}
+	</ul>
+</div>
+{{- end }}

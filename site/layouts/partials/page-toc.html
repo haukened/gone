@@ -1,0 +1,17 @@
+{{- /* Pills linking to a page's sections (its h2s), as the app's About page
+       does. Only for pages with enough sections to need it. */ -}}
+{{- $h2 := slice -}}
+{{- with .Fragments.Headings -}}
+  {{- range . -}}
+    {{- if eq .Level 1 }}{{ $h2 = $h2 | append .Headings }}{{ else if eq .Level 2 }}{{ $h2 = $h2 | append . }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+{{- if ge (len $h2) 3 }}
+<nav class="toc" aria-label="On this page">
+	<ol>
+		{{- range $h2 }}
+		<li><a href="#{{ .ID }}">{{ .Title | plainify }}</a></li>
+		{{- end }}
+	</ol>
+</nav>
+{{- end -}}

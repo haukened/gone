@@ -1,0 +1,56 @@
+{{ define "main" }}
+{{- $order := partialCached "docs-order.html" . "docs-order" -}}
+{{- $i := -1 -}}
+{{- range $n, $e := $order }}{{ if eq $e.page $ }}{{ $i = $n }}{{ end }}{{ end -}}
+{{- if lt $i 0 }}{{ errorf "%s isn't listed in site/data/docs.yaml; add it so the docs sidebar reaches it" .File.Path }}{{ end -}}
+{{- $entry := index $order $i -}}
+{{- $split := partial "split-title.html" . -}}
+{{- $root := path.Dir hugo.WorkingDir -}}
+{{- $source := strings.TrimPrefix (printf "%s/" $root) .File.Filename -}}
+<div class="wrap docs-layout">
+	<nav class="docs-side" aria-label="Documentation">
+		{{ partial "docs-nav.html" . }}
+	</nav>
+
+	<div class="docs-main">
+		<details class="disclosure docs-menu">
+			<summary>Docs menu</summary>
+			<nav aria-label="Documentation">{{ partial "docs-nav.html" . }}</nav>
+		</details>
+
+		<article class="pane docs-page">
+			<p class="eyebrow">{{ $entry.section }}</p>
+			<h1>{{ $split.title }}</h1>
+			<div class="docs-toc-inline">{{ partial "page-toc.html" . }}</div>
+			<div class="prose">
+				{{ $split.body }}
+			</div>
+			<p class="sr-only" role="status" data-copy-status></p>
+
+			<footer class="docs-foot">
+				<nav class="docs-pager" aria-label="Previous and next">
+					{{- if gt $i 0 }}{{ with index $order (sub $i 1) }}
+					<a class="docs-prev" href="{{ .page.RelPermalink }}"><span>Previous</span>{{ .label }}</a>
+					{{- end }}{{ end }}
+					{{- if lt (add $i 1) (len $order) }}{{ with index $order (add $i 1) }}
+					<a class="docs-next" href="{{ .page.RelPermalink }}"><span>Next</span>{{ .label }}</a>
+					{{- end }}{{ end }}
+				</nav>
+				<p class="docs-edit"><a href="{{ site.Params.repo }}/blob/{{ site.Params.docsRef }}/{{ $source }}">View this page on GitHub {{ partial "icon.html" "arrow" }}</a></p>
+			</footer>
+		</article>
+	</div>
+
+	{{- with .TableOfContents }}
+	<aside class="docs-onpage" aria-labelledby="onpage-title">
+		<p id="onpage-title" class="docs-nav-title">On this page</p>
+		{{ . }}
+	</aside>
+	{{- end }}
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+{{- $js := resources.Get "js/copy.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{ end }}

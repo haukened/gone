@@ -1,4 +1,6 @@
-{{- /* A page's description: its front matter, else (the docs) its first
-       paragraph, cut to a sentence or two. */ -}}
+{{- /* A page's description: its front matter, else (the docs) the first
+       paragraph after its title, cut to a sentence or so. */ -}}
 {{- with .Description }}{{ return . }}{{ end -}}
-{{- return (.Summary | plainify | htmlUnescape | truncate 160) -}}
+{{- $first := .Summary -}}
+{{- with findRE `(?s)<p>.*?</p>` (partial "split-title.html" .).body 1 }}{{ $first = index . 0 }}{{ end -}}
+{{- return ($first | plainify | htmlUnescape | truncate 140) -}}

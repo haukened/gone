@@ -1,0 +1,28 @@
+{{ define "main" }}
+{{- $order := partialCached "docs-order.html" . "docs-order" -}}
+{{- /* Every docs page must be in data/docs.yaml, or the sidebar can't reach it. */ -}}
+{{- range .RegularPagesRecursive }}
+	{{- $p := . }}
+	{{- if not (where $order "page" $p) }}{{ errorf "%s isn't listed in site/data/docs.yaml; add it so the docs sidebar reaches it" $p.File.Path }}{{ end }}
+{{- end }}
+<div class="wrap docs-home">
+	<header class="docs-intro">
+		<h1>{{ .Title }}</h1>
+		{{ with .Description }}<p class="lead">{{ . }}</p>{{ end }}
+	</header>
+	{{ with .Content }}<div class="prose docs-intro-text">{{ . }}</div>{{ end }}
+	<div class="pane docs-doors">
+		{{- range site.Data.docs.sections }}
+		{{- $section := .title }}
+		<section class="docs-door" aria-labelledby="door-{{ anchorize $section }}">
+			<h2 id="door-{{ anchorize $section }}">{{ $section }}</h2>
+			<ul>
+				{{- range where $order "section" $section }}
+				<li><a href="{{ .page.RelPermalink }}">{{ .label }}</a><span>{{ partial "description.html" .page }}</span></li>
+				{{- end }}
+			</ul>
+		</section>
+		{{- end }}
+	</div>
+</div>
+{{ end }}
