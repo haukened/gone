@@ -232,12 +232,18 @@ jobs:
         working-directory: test/e2e
         run: npm ci --no-audit --no-fund
 
+      # Browser builds are linked against the OS release's libraries, so a cache
+      # from another release (ubuntu-latest moving to 26.04) must not be reused.
+      - name: Identify OS release
+        id: os
+        run: . /etc/os-release && echo "release=${ID}-${VERSION_ID}" >> "$GITHUB_OUTPUT"
+
       - name: Cache browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           # zizmor: ignore[cache-poisoning] job never runs on tags; release jobs use no cache
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('test/e2e/package-lock.json') }}
+          key: ${{ runner.os }}-${{ steps.os.outputs.release }}-playwright-${{ hashFiles('test/e2e/package-lock.json') }}
 
       # Downloads only what the cache lacks; the system packages always install.
       - name: Install browsers
