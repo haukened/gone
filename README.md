@@ -113,9 +113,10 @@ printf 'hunter2' | gone reply '<request-link>'      # answer someone's request
 
 | | |
 | --- | --- |
-| **Run it** | [Docker](docs/deploy/docker.md) · [Compose with Caddy](docs/deploy/compose.md) · [Reverse proxy](docs/deploy/reverse-proxy.md) · [Kubernetes](docs/deploy/kubernetes.md) · [Linux packages](docs/deploy/packages.md) · [Configuration](docs/configuration.md) · [Metrics](docs/metrics.md) |
-| **Use it** | [CLI](docs/cli.md) · [HTTP API](docs/api.md) ([OpenAPI](docs/openapi.yaml)) · [Protocol](docs/protocol.md) |
-| **Trust it** | [Security and architecture](docs/security.md) · [Reporting a vulnerability](SECURITY.md) |
+| **Use the CLI** | [Guide](docs/cli.md) · [Reference](docs/cli-reference.md) |
+| **Self-host** | [Overview](docs/deploy/README.md) · [Compose with Caddy](docs/deploy/compose.md) · [Docker](docs/deploy/docker.md) · [Kubernetes](docs/deploy/kubernetes.md) · [Linux packages](docs/deploy/packages.md) · [Reverse proxy](docs/deploy/reverse-proxy.md) · [Configuration](docs/configuration.md) · [Metrics](docs/metrics.md) · [Upgrade and maintain](docs/operating.md) |
+| **Trust it** | [Security model](docs/security.md) · [Verify a release](docs/verify.md) · [Reporting a vulnerability](SECURITY.md) |
+| **Write a client** | [HTTP API](docs/api.md) ([OpenAPI](docs/openapi.yaml)) · [Protocol](docs/protocol.md) |
 | **Build it** | [Contributing](CONTRIBUTING.md) · [Development](docs/development.md) · [Roadmap](docs/ROADMAP.md) · [Rejected features](docs/rejected.md) · [Technical decisions](docs/decisions.md) |
 
 The full index is [docs/README.md](docs/README.md).

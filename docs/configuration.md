@@ -87,9 +87,9 @@ The `gone` command-line client reads one variable:
 
 | Variable | Description |
 | -------- | ----------- |
-| `GONE_SERVER` | Server for `gone send` and `gone request` when `--server` isn't given. It is checked before the server saved with `gone set server`. `get`, `status`, `revoke` and `reply` open a link only if its server is this one (or the one from `--server`, the config or the default) or is allowed with `--allow-origin`; the `request` subcommands use the saved request's server. See [cli.md](cli.md#which-servers-a-link-may-reach). |
+| `GONE_SERVER` | Server for `gone send` and `gone request` when `--server` isn't given. It is checked before the server saved with `gone set server`. `get`, `status`, `revoke` and `reply` open a link only if its server is this one (or the one from `--server`, the config or the default) or is allowed with `--allow-origin`; the `request` subcommands use the saved request's server. See [Which servers a link may reach](cli-reference.md#which-servers-a-link-may-reach). |
 
-See [the CLI guide](cli.md) for the full precedence and every flag.
+See the [CLI reference](cli-reference.md) for the full precedence and every flag.
 
 ## Example
 

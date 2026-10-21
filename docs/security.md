@@ -6,6 +6,24 @@ Gone makes two promises:
 
 This page explains how the design keeps them, what is and isn't defended, and what the server stores. The normative byte-level specification, with the envelope format, sanitization rules and shared test vectors, is [protocol.md](protocol.md). To report a vulnerability, see [SECURITY.md](../SECURITY.md).
 
+## In short
+
+**What Gone protects**
+- **The secret, from the server.** It's encrypted on your device before upload, and the key travels in the link's `#fragment`, which browsers never send. The server, its operator, and anyone who copies its disk or database see only ciphertext.
+- **One open.** A link opens its secret at most once. The secret is deleted once the recipient's browser confirms it arrived, and on expiry if nobody opens it.
+- **A leaked link, with a passphrase.** If the sender adds a strong passphrase and sends it separately, a leaked link alone doesn't reveal the secret.
+
+**What it can't protect**
+- **A link that's opened by the wrong person first.** Whoever opens a link gets the secret (or, with a passphrase, burns it). Send links over a channel you trust.
+- **A compromised device.** Malware or a malicious browser extension on the sender's or recipient's machine can read the secret.
+- **What happens after it's opened.** Gone can't stop the recipient copying the secret.
+
+**What you have to trust**
+- **The code your browser runs.** The web app is served by the instance you open, so a malicious operator could serve a modified page that leaks keys. Use an instance you trust, run your own, or use the [CLI](cli.md), which never loads code from the server.
+- **HTTPS** between you and the instance, and the instance being the one in the link.
+
+The rest of this page explains how the design keeps these promises. The full threat model is under [Threat model](#threat-model).
+
 ## Sending a secret (protocol v1)
 
 1. The browser makes a random AES-256-GCM key and nonce with WebCrypto.
@@ -94,7 +112,7 @@ A request runs the other way. See [protocol.md §4.3](protocol.md#43-protocol-ve
 - **Burning a secret:** a passphrase can't stop someone with the link from opening it, which uses it up even if they never learn the passphrase. The real recipient then finds it gone, which is a sign the link leaked.
 - **Link hygiene:** where links get pasted, and fragment leaks. This includes the manage link: anyone holding it can revoke that secret, though never read it.
 - **Who answers a request:** anyone with the reply link can send the one reply, so send it only to the person who has the secret. The person replying should check the link came from who they expect, since anyone can make one.
-- **The requester's browser profile:** anyone with access to it can open replies to that browser's requests. Losing its storage (clearing site data, a private window) loses the request, and the reply can't be opened anywhere else. The CLI's `requests.gob` file has the same property; see [the CLI guide](cli.md).
+- **The requester's browser profile:** anyone with access to it can open replies to that browser's requests. Losing its storage (clearing site data, a private window) loses the request, and the reply can't be opened anywhere else. The CLI's `requests.gob` file has the same property; see [Requests on this device](cli-reference.md#requests-on-this-device).
 - **Recalling delivered bytes:** revoke wins over an unconfirmed claim, but it can't recall ciphertext already downloaded.
 - **Large-scale distributed denial of service.**
 
@@ -112,7 +130,7 @@ A request runs the other way. See [protocol.md §4.3](protocol.md#43-protocol-ve
 **Operating tips**
 - Keep expiries short for the most sensitive secrets.
 - Keep the metrics listener on loopback or a private network.
-- Back up the data directory while Gone is stopped, or accept that a live copy may hold secrets that expire soon after. Everything in it is ciphertext.
+- Don't back up the data directory: a restored copy makes secrets opened since the backup openable again until they expire. See [Backups](operating.md#backups).
 
 ## What the server stores
 
@@ -127,7 +145,7 @@ Rows and blobs are deleted on confirmed receipt, revoke, cancel or expiry. An ex
 
 ## Releases
 
-Release binaries and the `ghcr.io/haukened/gone` image are built only from a semver tag (`vMAJOR.MINOR.PATCH`, optionally with a `-prerelease` suffix) whose commit is already on `main`. Any other tag fails the release workflows before anything is built. The full Go test suite, including the browser-crypto interop tests, runs and must pass before the build, in a job with a read-only token. Release builds use no shared CI cache, and only a stable tag moves `:latest`. Each image and archive carries GitHub-signed SLSA build provenance. Before running an image, check that this repository's release workflow built it from that tag: `gh attestation verify oci://ghcr.io/haukened/gone:vX.Y.Z --repo haukened/gone --signer-workflow haukened/gone/.github/workflows/release.yaml --source-ref refs/tags/vX.Y.Z`. Then deploy by digest, or by the `vX.Y.Z` tag, rather than following `:latest`.
+Release binaries and the `ghcr.io/haukened/gone` image are built only from a semver tag (`vMAJOR.MINOR.PATCH`, optionally with a `-prerelease` suffix) whose commit is already on `main`. Any other tag fails the release workflows before anything is built. The full Go test suite, including the browser-crypto interop tests, runs and must pass before the build, in a job with a read-only token. Release builds use no shared CI cache, and only a stable tag moves `:latest`. Each image and archive carries GitHub-signed SLSA build provenance. Before running an image, check that this repository's release workflow built it from that tag: `gh attestation verify oci://ghcr.io/haukened/gone:vX.Y.Z --repo haukened/gone --signer-workflow haukened/gone/.github/workflows/release.yaml --source-ref refs/tags/vX.Y.Z`. Then deploy by digest, or by the `vX.Y.Z` tag, rather than following `:latest`. [Verify a release](verify.md) covers the archives, packages and Helm chart too.
 
 ## Development-only features
 

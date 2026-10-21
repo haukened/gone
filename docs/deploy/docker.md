@@ -69,6 +69,8 @@ Every release image is built by the release workflow with an SBOM and SLSA prove
 gh attestation verify oci://ghcr.io/haukened/gone:v3.12.0 --repo haukened/gone
 ```
 
+[Verify a release](../verify.md) explains what the check proves, and how to check the other downloads.
+
 ## Building the image yourself
 
 The `Dockerfile` uses [Docker Hardened Images](https://dhi.io): `dhi.io/golang` to build and the distroless `dhi.io/static` to run. Both are pinned by digest and kept current by Dependabot. Pulling them needs a free Docker Hub account:

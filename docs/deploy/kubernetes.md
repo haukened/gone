@@ -99,7 +99,7 @@ Gone keeps its data in `/data/gone` on the volume, not in the volume's root. Gon
 - **Size:** `persistence.size` (1 GiB by default). Secrets are deleted once opened or expired, so the volume only holds those still waiting.
 - **Your own claim:** set `persistence.existingClaim`. It must be ReadWriteOnce.
 - **No persistence:** `persistence.enabled: false` uses an `emptyDir`, and every restart loses every secret. It's for trying the chart only.
-- **Backups:** everything on the volume is ciphertext. Copy it while Gone is stopped (`kubectl scale deployment/gone --replicas=0`), or take a volume snapshot, which SQLite recovers from like a sudden power loss.
+- **Backups:** don't back up or snapshot the volume. Restoring it makes secrets opened since the copy openable again until they expire. Keep your values file instead; see [Backups](../operating.md#backups).
 - **Uninstalling** with `helm uninstall` deletes the claim the chart made, and every secret with it.
 
 ## Branding
