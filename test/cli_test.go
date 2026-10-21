@@ -16,7 +16,7 @@ import (
 	"github.com/haukened/gone/v3/internal/ratelimit"
 )
 
-// Exit codes documented in docs/cli.md.
+// Exit codes documented in docs/cli-reference.md.
 const (
 	exitNotFound    = 3
 	exitPassphrase  = 4

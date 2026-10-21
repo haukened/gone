@@ -11,7 +11,7 @@ import (
 )
 
 // Process exit codes. They are part of the CLI's public contract
-// (docs/cli.md) and must not be renumbered.
+// (docs/cli-reference.md) and must not be renumbered.
 const (
 	exitOK          = 0
 	exitInternal    = 1
