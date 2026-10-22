@@ -1,5 +1,10 @@
-{{- /* A Markdown table in a wrapper that scrolls sideways on narrow
-       screens. Alignment is a class, not a style attribute, for the CSP. */ -}}
+{{- /* A Markdown table in a wrapper that scrolls sideways. Each cell carries
+       its column's header (data-label), so on phones a row can stack as
+       label and value. Code in cells may break after commas, so value lists
+       such as 5m,30m,1h wrap between values, never inside one. Alignment is
+       a class, not a style attribute, for the CSP. */ -}}
+{{- $heads := slice -}}
+{{- range .THead }}{{ range . }}{{ $heads = $heads | append (.Text | plainify | htmlUnescape) }}{{ end }}{{ end -}}
 <div class="table-wrap">
 <table>
 	<thead>
@@ -9,7 +14,7 @@
 	</thead>
 	<tbody>
 		{{- range .TBody }}
-		<tr>{{ range . }}<td{{ with .Alignment }} class="align-{{ . }}"{{ end }}>{{ .Text }}</td>{{ end }}</tr>
+		<tr>{{ range $c, $cell := . }}{{ $text := string $cell.Text }}{{ range seq 8 }}{{ $text = replaceRE `(<code>(?:[^<]|<wbr>)*?),([^<])` "${1},<wbr>${2}" $text }}{{ end }}<td{{ with $cell.Alignment }} class="align-{{ . }}"{{ end }} data-label="{{ index $heads $c }}">{{ $text | safeHTML }}</td>{{ end }}</tr>
 		{{- end }}
 	</tbody>
 </table>

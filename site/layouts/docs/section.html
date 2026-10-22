@@ -11,33 +11,46 @@
 	<header class="docs-intro">
 		<h1>{{ .Title }}</h1>
 		{{ with .Description }}<p class="lead">{{ . }}</p>{{ end }}
+		{{ partial "docs-search.html" "button" }}
 	</header>
 
+	{{- /* Ranked by how many readers each serves: the first has the page's
+	       one primary button. */}}
 	<ol class="pane docs-doors">
-		{{- range hugo.Data.docs.doors }}
+		{{- range $n, $door := hugo.Data.docs.doors }}
 		{{- $start := partial "docs-entry.html" .start.page }}
 		<li class="docs-door">
 			<h2>{{ .title }}</h2>
 			<p>{{ .text }}</p>
-			<a class="btn btn-secondary btn-small" href="{{ $start.page.RelPermalink }}">{{ .start.label }}{{ partial "icon.html" "arrow" }}</a>
-			{{- with .more }}
+			<a class="btn {{ if eq $n 0 }}btn-primary{{ else }}btn-secondary{{ end }} btn-small" href="{{ $start.page.RelPermalink }}">{{ .start.label }}{{ partial "icon.html" "arrow" }}</a>
 			<ul>
-				{{- range . }}{{ with partial "docs-entry.html" . }}
+				{{- range .more }}{{ with partial "docs-entry.html" . }}
 				<li><a href="{{ .page.RelPermalink }}">{{ .label }}</a></li>
 				{{- end }}{{ end }}
 			</ul>
-			{{- end }}
 		</li>
 		{{- end }}
 	</ol>
 
-	<nav class="docs-quick" aria-label="Reference">
-		<p>Look something up:</p>
-		<ul>
-			{{- range hugo.Data.docs.quick }}{{ with partial "docs-entry.html" . }}
-			<li><a href="{{ .page.RelPermalink }}">{{ .label }}</a></li>
-			{{- end }}{{ end }}
-		</ul>
-	</nav>
+	{{- /* Every page, so the landing reaches all of them. */}}
+	<section class="docs-index" aria-labelledby="index-title">
+		<h2 id="index-title">Every page</h2>
+		<div class="docs-index-grid">
+			{{- range hugo.Data.docs.sections }}
+			{{- $section := .title }}
+			<div>
+				<h3>{{ $section }}</h3>
+				<ul>
+					{{- range where $order "section" $section }}
+					<li><a href="{{ .page.RelPermalink }}">{{ .label }}</a></li>
+					{{- end }}
+				</ul>
+			</div>
+			{{- end }}
+		</div>
+	</section>
 </div>
+{{ partial "docs-search.html" "dialog" }}
 {{ end }}
+
+{{ define "scripts" }}{{ partial "docs-scripts.html" . }}{{ end }}

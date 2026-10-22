@@ -52,5 +52,16 @@ build, so a broken link can't be published.
   {{- $href = printf "%s/%s/%s/%s" site.Params.repo $kind site.Params.docsRef $repoPath -}}
   {{- with $u.Fragment }}{{ $href = printf "%s#%s" $href . }}{{ end -}}
 {{- end -}}
-<a href="{{ $href }}"{{ with .Title }} title="{{ . }}"{{ end }}>{{ .Text }}</a>
+{{- /* A link whose text is only a file name ("protocol.md", `cli.md`)
+       reads as the page's name on the site; on GitHub it stays as written. */ -}}
+{{- $text := .Text -}}
+{{- if and (strings.HasSuffix $u.Path ".md") (findRE `^[\w./-]+\.md$` (.Text | plainify | strings.TrimSpace)) -}}
+  {{- with partial "page-for.html" (dict "page" .Page "rel" $u.Path) -}}
+    {{- $target := . -}}
+    {{- with where (partialCached "docs-order.html" . "docs-order") "page" $target -}}
+      {{- $text = (index . 0).label -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+<a href="{{ $href }}"{{ with .Title }} title="{{ . }}"{{ end }}>{{ $text }}</a>
 {{- /* */ -}}

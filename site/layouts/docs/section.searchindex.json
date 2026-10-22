@@ -1,0 +1,24 @@
+{{- /* The search index: every docs page in sidebar order, with its title,
+       sidebar label, section, address, the text before its first heading,
+       and each h2/h3 section (id, heading, text), so a result can link to
+       the section that matched. */ -}}
+{{- $out := slice -}}
+{{- range partialCached "docs-order.html" . "docs-order" -}}
+  {{- $p := .page -}}
+  {{- $split := partial "split-title.html" $p -}}
+  {{- /* Mark each h2/h3 so the page can be cut into sections. */ -}}
+  {{- $marked := replaceRE `(?s)<h[23] id="([^"]+)"[^>]*>(.*?)</h[23]>` "\x1e${1}\x1f${2}\x1d" (string $split.body) -}}
+  {{- $parts := split $marked "\x1e" -}}
+  {{- $intro := index $parts 0 | plainify | htmlUnescape | replaceRE `\s+` " " | strings.TrimSpace | truncate 1500 "" -}}
+  {{- $sections := slice -}}
+  {{- range after 1 $parts -}}
+    {{- $idAndRest := split . "\x1f" -}}
+    {{- $headAndText := split (index $idAndRest 1) "\x1d" -}}
+    {{- $sections = $sections | append (dict
+        "i" (index $idAndRest 0)
+        "t" (index $headAndText 0 | plainify | htmlUnescape | strings.TrimSpace)
+        "x" (index $headAndText 1 | plainify | htmlUnescape | replaceRE `\s+` " " | strings.TrimSpace | truncate 4000 "")) -}}
+  {{- end -}}
+  {{- $out = $out | append (dict "u" $p.RelPermalink "t" ($split.title | plainify | htmlUnescape) "l" .label "s" .section "x" $intro "h" $sections) -}}
+{{- end -}}
+{{- $out | jsonify -}}

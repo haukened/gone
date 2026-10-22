@@ -10,4 +10,14 @@
 {{- else -}}
   {{- $title = partial "title.html" . -}}
 {{- end -}}
+{{- /* Inline code with no spaces is an identifier (a variable, a flag, a
+       header name): marked so it never breaks across lines. */ -}}
+{{- $html = replaceRE `<code>([^<\s]+)</code>` `<code class="tok">$1</code>` $html -}}
+{{- /* The first paragraph is the page's lead, unless it introduces
+       something (ends with a colon). */ -}}
+{{- with findRESubmatch `(?s)\A\s*(?:<!--.*?-->\s*)*<p>(.*?)</p>` $html 1 -}}
+  {{- if not (strings.HasSuffix (index (index . 0) 1 | plainify | strings.TrimSpace) ":") -}}
+    {{- $html = replaceRE `(?s)\A(\s*(?:<!--.*?-->\s*)*)<p>` "${1}<p class=\"doc-lead\">" $html 1 -}}
+  {{- end -}}
+{{- end -}}
 {{- return dict "title" ($title | safeHTML) "body" ($html | safeHTML) -}}

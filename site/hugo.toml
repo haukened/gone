@@ -34,6 +34,14 @@ name = "Trust"
 url = "/trust/"
 weight = 4
 
+# The docs search index, built for the docs section only (see
+# content/docs/_index.md) and fetched by search.js when search first opens.
+[outputFormats.searchindex]
+mediaType = "application/json"
+baseName = "index"
+isPlainText = true
+notAlternative = true
+
 [markup.goldmark.parser]
 autoHeadingIDType = "github"
 [markup.goldmark.renderer]
@@ -126,6 +134,28 @@ path = "/docs/readme"
 url = "/docs/self-host/"
 [cascade.target]
 path = "/docs/deploy/readme"
+# The rest of docs/deploy/ lives under /docs/self-host/ too, matching the
+# section it's listed in.
+[[cascade]]
+url = "/docs/self-host/compose/"
+[cascade.target]
+path = "/docs/deploy/compose"
+[[cascade]]
+url = "/docs/self-host/docker/"
+[cascade.target]
+path = "/docs/deploy/docker"
+[[cascade]]
+url = "/docs/self-host/kubernetes/"
+[cascade.target]
+path = "/docs/deploy/kubernetes"
+[[cascade]]
+url = "/docs/self-host/packages/"
+[cascade.target]
+path = "/docs/deploy/packages"
+[[cascade]]
+url = "/docs/self-host/reverse-proxy/"
+[cascade.target]
+path = "/docs/deploy/reverse-proxy"
 [[cascade]]
 url = "/docs/brand/"
 [cascade.target]

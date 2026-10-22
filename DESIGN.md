@@ -211,6 +211,7 @@ Depth comes from glass only:
 ### Do
 - Put each view on exactly one pane. Use wells for anything inside it.
 - Keep the accent to one word per heading plus focus and progress.
+- Leave documentation titles without an accent word. Docs are for reading: the accent stays on actions, links and the app's own headlines.
 - Use Geist Mono for anything a person might copy or retype.
 - Keep the backdrop soft and low-saturation. It is light behind glass, not decoration.
 

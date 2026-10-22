@@ -1,3 +1,5 @@
+{{ define "skip" }}#doc{{ end }}
+
 {{ define "main" }}
 {{- $order := partialCached "docs-order.html" . "docs-order" -}}
 {{- $i := -1 -}}
@@ -12,19 +14,32 @@
 {{- $hasToc := findRE `<a href` $toc 1 -}}
 <div class="wrap docs-layout">
 	<aside class="docs-side">
+		{{ partial "docs-search.html" "button" }}
 		<nav aria-label="Documentation">{{ partial "docs-nav.html" . }}</nav>
 	</aside>
 
-	<article class="docs-page">
+	{{- /* Before the page in reading order, so it's found before the
+	       footer; the grid still shows it on the right. */}}
+	{{- if $hasToc }}
+	<aside class="docs-onpage docs-toc" aria-labelledby="onpage-title">
+		<p id="onpage-title" class="docs-onpage-title">On this page</p>
+		{{ $toc }}
+	</aside>
+	{{- end }}
+
+	<article id="doc" class="docs-page" tabindex="-1">
 		{{- /* Narrow screens: the sidebar and the page's contents as two
-		       drop-downs that need no script. */}}
+		       drop-downs that need no script; only one opens at a time. */}}
 		<div class="docs-bar">
-			<details class="docs-drop docs-drop-menu">
+			<details class="docs-drop docs-drop-menu" name="docs-drop">
 				<summary>Menu</summary>
-				<div class="docs-drop-panel"><nav aria-label="Documentation">{{ partial "docs-nav.html" . }}</nav></div>
+				<div class="docs-drop-panel">
+					{{ partial "docs-search.html" "button" }}
+					<nav aria-label="Documentation">{{ partial "docs-nav.html" . }}</nav>
+				</div>
 			</details>
 			{{- if $hasToc }}
-			<details class="docs-drop docs-drop-toc">
+			<details class="docs-drop docs-drop-toc" name="docs-drop">
 				<summary>On this page</summary>
 				<div class="docs-drop-panel docs-toc">{{ $toc }}</div>
 			</details>
@@ -36,6 +51,7 @@
 				<li><a href="{{ (site.GetPage "/docs").RelPermalink }}">Docs</a></li>
 				<li>{{ $entry.section }}</li>
 				{{- with $entry.group }}<li>{{ . }}</li>{{ end }}
+				<li aria-current="page">{{ $entry.label }}</li>
 			</ol>
 		</nav>
 		<h1>{{ $split.title }}</h1>
@@ -59,17 +75,8 @@
 			</p>
 		</footer>
 	</article>
-
-	{{- if $hasToc }}
-	<aside class="docs-onpage docs-toc" aria-labelledby="onpage-title">
-		<p id="onpage-title" class="docs-onpage-title">On this page</p>
-		{{ $toc }}
-	</aside>
-	{{- end }}
 </div>
+{{ partial "docs-search.html" "dialog" }}
 {{ end }}
 
-{{ define "scripts" }}
-{{- $js := resources.Get "js/copy.js" | minify | fingerprint }}
-<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
-{{ end }}
+{{ define "scripts" }}{{ partial "docs-scripts.html" . }}{{ end }}

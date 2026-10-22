@@ -1,0 +1,7 @@
+{{- /* The docs pages' scripts: copy buttons, the page's behaviour (contents
+       highlighting, drop-downs, sidebar position) and search. Each is an
+       external, fingerprinted file, as the CSP requires. */ -}}
+{{- range slice "js/copy.js" "js/docs.js" "js/search.js" }}
+{{- $js := resources.Get . | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{- end }}

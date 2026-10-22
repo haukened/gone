@@ -436,14 +436,14 @@
 /* ---------------------------------------------------------------- Prose */
 
 /* The app's .prose covers headings, paragraphs, lists and inline code; the
-   docs also need code blocks, tables, callouts, images and quotes. */
+   docs also need code frames, tables, callouts, images and quotes. Headings
+   are separated by space, not rules. */
 .prose > :first-child {
   margin-top: 0;
 }
 
 .prose h2 {
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--hair);
+  margin-top: 3rem;
 }
 
 .prose h2,
@@ -460,12 +460,62 @@
 }
 
 .prose h2 code,
-.prose h3 code {
+.prose h3 code,
+.prose h4 code {
   font-size: 0.85em;
+}
+
+/* A heading's link to itself: shown on hover or focus, beside the text. */
+.anchor {
+  display: inline-flex;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  color: var(--color-ink-3);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.anchor .ico {
+  width: 0.8em;
+  height: 0.8em;
+}
+
+:is(h2, h3, h4):hover .anchor,
+.anchor:focus-visible {
+  opacity: 1;
+}
+
+.anchor:hover {
+  color: var(--color-accent);
+}
+
+@media (hover: none) {
+  .anchor {
+    display: none;
+  }
+}
+
+/* Inline code: a quiet tint, no box. Identifiers (no spaces) never break. */
+.prose code {
+  padding: 0.1rem 0.3rem;
+  background: var(--color-accent-soft);
+  border: 0;
+  border-radius: 5px;
+}
+
+.prose code.tok {
+  white-space: nowrap;
 }
 
 .prose a code {
   color: inherit;
+}
+
+/* DESIGN.md: Geist is never italicised. Emphasis is ink, upright. */
+.prose em {
+  font-style: normal;
+  color: var(--color-ink);
 }
 
 .prose li > ul,
@@ -502,11 +552,13 @@
   border-radius: 6px;
 }
 
-/* Alerts (> [!NOTE]) as the app's callout, stacked rather than in a row. */
+/* Callouts: GitHub alerts, stacked, with an icon and a title. NOTE and TIP
+   are quiet; IMPORTANT is violet; WARNING and CAUTION use the app's amber
+   (rose is kept for deleting). */
 .prose .callout {
   display: block;
   max-width: 64ch;
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-5);
   font-size: 0.9375rem;
 }
 
@@ -520,77 +572,170 @@
 }
 
 .callout-title {
-  font-size: 0.75rem;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
   color: var(--color-accent);
-  text-transform: uppercase;
+}
+
+.callout-title .ico {
+  margin: 0;
+  color: inherit;
+}
+
+.callout-note,
+.callout-tip {
+  background: var(--well);
+  border-color: var(--well-edge);
+}
+
+.callout-note .callout-title,
+.callout-tip .callout-title {
+  color: var(--color-ink-2);
 }
 
 .callout-warning,
 .callout-caution {
-  background: var(--danger-soft);
-  border-color: var(--danger-line);
+  background: var(--warn-soft);
+  border-color: var(--warn-line);
 }
 
 .callout-warning .callout-title,
 .callout-caution .callout-title {
-  color: var(--danger);
+  color: var(--warn);
 }
 
-/* Code blocks: a recessed mono well that scrolls sideways, with its copy
-   button in the top right corner. */
+/* Code frames: a header naming the block (file, "Terminal" or language)
+   with its copy button, then the code in a recessed well. */
 .codeblock {
-  position: relative;
-  margin: 0 0 var(--space-4);
-}
-
-.codeblock pre {
-  margin: 0;
-  padding: 0.9rem 1rem;
-  overflow-x: auto;
-  font-size: 0.8125rem;
-  line-height: 1.6;
-  color: var(--color-ink);
+  margin: 0 0 var(--space-5);
+  overflow: hidden;
   background: var(--well);
   border: 1px solid var(--well-edge);
   border-radius: var(--radius-well);
   box-shadow: inset 0 1px 2px var(--well-shade);
+}
+
+.codeblock-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.25rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.85rem;
+  border-bottom: 1px solid var(--hair);
+}
+
+.codeblock-label {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-ink-3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.codeblock-label .ico {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.codeblock-copy {
+  margin-left: auto;
+}
+
+/* A terminal reads a little deeper than a file. */
+.codeblock-terminal {
+  background: var(--frost);
+}
+
+/* Wide code and tables scroll sideways. docs.js marks those that overflow
+   (data-scroll: start, middle or end) and the edge with more to see fades. */
+.codeblock pre,
+.table-wrap {
+  overflow-x: auto;
   scrollbar-width: thin;
+}
+
+[data-scroll="start"] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent);
+}
+
+[data-scroll="middle"] {
+  mask-image: linear-gradient(to right, transparent, #000 3rem, #000 calc(100% - 3rem), transparent);
+}
+
+[data-scroll="end"] {
+  mask-image: linear-gradient(to right, transparent, #000 3rem);
+}
+
+.codeblock pre {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-ink);
 }
 
 .codeblock pre code {
   padding: 0;
   font-size: inherit;
+  white-space: pre;
   background: none;
-  border: 0;
 }
 
-.codeblock-copy {
+/* Steps: a numbered list whose items hold code gets numbered markers on a
+   connecting line. */
+.prose ol:has(> li .codeblock) {
+  max-width: none;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.prose ol:has(> li .codeblock) > li {
+  position: relative;
+  padding: 0 0 var(--space-2) 2.75rem;
+  counter-increment: step;
+}
+
+.prose ol:has(> li .codeblock) > li::before {
   position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  opacity: 0;
-  transition: opacity 0.2s;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-accent);
+  content: counter(step);
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-pill);
 }
 
-.codeblock:hover .codeblock-copy,
-.codeblock-copy:focus-visible,
-.codeblock-copy:active {
-  opacity: 1;
+.prose ol:has(> li .codeblock) > li:not(:last-child)::after {
+  position: absolute;
+  top: 2rem;
+  bottom: 0.25rem;
+  left: 0.875rem;
+  width: 1px;
+  content: "";
+  background: var(--hair);
 }
 
-@media (hover: none) {
-  .codeblock-copy {
-    opacity: 1;
-  }
-}
-
-/* Tables: hairline rows in a wrapper that scrolls on narrow screens. */
+/* Tables: hairline rows, scrolling sideways; identifiers in the first
+   column stay whole. */
 .table-wrap {
   margin: 0 0 var(--space-5);
-  overflow-x: auto;
-  scrollbar-width: thin;
 }
 
 .prose table {
@@ -602,7 +747,7 @@
 
 .prose th,
 .prose td {
-  padding: 0.55rem 0.75rem 0.55rem 0;
+  padding: 0.6rem 0.9rem 0.6rem 0;
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--hair);
@@ -614,8 +759,12 @@
   white-space: nowrap;
 }
 
+.prose td:first-child:has(code) {
+  min-width: 12rem;
+}
+
 .prose td code {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .prose .align-center {
@@ -626,11 +775,65 @@
   text-align: right;
 }
 
+/* Phones: each row stacks as label and value, using the header text the
+   table hook puts on every cell. */
+@media (max-width: 40rem) {
+  .prose table,
+  .prose tbody,
+  .prose tr,
+  .prose td {
+    display: block;
+  }
+
+  .prose thead {
+    display: none;
+  }
+
+  .prose tr {
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--hair);
+  }
+
+  .prose td {
+    min-width: 0;
+    padding: 0.15rem 0;
+    border: 0;
+  }
+
+  .prose td:first-child:has(code) {
+    min-width: 0;
+  }
+
+  .prose td::before {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-ink-3);
+    content: attr(data-label);
+  }
+
+  .prose td:first-child::before {
+    display: none;
+  }
+
+  .prose td:first-child {
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+}
+
 /* ---------------------------------------------------------------- Docs */
 
-/* Sidebar, text and "On this page" straight on the backdrop, like the best
-   docs sites: only callouts and code are boxed. The text keeps a reading
-   measure; the frame centres the three columns. */
+/* On docs pages the header and footer share the docs frame, so the logo
+   lines up with the sidebar. */
+.is-docs .site .wrap,
+.is-docs .foot .wrap {
+  max-width: 90rem;
+}
+
+/* Sidebar, text and "On this page" straight on the backdrop: only callouts
+   and code are boxed. In the markup "On this page" comes before the text (so
+   it's found before the footer); the grid places it on the right. */
 .docs-layout {
   display: grid;
   grid-template-columns: 15.5rem minmax(0, 46rem) 13rem;
@@ -640,53 +843,101 @@
   max-width: 90rem;
 }
 
+.docs-side {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.docs-page {
+  grid-row: 1;
+  grid-column: 2;
+  min-width: 0;
+}
+
+.docs-onpage {
+  grid-row: 1;
+  grid-column: 3;
+}
+
+.docs-page:focus {
+  outline: none;
+}
+
 .docs-side,
 .docs-onpage {
   position: sticky;
   top: var(--space-5);
   max-height: calc(100vh - 2 * var(--space-5));
   overflow-y: auto;
-  padding-bottom: var(--space-5);
+  padding: 0 0.25rem var(--space-5);
   scrollbar-width: thin;
 }
 
-/* The sidebar: section names in ink, groups as quiet subheadings, pages on a
-   hairline with the current one marked by an accent bar. */
+/* The sidebar: each section a disclosure, open for the current page;
+   pages on a hairline, the current one tinted with an accent bar. */
 .docs-nav-section + .docs-nav-section {
-  margin-top: var(--space-5);
+  margin-top: var(--space-2);
 }
 
-.docs-nav-title {
-  margin-bottom: var(--space-2);
+.docs-nav-section summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.25rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-ink);
+  list-style: none;
+  cursor: pointer;
+  border-radius: 8px;
 }
 
-.docs-nav-group {
-  margin: var(--space-3) 0 var(--space-1);
-  padding-left: 0.875rem;
-  font-size: 0.8125rem;
-  color: var(--color-ink-3);
+.docs-nav-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.docs-nav-section summary::after {
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-right: 0.4rem;
+  content: "";
+  border-right: 1.6px solid var(--color-ink-3);
+  border-bottom: 1.6px solid var(--color-ink-3);
+  transform: rotate(-45deg);
+  transition: transform 0.2s var(--ease-out);
+}
+
+.docs-nav-section[open] summary::after {
+  transform: translateY(-0.1rem) rotate(45deg);
 }
 
 .docs-nav-section ul {
-  margin: 0;
+  margin: 0 0 var(--space-2);
   padding: 0;
   list-style: none;
   border-left: 1px solid var(--hair);
 }
 
+.docs-nav-group-title {
+  padding: var(--space-3) 0 var(--space-1) 0.875rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-3);
+  text-transform: uppercase;
+}
+
 .docs-nav-section a {
   display: block;
   margin-left: -1px;
-  padding: 0.3rem 0.75rem 0.3rem 0.875rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.875rem;
   font-size: 0.875rem;
   line-height: 1.4;
   color: var(--color-ink-2);
   text-decoration: none;
   border-left: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+  border-radius: 0 8px 8px 0;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
 
 .docs-nav-section a:hover {
@@ -697,23 +948,180 @@
 .docs-nav-section a[aria-current="page"] {
   font-weight: 500;
   color: var(--color-ink);
+  background: var(--color-accent-soft);
   border-left-color: var(--color-accent);
 }
 
-/* The page. */
-.docs-page {
-  min-width: 0;
+/* Focus rings inside the scrolling sidebar and panels stay visible. */
+.docs-side :focus-visible,
+.docs-drop-panel :focus-visible,
+.docs-onpage :focus-visible {
+  outline-offset: -2px;
 }
 
+/* Search: a button that opens the dialog (search.js shows it). */
+.search-open {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  min-height: 2.5rem;
+  margin-bottom: var(--space-4);
+  padding: 0 0.5rem 0 0.75rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--color-ink-3);
+  cursor: pointer;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-pill);
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.search-open:hover {
+  color: var(--color-ink-2);
+  border-color: var(--color-accent-line);
+}
+
+.search-open span {
+  flex: 1;
+  text-align: left;
+}
+
+.search-key,
+.search-close span:first-child {
+  padding: 0.05rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-ink-3);
+  background: var(--pane-hi);
+  border: 1px solid var(--well-edge);
+  border-radius: 6px;
+}
+
+.search {
+  width: min(40rem, calc(100vw - 2rem));
+  max-height: min(36rem, calc(100vh - 6rem));
+  margin: 12vh auto auto;
+  padding: 0;
+  overflow: hidden;
+  color: var(--color-ink);
+  background: var(--pane-solid);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-pane);
+  box-shadow: 0 24px 64px -24px var(--shadow), 0 2px 6px -2px var(--shadow);
+}
+
+.search[open] {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.search::backdrop {
+  background: rgb(10 8 18 / 35%);
+  backdrop-filter: blur(4px);
+}
+
+.search-form {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.6rem 0.75rem 0.6rem 1rem;
+  border-bottom: 1px solid var(--hair);
+}
+
+.search-form .ico {
+  color: var(--color-ink-3);
+}
+
+.search-form input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.5rem;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--color-ink);
+  background: none;
+  border: 0;
+}
+
+.search-form input:focus {
+  outline: none;
+}
+
+.search-close {
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.search-status {
+  padding: 0.5rem 1rem 0;
+  font-size: 0.8125rem;
+  color: var(--color-ink-3);
+}
+
+.search-status:empty {
+  display: none;
+}
+
+.search-results {
+  margin: 0;
+  padding: 0.5rem;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.search-results a {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0.75rem;
+  color: var(--color-ink-2);
+  text-decoration: none;
+  border-radius: var(--radius-well);
+}
+
+.search-results a:hover,
+.search-results a[aria-selected="true"] {
+  background: var(--color-accent-soft);
+}
+
+.search-title {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.search-where {
+  font-size: 0.75rem;
+  color: var(--color-accent);
+}
+
+.search-text {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* The page. */
 .crumbs ol {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0 0 var(--space-3);
+  gap: 0 0.4rem;
+  margin: 0 0 var(--space-2);
   padding: 0;
   font-size: 0.8125rem;
   color: var(--color-ink-3);
   list-style: none;
+}
+
+.crumbs li {
+  display: flex;
+  align-items: center;
+  min-height: 1.75rem;
 }
 
 .crumbs li + li::before {
@@ -722,6 +1130,9 @@
 }
 
 .crumbs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
   color: inherit;
   text-decoration: none;
 }
@@ -730,16 +1141,29 @@
   color: var(--color-accent);
 }
 
+.crumbs [aria-current="page"] {
+  color: var(--color-ink-2);
+}
+
 .docs-page > h1 {
   margin-bottom: var(--space-4);
 }
 
-/* The docs have no front matter: their first paragraph is the lead. */
-.docs-prose > p:first-child {
-  margin-bottom: var(--space-5);
+/* The lead: the docs' first paragraph, unless it introduces something
+   (partials/split-title.html decides). */
+.docs-prose > .doc-lead {
+  max-width: none;
+  margin-bottom: var(--space-6);
   font-size: 1.1875rem;
   line-height: 1.6;
   color: var(--color-ink-2);
+}
+
+/* Reading measure: about 70 characters of Geist. Tables, code, steps and
+   the lead keep the full column. */
+.docs-prose > :is(p, ul, ol, blockquote, dl, h2, h3, h4),
+.docs-prose > .callout {
+  max-width: 38rem;
 }
 
 /* "On this page": h2s, with h3s indented under them. */
@@ -762,12 +1186,16 @@
 
 .docs-toc a {
   display: block;
-  padding: 0.25rem 0;
+  padding: 0.3rem 0;
   font-size: 0.8125rem;
   line-height: 1.4;
   color: var(--color-ink-3);
   text-decoration: none;
   transition: color 0.15s;
+}
+
+.docs-toc code {
+  font-size: 1em;
 }
 
 .docs-toc a:hover,
@@ -780,7 +1208,7 @@
 }
 
 /* Narrow screens: "Menu" and "On this page" as drop-downs in a bar that
-   stays at the top while reading. Native <details>, so no script. */
+   stays at the top while reading. Native <details>, one open at a time. */
 .docs-bar {
   position: sticky;
   top: 0;
@@ -799,12 +1227,12 @@
   position: relative;
 }
 
-.docs-drop summary {
+.docs-drop > summary {
   display: inline-flex;
   gap: 0.6rem;
   align-items: center;
-  min-height: 2.5rem;
-  padding: 0 0.9rem;
+  min-height: 2.75rem;
+  padding: 0 1rem;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--color-ink);
@@ -815,11 +1243,11 @@
   border-radius: var(--radius-pill);
 }
 
-.docs-drop summary::-webkit-details-marker {
+.docs-drop > summary::-webkit-details-marker {
   display: none;
 }
 
-.docs-drop summary::after {
+.docs-drop > summary::after {
   width: 0.4rem;
   height: 0.4rem;
   content: "";
@@ -828,7 +1256,7 @@
   transform: translateY(-0.12rem) rotate(45deg);
 }
 
-.docs-drop[open] summary::after {
+.docs-drop[open] > summary::after {
   transform: translateY(0.1rem) rotate(-135deg);
 }
 
@@ -843,7 +1271,7 @@
   background: var(--pane-solid);
   border: 1px solid var(--edge);
   border-radius: var(--radius-well);
-  box-shadow: 0 24px 60px -24px var(--shadow), 0 2px 6px -2px var(--shadow);
+  box-shadow: 0 12px 28px -12px var(--shadow);
 }
 
 .docs-drop-toc {
@@ -899,13 +1327,16 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
-  padding-top: var(--space-4);
+  gap: 0 var(--space-4);
+  padding-top: var(--space-3);
   font-size: 0.875rem;
   border-top: 1px solid var(--hair);
 }
 
 .docs-meta a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
   color: var(--color-ink-2);
   text-decoration: none;
 }
@@ -914,7 +1345,8 @@
   color: var(--color-accent);
 }
 
-/* Without room for "On this page" beside the text, it moves to the bar. */
+/* Without room for "On this page" beside the text, it moves to the bar:
+   on a laptop just the pill, with no strip behind it. */
 @media (max-width: 80rem) {
   .docs-layout {
     grid-template-columns: 15.5rem minmax(0, 46rem);
@@ -928,9 +1360,27 @@
   .docs-bar:has(.docs-drop-toc) {
     display: flex;
   }
+
+  .docs-bar {
+    margin-bottom: 0;
+    padding: var(--space-2) 0 0;
+    background: none;
+    backdrop-filter: none;
+    border-bottom: 0;
+    pointer-events: none;
+  }
+
+  .docs-bar > * {
+    pointer-events: auto;
+  }
+
+  .prose :is(h2, h3, h4) {
+    scroll-margin-top: 4.5rem;
+  }
 }
 
-/* One column: the sidebar moves to the bar's Menu. */
+/* One column: the sidebar moves to the bar's Menu, and the bar becomes a
+   frosted strip. */
 @media (max-width: 52rem) {
   .docs-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -940,22 +1390,48 @@
     display: none;
   }
 
+  .docs-page {
+    grid-column: 1;
+  }
+
   .docs-bar {
     display: flex;
+    margin-bottom: var(--space-4);
+    padding: var(--space-2) 0;
+    background: var(--frost);
+    backdrop-filter: blur(var(--blur)) saturate(130%);
+    border-bottom: 1px solid var(--hair);
   }
 
   .docs-drop-menu {
     display: block;
   }
+
+  /* 44px targets on phones. */
+  .docs-toc a,
+  .docs-nav-section a,
+  .docs-meta a {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+
+  .docs-pager {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .docs-next {
+    grid-column: 1;
+  }
 }
 
 /* ---------------------------------------------------------------- Docs landing */
 
-/* Where each kind of reader starts, on one pane split by hairlines, then a
-   row of links for looking something up. */
+/* Where each kind of reader starts, on one pane split by hairlines (the
+   first has the page's primary button), then every page by section. */
 .docs-home {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-7);
   max-width: 64rem;
 }
 
@@ -970,6 +1446,13 @@
   margin: 0 auto;
 }
 
+.docs-intro .search-open {
+  width: min(24rem, 100%);
+  margin: var(--space-2) 0 0;
+}
+
+/* Each entry point's title, text, button and links share rows with its
+   neighbours (subgrid), so the buttons line up whatever the text length. */
 .docs-doors {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -979,8 +1462,6 @@
   list-style: none;
 }
 
-/* Each entry point's title, text, button and links share rows with its
-   neighbours (subgrid), so the buttons line up whatever the text length. */
 .docs-door {
   display: grid;
   grid-row: span 4;
@@ -1008,40 +1489,58 @@
 .docs-door ul {
   display: grid;
   align-content: start;
-  gap: var(--space-2);
   margin: var(--space-2) 0 0;
-  padding: var(--space-3) 0 0;
+  padding: var(--space-2) 0 0;
   font-size: 0.875rem;
   list-style: none;
   border-top: 1px solid var(--hair);
 }
 
+/* Links read as links in both themes, and are comfortable to tap. */
 .docs-door ul a,
-.docs-quick a {
+.docs-index a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
   color: var(--color-accent);
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent-line);
+  text-underline-offset: 0.2em;
 }
 
 .docs-door ul a:hover,
-.docs-quick a:hover {
-  text-decoration: underline;
+.docs-index a:hover {
+  text-decoration-color: currentcolor;
 }
 
-.docs-quick {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-2) var(--space-4);
-  font-size: 0.9375rem;
-  color: var(--color-ink-2);
+.docs-index > h2 {
+  margin-bottom: var(--space-4);
+  font-size: var(--step-2);
+  font-weight: 500;
+  letter-spacing: -0.025em;
 }
 
-.docs-quick ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
+/* Sections flow down columns, so a long section doesn't leave holes. */
+.docs-index-grid {
+  columns: 12rem;
+  column-gap: var(--space-6);
+}
+
+.docs-index-grid > div {
+  margin-bottom: var(--space-5);
+  break-inside: avoid;
+}
+
+.docs-index h3 {
+  margin-bottom: var(--space-2);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.docs-index ul {
   margin: 0;
   padding: 0;
+  font-size: 0.875rem;
   list-style: none;
 }
 
@@ -1051,6 +1550,15 @@
   }
 
   .docs-door {
+    grid-row: auto;
+    grid-template-rows: none;
     box-shadow: 0 -1px 0 var(--hair);
+  }
+
+  .docs-door ul a,
+  .docs-index a,
+  .docs-door .btn,
+  .crumbs a {
+    min-height: 2.75rem;
   }
 }

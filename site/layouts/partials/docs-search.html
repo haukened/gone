@@ -1,0 +1,16 @@
+{{- /* The docs search: a button that search.js shows (it stays hidden
+       without the script), and, with "dialog", the dialog it opens. */ -}}
+{{- if eq . "dialog" }}
+<dialog class="search" aria-labelledby="search-title" data-index="{{ with (site.GetPage "/docs").OutputFormats.Get "searchindex" }}{{ .RelPermalink }}{{ end }}">
+	<form method="dialog" class="search-form" role="search">
+		<label id="search-title" class="sr-only" for="search-input">Search the docs</label>
+		{{ partial "icon.html" "search" }}
+		<input id="search-input" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-controls="search-results" aria-describedby="search-status">
+		<button type="submit" class="search-close" value="close"><span>Esc</span><span class="sr-only"> to close</span></button>
+	</form>
+	<p id="search-status" class="search-status" role="status"></p>
+	<ul id="search-results" class="search-results" role="listbox" aria-label="Results"></ul>
+</dialog>
+{{- else }}
+<button type="button" class="search-open" data-search-open hidden>{{ partial "icon.html" "search" }}<span>Search docs</span><kbd class="search-key">/</kbd></button>
+{{- end }}

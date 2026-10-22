@@ -7,7 +7,7 @@ sections:
   - title: Use the CLI
     pages:
       - { page: cli.md, label: The gone CLI }
-      - { page: cli-reference.md, label: Command reference }
+      - { page: cli-reference.md, label: CLI reference }
   - title: Self-host
     pages:
       - { page: deploy/README.md, label: Overview }
@@ -32,7 +32,7 @@ sections:
       - { page: security.md, label: Security model }
       - { page: verify.md, label: Verify a release }
       - { page: decisions.md, label: Technical decisions }
-      - { page: security-policy.md, label: Report a vulnerability }
+      - { page: security-policy.md, label: Security policy }
   - title: Reference
     pages:
       - { page: configuration.md, label: Configuration }
@@ -69,11 +69,3 @@ doors:
       - verify.md
       - protocol.md
 
-# The row of quick links under the doors.
-quick:
-  - configuration.md
-  - cli-reference.md
-  - api.md
-  - protocol.md
-  - contributing.md
-  - ROADMAP.md

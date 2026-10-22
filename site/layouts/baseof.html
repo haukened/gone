@@ -3,9 +3,9 @@
 <head>
 {{ partial "head.html" . }}
 </head>
-<body>
+<body{{ if eq .Section "docs" }} class="is-docs"{{ end }}>
 {{ partial "sprite.html" . }}
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="{{ block "skip" . }}#main{{ end }}">Skip to content</a>
 {{ partial "header.html" . }}
 <main id="main" tabindex="-1" class="site-main">
 {{ block "main" . }}{{ end }}

@@ -1,0 +1,9 @@
+{{- /* Headings keep GitHub's ids. h2 to h4 also get a link to themselves,
+       shown on hover and focus, for sharing a section. The h1 stays plain:
+       the layouts lift it out of the page (partials/split-title.html). */ -}}
+{{- if eq .Level 1 -}}
+<h1 id="{{ .Anchor }}">{{ .Text }}</h1>
+{{- else -}}
+<h{{ .Level }} id="{{ .Anchor }}">{{ .Text }}<a class="anchor" href="#{{ .Anchor }}" aria-label="Link to this section: {{ .PlainText }}">{{ partial "icon.html" "hash" }}</a></h{{ .Level }}>
+{{- end -}}
+{{- /* */ -}}
