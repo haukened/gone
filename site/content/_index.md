@@ -52,8 +52,8 @@ install:
 
 web:
   title: Just need to send a secret?
-  text: Use Gone in your browser at gone.hauken.us. No install, no account.
-  button: Open gone.hauken.us
+  text: Use Gone in your browser at app.getgone.dev. No install, no account.
+  button: Open app.getgone.dev
 
 promises:
   - icon: lock
@@ -86,7 +86,7 @@ cli:
   commands:
     - command: printf 'hunter2' | gone send --ttl 30m
       note: prints the link, and a manage link to revoke it
-    - command: gone get 'https://gone.hauken.us/secret/AbC#v1:…'
+    - command: gone get 'https://app.getgone.dev/secret/AbC#v1:…'
       note: opens a link, once
     - command: gone request --label 'VPN key'
       note: asks someone for a secret

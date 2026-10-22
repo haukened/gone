@@ -10,7 +10,7 @@ enableRobotsTXT = true
 [params]
 repo = "https://github.com/haukened/gone"
 # The public instance, for people who just want to send a secret.
-app = "https://gone.hauken.us"
+app = "https://app.getgone.dev"
 # The git ref the docs come from; links to repository files point at it.
 docsRef = "main"
 # The newest stable release, which the docs describe and install commands

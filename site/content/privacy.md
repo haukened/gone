@@ -15,6 +15,6 @@ description: This website collects nothing about you.
 - **Hosting.** The site is served by GitHub Pages, so GitHub receives your IP address and request details when you visit, as any web host does. That's covered by [GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement). We don't receive or see that data.
 - **The install script** downloads Gone from GitHub's release servers, which also see your IP address. It sends nothing else.
 
-This page is about the website. A Gone instance has its own operator and its own privacy terms; Gone itself never logs visitors' addresses or what they open. The public instance at gone.hauken.us runs behind Cloudflare, which, like any network provider in the path, sees visitors' IP addresses but only ever encrypted secrets.
+This page is about the website. A Gone instance has its own operator and its own privacy terms; Gone itself never logs visitors' addresses or what they open. The public instance at app.getgone.dev runs behind Cloudflare, which, like any network provider in the path, sees visitors' IP addresses but only ever encrypted secrets.
 
 Questions: [open an issue](https://github.com/haukened/gone/issues).
