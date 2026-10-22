@@ -11,7 +11,7 @@ The server binary is `goned`. You only need `gone` to send and receive secrets. 
 ### Install script (Linux and macOS)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/haukened/gone/main/install.sh | sh
+curl -fsSL https://getgone.dev/install.sh | sh
 ```
 
 The script:
@@ -29,7 +29,7 @@ Running the script again updates `gone`.
 If you'd rather read a script before running it, download it first:
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/haukened/gone/main/install.sh
+curl -fsSLO https://getgone.dev/install.sh
 less install.sh
 sh install.sh
 ```

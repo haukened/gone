@@ -22,6 +22,8 @@ Gone lets you paste a sensitive value (password, token, wifi key), generate a on
 
 **Try it:** [app.getgone.dev](https://app.getgone.dev), a public instance run by the maintainer. Secrets can be up to 10 MB and are deleted after a day if nobody opens them. No uptime guarantee; limits may change.
 
+**Website and docs:** [getgone.dev](https://getgone.dev).
+
 <table>
 <tr>
 <td width="33%" valign="top"><a href="docs/img/send-light.jpg"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/img/send-dark.jpg"><img src="docs/img/send-light.jpg" alt="The send form: a message encrypted in the browser, an expiry, and an optional passphrase"></picture></a></td>
@@ -95,7 +97,7 @@ Guarantees, in simple terms:
 The `gone` CLI does the same from a terminal and works with secrets sent from the browser, and the other way round. On Linux or macOS, install it with:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/haukened/gone/main/install.sh | sh
+curl -fsSL https://getgone.dev/install.sh | sh
 ```
 
 The script checks the download against the release's checksums (and its signed provenance, if the GitHub CLI is signed in) and installs into `~/.local/bin` without sudo. There are also `.deb` and `.rpm` packages and archives for Linux, macOS and Windows on the [releases page](https://github.com/haukened/gone/releases); see [installing the CLI](docs/cli.md#install).
@@ -120,7 +122,7 @@ printf 'hunter2' | gone reply '<request-link>'      # answer someone's request
 | **Write a client** | [HTTP API](docs/api.md) ([OpenAPI](docs/openapi.yaml)) · [Protocol](docs/protocol.md) |
 | **Build it** | [Contributing](CONTRIBUTING.md) · [Development](docs/development.md) · [Roadmap](docs/ROADMAP.md) · [Rejected features](docs/rejected.md) · [Technical decisions](docs/decisions.md) |
 
-The full index is [docs/README.md](docs/README.md).
+The full index is [docs/README.md](docs/README.md). The same docs, with search, are at [getgone.dev/docs](https://getgone.dev/docs/).
 
 ## Contributing and support
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installs the gone CLI from a GitHub release, for Linux and macOS:
 #
-#   curl -fsSL https://raw.githubusercontent.com/haukened/gone/main/install.sh | sh
+#   curl -fsSL https://getgone.dev/install.sh | sh
 #
 # It downloads the archive for this machine, checks it against the
 # release's SHA256SUMS, checks its signed build provenance when the GitHub
@@ -32,7 +32,7 @@ usage: install.sh [--version vX.Y.Z] [--dir DIR]
   --dir DIR          install into DIR (GONE_INSTALL_DIR; default ~/.local/bin)
   --help             show this help
 
-Piped from curl:  curl -fsSL https://raw.githubusercontent.com/haukened/gone/main/install.sh | sh -s -- --dir DIR
+Piped from curl:  curl -fsSL https://getgone.dev/install.sh | sh -s -- --dir DIR
 EOF
 }
 

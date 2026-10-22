@@ -125,7 +125,7 @@ cat > RELEASE_NOTES.md <<EOF
 On Linux or macOS, the install script downloads the right archive, checks it against \`SHA256SUMS\` (and its signed provenance when the GitHub CLI is signed in), and puts \`gone\` in \`~/.local/bin\`, without sudo:
 
 \`\`\`sh
-curl -fsSL https://raw.githubusercontent.com/haukened/gone/main/install.sh | sh -s -- --version ${tag}
+curl -fsSL https://getgone.dev/install.sh | sh -s -- --version ${tag}
 \`\`\`
 
 Or install a package (\`arm64\` / \`aarch64\` builds are attached too):
