@@ -6,11 +6,12 @@
 		<label id="search-title" class="sr-only" for="search-input">Search the docs</label>
 		{{ partial "icon.html" "search" }}
 		<input id="search-input" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-controls="search-results" aria-describedby="search-status">
-		<button type="submit" class="search-close" value="close"><span>Esc</span><span class="sr-only"> to close</span></button>
+		<button type="submit" class="search-close" value="close" aria-label="Close search"><span class="when-keys">Esc</span><span class="when-touch">Close</span></button>
 	</form>
 	<p id="search-status" class="search-status" role="status"></p>
+	<p class="search-empty" hidden>Try other words, <a href="{{ (site.GetPage "/docs").RelPermalink }}#every-page">browse every page</a>, or <a href="{{ site.Params.repo }}/issues/new?title={{ "Docs: " | urlquery }}">ask on GitHub</a>.</p>
 	<ul id="search-results" class="search-results" role="listbox" aria-label="Results"></ul>
 </dialog>
 {{- else }}
-<button type="button" class="search-open" data-search-open hidden>{{ partial "icon.html" "search" }}<span>Search docs</span><kbd class="search-key">/</kbd></button>
+<button type="button" class="search-open" data-search-open hidden>{{ partial "icon.html" "search" }}<span>Search docs</span><kbd class="search-key when-keys">/</kbd></button>
 {{- end }}

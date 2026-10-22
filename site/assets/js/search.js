@@ -1,7 +1,8 @@
 // Docs search: a dialog that searches an index Hugo builds (docs/index.json),
 // fetched from this site the first time search opens. "/" or Ctrl/Cmd-K opens
-// it; arrows move through results; Enter opens one; Escape closes. Without
-// this script the search buttons stay hidden and nothing else changes.
+// it; arrows move through results; Enter opens one; Escape closes. A result
+// links to the section, variable or flag that matched. Without this script
+// the search buttons stay hidden and nothing else changes.
 (function () {
   'use strict';
 
@@ -13,18 +14,24 @@
   const input = dialog.querySelector('#search-input');
   const list = dialog.querySelector('#search-results');
   const status = dialog.querySelector('#search-status');
+  const empty = dialog.querySelector('.search-empty');
 
   let loading = null;
-  let results = [];
   let active = -1;
 
+  // A place a result can point to: a section, a variable or a flag.
+  function target(id, name, body, isRow) {
+    return { id: id, name: name, body: body, isRow: isRow, low: name.toLowerCase(), lowBody: body.toLowerCase() };
+  }
+
   function prepare(page) {
-    const heads = page.h.map((h) => ({ id: h.i, text: h.t, body: h.x, low: h.t.toLowerCase(), lowBody: h.x.toLowerCase() }));
+    const spots = page.h.map((h) => target(h.i, h.t, h.x, false))
+      .concat(page.r.map((r) => target(r.i, r.t, r.x, true)));
     return {
       page: page,
       title: (page.t + ' ' + page.l).toLowerCase(),
-      heads: heads,
-      text: [page.x].concat(heads.map((h) => h.body)).join(' ').toLowerCase(),
+      spots: spots,
+      text: [page.x].concat(spots.map((s) => s.body)).join(' ').toLowerCase(),
     };
   }
 
@@ -37,53 +44,95 @@
     return loading;
   }
 
-  // bestSection returns the section the terms point to: a term in its
-  // heading counts three times one in its text.
-  function bestSection(entry, terms) {
-    let best = null;
-    let most = 0;
-    for (const h of entry.heads) {
-      let n = 0;
-      for (const t of terms) n += (h.low.includes(t) ? 3 : 0) + (h.lowBody.includes(t) ? 1 : 0);
-      if (n > most) { best = h; most = n; }
-    }
-    return { head: best, count: most };
+  // compact folds a name for exact matching: "trusted proxies" and
+  // "GONE_TRUSTED_PROXIES" both contain "trustedproxies".
+  function compact(s) {
+    return s.toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
-  // score ranks a page: a term in the title counts most, then in a
-  // heading, then in the text. A page missing any term scores 0.
-  function score(entry, terms) {
+  // spotScore rates one place: a term in its name counts three times one in
+  // its text, and a variable or flag whose name holds the whole query
+  // outranks everything else.
+  function spotScore(spot, terms, whole) {
+    let n = 0;
+    for (const t of terms) n += (spot.low.includes(t) ? 3 : 0) + (spot.lowBody.includes(t) ? 1 : 0);
+    if (spot.isRow && whole.length > 2 && compact(spot.name).includes(whole)) n += 20;
+    return n;
+  }
+
+  function bestSpot(entry, terms, whole) {
+    let best = null;
+    let most = 0;
+    for (const spot of entry.spots) {
+      const n = spotScore(spot, terms, whole);
+      if (n > most) { best = spot; most = n; }
+    }
+    return { spot: best, count: most };
+  }
+
+  // pageScore ranks a page: a term in the title counts most, then in a
+  // heading or name, then in the text. A page missing any term scores 0.
+  function pageScore(entry, terms) {
     let total = 0;
     for (const t of terms) {
       const inTitle = entry.title.includes(t);
-      const inHead = entry.heads.some((h) => h.low.includes(t));
-      if (!inTitle && !inHead && !entry.text.includes(t)) return 0;
-      total += inTitle ? 10 : inHead ? 4 : 1;
+      const inSpot = entry.spots.some((s) => s.low.includes(t));
+      if (!inTitle && !inSpot && !entry.text.includes(t)) return 0;
+      total += inTitle ? 10 : inSpot ? 4 : 1;
     }
     return total;
   }
 
-  // snippet shows the text around the first term, from the matched
-  // section when there is one.
+  function find(query, pages) {
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return [];
+    const whole = compact(query);
+    return pages
+      .map((entry) => {
+        const best = bestSpot(entry, terms, whole);
+        return { entry: entry, spot: best.spot, score: pageScore(entry, terms) + best.count * 2, terms: terms };
+      })
+      .filter((r) => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_RESULTS);
+  }
+
+  // snippet returns the text around the first term, from the matched place
+  // when there is one.
   function snippet(r) {
-    const source = r.head ? r.head.body : r.entry.page.x;
+    const source = r.spot ? r.spot.body : r.entry.page.x;
     const at = source.toLowerCase().indexOf(r.terms[0]);
     if (at < 0) return source.slice(0, SNIPPET * 2);
     const from = Math.max(0, at - SNIPPET);
     return (from > 0 ? '… ' : '') + source.slice(from, at + SNIPPET) + ' …';
   }
 
-  function find(query, pages) {
-    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.length) return [];
-    return pages
-      .map((entry) => {
-        const best = bestSection(entry, terms);
-        return { entry: entry, head: best.head, score: score(entry, terms) + best.count * 2, terms: terms };
-      })
-      .filter((r) => r.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, MAX_RESULTS);
+  function escapeRe(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  // marked builds text with each search term in a <mark>, from text nodes
+  // only.
+  function marked(text, terms) {
+    const out = document.createDocumentFragment();
+    const re = new RegExp('(' + terms.map(escapeRe).join('|') + ')', 'gi');
+    text.split(re).forEach(function (part, i) {
+      if (i % 2) {
+        const m = document.createElement('mark');
+        m.textContent = part;
+        out.append(m);
+      } else if (part) {
+        out.append(document.createTextNode(part));
+      }
+    });
+    return out;
+  }
+
+  function span(className, content) {
+    const s = document.createElement('span');
+    s.className = className;
+    s.append(content);
+    return s;
   }
 
   function resultItem(r, i) {
@@ -92,18 +141,11 @@
     li.setAttribute('role', 'presentation');
     const a = document.createElement('a');
     a.id = 'search-result-' + i;
-    a.href = p.u + (r.head ? '#' + r.head.id : '');
+    a.href = p.u + (r.spot ? '#' + r.spot.id : '');
     a.setAttribute('role', 'option');
-    const title = document.createElement('span');
-    title.className = 'search-title';
-    title.textContent = p.l + (r.head ? ' › ' + r.head.text : '');
-    const where = document.createElement('span');
-    where.className = 'search-where';
-    where.textContent = p.s;
-    const text = document.createElement('span');
-    text.className = 'search-text';
-    text.textContent = snippet(r);
-    a.append(title, where, text);
+    const name = p.l + (r.spot ? ' › ' + r.spot.name : '');
+    a.append(span('search-title', marked(name, r.terms)), span('search-where', p.s),
+      span('search-text', marked(snippet(r), r.terms)));
     li.append(a);
     return li;
   }
@@ -118,14 +160,19 @@
     input.setAttribute('aria-activedescendant', items[i].id);
   }
 
+  function report(query, count) {
+    empty.hidden = !query.trim() || count > 0;
+    if (!query.trim()) status.textContent = '';
+    else if (!count) status.textContent = 'No pages match “' + query.trim() + '”.';
+    else status.textContent = count + (count === 1 ? ' page matches.' : ' pages match.');
+  }
+
   function show(query, pages) {
-    results = find(query, pages);
+    const results = find(query, pages);
     list.replaceChildren(...results.map(resultItem));
     select(results.length ? 0 : -1);
     input.setAttribute('aria-expanded', results.length ? 'true' : 'false');
-    if (!query.trim()) status.textContent = '';
-    else if (!results.length) status.textContent = 'No pages match “' + query.trim() + '”.';
-    else status.textContent = results.length + (results.length === 1 ? ' page matches.' : ' pages match.');
+    report(query, results.length);
   }
 
   function update() {
@@ -169,10 +216,11 @@
     document.addEventListener('keydown', shortcuts);
     input.addEventListener('input', update);
     input.addEventListener('keydown', onKey);
-    // A result on this page only moves the page, so close the dialog too.
-    list.addEventListener('click', function (e) { if (e.target.closest('a')) dialog.close(); });
-    // A click on the backdrop (the dialog itself, outside its box) closes it.
-    dialog.addEventListener('click', function (e) { if (e.target === dialog) dialog.close(); });
+    // A result on this page only moves the page, and the backdrop (the
+    // dialog itself, outside its box) dismisses: both close the dialog.
+    dialog.addEventListener('click', function (e) {
+      if (e.target === dialog || e.target.closest('#search-results a, .search-empty a')) dialog.close();
+    });
   }
 
   init();

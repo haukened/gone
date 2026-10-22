@@ -14,7 +14,14 @@
 	</thead>
 	<tbody>
 		{{- range .TBody }}
-		<tr>{{ range $c, $cell := . }}{{ $text := string $cell.Text }}{{ range seq 8 }}{{ $text = replaceRE `(<code>(?:[^<]|<wbr>)*?),([^<])` "${1},<wbr>${2}" $text }}{{ end }}<td{{ with $cell.Alignment }} class="align-{{ . }}"{{ end }} data-label="{{ index $heads $c }}">{{ $text | safeHTML }}</td>{{ end }}</tr>
+		{{- /* A row whose first cell is one identifier (a GONE_* variable)
+		       or a flag gets a key; split-title.html turns it into an id,
+		       so the row can be linked and found by search. */}}
+		{{- $first := (index . 0).Text | string -}}
+		{{- $key := "" }}{{ $flag := "" -}}
+		{{- with findRESubmatch `^<code>([A-Z][A-Z0-9_]{2,})</code>$` $first 1 }}{{ $key = index (index . 0) 1 | lower }}{{ end -}}
+		{{- with findRESubmatch `^<code>(?:-\w, )?--([\w-]+)[^<]*</code>$` $first 1 }}{{ $flag = index (index . 0) 1 }}{{ end }}
+		<tr{{ with $key }} data-key="{{ . }}"{{ end }}{{ with $flag }} data-flag="{{ . }}"{{ end }}>{{ range $c, $cell := . }}{{ $text := string $cell.Text }}{{ range seq 8 }}{{ $text = replaceRE `(<code>(?:[^<]|<wbr>)*?),([^<])` "${1},<wbr>${2}" $text }}{{ end }}<td{{ with $cell.Alignment }} class="align-{{ . }}"{{ end }} data-label="{{ index $heads $c }}">{{ $text | safeHTML }}</td>{{ end }}</tr>
 		{{- end }}
 	</tbody>
 </table>

@@ -14,6 +14,7 @@
 {{- $hasToc := findRE `<a href` $toc 1 -}}
 <div class="wrap docs-layout">
 	<aside class="docs-side">
+		{{ partial "docs-release.html" . }}
 		{{ partial "docs-search.html" "button" }}
 		<nav aria-label="Documentation">{{ partial "docs-nav.html" . }}</nav>
 	</aside>
@@ -34,13 +35,14 @@
 			<details class="docs-drop docs-drop-menu" name="docs-drop">
 				<summary>Menu</summary>
 				<div class="docs-drop-panel">
+					{{ partial "docs-release.html" . }}
 					{{ partial "docs-search.html" "button" }}
 					<nav aria-label="Documentation">{{ partial "docs-nav.html" . }}</nav>
 				</div>
 			</details>
 			{{- if $hasToc }}
 			<details class="docs-drop docs-drop-toc" name="docs-drop">
-				<summary>On this page</summary>
+				<summary><span>On this page</span><span class="drop-current" data-toc-current></span></summary>
 				<div class="docs-drop-panel docs-toc">{{ $toc }}</div>
 			</details>
 			{{- end }}

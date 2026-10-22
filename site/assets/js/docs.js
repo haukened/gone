@@ -44,6 +44,7 @@
       if (h === marked) return;
       if (marked) byId.get(marked.id).forEach((a) => a.removeAttribute('aria-current'));
       byId.get(h.id).forEach((a) => a.setAttribute('aria-current', 'true'));
+      document.querySelectorAll('[data-toc-current]').forEach((s) => { s.textContent = h.textContent.trim(); });
       marked = h;
     }
     window.addEventListener('scroll', function () {

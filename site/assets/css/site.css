@@ -482,8 +482,18 @@
 }
 
 :is(h2, h3, h4):hover .anchor,
+.prose tr:hover .anchor,
 .anchor:focus-visible {
   opacity: 1;
+}
+
+/* A variable or flag row reached by its link stands out. */
+.prose tr[id] {
+  scroll-margin-top: var(--space-5);
+}
+
+.prose tr:target {
+  background: var(--color-accent-soft);
 }
 
 .anchor:hover {
@@ -648,6 +658,11 @@
 
 .codeblock-copy {
   margin-left: auto;
+}
+
+/* A command's usage is read, not copied: it wraps rather than scrolls. */
+.codeblock-usage pre code {
+  white-space: pre-wrap;
 }
 
 /* A terminal reads a little deeper than a file. */
@@ -959,6 +974,21 @@
   outline-offset: -2px;
 }
 
+/* Which release the docs describe. */
+.docs-release {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  margin-bottom: var(--space-2);
+  font-size: 0.75rem;
+  color: var(--color-ink-3);
+  text-decoration: none;
+}
+
+.docs-release:hover {
+  color: var(--color-accent);
+}
+
 /* Search: a button that opens the dialog (search.js shows it). */
 .search-open {
   display: flex;
@@ -1047,6 +1077,52 @@
 
 .search-form input:focus {
   outline: none;
+}
+
+/* The browser's own clear button duplicates Close, in a colour outside the
+   palette. */
+.search-form input::-webkit-search-cancel-button {
+  display: none;
+}
+
+/* Key hints for keyboards; plain words on touch screens. */
+.when-touch {
+  display: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .when-keys {
+    display: none;
+  }
+
+  .when-touch {
+    display: inline;
+  }
+}
+
+.search-close .when-touch {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink-2);
+}
+
+.search-empty {
+  padding: 0.25rem 1rem 1rem;
+  font-size: 0.875rem;
+  color: var(--color-ink-2);
+}
+
+.search-empty a {
+  color: var(--color-accent);
+}
+
+.search-results mark {
+  color: inherit;
+  background: none;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
 }
 
 .search-close {
@@ -1275,7 +1351,32 @@
 }
 
 .docs-drop-toc {
+  min-width: 0;
   margin-left: auto;
+}
+
+.docs-drop-toc > summary {
+  max-width: 100%;
+}
+
+/* The section being read, beside "On this page" (docs.js fills it). */
+.drop-current {
+  overflow: hidden;
+  font-weight: 400;
+  color: var(--color-ink-3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.drop-current:not(:empty)::before {
+  margin-right: 0.5rem;
+  content: "·";
+}
+
+@media (max-width: 30rem) {
+  .drop-current {
+    display: none;
+  }
 }
 
 .docs-drop-toc .docs-drop-panel {
@@ -1361,20 +1462,8 @@
     display: flex;
   }
 
-  .docs-bar {
-    margin-bottom: 0;
-    padding: var(--space-2) 0 0;
-    background: none;
-    backdrop-filter: none;
-    border-bottom: 0;
-    pointer-events: none;
-  }
-
-  .docs-bar > * {
-    pointer-events: auto;
-  }
-
-  .prose :is(h2, h3, h4) {
+  .prose :is(h2, h3, h4),
+  .prose tr[id] {
     scroll-margin-top: 4.5rem;
   }
 }
@@ -1410,7 +1499,8 @@
   /* 44px targets on phones. */
   .docs-toc a,
   .docs-nav-section a,
-  .docs-meta a {
+  .docs-meta a,
+  .docs-release {
     display: flex;
     align-items: center;
     min-height: 2.75rem;

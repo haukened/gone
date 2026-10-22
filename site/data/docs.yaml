@@ -55,6 +55,8 @@ doors:
     start: { page: cli.md, label: Install the CLI }
     more:
       - cli-reference.md
+      - { page: cli.md, anchor: scripts-and-agents, label: Scripts and AI agents }
+      - { page: cli.md, anchor: security-notes, label: Security notes }
   - title: Host Gone yourself
     text: Run your own instance with Docker, Kubernetes or a Linux package, behind your own HTTPS.
     start: { page: deploy/README.md, label: Choose how to run it }
@@ -68,4 +70,5 @@ doors:
     more:
       - verify.md
       - protocol.md
+      - { page: security.md, anchor: what-the-server-stores, label: What the server stores }
 
