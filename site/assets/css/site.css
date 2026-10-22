@@ -16,8 +16,56 @@
   text-align: center;
 }
 
+.hero h1 {
+  font-size: clamp(2.25rem, 1.5rem + 3.2vw, 3.75rem);
+}
+
 .hero .lead {
   margin-inline: auto;
+}
+
+/* The way in for most visitors: the public instance, hero-sized. */
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.btn-hero {
+  min-height: 3.5rem;
+  padding-inline: 1.75rem;
+  font-size: 1.0625rem;
+}
+
+.hero-note {
+  font-size: 0.875rem;
+  color: var(--color-ink-2);
+}
+
+/* The app itself, below the buttons: the top of the send page, fading out
+   so it reads as a glimpse, not a second page. */
+.hero-shot {
+  width: min(44rem, 100%);
+  margin: var(--space-5) auto 0;
+  padding: 0.6rem;
+}
+
+.hero-shot img {
+  display: block;
+  width: 100%;
+  height: clamp(16rem, 45vw, 28rem);
+  object-fit: cover;
+  object-position: top;
+  border-radius: calc(var(--radius-pane) - 0.6rem);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+
+@media (max-width: 30rem) {
+  .hero-cta .btn {
+    width: 100%;
+  }
 }
 
 /* The header on narrow screens. The app fits its two short links between the
@@ -183,21 +231,6 @@
 .install-more {
   font-size: 0.875rem;
   text-align: right;
-}
-
-/* For people who only want to send a secret: the public instance. */
-.web-cta {
-  flex-wrap: wrap;
-  align-items: center;
-  margin-top: calc(-1 * clamp(1.5rem, 5vw, 4rem));
-}
-
-.web-cta > span {
-  flex: 1 1 18rem;
-}
-
-.web-cta .btn {
-  flex: none;
 }
 
 .promises {

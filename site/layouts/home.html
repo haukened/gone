@@ -1,20 +1,51 @@
 {{ define "main" }}
 {{- $p := .Params -}}
 <div class="wrap home">
+	{{- /* First, for most visitors: send a secret on the public instance,
+	       in the browser. */}}
 	{{- with $p.hero }}
 	<section class="hero" aria-labelledby="hero-title">
 		<p class="eyebrow">{{ .eyebrow }}</p>
 		<h1 id="hero-title">{{ .title }} <span class="accent">{{ .accent }}</span>.</h1>
 		<p class="lead">{{ .lead }}</p>
+		{{- with .cta }}
+		<div class="hero-cta">
+			<a class="btn btn-primary btn-hero" href="{{ site.Params.app }}">{{ .primary }}{{ partial "icon.html" "arrow" }}</a>
+			<a class="btn btn-secondary btn-hero" href="{{ site.Params.app }}{{ .secondaryPath }}">{{ .secondary }}</a>
+		</div>
+		<p class="hero-note">{{ .note }}</p>
+		{{- end }}
+		{{- with .image }}
+		<figure class="pane hero-shot">
+			<picture>
+				<source media="(prefers-color-scheme: dark)" srcset="{{ .dark | relURL }}">
+				<img src="{{ .light | relURL }}" alt="{{ .alt }}" width="1520" height="2492" fetchpriority="high">
+			</picture>
+		</figure>
+		{{- end }}
 	</section>
 	{{- end }}
 
-	{{ partial "install-box.html" $p.install }}
-
-	{{- with $p.web }}
-	<p class="callout web-cta">{{ partial "icon.html" "globe" }}<span><strong>{{ .title }}</strong> {{ .text }}</span><a class="btn btn-secondary btn-small" href="{{ site.Params.app }}">{{ .button }}{{ partial "icon.html" "arrow" }}</a></p>
+	{{- /* Then the CLI: install it, and what it does. */}}
+	{{- with $p.cli }}
+	<section class="cli" aria-labelledby="cli-title">
+		<h2 id="cli-title" class="section-title">{{ .title }}</h2>
+		<p class="section-lead">{{ .text }}</p>
+		{{ partial "install-box.html" $p.install }}
+		<ul class="cli-commands">
+			{{- range $i, $c := .commands }}
+			<li>
+				{{ partial "copy-well.html" (dict "id" (printf "cli-%d" $i) "command" $c.command) }}
+				<span class="hint">{{ $c.note }}</span>
+			</li>
+			{{- end }}
+		</ul>
+		<p class="status" role="status" data-copy-status></p>
+		{{- with .link }}<p><a href="{{ partial "url.html" .url }}">{{ .text }} {{ partial "icon.html" "arrow" }}</a></p>{{ end }}
+	</section>
 	{{- end }}
 
+	{{- /* Then what Gone is, and running your own. */}}
 	<section class="promises" aria-label="What Gone promises">
 		{{- range $p.promises }}
 		<div class="promise">
@@ -41,23 +72,6 @@
 				<img src="{{ .image.light | relURL }}" alt="{{ .image.alt }}" width="760" height="766" loading="lazy">
 			</picture>
 		</figure>
-	</section>
-	{{- end }}
-
-	{{- with $p.cli }}
-	<section class="pane cli" aria-labelledby="cli-title">
-		<h2 id="cli-title" class="section-title">{{ .title }}</h2>
-		<p class="section-lead">{{ .text }}</p>
-		<ul class="cli-commands">
-			{{- range $i, $c := .commands }}
-			<li>
-				{{ partial "copy-well.html" (dict "id" (printf "cli-%d" $i) "command" $c.command) }}
-				<span class="hint">{{ $c.note }}</span>
-			</li>
-			{{- end }}
-		</ul>
-		<p class="status" role="status" data-copy-status></p>
-		{{- with .link }}<p><a href="{{ partial "url.html" .url }}">{{ .text }} {{ partial "icon.html" "arrow" }}</a></p>{{ end }}
 	</section>
 	{{- end }}
 

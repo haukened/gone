@@ -6,7 +6,17 @@ hero:
   eyebrow: Open source · Self-hosted · Zero-knowledge
   title: Share a secret exactly
   accent: once
-  lead: Encrypted in your browser. Deleted after one read. Gone is a small, open-source tool for handing over a password, a token or a key, from your browser or your terminal, on a server you run yourself.
+  lead: Paste a password, a token or a file, and get a link that works exactly once. It's encrypted in your browser and deleted after one read.
+  # The way in for most visitors: the public instance, in the browser.
+  cta:
+    primary: Send a secret
+    secondary: Ask someone for a secret
+    secondaryPath: /request
+    note: Free, no account, nothing to install. Opens app.getgone.dev in your browser.
+  image:
+    light: docs/img/send-light.jpg
+    dark: docs/img/send-dark.jpg
+    alt: "Gone's send page: a message box holding a staging database login, with options for files, expiry and a passphrase, and a Create one-time link button"
 
 # The CLI install box. {tag} is the latest release (v3.12.0) and {version}
 # the same without the "v". A tab with "since" appears only once the latest
@@ -50,11 +60,6 @@ install:
     text: Every install option, and how to verify a download
     url: /docs/cli/#install
 
-web:
-  title: Just need to send a secret?
-  text: Use Gone in your browser at app.getgone.dev. No install, no account.
-  button: Open app.getgone.dev
-
 promises:
   - icon: lock
     title: Only they can read it
@@ -81,7 +86,7 @@ how:
     alt: Gone's Open page, the secret waiting behind frosted glass until the recipient presses Open
 
 cli:
-  title: From your terminal
+  title: Or from your terminal
   text: The gone CLI works with secrets sent from the browser, and the other way round. Messages come from standard input, never from arguments, and scripts and AI agents can handle secrets by reference so the plaintext never appears in their output.
   commands:
     - command: printf 'hunter2' | gone send --ttl 30m
@@ -134,18 +139,18 @@ run:
     - title: Docker Compose with Caddy
       badge: Recommended
       text: HTTPS with an automatic certificate, in one file.
-      url: /docs/deploy/compose/
+      url: /docs/self-host/compose/
     - title: Docker
       text: The container image, behind your own proxy.
-      url: /docs/deploy/docker/
+      url: /docs/self-host/docker/
     - title: Kubernetes
       since: v3.13.0
       text: A Helm chart, routed through the Gateway API.
-      url: /docs/deploy/kubernetes/
+      url: /docs/self-host/kubernetes/
     - title: Linux package
       since: v3.13.0
       text: A hardened systemd service from a .deb or .rpm.
-      url: /docs/deploy/packages/
+      url: /docs/self-host/packages/
 
 open:
   title: Built in the open
