@@ -30,7 +30,7 @@ Ctrl-D; Ctrl-Z then Enter on Windows), or from --message-file. The message
 is never taken from the command line, so it stays out of shell history.
 
 Flags:
-  -s, --server URL           server origin (default: $GONE_SERVER, config, https://gone.hauken.us)
+  -s, --server URL           server origin (default: $GONE_SERVER, config, https://app.getgone.dev)
   -t, --ttl DURATION         lifetime, e.g. 30m or 24h (default 1h)
   -f, --file PATH            attach a file; repeat for more (max 10, or the server's limit)
       --message-file PATH    read the message from PATH instead of standard input
@@ -58,7 +58,7 @@ Flags:
       --passphrase-file PATH read the passphrase from PATH instead of prompting
       --json                 print the result as JSON
       --raw                  print the message without escaping control characters
-  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://gone.hauken.us)
+  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://app.getgone.dev)
       --allow-origin ORIGIN  also trust this server for this command; repeat or comma-separate
       --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
@@ -72,7 +72,7 @@ Shows whether the secret is still waiting to be opened. A manage link of
 
 Flags:
       --json                 print the result as JSON
-  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://gone.hauken.us)
+  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://app.getgone.dev)
       --allow-origin ORIGIN  also trust this server for this command; repeat or comma-separate
       --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
@@ -86,7 +86,7 @@ read from standard input.
 
 Flags:
       --json                 print the result as JSON
-  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://gone.hauken.us)
+  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://app.getgone.dev)
       --allow-origin ORIGIN  also trust this server for this command; repeat or comma-separate
       --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)
@@ -132,7 +132,7 @@ Flags for making a request:
   -l, --label TEXT           a note to tell your requests apart (kept on this device only)
   -t, --ttl DURATION         how long to wait for a reply, e.g. 30m or 24h (default 1h);
                              a reply is then kept as long again
-  -s, --server URL           server origin (default: $GONE_SERVER, config, https://gone.hauken.us)
+  -s, --server URL           server origin (default: $GONE_SERVER, config, https://app.getgone.dev)
       --wait                 wait for the reply and open it (the request is still saved first)
 
 Flags for opening a reply (open, and request --wait):
@@ -162,7 +162,7 @@ Flags:
   -f, --file PATH            attach a file; repeat for more (max 10, or the server's limit)
       --message-file PATH    read the message from PATH instead of standard input
       --json                 print the result as JSON
-  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://gone.hauken.us)
+  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://app.getgone.dev)
       --allow-origin ORIGIN  also trust this server for this command; repeat or comma-separate
       --insecure             allow an http:// link on localhost
       --timeout DURATION     per-request timeout (default 1m)

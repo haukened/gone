@@ -14,7 +14,7 @@ gone send [flags]
 
 | Flag | What it does |
 | --- | --- |
-| `-s, --server URL` | Server origin (default: `$GONE_SERVER`, config, `https://gone.hauken.us`) |
+| `-s, --server URL` | Server origin (default: `$GONE_SERVER`, config, `https://app.getgone.dev`) |
 | `-t, --ttl DURATION` | Lifetime, e.g. 30m or 24h (default 1h) |
 | `-f, --file PATH` | Attach a file; repeat for more (max 10) |
 | `--message-file PATH` | Read the message from PATH instead of standard input |
@@ -54,7 +54,7 @@ gone get <link|-> [flags]
 | `--passphrase-file PATH` | Read the passphrase from PATH instead of prompting |
 | `--json` | Print the result as JSON |
 | `--raw` | Print the message without escaping control characters |
-| `-s, --server URL` | The server you trust (default: `$GONE_SERVER`, config, `https://gone.hauken.us`) |
+| `-s, --server URL` | The server you trust (default: `$GONE_SERVER`, config, `https://app.getgone.dev`) |
 | `--allow-origin ORIGIN` | Also trust this server for this command; repeat or comma-separate |
 | `--insecure` | Allow an `http://` link on localhost |
 | `--timeout DURATION` | Per-request timeout (default 1m) |
@@ -165,19 +165,19 @@ Saves the default server for `send` and `request`. The value must be a bare orig
 
 ## Server selection and transport
 
-`send` and `request` pick their server from, in order: `--server`, the `GONE_SERVER` environment variable, the saved config, then `https://gone.hauken.us`. When `--server` or `GONE_SERVER` overrides a server saved with `gone set server`, a one-line notice on standard error names the server in use (`Using https://… (from GONE_SERVER), not the configured server https://….`).
+`send` and `request` pick their server from, in order: `--server`, the `GONE_SERVER` environment variable, the saved config, then `https://app.getgone.dev`. When `--server` or `GONE_SERVER` overrides a server saved with `gone set server`, a one-line notice on standard error names the server in use (`Using https://… (from GONE_SERVER), not the configured server https://….`).
 
 ### Which servers a link may reach
 
 A link names its own server, and anyone can make a link that points anywhere. Opening a link sends a request that tells its server your IP address and when you opened it, so `get`, `status`, `revoke` and `reply` only contact a link's server if it is:
 
-- the server you use, chosen exactly as for `send`: `--server`, `GONE_SERVER`, the saved config, then `https://gone.hauken.us`; or
+- the server you use, chosen exactly as for `send`: `--server`, `GONE_SERVER`, the saved config, then `https://app.getgone.dev`; or
 - named with `--allow-origin ORIGIN` on this command. Repeat the flag or separate origins with commas. Each value must be a bare origin such as `https://gone.example.com`; it applies to this command only.
 
 Any other link is refused before anything is sent, with exit 2 (JSON error kind `untrusted_origin`). The message names both servers, never the link's ID or key:
 
 ```text
-gone: refused: this link is for https://gone.example.com, but no server is set, so gone only trusts the default https://gone.hauken.us; nothing was sent. If you trust https://gone.example.com, add --allow-origin https://gone.example.com for this command, or make it your server with: gone set server https://gone.example.com
+gone: refused: this link is for https://gone.example.com, but no server is set, so gone only trusts the default https://app.getgone.dev; nothing was sent. If you trust https://gone.example.com, add --allow-origin https://gone.example.com for this command, or make it your server with: gone set server https://gone.example.com
 ```
 
 If you use your own server, run `gone set server https://your.server` once and its links just work. Origins are compared after lowercasing and dropping a default port, so `https://Gone.Example:443` and `https://gone.example` are the same server.
@@ -257,7 +257,7 @@ This contains the plaintext. Anything that captures standard output (a log, a CI
 `request list` (an array, newest first; `state` is `waiting`, `ready`, `gone` or `unknown`):
 
 ```json
-[{"id":"ID","label":"staging DB","state":"ready","server":"https://gone.hauken.us","created_at":"…","expires_at":"…","link":"https://…/reply/ID#v3:…"}]
+[{"id":"ID","label":"staging DB","state":"ready","server":"https://app.getgone.dev","created_at":"…","expires_at":"…","link":"https://…/reply/ID#v3:…"}]
 ```
 
 `request open`: the same as `get` (or `get --message-out`). `request cancel`: `{"cancelled":true}`. `reply`: `{"sent":true,"expires_at":"…"}`.

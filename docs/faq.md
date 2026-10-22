@@ -40,4 +40,4 @@ Yes. Every feature works on every instance, under the AGPL-3.0 licence. There's 
 
 ## Can I try it without installing anything?
 
-Yes: the public instance at gone.hauken.us is open to anyone. It's run by the maintainer with no uptime guarantee, so for anything important, run your own.
+Yes: the public instance at app.getgone.dev is open to anyone. It's run by the maintainer with no uptime guarantee, so for anything important, run your own.

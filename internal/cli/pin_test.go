@@ -69,7 +69,7 @@ func TestLinkOriginRefused(t *testing.T) {
 		f.te.reset()
 		code := f.te.run(args...)
 		msg := f.te.stderr.String()
-		if code != exitUsage || !strings.Contains(msg, "link is for "+f.attacker) || !strings.Contains(msg, "default https://gone.hauken.us") ||
+		if code != exitUsage || !strings.Contains(msg, "link is for "+f.attacker) || !strings.Contains(msg, "default https://app.getgone.dev") ||
 			!strings.Contains(msg, "gone set server "+f.attacker) || !strings.Contains(msg, "--allow-origin "+f.attacker) {
 			t.Errorf("%s: exit %d, stderr %q", args[0], code, msg)
 		}
