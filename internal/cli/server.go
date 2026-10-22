@@ -10,7 +10,7 @@ import (
 const (
 	// defaultServer is used when no flag, environment variable or config
 	// file names a server.
-	defaultServer = "https://gone.hauken.us"
+	defaultServer = "https://app.getgone.dev"
 	// serverEnv names the environment variable that overrides the config.
 	serverEnv = "GONE_SERVER"
 )

@@ -75,12 +75,12 @@ CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(git describe 
 ```sh
 # Send: the message comes from standard input, never from the command line.
 printf 'hunter2' | gone send --ttl 30m
-#   Link:        https://gone.hauken.us/secret/AbC…#v1:…
-#   Manage link: https://gone.hauken.us/manage/AbC…#…
+#   Link:        https://app.getgone.dev/secret/AbC…#v1:…
+#   Manage link: https://app.getgone.dev/manage/AbC…#…
 #   Expires:     2026-08-10T18:30:00Z
 
 # Open it (quote the link: see "Quoting links").
-gone get 'https://gone.hauken.us/secret/AbC…#v1:…'
+gone get 'https://app.getgone.dev/secret/AbC…#v1:…'
 ```
 
 Send the **link** to the recipient. Keep the **manage link** yourself: it lets you check on the secret or delete it, but it cannot open it.
@@ -89,7 +89,7 @@ Need a secret from someone instead?
 
 ```sh
 gone request --label "staging DB"
-#   Link:    https://gone.hauken.us/reply/3f9a…#v3:…
+#   Link:    https://app.getgone.dev/reply/3f9a…#v3:…
 #   ID:      3f9a1c2e…
 #   Expires: 2026-08-10T18:30:00Z
 
@@ -150,7 +150,7 @@ gone reply - --message-file /root/.db-password --json < request-link.txt
 Always put links in **single quotes**:
 
 ```sh
-gone get 'https://gone.hauken.us/secret/AbC#v1:XyZ'
+gone get 'https://app.getgone.dev/secret/AbC#v1:XyZ'
 ```
 
 The key is after the `#`. Some shells treat `#` or other characters specially, and an unquoted link can be silently cut short. A damaged link is rejected before anything is fetched, so the secret is not burned, but quoting avoids the confusion. Passing the link on standard input with `-` avoids quoting altogether.
