@@ -2,6 +2,12 @@
 
 Start with the [README](../README.md) for what Gone is and a one-command quick start.
 
+## Questions
+
+| Page | For |
+| ---- | --- |
+| [Frequently asked questions](faq.md) | Short answers about Gone, each linked to the page that explains it |
+
 ## Use the CLI
 
 | Page | For |
