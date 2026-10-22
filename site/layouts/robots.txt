@@ -3,4 +3,7 @@
 User-agent: *
 Allow: /
 
+# Search engines, AI assistants and AI training may all use this site.
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+
 Sitemap: {{ "sitemap.xml" | absURL }}
