@@ -1,6 +1,8 @@
 # Running Gone on Kubernetes
 
-Gone has a Helm chart, published beside the image as an OCI artifact: `oci://ghcr.io/haukened/charts/gone`. Its version follows Gone's, so chart `3.13.0` runs image `v3.13.0`. It needs Kubernetes 1.34 or later and Helm 3.8 or later. It's tested on kind with Kubernetes 1.34 and 1.37 and Helm 4, routed through Envoy Gateway.
+Gone has a Helm chart that runs it on Kubernetes, with Gateway API routing, one replica and its own storage.
+
+The chart is published beside the image as an OCI artifact: `oci://ghcr.io/haukened/charts/gone`. Its version follows Gone's, so chart `3.13.0` runs image `v3.13.0`. It needs Kubernetes 1.34 or later and Helm 3.8 or later. It's tested on kind with Kubernetes 1.34 and 1.37 and Helm 4, routed through Envoy Gateway.
 
 > [!IMPORTANT]
 > **Gone needs HTTPS.** Browsers only allow the encryption Gone uses on secure pages, so serve it through a Gateway that terminates TLS. The one exception is `http://localhost`, which is why the port-forward below works for a first try.

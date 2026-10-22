@@ -1,4 +1,4 @@
-# Gone API
+# HTTP API
 
 The HTTP API of the Gone one-time secret sharing service. The machine-readable OpenAPI specification is [openapi.yaml](openapi.yaml); this page summarizes the same API in prose. The encryption format, link fragment, and client rules are specified in [protocol.md](protocol.md). The command-line client is documented in [cli.md](cli.md).
 

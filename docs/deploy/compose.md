@@ -32,6 +32,8 @@ Then visit `https://gone.example.com`. To avoid typing the domain each time, put
 Add variables under the `gone` service's `environment:`. For example, to shorten the longest expiry and allow smaller secrets:
 
 ```yaml
+services:
+  gone:
     environment:
       GONE_TRUSTED_PROXIES: 172.31.255.2/32
       GONE_TTL_OPTIONS: 5m,30m,1h,4h

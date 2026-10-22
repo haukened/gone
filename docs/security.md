@@ -1,8 +1,6 @@
-# Security and architecture
+# Security model
 
-Gone makes two promises:
-- the server never sees a secret's plaintext or key;
-- a link opens a secret at most once.
+Gone makes two promises: the server never sees a secret's plaintext or key, and a link opens a secret at most once.
 
 This page explains how the design keeps them, what is and isn't defended, and what the server stores. The normative byte-level specification, with the envelope format, sanitization rules and shared test vectors, is [protocol.md](protocol.md). To report a vulnerability, see [SECURITY.md](../SECURITY.md).
 
