@@ -74,6 +74,9 @@ jobs:
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: site/public
+          # .well-known/security.txt is a dot-directory, which the action
+          # leaves out unless asked.
+          include-hidden-files: true
 
   deploy:
     needs: build
@@ -88,3 +91,15 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+      # The published site, not just the build: the pages that matter most
+      # are really there.
+      - name: Check the published site
+        env:
+          SITE: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          for path in "" docs/ install.sh .well-known/security.txt docs/index.json; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --retry 5 --retry-all-errors "${SITE}${path}")"
+            echo "${code} ${SITE}${path}"
+            [ "$code" = 200 ] || exit 1
+          done
