@@ -1,0 +1,29 @@
+{{- /* A Markdown table in a wrapper that scrolls sideways. Each cell carries
+       its column's header (data-label), so on phones a row can stack as
+       label and value. Code in cells may break after commas, so value lists
+       such as 5m,30m,1h wrap between values, never inside one. Alignment is
+       a class, not a style attribute, for the CSP. */ -}}
+{{- $heads := slice -}}
+{{- range .THead }}{{ range . }}{{ $heads = $heads | append (.Text | plainify | htmlUnescape) }}{{ end }}{{ end -}}
+<div class="table-wrap">
+<table>
+	<thead>
+		{{- range .THead }}
+		<tr>{{ range . }}<th{{ with .Alignment }} class="align-{{ . }}"{{ end }}>{{ .Text }}</th>{{ end }}</tr>
+		{{- end }}
+	</thead>
+	<tbody>
+		{{- range .TBody }}
+		{{- /* A row whose first cell is one identifier (a GONE_* variable)
+		       or a flag gets a key; split-title.html turns it into an id,
+		       so the row can be linked and found by search. */}}
+		{{- $first := (index . 0).Text | string -}}
+		{{- $key := "" }}{{ $flag := "" -}}
+		{{- with findRESubmatch `^<code>([A-Z][A-Z0-9_]{2,})</code>$` $first 1 }}{{ $key = index (index . 0) 1 | lower }}{{ end -}}
+		{{- with findRESubmatch `^<code>(?:-\w, )?--([\w-]+)[^<]*</code>$` $first 1 }}{{ $flag = index (index . 0) 1 }}{{ end }}
+		<tr{{ with $key }} data-key="{{ . }}"{{ end }}{{ with $flag }} data-flag="{{ . }}"{{ end }}>{{ range $c, $cell := . }}{{ $text := string $cell.Text }}{{ range seq 8 }}{{ $text = replaceRE `(<code>(?:[^<]|<wbr>)*?),([^<])` "${1},<wbr>${2}" $text }}{{ end }}<td{{ with $cell.Alignment }} class="align-{{ . }}"{{ end }}{{ if gt (len $heads) 2 }} data-label="{{ index $heads $c }}"{{ end }}>{{ $text | safeHTML }}</td>{{ end }}</tr>
+		{{- end }}
+	</tbody>
+</table>
+</div>
+{{- /* */ -}}

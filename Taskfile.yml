@@ -129,6 +129,34 @@ tasks:
     cmds:
       - test/interop/signin/run.sh
 
+  site:
+    desc: Build the website into site/public with the pinned Hugo (tools/hugo); fails on a broken link or heading anchor
+    env:
+      CGO_ENABLED: '0'
+      # The newest stable release, which the docs' release marker names.
+      HUGO_PARAMS_RELEASE:
+        sh: git describe --tags --abbrev=0 --match 'v*.*.*' --exclude '*-*'
+    cmds:
+      - go tool -modfile=tools/hugo/go.mod hugo --source site --minify --cleanDestinationDir
+
+  site-test:
+    desc: Browser tests for the website (test/e2e/site), against a fresh build of site/public
+    deps: [site]
+    dir: test/e2e
+    cmds:
+      - npm ci --no-audit --no-fund
+      - npx playwright test -c site.config.js
+
+  site-serve:
+    desc: Preview the website at http://127.0.0.1:8088, rebuilding on save (over SSH - ssh -L 8088:localhost:8088 <host>)
+    env:
+      CGO_ENABLED: '0'
+      # The newest stable release, which the docs' release marker names.
+      HUGO_PARAMS_RELEASE:
+        sh: git describe --tags --abbrev=0 --match 'v*.*.*' --exclude '*-*'
+    cmds:
+      - go tool -modfile=tools/hugo/go.mod hugo server --source site --bind 127.0.0.1 --port 8088 --baseURL http://localhost:8088/ --disableFastRender
+
   shellcheck:
     desc: Check every shell script with shellcheck (pinned, in Docker, as CI does)
     cmds:
@@ -174,5 +202,5 @@ tasks:
     desc: Lint JavaScript (ESLint) and CSS (stylelint) with the versions locked in tools/lint, matching CI
     cmds:
       - npm ci --prefix tools/lint --no-audit --no-fund --ignore-scripts
-      - tools/lint/node_modules/.bin/eslint --max-warnings 0 web/js web/dev test/js test/interop test/e2e
+      - tools/lint/node_modules/.bin/eslint --max-warnings 0 web/js web/dev site/assets/js test/js test/interop test/e2e
       - tools/lint/node_modules/.bin/stylelint 'web/css/*.css'

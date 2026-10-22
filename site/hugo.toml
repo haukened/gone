@@ -1,0 +1,173 @@
+# The Gone website. Build: hugo --source site --minify. Preview: hugo server
+# --source site --bind 127.0.0.1 --port 8088. The docs are mounted from the
+# repository (or a release checkout, see GONE_DOCS_ROOT), never copied.
+baseURL = "https://getgone.dev/"
+locale = "en"
+title = "Gone"
+disableKinds = ["taxonomy", "term", "rss"]
+enableRobotsTXT = true
+
+[params]
+repo = "https://github.com/haukened/gone"
+# The public instance, for people who just want to send a secret.
+app = "https://app.getgone.dev"
+# The git ref the docs come from; links to repository files point at it.
+docsRef = "main"
+# The newest stable release, which the docs describe and install commands
+# name. task site and CI set it from git (HUGO_PARAMS_RELEASE).
+release = "v3.12.0"
+
+[[menus.main]]
+name = "Home"
+url = "/"
+weight = 1
+[[menus.main]]
+name = "Docs"
+url = "/docs/"
+weight = 2
+[[menus.main]]
+name = "Why Gone"
+url = "/why/"
+weight = 3
+[[menus.main]]
+name = "Trust"
+url = "/trust/"
+weight = 4
+
+# security.txt (RFC 9116) at /.well-known/security.txt.
+[outputFormats.securitytxt]
+mediaType = "text/plain"
+baseName = "security"
+path = ".well-known"
+isPlainText = true
+notAlternative = true
+
+[outputs]
+home = ["html", "securitytxt"]
+
+# The docs search index, built for the docs section only (see
+# content/docs/_index.md) and fetched by search.js when search first opens.
+[outputFormats.searchindex]
+mediaType = "application/json"
+baseName = "index"
+isPlainText = true
+notAlternative = true
+
+[markup.goldmark.parser]
+autoHeadingIDType = "github"
+[markup.goldmark.renderer]
+# The docs carry trusted raw HTML (<picture>, tables, <img width>).
+unsafe = true
+[markup.highlight]
+noClasses = false
+
+[[module.mounts]]
+source = "content"
+target = "content"
+[[module.mounts]]
+source = "assets"
+target = "assets"
+[[module.mounts]]
+source = "static"
+target = "static"
+
+# The web app's own design system, shared rather than copied: its
+# stylesheets and theme toggle are bundled from web/, its fonts and marks are
+# served beside them so the stylesheets' relative paths work, and its icon
+# sprite is read out of the app's template.
+[[module.mounts]]
+source = "../web/css"
+target = "assets/app/css"
+[[module.mounts]]
+source = "../web/js/theme.js"
+target = "assets/app/js/theme.js"
+[[module.mounts]]
+source = "../web/partials.tmpl.html"
+target = "assets/app/partials.tmpl.html"
+[[module.mounts]]
+source = "../web/fonts"
+target = "static/fonts"
+[[module.mounts]]
+source = "../web/img"
+target = "static/img"
+[[module.mounts]]
+source = "../docs"
+target = "content/docs"
+[[module.mounts]]
+source = "../SECURITY.md"
+target = "content/docs/security-policy.md"
+[[module.mounts]]
+source = "../CONTRIBUTING.md"
+target = "content/docs/contributing.md"
+[[module.mounts]]
+source = "../TRADEMARKS.md"
+target = "content/docs/trademarks.md"
+[[module.mounts]]
+source = "../DESIGN.md"
+target = "content/docs/design.md"
+# The CLI installer, served at /install.sh so the home page's command is
+# short; the same file as in the repository, never a copy.
+[[module.mounts]]
+source = "../install.sh"
+target = "static/install.sh"
+[[module.mounts]]
+source = "../docs/img"
+target = "static/docs/img"
+[[module.mounts]]
+source = "../docs/brand"
+target = "static/docs/brand"
+files = ["**", "! **.md"]
+[[module.mounts]]
+source = "../docs/openapi.yaml"
+target = "static/docs/openapi.yaml"
+
+# The whole repository, read only to check that a link to a repository file
+# (shown on GitHub) points at something that exists. Nothing from it is
+# published.
+[[module.mounts]]
+source = ".."
+target = "assets/repo"
+disableWatch = true
+files = ["! .git/**", "! **/node_modules/**", "! site/public/**", "! site/resources/**"]
+
+# docs/README.md is GitHub's docs index; the site has its own landing page
+# (content/docs/_index.md), and links to the README point there.
+[[cascade]]
+[cascade.build]
+render = "never"
+list = "never"
+[cascade.target]
+path = "/docs/readme"
+
+# Folder READMEs are GitHub's index pages for docs/deploy/ and docs/brand/;
+# on the site they get the folder's own address rather than .../readme/.
+[[cascade]]
+url = "/docs/self-host/"
+[cascade.target]
+path = "/docs/deploy/readme"
+# The rest of docs/deploy/ lives under /docs/self-host/ too, matching the
+# section it's listed in.
+[[cascade]]
+url = "/docs/self-host/compose/"
+[cascade.target]
+path = "/docs/deploy/compose"
+[[cascade]]
+url = "/docs/self-host/docker/"
+[cascade.target]
+path = "/docs/deploy/docker"
+[[cascade]]
+url = "/docs/self-host/kubernetes/"
+[cascade.target]
+path = "/docs/deploy/kubernetes"
+[[cascade]]
+url = "/docs/self-host/packages/"
+[cascade.target]
+path = "/docs/deploy/packages"
+[[cascade]]
+url = "/docs/self-host/reverse-proxy/"
+[cascade.target]
+path = "/docs/deploy/reverse-proxy"
+[[cascade]]
+url = "/docs/brand/"
+[cascade.target]
+path = "/docs/brand/readme"

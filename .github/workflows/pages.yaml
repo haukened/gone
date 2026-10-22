@@ -1,0 +1,90 @@
+name: Pages
+
+# Builds the website (site/) with the pinned Hugo and publishes it to GitHub
+# Pages (getgone.dev): on every push to main, on each stable release tag,
+# monthly (so security.txt's Expires never lapses), and on demand.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  schedule:
+    - cron: '17 6 3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time; a newer run waits rather than cancelling one that's
+# publishing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  GO_VERSION: '1.27.3'
+  # Where the docs come from: "main", or "release" for the newest stable
+  # tag, so the site describes what people can install. main until a
+  # release ships the reorganised docs (v3.13.0); then switch to release.
+  DOCS_FROM: main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Tags, to find the newest release.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          # This job publishes the site: no shared cache.
+          cache: false
+
+      # The newest stable release names the release marker; with
+      # DOCS_FROM=release the docs and root documents come from it too.
+      - name: Choose the docs
+        id: docs
+        run: |
+          release="$(git describe --tags --abbrev=0 --match 'v*.*.*' --exclude '*-*')"
+          echo "release=${release}" >> "$GITHUB_OUTPUT"
+          if [ "$DOCS_FROM" = release ]; then
+            git checkout "$release" -- docs SECURITY.md CONTRIBUTING.md TRADEMARKS.md DESIGN.md
+            echo "ref=${release}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build
+        env:
+          CGO_ENABLED: '0'
+          HUGO_PARAMS_RELEASE: ${{ steps.docs.outputs.release }}
+          HUGO_PARAMS_DOCSREF: ${{ steps.docs.outputs.ref }}
+        run: go tool -modfile=tools/hugo/go.mod hugo --source site --minify
+
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write  # publish to GitHub Pages
+      id-token: write  # prove the deployment came from this workflow
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

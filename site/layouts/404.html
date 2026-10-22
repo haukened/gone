@@ -1,0 +1,15 @@
+{{ define "main" }}
+{{- /* GitHub Pages serves this for any address that doesn't exist. Links
+       are root-relative, so they work from any depth. */ -}}
+<div class="wrap page-wrap">
+	<section class="pane gone-hero not-found" aria-labelledby="nf-title">
+		<span class="gone-g" aria-hidden="true"></span>
+		<h1 id="nf-title">This page is <span class="accent">gone</span>.</h1>
+		<p class="lead">Nothing is here, much like a secret after it's been opened. The address may be mistyped, or the page may have moved.</p>
+		<p class="not-found-links">
+			<a class="btn btn-primary" href="{{ "/" | relURL }}">Go to the home page{{ partial "icon.html" "arrow" }}</a>
+			<a class="btn btn-secondary" href="{{ (site.GetPage "/docs").RelPermalink }}">Browse the docs</a>
+		</p>
+	</section>
+</div>
+{{ end }}

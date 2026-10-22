@@ -1,0 +1,84 @@
+{{ define "skip" }}#doc{{ end }}
+
+{{ define "main" }}
+{{- $order := partialCached "docs-order.html" . "docs-order" -}}
+{{- $i := -1 -}}
+{{- range $n, $e := $order }}{{ if eq $e.page $ }}{{ $i = $n }}{{ end }}{{ end -}}
+{{- if lt $i 0 }}{{ errorf "%s isn't listed in site/data/docs.yaml; add it so the docs sidebar reaches it" .File.Path }}{{ end -}}
+{{- $entry := index $order $i -}}
+{{- $split := partial "split-title.html" . -}}
+{{- $root := path.Dir hugo.WorkingDir -}}
+{{- $source := strings.TrimPrefix (printf "%s/" $root) .File.Filename -}}
+{{- /* Shown twice (beside the text, and in the narrow-screen bar), so without its id. */ -}}
+{{- $toc := "" }}{{ if .Fragments.Headings }}{{ $toc = replace .TableOfContents ` id="TableOfContents"` "" | safeHTML }}{{ end -}}
+{{- $hasToc := findRE `<a href` $toc 1 -}}
+<div class="wrap docs-layout">
+	<aside class="docs-side">
+		{{ partial "docs-release.html" . }}
+		{{ partial "docs-search.html" "button" }}
+		<nav aria-label="Documentation">{{ partial "docs-nav.html" . }}</nav>
+	</aside>
+
+	{{- /* Before the page in reading order, so it's found before the
+	       footer; the grid still shows it on the right. */}}
+	{{- if $hasToc }}
+	<aside class="docs-onpage docs-toc" aria-labelledby="onpage-title">
+		<p id="onpage-title" class="docs-onpage-title">On this page</p>
+		{{ $toc }}
+	</aside>
+	{{- end }}
+
+	<article id="doc" class="docs-page" tabindex="-1">
+		{{- /* Narrow screens: the sidebar and the page's contents as two
+		       drop-downs that need no script; only one opens at a time. */}}
+		<div class="docs-bar">
+			<details class="docs-drop docs-drop-menu" name="docs-drop">
+				<summary>Menu</summary>
+				<div class="docs-drop-panel">
+					{{ partial "docs-release.html" . }}
+					{{ partial "docs-search.html" "button" }}
+					<nav aria-label="Documentation">{{ partial "docs-nav.html" . }}</nav>
+				</div>
+			</details>
+			{{- if $hasToc }}
+			<details class="docs-drop docs-drop-toc" name="docs-drop">
+				<summary><span class="drop-label">On this page</span><span class="drop-current" data-toc-current></span></summary>
+				<div class="docs-drop-panel docs-toc">{{ $toc }}</div>
+			</details>
+			{{- end }}
+		</div>
+
+		<nav class="crumbs" aria-label="Breadcrumb">
+			<ol>
+				<li><a href="{{ (site.GetPage "/docs").RelPermalink }}">Docs</a></li>
+				<li>{{ $entry.section }}</li>
+				{{- with $entry.group }}<li>{{ . }}</li>{{ end }}
+				<li aria-current="page">{{ $entry.label }}</li>
+			</ol>
+		</nav>
+		<h1>{{ $split.title }}</h1>
+		<div class="prose docs-prose">
+			{{ $split.body }}
+		</div>
+		<p class="sr-only" role="status" data-copy-status></p>
+
+		<footer class="docs-foot">
+			<nav class="docs-pager" aria-label="Previous and next">
+				{{- if gt $i 0 }}{{ with index $order (sub $i 1) }}
+				<a class="docs-prev" href="{{ .page.RelPermalink }}" rel="prev"><span>Previous</span>{{ .label }}</a>
+				{{- end }}{{ end }}
+				{{- if lt (add $i 1) (len $order) }}{{ with index $order (add $i 1) }}
+				<a class="docs-next" href="{{ .page.RelPermalink }}" rel="next"><span>Next</span>{{ .label }}</a>
+				{{- end }}{{ end }}
+			</nav>
+			<p class="docs-meta">
+				<a href="{{ site.Params.repo }}/blob/{{ site.Params.docsRef }}/{{ $source }}">Edit this page on GitHub</a>
+				<a href="{{ site.Params.repo }}/issues/new?title={{ printf "Docs: %s" $entry.label | urlquery }}&amp;body={{ printf "Page: %s\n\n" .Permalink | urlquery }}">Question or mistake? Open an issue</a>
+			</p>
+		</footer>
+	</article>
+</div>
+{{ partial "docs-search.html" "dialog" }}
+{{ end }}
+
+{{ define "scripts" }}{{ partial "docs-scripts.html" . }}{{ end }}

@@ -1,0 +1,21 @@
+{{ define "main" }}
+{{- $split := partial "split-title.html" . -}}
+<div class="wrap page-wrap">
+	<article class="pane page">
+		{{- if ne (plainify $split.title) .Title }}
+		<p class="eyebrow">{{ .Title }}</p>
+		{{- end }}
+		<h1>{{ $split.title }}</h1>
+		{{ partial "page-toc.html" . }}
+		<div class="prose">
+			{{ $split.body }}
+		</div>
+		<p class="sr-only" role="status" data-copy-status></p>
+	</article>
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+{{- $js := resources.Get "js/copy.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{ end }}

@@ -1,0 +1,4 @@
+{{- /* Whether the repository has a file or directory at this path, read
+       through the hidden repo mount (hugo.toml). */ -}}
+{{- $p := printf "repo/%s" . -}}
+{{- return (or (resources.Get $p) (gt (len (resources.Match (printf "%s/*" $p))) 0)) -}}

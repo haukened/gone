@@ -1,0 +1,13 @@
+{{- /* GitHub alerts (> [!NOTE], > [!WARNING] …) as callouts with an icon,
+       labelled by their title; any other blockquote as written. Warnings
+       use the app's amber, never the rose kept for deleting. */ -}}
+{{- if eq .Type "alert" -}}
+{{- $icons := dict "note" "info" "tip" "bulb" "important" "alert" "warning" "warn" "caution" "warn" -}}
+{{- $id := printf "callout-%d" .Ordinal -}}
+<div class="callout callout-{{ .AlertType }}" role="note" aria-labelledby="{{ $id }}">
+<p class="callout-title" id="{{ $id }}">{{ partial "icon.html" (index $icons .AlertType | default "info") }}{{ .AlertTitle | default (.AlertType | title) }}</p>
+{{ .Text }}
+</div>
+{{- else -}}
+<blockquote>{{ .Text }}</blockquote>
+{{- end -}}

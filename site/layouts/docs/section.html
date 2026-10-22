@@ -1,0 +1,77 @@
+{{ define "main" }}
+{{- $order := partialCached "docs-order.html" . "docs-order" -}}
+{{- /* Every docs page must be in data/docs.yaml, exactly once, or the
+       sidebar can't reach it. */ -}}
+{{- range .RegularPagesRecursive }}
+	{{- $n := len (where $order "page" .) }}
+	{{- if eq $n 0 }}{{ errorf "%s isn't listed in site/data/docs.yaml; add it so the docs sidebar reaches it" .File.Path }}{{ end }}
+	{{- if gt $n 1 }}{{ errorf "%s is listed more than once in site/data/docs.yaml" .File.Path }}{{ end }}
+{{- end }}
+<div class="wrap docs-home">
+	<header class="docs-intro">
+		<h1>{{ .Title }}</h1>
+		{{ with .Description }}<p class="lead">{{ . }}</p>{{ end }}
+		{{ partial "docs-search.html" "button" }}
+		{{ partial "docs-release.html" . }}
+	</header>
+
+	{{- /* Ranked by how many readers each serves: the first has the page's
+	       one primary button. */}}
+	<ol class="pane docs-doors">
+		{{- range $n, $door := hugo.Data.docs.doors }}
+		{{- $start := partial "docs-entry.html" .start.page }}
+		<li class="docs-door">
+			<h2>{{ .title }}</h2>
+			<p>{{ .text }}</p>
+			<a class="btn {{ if eq $n 0 }}btn-primary{{ else }}btn-secondary{{ end }} btn-small" href="{{ $start.page.RelPermalink }}">{{ .start.label }}{{ partial "icon.html" "arrow" }}</a>
+			<ul>
+				{{- range .more }}
+				{{- /* A page by its path, or a section of one: {page, anchor, label}. */}}
+				{{- if reflect.IsMap . }}
+				{{- $e := partial "docs-entry.html" .page }}
+				{{- if not ($e.page.Fragments.Identifiers.Contains .anchor) }}{{ errorf "data/docs.yaml: %s has no heading #%s" .page .anchor }}{{ end }}
+				<li><a href="{{ $e.page.RelPermalink }}#{{ .anchor }}">{{ .label }}</a></li>
+				{{- else }}{{ with partial "docs-entry.html" . }}
+				<li><a href="{{ .page.RelPermalink }}">{{ .label }}</a></li>
+				{{- end }}{{ end }}
+				{{- end }}
+			</ul>
+		</li>
+		{{- end }}
+	</ol>
+
+	{{- /* Every page, so the landing reaches all of them. */}}
+	<section id="every-page" class="docs-index" aria-labelledby="index-title">
+		<h2 id="index-title">Every page</h2>
+		<div class="docs-index-grid">
+			{{- range hugo.Data.docs.sections }}
+			{{- $section := .title }}
+			<div class="docs-index-section">
+				<h3>{{ $section }}</h3>
+				{{- with where (where $order "section" $section) "group" "" }}
+				<ul>
+					{{- range . }}
+					<li><a href="{{ .page.RelPermalink }}">{{ .label }}</a></li>
+					{{- end }}
+				</ul>
+				{{- end }}
+			</div>
+			{{- range .groups }}
+			{{- $group := .title }}
+			<div class="docs-index-group">
+				<h4>{{ $section }} · {{ $group }}</h4>
+				<ul>
+					{{- range where (where $order "section" $section) "group" $group }}
+					<li><a href="{{ .page.RelPermalink }}">{{ .label }}</a></li>
+					{{- end }}
+				</ul>
+			</div>
+			{{- end }}
+			{{- end }}
+		</div>
+	</section>
+</div>
+{{ partial "docs-search.html" "dialog" }}
+{{ end }}
+
+{{ define "scripts" }}{{ partial "docs-scripts.html" . }}{{ end }}

@@ -1,0 +1,11 @@
+{{- /* The site page a relative .md link from a page's source file points
+       at, found by the target's repository path, or nil. */ -}}
+{{- $repoPath := partial "repo-path.html" . -}}
+{{- $found := false -}}
+{{- if eq $repoPath "docs/README.md" -}}{{- $found = site.GetPage "/docs" -}}{{- end -}}
+{{- range site.Pages -}}
+  {{- if and (not $found) .File (eq (partial "repo-path.html" (dict "page" . "rel" (path.Base .File.Filename))) $repoPath) -}}
+    {{- $found = . -}}
+  {{- end -}}
+{{- end -}}
+{{- return $found -}}

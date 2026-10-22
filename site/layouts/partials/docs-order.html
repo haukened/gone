@@ -1,0 +1,18 @@
+{{- /* The docs pages in sidebar order, from data/docs.yaml: a list of
+       dicts with the page, its label, its section and its group (or ""). */ -}}
+{{- $out := slice -}}
+{{- range hugo.Data.docs.sections -}}
+  {{- $section := .title -}}
+  {{- $entries := slice -}}
+  {{- range .pages }}{{ $entries = $entries | append (dict "e" . "group" "") }}{{ end -}}
+  {{- range .groups -}}
+    {{- $group := .title -}}
+    {{- range .pages }}{{ $entries = $entries | append (dict "e" . "group" $group) }}{{ end -}}
+  {{- end -}}
+  {{- range $entries -}}
+    {{- $p := site.GetPage (printf "/docs/%s" (strings.TrimSuffix ".md" .e.page)) -}}
+    {{- if not $p -}}{{- errorf "data/docs.yaml lists %q, which isn't a docs page" .e.page -}}{{- end -}}
+    {{- $out = $out | append (dict "page" $p "path" .e.page "label" .e.label "section" $section "group" .group) -}}
+  {{- end -}}
+{{- end -}}
+{{- return $out -}}

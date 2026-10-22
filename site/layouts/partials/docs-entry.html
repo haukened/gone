@@ -1,0 +1,4 @@
+{{- /* The docs-order entry for a path as written in data/docs.yaml. */ -}}
+{{- $found := index (where (partialCached "docs-order.html" . "docs-order") "path" .) 0 -}}
+{{- if not $found }}{{ errorf "data/docs.yaml names %q outside its sections" . }}{{ end -}}
+{{- return $found -}}

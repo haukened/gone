@@ -1,0 +1,28 @@
+{{- /* The docs sidebar: each section a native disclosure, open when it holds
+       the current page; groups within a section labelled for screen readers;
+       the current page marked. The same markup serves the phone Menu, so it
+       carries no ids: labels are tied to their lists by position. */ -}}
+{{- $here := . -}}
+{{- $order := partialCached "docs-order.html" . "docs-order" -}}
+{{- $mine := where $order "page" $here -}}
+{{- $current := cond (gt (len $mine) 0) (index $mine 0).section "" -}}
+{{- range hugo.Data.docs.sections }}
+{{- $section := .title }}
+<details class="docs-nav-section"{{ if eq $section $current }} open{{ end }}>
+	<summary>{{ $section }}</summary>
+	<ul>
+		{{- range where (where $order "section" $section) "group" "" }}
+		<li><a href="{{ .page.RelPermalink }}"{{ if eq .page $here }} aria-current="page"{{ end }}>{{ .label }}</a></li>
+		{{- end }}
+	</ul>
+	{{- range .groups }}
+	{{- $group := .title }}
+	<ul class="docs-nav-group" aria-label="{{ $section }}: {{ $group }}">
+		<li class="docs-nav-group-title" aria-hidden="true">{{ $group }}</li>
+		{{- range where (where $order "section" $section) "group" $group }}
+		<li><a href="{{ .page.RelPermalink }}"{{ if eq .page $here }} aria-current="page"{{ end }}>{{ .label }}</a></li>
+		{{- end }}
+	</ul>
+	{{- end }}
+</details>
+{{- end }}

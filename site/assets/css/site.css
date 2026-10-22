@@ -1,0 +1,1718 @@
+/* The website's own layout, on top of the app's stylesheets (tokens, base,
+   layout, components, pages), which are bundled before this file. Only what
+   the app doesn't have lives here. */
+
+/* The page body between header and footer. The app's .main centres a single
+   pane; the site's pages are wider and scroll. */
+.site-main {
+  flex: 1;
+  padding-block: clamp(0.5rem, 3vw, 2.25rem) var(--space-7);
+}
+
+.hero {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  text-align: center;
+}
+
+.hero .lead {
+  margin-inline: auto;
+}
+
+/* The header on narrow screens. The app fits its two short links between the
+   brand and the tools; the site has four links and a "Use Gone" button, so
+   the links take a row of their own under the brand and tools. */
+@media (max-width: 48rem) {
+  .site .wrap {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "brand tools"
+      "nav nav";
+    row-gap: 0;
+    padding-block: var(--space-2);
+  }
+
+  .site .brand {
+    grid-area: brand;
+  }
+
+  .site .site-tools {
+    grid-area: tools;
+    justify-self: end;
+  }
+
+  .site .nav {
+    grid-area: nav;
+    justify-self: stretch;
+    justify-content: safe center;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}
+
+/* ---------------------------------------------------------------- Home */
+
+/* One measure for every section, so the page keeps a single edge from the
+   hero down; wide enough for the install command on one line. */
+.home {
+  display: grid;
+  gap: clamp(3rem, 8vw, 6rem);
+  max-width: 60rem;
+}
+
+.home a:not(.btn) {
+  color: var(--color-accent);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.home a:not(.btn):hover {
+  text-decoration: underline;
+}
+
+.home a:not(.btn) .ico {
+  width: 0.95em;
+  height: 0.95em;
+  vertical-align: -0.12em;
+}
+
+.section-title {
+  margin-bottom: var(--space-3);
+  font-size: var(--step-2);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.section-lead {
+  max-width: 60ch;
+  margin-bottom: var(--space-5);
+  color: var(--color-ink-2);
+}
+
+/* The install box: the hero's centre. Tabs reuse the app's segmented
+   control look; each command sits in the app's link box. */
+.install {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.install-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink-2);
+}
+
+.tab-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: 1.6rem;
+  box-shadow: inset 0 1px 2px var(--well-shade);
+}
+
+.tab-track[hidden] {
+  display: none;
+}
+
+.tab-track [role="tab"] {
+  flex: 1 0 auto;
+  min-height: 2.625rem;
+  padding: 0 0.75rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-ink-2);
+  white-space: nowrap;
+  cursor: pointer;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  transition: color 0.25s, background-color 0.25s, box-shadow 0.25s;
+}
+
+.tab-track [role="tab"]:hover {
+  color: var(--color-ink);
+}
+
+.tab-track [role="tab"][aria-selected="true"] {
+  color: var(--color-ink);
+  background: var(--lens);
+  border-color: var(--edge);
+  box-shadow: inset 0 1px 0 var(--spec), 0 4px 14px -6px var(--shadow);
+}
+
+.tab-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.tab-title {
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.is-tabbed .tab-title {
+  display: none;
+}
+
+/* Without the tab script, the panels stack with a rule between them. */
+.install:not(.is-tabbed) .tab-panel + .tab-panel {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--hair);
+}
+
+.linkbox.cmd code {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0 0.6rem 0 0.75rem;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--color-ink);
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+
+.install-more {
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+/* For people who only want to send a secret: the public instance. */
+.web-cta {
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: calc(-1 * clamp(1.5rem, 5vw, 4rem));
+}
+
+.web-cta > span {
+  flex: 1 1 18rem;
+}
+
+.web-cta .btn {
+  flex: none;
+}
+
+.promises {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-6);
+}
+
+.promise .ico,
+.feature-grid .ico {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-bottom: var(--space-3);
+  color: var(--color-accent);
+}
+
+.promise h2 {
+  margin-bottom: var(--space-2);
+  font-size: var(--step-1);
+}
+
+.promise p,
+.feature-grid p,
+.run-options p,
+.open-facts span {
+  color: var(--color-ink-2);
+}
+
+.how {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(2rem, 6vw, 4rem);
+  align-items: center;
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-5);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  position: relative;
+  padding-left: 3rem;
+  color: var(--color-ink-2);
+  counter-increment: step;
+}
+
+.steps li::before {
+  position: absolute;
+  top: -0.1rem;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--color-accent);
+  content: counter(step);
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-pill);
+}
+
+.steps strong {
+  color: var(--color-ink);
+}
+
+.shot {
+  padding: 0.6rem;
+  margin: 0;
+}
+
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: calc(var(--radius-pane) - 0.6rem);
+}
+
+.cli {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.cli .section-lead {
+  margin-bottom: var(--space-2);
+}
+
+.cli-commands {
+  display: grid;
+  gap: var(--space-4);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.cli-commands li {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cli-commands .hint {
+  padding-left: 1rem;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--space-6);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.feature-grid li {
+  padding: var(--space-5) 0;
+  border-top: 1px solid var(--hair);
+}
+
+.feature-grid h3,
+.run-options h3 {
+  margin-bottom: var(--space-1);
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.feature-grid p {
+  font-size: 0.9375rem;
+}
+
+/* One pane, its options divided by hairlines rather than cards. Each
+   option's left and top hairline is clipped at the pane's edge. */
+.run-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.run-options li {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  padding: var(--space-5);
+  box-shadow: -1px 0 0 var(--hair), 0 -1px 0 var(--hair);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  margin-left: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  vertical-align: 0.15em;
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-accent-line);
+  border-radius: var(--radius-pill);
+}
+
+.open-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-5);
+  padding: 0;
+  margin: 0 0 var(--space-4);
+  list-style: none;
+}
+
+.open-facts li {
+  display: grid;
+  gap: var(--space-1);
+}
+
+@media (max-width: 48rem) {
+  .how {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 30rem) {
+  .feature-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .install-more {
+    text-align: left;
+  }
+}
+
+/* Grid items default to their content's width, and a one-line command is
+   wide: let the columns shrink so the command scrolls inside its well
+   instead of widening the page. */
+.home,
+.install,
+.tab-panel,
+.cli,
+.cli-commands li {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* ---------------------------------------------------------------- Pages */
+
+/* Why, Choose, Trust, Privacy: one pane at the app's reading width, like its
+   About page. */
+.page-wrap {
+  max-width: calc(47.5rem + 2 * clamp(1rem, 4vw, 2.5rem));
+}
+
+.page > h1,
+.docs-page > h1 {
+  margin-bottom: var(--space-5);
+}
+
+.page > h1 code,
+.docs-page > h1 code {
+  font-size: 0.85em;
+}
+
+.page .toc,
+.docs-page .toc {
+  margin-bottom: var(--space-4);
+}
+
+/* The 404 page: the app's "gone" state, with a way home and to the docs. */
+.not-found {
+  padding-block: clamp(2rem, 6vw, 3.5rem);
+}
+
+.not-found-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+/* ---------------------------------------------------------------- Prose */
+
+/* The app's .prose covers headings, paragraphs, lists and inline code; the
+   docs also need code frames, tables, callouts, images and quotes. Headings
+   are separated by space, not rules. */
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose h2 {
+  margin-top: 3rem;
+}
+
+.prose h2,
+.prose h3,
+.prose h4 {
+  scroll-margin-top: var(--space-5);
+}
+
+.prose h4 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--step-0);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.prose :is(h2, h3, h4) code {
+  padding: 0;
+  font-size: 0.95em;
+  font-weight: 500;
+  background: none;
+}
+
+/* A heading's link to itself: shown on hover or focus, beside the text. */
+.anchor {
+  display: inline-flex;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  color: var(--color-ink-3);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.anchor .ico {
+  width: 0.8em;
+  height: 0.8em;
+}
+
+:is(h2, h3, h4):hover .anchor,
+.prose tr:hover .anchor,
+.anchor:focus-visible {
+  opacity: 1;
+}
+
+/* A variable or flag row reached by its link stands out. */
+.prose tr[id] {
+  scroll-margin-top: 6rem;
+}
+
+.prose tr:target > td {
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
+.prose tr:target > td:first-child {
+  padding-left: 0.75rem;
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+
+/* Landing on a row names the section it belongs to (gone send, Server
+   variables), since its heading may be off-screen. */
+.prose tr:target > td[data-context]:first-child::before {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-ink-2);
+  content: attr(data-context) " ›";
+}
+
+.anchor:hover {
+  color: var(--color-accent);
+}
+
+@media (hover: none) {
+  .anchor {
+    opacity: 0.45;
+  }
+}
+
+/* Inline code: a quiet tint, no box. Identifiers (no spaces) never break. */
+.prose code {
+  padding: 0.1rem 0.3rem;
+  background: var(--color-accent-soft);
+  border: 0;
+  border-radius: 5px;
+  /* Code that wraps keeps its tint on both lines. */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.prose code.tok {
+  white-space: nowrap;
+}
+
+
+.prose a code {
+  color: inherit;
+}
+
+/* DESIGN.md: Geist is never italicised. Emphasis is ink, upright. */
+.prose em {
+  font-style: normal;
+  color: var(--color-ink);
+}
+
+.prose li > ul,
+.prose li > ol {
+  margin: var(--space-2) 0 0;
+}
+
+.prose hr {
+  margin: var(--space-6) 0;
+  border: 0;
+  border-top: 1px solid var(--hair);
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-well);
+}
+
+.prose blockquote {
+  max-width: 64ch;
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--color-accent-line);
+}
+
+.prose kbd {
+  padding: 0.05rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+}
+
+/* Callouts: GitHub alerts, stacked, with an icon and a title. NOTE and TIP
+   are quiet; IMPORTANT is violet; WARNING and CAUTION use the app's amber
+   (rose is kept for deleting). */
+.prose .callout {
+  display: block;
+  max-width: 64ch;
+  margin: 0 0 var(--space-5);
+  font-size: 0.9375rem;
+}
+
+.prose .callout p,
+.prose .callout ul {
+  margin-bottom: var(--space-2);
+}
+
+.prose .callout > :last-child {
+  margin-bottom: 0;
+}
+
+.callout-title {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.callout-title .ico {
+  margin: 0;
+  color: inherit;
+}
+
+.callout-note,
+.callout-tip {
+  background: var(--well);
+  border-color: var(--well-edge);
+}
+
+.callout-note .callout-title,
+.callout-tip .callout-title {
+  color: var(--color-ink-2);
+}
+
+.callout-warning,
+.callout-caution {
+  background: var(--warn-soft);
+  border-color: var(--warn-line);
+}
+
+.callout-warning .callout-title,
+.callout-caution .callout-title {
+  color: var(--warn);
+}
+
+/* Code frames: a header naming the block (file, "Terminal" or language)
+   with its copy button, then the code in a recessed well. */
+.codeblock {
+  margin: 0 0 var(--space-5);
+  overflow: hidden;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-well);
+  box-shadow: inset 0 1px 2px var(--well-shade);
+}
+
+.codeblock-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.25rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.85rem;
+  border-bottom: 1px solid var(--hair);
+}
+
+.codeblock-label {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-ink-2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.codeblock-label .ico {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.codeblock-copy {
+  margin-left: auto;
+}
+
+/* A command's usage is read, not copied: it wraps rather than scrolls. */
+.codeblock-usage pre code {
+  white-space: pre-wrap;
+}
+
+/* A terminal reads a little deeper than a file. */
+.codeblock-terminal {
+  background: var(--frost);
+}
+
+/* Wide code and tables scroll sideways. docs.js marks those that overflow
+   (data-scroll: start, middle or end) and the edge with more to see fades. */
+.codeblock pre,
+.table-wrap {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+[data-scroll="start"] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent);
+}
+
+[data-scroll="middle"] {
+  mask-image: linear-gradient(to right, transparent, #000 3rem, #000 calc(100% - 3rem), transparent);
+}
+
+[data-scroll="end"] {
+  mask-image: linear-gradient(to right, transparent, #000 3rem);
+}
+
+.codeblock pre {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-ink);
+}
+
+.codeblock pre code {
+  padding: 0;
+  font-size: inherit;
+  white-space: pre;
+  background: none;
+}
+
+/* Steps: a numbered list whose items hold code gets numbered markers on a
+   connecting line. */
+.prose ol:has(> li .codeblock) {
+  max-width: none;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.prose ol:has(> li .codeblock) > li {
+  position: relative;
+  padding: 0 0 var(--space-2) 2.75rem;
+  counter-increment: step;
+}
+
+.prose ol:has(> li .codeblock) > li::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-accent);
+  content: counter(step);
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-pill);
+}
+
+.prose ol:has(> li .codeblock) > li:not(:last-child)::after {
+  position: absolute;
+  top: 2rem;
+  bottom: 0.25rem;
+  left: 0.875rem;
+  width: 1px;
+  content: "";
+  background: var(--hair);
+}
+
+/* Tables: hairline rows, scrolling sideways; identifiers in the first
+   column stay whole. */
+.table-wrap {
+  margin: 0 0 var(--space-5);
+}
+
+.prose table {
+  width: 100%;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  border-collapse: collapse;
+}
+
+.prose th,
+.prose td {
+  padding: 0.6rem 0.9rem 0.6rem 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--hair);
+}
+
+.prose th {
+  font-weight: 600;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.prose td:first-child:has(code) {
+  min-width: 12rem;
+}
+
+.prose td code {
+  overflow-wrap: break-word;
+}
+
+.prose .align-center {
+  text-align: center;
+}
+
+.prose .align-right {
+  text-align: right;
+}
+
+/* Phones: each row stacks as label and value, using the header text the
+   table hook puts on every cell. */
+@media (max-width: 40rem) {
+  .prose table,
+  .prose tbody,
+  .prose tr,
+  .prose td {
+    display: block;
+  }
+
+  .prose thead {
+    display: none;
+  }
+
+  .prose tr {
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--hair);
+  }
+
+  .prose td {
+    min-width: 0;
+    padding: 0.15rem 0;
+    border: 0;
+  }
+
+  .prose td:first-child:has(code) {
+    min-width: 0;
+  }
+
+  .prose td[data-label]::before {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-ink-2);
+    content: attr(data-label);
+  }
+
+  .prose td:first-child:not(:target > *)::before {
+    display: none;
+  }
+
+  .prose td:first-child {
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+}
+
+/* ---------------------------------------------------------------- Docs */
+
+/* On docs pages the header and footer share the docs frame, so the logo
+   lines up with the sidebar. */
+.is-docs .site .wrap,
+.is-docs .foot .wrap {
+  max-width: 90rem;
+}
+
+/* Sidebar, text and "On this page" straight on the backdrop: only callouts
+   and code are boxed. In the markup "On this page" comes before the text (so
+   it's found before the footer); the grid places it on the right. */
+.docs-layout {
+  display: grid;
+  grid-template-columns: 15.5rem minmax(0, 46rem) 13rem;
+  justify-content: center;
+  gap: clamp(2rem, 4vw, 3.5rem);
+  align-items: start;
+  max-width: 90rem;
+}
+
+.docs-side {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.docs-page {
+  grid-row: 1;
+  grid-column: 2;
+  min-width: 0;
+}
+
+.docs-onpage {
+  grid-row: 1;
+  grid-column: 3;
+}
+
+.docs-page:focus {
+  outline: none;
+}
+
+.docs-side,
+.docs-onpage {
+  position: sticky;
+  top: var(--space-5);
+  max-height: calc(100vh - 2 * var(--space-5));
+  overflow-y: auto;
+  padding: 0 0.25rem var(--space-5);
+  scrollbar-width: thin;
+}
+
+/* The sidebar: each section a disclosure, open for the current page;
+   pages on a hairline, the current one tinted with an accent bar. */
+.docs-nav-section + .docs-nav-section {
+  margin-top: var(--space-2);
+}
+
+.docs-nav-section summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  list-style: none;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.docs-nav-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.docs-nav-section summary::after {
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-right: 0.4rem;
+  content: "";
+  border-right: 1.6px solid var(--color-ink-3);
+  border-bottom: 1.6px solid var(--color-ink-3);
+  transform: translateY(-0.12rem) rotate(45deg);
+  transition: transform 0.2s var(--ease-out);
+}
+
+.docs-nav-section[open] summary::after {
+  transform: translateY(0.1rem) rotate(-135deg);
+}
+
+.docs-nav-section ul {
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--hair);
+}
+
+.docs-nav-group-title {
+  padding: var(--space-3) 0 var(--space-1) 0.875rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-2);
+  text-transform: uppercase;
+}
+
+.docs-nav-section a {
+  display: block;
+  margin-left: -1px;
+  padding: 0.35rem 0.75rem 0.35rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--color-ink-2);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  border-radius: 0 8px 8px 0;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.docs-nav-section a:hover {
+  color: var(--color-ink);
+  border-left-color: var(--color-ink-3);
+}
+
+.docs-nav-section a[aria-current="page"] {
+  font-weight: 500;
+  color: var(--color-ink);
+  background: var(--color-accent-soft);
+  border-left-color: var(--color-accent);
+}
+
+/* Focus rings inside the scrolling sidebar and panels stay visible. */
+.docs-side :focus-visible,
+.docs-drop-panel :focus-visible,
+.docs-onpage :focus-visible {
+  outline-offset: -2px;
+}
+
+/* Which release the docs describe. */
+.docs-release {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  margin-bottom: var(--space-2);
+  font-size: 0.75rem;
+  color: var(--color-ink-2);
+  text-decoration: none;
+}
+
+.docs-release:hover {
+  color: var(--color-accent);
+}
+
+/* Search: a button that opens the dialog (search.js shows it). */
+.search-open {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  min-height: 2.5rem;
+  margin-bottom: var(--space-4);
+  padding: 0 0.5rem 0 0.75rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--color-ink-3);
+  cursor: pointer;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-pill);
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.search-open:hover {
+  color: var(--color-ink-2);
+  border-color: var(--color-accent-line);
+}
+
+.search-open span {
+  flex: 1;
+  text-align: left;
+}
+
+.search-key,
+.search-close span:first-child {
+  padding: 0.05rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-ink-3);
+  background: var(--pane-hi);
+  border: 1px solid var(--well-edge);
+  border-radius: 6px;
+}
+
+.search {
+  width: min(40rem, calc(100vw - 2rem));
+  max-height: min(36rem, calc(100vh - 6rem));
+  margin: 12vh auto auto;
+  padding: 0;
+  overflow: hidden;
+  color: var(--color-ink);
+  background: var(--pane-solid);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-pane);
+  box-shadow: 0 24px 64px -24px var(--shadow), 0 2px 6px -2px var(--shadow);
+}
+
+.search[open] {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.search::backdrop {
+  background: rgb(10 8 18 / 35%);
+  backdrop-filter: blur(4px);
+}
+
+.search-form {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.6rem 0.75rem 0.6rem 1rem;
+  border-bottom: 1px solid var(--hair);
+}
+
+.search-form .ico {
+  color: var(--color-ink-3);
+}
+
+.search-form input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.5rem;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--color-ink);
+  background: none;
+  border: 0;
+}
+
+.search-form input:focus {
+  outline: none;
+}
+
+/* The browser's own clear button duplicates Close, in a colour outside the
+   palette. */
+.search-form input::-webkit-search-cancel-button {
+  display: none;
+}
+
+/* Key hints for keyboards; plain words on touch screens. */
+.when-touch {
+  display: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .when-keys {
+    display: none;
+  }
+
+  .when-touch {
+    display: inline;
+  }
+}
+
+.search-close .when-touch {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink-2);
+}
+
+.search-empty {
+  padding: 0.25rem 1rem 1rem;
+  font-size: 0.875rem;
+  color: var(--color-ink-2);
+}
+
+.search-empty a {
+  color: var(--color-accent);
+}
+
+.search-results mark {
+  color: inherit;
+  background: none;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
+}
+
+.search-close {
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.search-status {
+  padding: 0.5rem 1rem 0;
+  font-size: 0.8125rem;
+  color: var(--color-ink-3);
+}
+
+.search-status:empty {
+  display: none;
+}
+
+.search-results {
+  margin: 0;
+  padding: 0.5rem;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.search-results a {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0.75rem;
+  color: var(--color-ink-2);
+  text-decoration: none;
+  border-radius: var(--radius-well);
+}
+
+.search-results a:hover,
+.search-results a[aria-selected="true"] {
+  background: var(--color-accent-soft);
+}
+
+.search-title {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.search-where {
+  font-size: 0.75rem;
+  color: var(--color-accent);
+}
+
+.search-text {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* The page. */
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.4rem;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  font-size: 0.8125rem;
+  color: var(--color-ink-2);
+  list-style: none;
+}
+
+.crumbs li {
+  display: flex;
+  align-items: center;
+  min-height: 1.75rem;
+}
+
+.crumbs li + li::before {
+  margin-right: 0.4rem;
+  content: "›";
+}
+
+.crumbs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.crumbs a:hover {
+  color: var(--color-accent);
+}
+
+.crumbs [aria-current="page"] {
+  color: var(--color-ink);
+}
+
+.docs-page > h1 {
+  margin-bottom: var(--space-4);
+}
+
+/* The lead: the docs' first paragraph, unless it introduces something
+   (partials/split-title.html decides). */
+.docs-prose > .doc-lead {
+  max-width: none;
+  margin-bottom: var(--space-6);
+  font-size: 1.1875rem;
+  line-height: 1.6;
+  color: var(--color-ink-2);
+}
+
+/* Reading measure: about 70 characters of Geist. Tables, code, steps and
+   the lead keep the full column. */
+.docs-prose > :is(p, ul, ol, blockquote, dl, h2, h3, h4),
+.docs-prose > .callout {
+  max-width: 38rem;
+}
+
+/* "On this page": h2s, with h3s indented under them. */
+.docs-onpage-title {
+  margin-bottom: var(--space-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.docs-toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.docs-toc ul ul {
+  padding-left: 0.75rem;
+}
+
+.docs-toc a {
+  display: block;
+  padding: 0.3rem 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-ink-2);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.docs-toc code {
+  font-size: 1em;
+}
+
+.docs-toc a:hover,
+.docs-toc a[aria-current="true"] {
+  color: var(--color-ink);
+}
+
+.docs-toc a[aria-current="true"] {
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+/* Narrow screens: "Menu" and "On this page" as drop-downs in a bar that
+   stays at the top while reading. Native <details>, one open at a time. */
+.docs-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: none;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-2) 0;
+  /* Solid, not frosted: the backdrop's layering stops a blur from working
+     here, and text must never show through. */
+  background: var(--pane-solid);
+  border-bottom: 1px solid var(--hair);
+  box-shadow: 0 12px 16px -16px var(--shadow);
+}
+
+.docs-drop {
+  position: relative;
+}
+
+.docs-drop > summary {
+  display: inline-flex;
+  gap: 0.6rem;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  list-style: none;
+  cursor: pointer;
+  background: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--radius-pill);
+}
+
+.docs-drop > summary::-webkit-details-marker {
+  display: none;
+}
+
+.docs-drop > summary::after {
+  width: 0.4rem;
+  height: 0.4rem;
+  content: "";
+  border-right: 1.6px solid var(--color-ink-3);
+  border-bottom: 1.6px solid var(--color-ink-3);
+  transform: translateY(-0.12rem) rotate(45deg);
+}
+
+.docs-drop[open] > summary::after {
+  transform: translateY(0.1rem) rotate(-135deg);
+}
+
+.docs-drop-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  width: min(20rem, calc(100vw - 2rem));
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: var(--space-4);
+  background: var(--pane-solid);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-well);
+  box-shadow: 0 12px 28px -12px var(--shadow);
+}
+
+.docs-drop-toc {
+  min-width: 0;
+  margin-left: auto;
+}
+
+.docs-drop-toc > summary {
+  max-width: 100%;
+}
+
+/* The section being read, beside "On this page" (docs.js fills it). */
+.drop-current {
+  overflow: hidden;
+  font-weight: 400;
+  color: var(--color-ink-3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.drop-current:not(:empty)::before {
+  margin-right: 0.5rem;
+  content: "·";
+}
+
+@media (max-width: 30rem) {
+  .docs-drop-toc > summary:has(.drop-current:not(:empty)) .drop-label {
+    display: none;
+  }
+
+  .drop-current {
+    max-width: 11rem;
+    color: var(--color-ink);
+  }
+
+  .drop-current:not(:empty)::before {
+    content: none;
+  }
+}
+
+.docs-drop-toc .docs-drop-panel {
+  right: 0;
+  left: auto;
+}
+
+/* The page's footer: previous and next, then edit and feedback links. */
+.docs-foot {
+  display: grid;
+  gap: var(--space-5);
+  margin-top: var(--space-7);
+}
+
+.docs-pager {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.docs-pager a {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.85rem 1rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  text-decoration: none;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-well);
+  transition: border-color 0.2s;
+}
+
+.docs-pager a:hover {
+  border-color: var(--color-accent-line);
+}
+
+.docs-pager span {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-ink-2);
+}
+
+.docs-next {
+  grid-column: 2;
+  text-align: right;
+}
+
+.docs-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 var(--space-4);
+  padding-top: var(--space-3);
+  font-size: 0.875rem;
+  border-top: 1px solid var(--hair);
+}
+
+.docs-meta a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  color: var(--color-ink-2);
+  text-decoration: none;
+}
+
+.docs-meta a:hover {
+  color: var(--color-accent);
+}
+
+/* Without room for "On this page" beside the text, it moves to the bar:
+   on a laptop just the pill, with no strip behind it. */
+@media (max-width: 80rem) {
+  .docs-layout {
+    grid-template-columns: 15.5rem minmax(0, 46rem);
+  }
+
+  .docs-onpage,
+  .docs-drop-menu {
+    display: none;
+  }
+
+  .docs-bar:has(.docs-drop-toc) {
+    display: flex;
+  }
+
+  /* The bar runs to the screen's edges, so it reads as a bar, not a box. */
+  .docs-bar {
+    margin-inline: calc(-1 * clamp(1rem, 4vw, 2.5rem));
+    padding-inline: clamp(1rem, 4vw, 2.5rem);
+  }
+
+  .prose :is(h2, h3, h4) {
+    scroll-margin-top: 4.5rem;
+  }
+
+  .prose tr[id] {
+    scroll-margin-top: 8rem;
+  }
+}
+
+/* One column: the sidebar moves to the bar's Menu, and the bar becomes a
+   frosted strip. */
+@media (max-width: 52rem) {
+  .docs-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .docs-side {
+    display: none;
+  }
+
+  .docs-page {
+    grid-column: 1;
+  }
+
+  .docs-bar {
+    display: flex;
+  }
+
+  .docs-drop-menu {
+    display: block;
+  }
+
+  /* 44px targets on phones. */
+  .docs-toc a,
+  .docs-nav-section a,
+  .docs-meta a,
+  .docs-release {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+
+  .docs-pager {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .docs-next {
+    grid-column: 1;
+  }
+}
+
+/* ---------------------------------------------------------------- Docs landing */
+
+/* Where each kind of reader starts, on one pane split by hairlines (the
+   first has the page's primary button), then every page by section. */
+.docs-home {
+  display: grid;
+  gap: var(--space-7);
+  max-width: 64rem;
+}
+
+.docs-intro {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.docs-intro .lead {
+  margin: 0 auto;
+}
+
+.docs-intro .search-open {
+  width: min(24rem, 100%);
+  margin: var(--space-2) 0 0;
+}
+
+/* Each entry point's title, text, button and links share rows with its
+   neighbours (subgrid), so the buttons line up whatever the text length. */
+.docs-doors {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.docs-door {
+  display: grid;
+  grid-row: span 4;
+  grid-template-rows: subgrid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  box-shadow: -1px 0 0 var(--hair);
+}
+
+.docs-door h2 {
+  font-size: var(--step-1);
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.docs-door p {
+  font-size: 0.9375rem;
+  color: var(--color-ink-2);
+}
+
+.docs-door .btn {
+  justify-self: start;
+}
+
+.docs-door ul {
+  display: grid;
+  align-content: start;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) 0 0;
+  font-size: 0.875rem;
+  list-style: none;
+  border-top: 1px solid var(--hair);
+}
+
+/* Links read as links in both themes, and are comfortable to tap. */
+.docs-door ul a,
+.docs-index a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent-line);
+  text-underline-offset: 0.2em;
+}
+
+.docs-door ul a:hover,
+.docs-index a:hover {
+  text-decoration-color: currentcolor;
+}
+
+.docs-index > h2 {
+  margin-bottom: var(--space-4);
+  font-size: var(--step-2);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+/* Sections flow down columns, so a long section doesn't leave holes. */
+.docs-index-grid {
+  columns: 12rem;
+  column-gap: var(--space-6);
+}
+
+.docs-index-grid > div {
+  margin-bottom: var(--space-5);
+  break-inside: avoid;
+}
+
+/* A section's groups follow it, each kept whole, so a long section can run
+   on into the next column. */
+.docs-index-section:has(+ .docs-index-group) {
+  margin-bottom: var(--space-3);
+}
+
+.docs-index-group h4 {
+  margin-bottom: var(--space-1);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-ink-2);
+}
+
+.docs-index h3 {
+  margin-bottom: var(--space-2);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.docs-index ul {
+  margin: 0;
+  padding: 0;
+  font-size: 0.875rem;
+  list-style: none;
+}
+
+@media (max-width: 52rem) {
+  .docs-doors {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .docs-door {
+    grid-row: auto;
+    grid-template-rows: none;
+    box-shadow: 0 -1px 0 var(--hair);
+  }
+
+  .docs-door ul a,
+  .docs-index a,
+  .docs-door .btn,
+  .crumbs a {
+    min-height: 2.75rem;
+  }
+}

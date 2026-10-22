@@ -1,0 +1,108 @@
+{{ define "main" }}
+{{- $p := .Params -}}
+<div class="wrap home">
+	{{- with $p.hero }}
+	<section class="hero" aria-labelledby="hero-title">
+		<p class="eyebrow">{{ .eyebrow }}</p>
+		<h1 id="hero-title">{{ .title }} <span class="accent">{{ .accent }}</span>.</h1>
+		<p class="lead">{{ .lead }}</p>
+	</section>
+	{{- end }}
+
+	{{ partial "install-box.html" $p.install }}
+
+	{{- with $p.web }}
+	<p class="callout web-cta">{{ partial "icon.html" "globe" }}<span><strong>{{ .title }}</strong> {{ .text }}</span><a class="btn btn-secondary btn-small" href="{{ site.Params.app }}">{{ .button }}{{ partial "icon.html" "arrow" }}</a></p>
+	{{- end }}
+
+	<section class="promises" aria-label="What Gone promises">
+		{{- range $p.promises }}
+		<div class="promise">
+			{{ partial "icon.html" .icon }}
+			<h2>{{ .title }}</h2>
+			<p>{{ .text }}</p>
+		</div>
+		{{- end }}
+	</section>
+
+	{{- with $p.how }}
+	<section class="how" aria-labelledby="how-title">
+		<div class="how-text">
+			<h2 id="how-title" class="section-title">{{ .title }}</h2>
+			<ol class="steps">
+				{{- range .steps }}
+				<li><strong>{{ .title }}.</strong> {{ .text }}</li>
+				{{- end }}
+			</ol>
+		</div>
+		<figure class="pane shot">
+			<picture>
+				<source media="(prefers-color-scheme: dark)" srcset="{{ .image.dark | relURL }}">
+				<img src="{{ .image.light | relURL }}" alt="{{ .image.alt }}" width="760" height="766" loading="lazy">
+			</picture>
+		</figure>
+	</section>
+	{{- end }}
+
+	{{- with $p.cli }}
+	<section class="pane cli" aria-labelledby="cli-title">
+		<h2 id="cli-title" class="section-title">{{ .title }}</h2>
+		<p class="section-lead">{{ .text }}</p>
+		<ul class="cli-commands">
+			{{- range $i, $c := .commands }}
+			<li>
+				{{ partial "copy-well.html" (dict "id" (printf "cli-%d" $i) "command" $c.command) }}
+				<span class="hint">{{ $c.note }}</span>
+			</li>
+			{{- end }}
+		</ul>
+		<p class="status" role="status" data-copy-status></p>
+		{{- with .link }}<p><a href="{{ partial "url.html" .url }}">{{ .text }} {{ partial "icon.html" "arrow" }}</a></p>{{ end }}
+	</section>
+	{{- end }}
+
+	{{- with $p.features }}
+	<section class="features" aria-labelledby="features-title">
+		<h2 id="features-title" class="section-title">{{ .title }}</h2>
+		<ul class="feature-grid">
+			{{- range .items }}
+			<li>{{ partial "icon.html" .icon }}<h3>{{ .title }}</h3><p>{{ .text }}</p></li>
+			{{- end }}
+		</ul>
+	</section>
+	{{- end }}
+
+	{{- with $p.run }}
+	<section class="run" aria-labelledby="run-title">
+		<h2 id="run-title" class="section-title">{{ .title }}</h2>
+		<p class="section-lead">{{ .lead }}</p>
+		<ul class="pane run-options">
+			{{- range .options }}{{ if partial "since.html" .since }}
+			<li>
+				<h3>{{ .title }}{{ with .badge }} <span class="badge">{{ . }}</span>{{ end }}</h3>
+				<p>{{ .text }}</p>
+				<a href="{{ partial "url.html" .url }}">Guide {{ partial "icon.html" "arrow" }}<span class="sr-only">: {{ .title }}</span></a>
+			</li>
+			{{- end }}{{ end }}
+		</ul>
+	</section>
+	{{- end }}
+
+	{{- with $p.open }}
+	<section class="open" aria-labelledby="open-title">
+		<h2 id="open-title" class="section-title">{{ .title }}</h2>
+		<ul class="open-facts">
+			{{- range .facts }}<li><strong>{{ .title }}</strong><span>{{ .text }}</span></li>{{ end }}
+		</ul>
+		{{- with .link }}<p><a href="{{ partial "url.html" .url }}">{{ .text }} {{ partial "icon.html" "arrow" }}</a></p>{{ end }}
+	</section>
+	{{- end }}
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+{{- range slice "js/copy.js" "js/tabs.js" }}
+{{- $js := resources.Get . | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{- end }}
+{{ end }}

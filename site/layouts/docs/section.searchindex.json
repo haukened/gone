@@ -1,0 +1,35 @@
+{{- /* The search index: every docs page in sidebar order, with its title,
+       sidebar label, section, address, the text before its first heading,
+       each h2/h3 section (id, heading, text) and each keyed table row (a
+       variable or a flag: id, name, text), so a result can link straight to
+       what matched. Code frames' header text ("Terminal", "Copy") is left
+       out, and so are the pages data/docs.yaml keeps out of search. */ -}}
+{{- $out := slice -}}
+{{- range partialCached "docs-order.html" . "docs-order" -}}
+  {{- if in hugo.Data.docs.unsearched .path }}{{ continue }}{{ end -}}
+  {{- $p := .page -}}
+  {{- $split := partial "split-title.html" $p -}}
+  {{- $body := replaceRE `(?s)<div class="codeblock-head">.*?</div>` "" (string $split.body) -}}
+  {{- $rows := slice -}}
+  {{- range findRESubmatch `(?s)<tr id="([^"]+)"[^>]*>\s*<td[^>]*>(.*?)</td>(.*?)</tr>` $body -}}
+    {{- $rows = $rows | append (dict
+        "i" (index . 1)
+        "t" (index . 2 | plainify | htmlUnescape | strings.TrimSpace)
+        "x" (index . 3 | plainify | htmlUnescape | replaceRE `\s+` " " | strings.TrimSpace)) -}}
+  {{- end -}}
+  {{- /* Mark each h2/h3 so the page can be cut into sections. */ -}}
+  {{- $marked := replaceRE `(?s)<h[23] id="([^"]+)"[^>]*>(.*?)</h[23]>` "\x1e${1}\x1f${2}\x1d" $body -}}
+  {{- $parts := split $marked "\x1e" -}}
+  {{- $intro := index $parts 0 | plainify | htmlUnescape | replaceRE `\s+` " " | strings.TrimSpace -}}
+  {{- $sections := slice -}}
+  {{- range after 1 $parts -}}
+    {{- $idAndRest := split . "\x1f" -}}
+    {{- $headAndText := split (index $idAndRest 1) "\x1d" -}}
+    {{- $sections = $sections | append (dict
+        "i" (index $idAndRest 0)
+        "t" (index $headAndText 0 | plainify | htmlUnescape | strings.TrimSpace)
+        "x" (index $headAndText 1 | plainify | htmlUnescape | replaceRE `\s+` " " | strings.TrimSpace)) -}}
+  {{- end -}}
+  {{- $out = $out | append (dict "u" $p.RelPermalink "t" ($split.title | plainify | htmlUnescape) "l" .label "s" .section "x" $intro "h" $sections "r" $rows) -}}
+{{- end -}}
+{{- $out | jsonify -}}

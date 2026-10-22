@@ -1,0 +1,10 @@
+{{- /* The app's icon sprite, read from its template so both use the same
+       drawings. */ -}}
+{{- with resources.Get "app/partials.tmpl.html" -}}
+  {{- with findRE `(?s)<svg class="sprite".*?</svg>` .Content 1 -}}
+    {{- index . 0 | safeHTML -}}
+  {{- else -}}
+    {{- errorf "sprite: no <svg class=\"sprite\"> in web/partials.tmpl.html" -}}
+  {{- end -}}
+{{- end -}}
+{{- partial "sprite-site.html" . -}}

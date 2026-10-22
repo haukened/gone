@@ -1,0 +1,29 @@
+{{- /* The CLI install box: tabs over one command well each. Without
+       JavaScript the tab list stays hidden and every panel shows, with its
+       own title, one under another. */ -}}
+{{- $tabs := slice -}}
+{{- range .tabs }}{{ if partial "since.html" .since }}{{ $tabs = $tabs | append . }}{{ end }}{{ end -}}
+<section class="pane install" aria-labelledby="install-title" data-tabs>
+	<h2 id="install-title" class="install-title">{{ .title }}</h2>
+	<div class="tab-track" role="tablist" aria-labelledby="install-title" hidden>
+		{{- range $i, $t := $tabs }}
+		<button type="button" role="tab" id="tab-{{ $t.id }}" aria-controls="panel-{{ $t.id }}" aria-selected="{{ if eq $i 0 }}true{{ else }}false{{ end }}"{{ if ne $i 0 }} tabindex="-1"{{ end }}>{{ $t.label }}</button>
+		{{- end }}
+	</div>
+	{{- range $i, $t := $tabs }}
+	<div class="tab-panel" id="panel-{{ $t.id }}" role="tabpanel" aria-labelledby="tab-{{ $t.id }}">
+		<h3 class="tab-title">{{ $t.label }}</h3>
+		{{- range $j, $c := $t.commands }}
+		{{ partial "copy-well.html" (dict "id" (printf "cmd-%s-%d" $t.id $j) "command" (partial "fill.html" $c)) }}
+		{{- end }}
+		{{- with $t.download }}
+		<p><a class="btn btn-primary" href="{{ partial "url.html" .url }}">{{ partial "icon.html" "down" }}<span>{{ partial "fill.html" .text }}</span></a></p>
+		{{- end }}
+		<p class="hint">{{ $t.hint }}{{ with $t.link }} <a href="{{ partial "url.html" .url }}">{{ partial "fill.html" .text }}</a>{{ end }}</p>
+	</div>
+	{{- end }}
+	<p class="status" role="status" data-copy-status></p>
+	{{- with .more }}
+	<p class="install-more"><a href="{{ partial "url.html" .url }}">{{ .text }} {{ partial "icon.html" "arrow" }}</a></p>
+	{{- end }}
+</section>

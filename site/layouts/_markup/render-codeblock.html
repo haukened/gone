@@ -1,0 +1,32 @@
+{{- /* A fenced code block in a frame: a header naming what it is (the
+       block's {title="…"}, "Terminal" for shell, or the language) with its
+       copy button, so the button never covers code; then the highlighted
+       code, scrolling sideways when it's wide. copy.js shows the button where
+       there is a clipboard. */ -}}
+{{- $id := printf "code-%d" .Ordinal -}}
+{{- $lang := .Type | default "text" -}}
+{{- $shell := in (slice "sh" "bash" "shell" "console" "zsh") $lang -}}
+{{- $names := dict "yaml" "YAML" "json" "JSON" "nginx" "nginx" "caddyfile" "Caddyfile" "mermaid" "Mermaid" "toml" "TOML" "go" "Go" "html" "HTML" "js" "JavaScript" -}}
+{{- $label := "" -}}
+{{- $kind := "code" -}}
+{{- $title := .Attributes.title | default "" -}}
+{{- if eq $lang "usage" -}}
+  {{- /* A command's synopsis: shown, not run, so it has no copy button. */ -}}
+  {{- $label = "Usage" }}{{ $kind = "usage" -}}
+{{- else if $title -}}
+  {{- $label = $title }}{{ $kind = "file" -}}
+{{- else if $shell -}}
+  {{- $label = "Terminal" }}{{ $kind = "terminal" -}}
+{{- else if ne $lang "text" -}}
+  {{- $label = index $names $lang | default $lang -}}
+{{- end -}}
+<div class="codeblock codeblock-{{ $kind }}">
+<div class="codeblock-head">
+{{- if $label }}<span class="codeblock-label">{{ if eq $kind "terminal" }}{{ partial "icon.html" "prompt" }}{{ else if eq $kind "file" }}{{ partial "icon.html" "file" }}{{ end }}{{ $label }}</span>{{ end -}}
+{{- if ne $kind "usage" -}}
+<button class="btn btn-quiet btn-small codeblock-copy" type="button" data-copy="{{ $id }}" aria-label="Copy {{ $label | default "code" }}" hidden>{{ partial "icon.html" "copy" }}<span>Copy</span></button>
+{{- end }}
+</div>
+<div class="codeblock-code" id="{{ $id }}">{{ transform.Highlight .Inner (cond (eq $lang "usage") "text" $lang) .Options }}</div>
+</div>
+{{- /* */ -}}

@@ -1,0 +1,17 @@
+{{- /* Whether the site's release (params.release, the newest tag the docs
+       come from) is at least the given version: "v3.13.0". No version given
+       means always. */ -}}
+{{- $want := . -}}
+{{- if not $want }}{{ return true }}{{ end -}}
+{{- $have := split (strings.TrimPrefix "v" site.Params.release) "." -}}
+{{- $need := split (strings.TrimPrefix "v" $want) "." -}}
+{{- $ok := true -}}
+{{- $decided := false -}}
+{{- range $i, $n := $need -}}
+  {{- if not $decided -}}
+    {{- $h := int (index (split (index $have $i | default "0") "-") 0) -}}
+    {{- $w := int $n -}}
+    {{- if gt $h $w }}{{ $decided = true }}{{ else if lt $h $w }}{{ $ok = false }}{{ $decided = true }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+{{- return $ok -}}

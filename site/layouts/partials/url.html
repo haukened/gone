@@ -1,0 +1,5 @@
+{{- /* A URL from content: site paths ("/docs/") get the base path,
+       anything else is returned as written. */ -}}
+{{- $u := partial "fill.html" . -}}
+{{- if hasPrefix $u "/" }}{{ return (relURL (strings.TrimPrefix "/" $u)) }}{{ end -}}
+{{- return $u -}}

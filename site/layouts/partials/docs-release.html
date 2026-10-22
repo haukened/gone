@@ -1,0 +1,9 @@
+{{- /* Which release the docs describe: the newest stable tag when they are
+       built from it (the deployed site), or main, newer than that tag
+       (a preview of the repository as it is). */ -}}
+{{- $rel := site.Params.release -}}
+{{- if eq site.Params.docsRef $rel -}}
+<a class="docs-release" href="{{ site.Params.repo }}/releases/tag/{{ $rel }}">Docs for {{ $rel }}</a>
+{{- else -}}
+<a class="docs-release" href="{{ site.Params.repo }}/tree/{{ site.Params.docsRef }}/docs">Docs from {{ site.Params.docsRef }}, newer than {{ $rel }}</a>
+{{- end -}}

@@ -1,0 +1,83 @@
+# The docs' sidebar: its sections, optional groups within a section, and page
+# order, which also sets each page's previous and next links. Paths are
+# relative to docs/ as mounted (the root documents appear under their mounted
+# names). Every docs page must be listed exactly once; the build fails if one
+# isn't, so no page goes unreachable.
+sections:
+  - title: Use the CLI
+    pages:
+      - { page: cli.md, label: The gone CLI }
+      - { page: cli-reference.md, label: CLI reference }
+  - title: Self-host
+    pages:
+      - { page: deploy/README.md, label: Overview }
+    groups:
+      - title: Install
+        pages:
+          - { page: deploy/compose.md, label: Docker Compose with Caddy }
+          - { page: deploy/docker.md, label: Docker }
+          - { page: deploy/kubernetes.md, label: Kubernetes }
+          - { page: deploy/packages.md, label: Linux packages }
+      - title: Configure
+        pages:
+          - { page: deploy/reverse-proxy.md, label: Behind a reverse proxy }
+          - { page: sign-in.md, label: Require sign-in }
+          - { page: branding.md, label: Branding }
+      - title: Operate
+        pages:
+          - { page: metrics.md, label: Metrics }
+          - { page: operating.md, label: Upgrade and maintain }
+  - title: Security
+    pages:
+      - { page: security.md, label: Security model }
+      - { page: verify.md, label: Verify a release }
+      - { page: decisions.md, label: Technical decisions }
+      - { page: security-policy.md, label: Security policy }
+  - title: Reference
+    pages:
+      - { page: configuration.md, label: Configuration }
+      - { page: api.md, label: HTTP API }
+      - { page: protocol.md, label: Protocol specification }
+  - title: FAQ
+    pages:
+      - { page: faq.md, label: Frequently asked questions }
+  - title: The project
+    pages:
+      - { page: contributing.md, label: Contributing }
+      - { page: development.md, label: Development }
+      - { page: ROADMAP.md, label: Roadmap }
+      - { page: rejected.md, label: Rejected features }
+      - { page: design.md, label: Design system }
+      - { page: brand/README.md, label: Brand mark }
+      - { page: trademarks.md, label: Trademarks }
+
+# Pages left out of search: planning documents, so a search for a setting
+# never lands on a plan or a rejected idea.
+unsearched:
+  - ROADMAP.md
+  - rejected.md
+
+# The docs landing page: where each kind of reader starts, most readers first.
+doors:
+  - title: Share secrets from your terminal
+    text: Install the gone CLI, send your first secret, and use it from scripts and AI agents.
+    start: { page: cli.md, label: Install the CLI }
+    more:
+      - cli-reference.md
+      - { page: cli.md, anchor: scripts-and-agents, label: Scripts and AI agents }
+      - { page: cli.md, anchor: security-notes, label: Security notes }
+  - title: Host Gone yourself
+    text: Run your own instance with Docker, Kubernetes or a Linux package, behind your own HTTPS.
+    start: { page: deploy/README.md, label: Choose how to run it }
+    more:
+      - deploy/compose.md
+      - configuration.md
+      - operating.md
+  - title: Check how Gone keeps a secret
+    text: What Gone protects, what it can't, and how to check that a release came from this source.
+    start: { page: security.md, label: Read the security model }
+    more:
+      - verify.md
+      - protocol.md
+      - { page: security.md, anchor: what-the-server-stores, label: What the server stores }
+
