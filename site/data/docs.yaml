@@ -48,6 +48,12 @@ sections:
       - { page: brand/README.md, label: Brand mark }
       - { page: trademarks.md, label: Trademarks }
 
+# Pages left out of search: planning documents, so a search for a setting
+# never lands on a plan or a rejected idea.
+unsearched:
+  - ROADMAP.md
+  - rejected.md
+
 # The docs landing page: where each kind of reader starts, most readers first.
 doors:
   - title: Share secrets from your terminal

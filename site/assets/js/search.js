@@ -83,6 +83,7 @@
     return total;
   }
 
+  // find returns every matching page, best first.
   function find(query, pages) {
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
     if (!terms.length) return [];
@@ -93,18 +94,32 @@
         return { entry: entry, spot: best.spot, score: pageScore(entry, terms) + best.count * 2, terms: terms };
       })
       .filter((r) => r.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, MAX_RESULTS);
+      .sort((a, b) => b.score - a.score);
   }
 
-  // snippet returns the text around the first term, from the matched place
-  // when there is one.
+  // wordStart moves i forward to the start of the next word.
+  function wordStart(text, i) {
+    if (i <= 0) return 0;
+    const space = text.indexOf(' ', i);
+    return space < 0 ? i : space + 1;
+  }
+
+  // wordEnd moves i back to the end of a word, but not before min.
+  function wordEnd(text, i, min) {
+    if (i >= text.length) return text.length;
+    const space = text.lastIndexOf(' ', i);
+    return space > min ? space : i;
+  }
+
+  // snippet returns the text around the first term, on whole words, from
+  // the matched place when there is one.
   function snippet(r) {
     const source = r.spot ? r.spot.body : r.entry.page.x;
     const at = source.toLowerCase().indexOf(r.terms[0]);
-    if (at < 0) return source.slice(0, SNIPPET * 2);
-    const from = Math.max(0, at - SNIPPET);
-    return (from > 0 ? '… ' : '') + source.slice(from, at + SNIPPET) + ' …';
+    if (at < 0) return source.slice(0, wordEnd(source, SNIPPET * 2, 0));
+    const from = Math.min(wordStart(source, at - SNIPPET), at);
+    const to = wordEnd(source, at + SNIPPET, at);
+    return (from > 0 ? '… ' : '') + source.slice(from, to) + (to < source.length ? ' …' : '');
   }
 
   // nextMatch finds the earliest place at or after `from` where any term
@@ -172,15 +187,18 @@
     empty.hidden = !query.trim() || count > 0;
     if (!query.trim()) status.textContent = '';
     else if (!count) status.textContent = 'No pages match “' + query.trim() + '”.';
-    else status.textContent = count + (count === 1 ? ' page matches.' : ' pages match.');
+    else if (count === 1) status.textContent = '1 page matches.';
+    else if (count > MAX_RESULTS) status.textContent = count + ' pages match. Showing the best ' + MAX_RESULTS + '.';
+    else status.textContent = count + ' pages match.';
   }
 
   function show(query, pages) {
-    const results = find(query, pages);
+    const all = find(query, pages);
+    const results = all.slice(0, MAX_RESULTS);
     list.replaceChildren(...results.map(resultItem));
     select(results.length ? 0 : -1);
     input.setAttribute('aria-expanded', results.length ? 'true' : 'false');
-    report(query, results.length);
+    report(query, all.length);
   }
 
   function update() {

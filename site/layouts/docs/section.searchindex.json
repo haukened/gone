@@ -3,9 +3,10 @@
        each h2/h3 section (id, heading, text) and each keyed table row (a
        variable or a flag: id, name, text), so a result can link straight to
        what matched. Code frames' header text ("Terminal", "Copy") is left
-       out. */ -}}
+       out, and so are the pages data/docs.yaml keeps out of search. */ -}}
 {{- $out := slice -}}
 {{- range partialCached "docs-order.html" . "docs-order" -}}
+  {{- if in hugo.Data.docs.unsearched .path }}{{ continue }}{{ end -}}
   {{- $p := .page -}}
   {{- $split := partial "split-title.html" $p -}}
   {{- $body := replaceRE `(?s)<div class="codeblock-head">.*?</div>` "" (string $split.body) -}}

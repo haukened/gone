@@ -459,10 +459,11 @@
   color: var(--color-ink);
 }
 
-.prose h2 code,
-.prose h3 code,
-.prose h4 code {
-  font-size: 0.85em;
+.prose :is(h2, h3, h4) code {
+  padding: 0;
+  font-size: 0.95em;
+  font-weight: 500;
+  background: none;
 }
 
 /* A heading's link to itself: shown on hover or focus, beside the text. */
@@ -489,11 +490,27 @@
 
 /* A variable or flag row reached by its link stands out. */
 .prose tr[id] {
-  scroll-margin-top: var(--space-5);
+  scroll-margin-top: 6rem;
 }
 
-.prose tr:target {
-  background: var(--color-accent-soft);
+.prose tr:target > td {
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
+.prose tr:target > td:first-child {
+  padding-left: 0.75rem;
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+
+/* Landing on a row names the section it belongs to (gone send, Server
+   variables), since its heading may be off-screen. */
+.prose tr:target > td[data-context]:first-child::before {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-ink-2);
+  content: attr(data-context) " ›";
 }
 
 .anchor:hover {
@@ -502,7 +519,7 @@
 
 @media (hover: none) {
   .anchor {
-    display: none;
+    opacity: 0.45;
   }
 }
 
@@ -516,6 +533,11 @@
 
 .prose code.tok {
   white-space: nowrap;
+}
+
+.prose code {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .prose a code {
@@ -646,7 +668,7 @@
   overflow: hidden;
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: var(--color-ink-3);
+  color: var(--color-ink-2);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -819,15 +841,15 @@
     min-width: 0;
   }
 
-  .prose td::before {
+  .prose td[data-label]::before {
     display: block;
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-ink-3);
+    color: var(--color-ink-2);
     content: attr(data-label);
   }
 
-  .prose td:first-child::before {
+  .prose td:first-child:not(:target > *)::before {
     display: none;
   }
 
@@ -918,12 +940,12 @@
   content: "";
   border-right: 1.6px solid var(--color-ink-3);
   border-bottom: 1.6px solid var(--color-ink-3);
-  transform: rotate(-45deg);
+  transform: translateY(-0.12rem) rotate(45deg);
   transition: transform 0.2s var(--ease-out);
 }
 
 .docs-nav-section[open] summary::after {
-  transform: translateY(-0.1rem) rotate(45deg);
+  transform: translateY(0.1rem) rotate(-135deg);
 }
 
 .docs-nav-section ul {
@@ -938,7 +960,7 @@
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.06em;
-  color: var(--color-ink-3);
+  color: var(--color-ink-2);
   text-transform: uppercase;
 }
 
@@ -981,7 +1003,7 @@
   min-height: 1.75rem;
   margin-bottom: var(--space-2);
   font-size: 0.75rem;
-  color: var(--color-ink-3);
+  color: var(--color-ink-2);
   text-decoration: none;
 }
 
@@ -1190,7 +1212,7 @@
   margin: 0 0 var(--space-2);
   padding: 0;
   font-size: 0.8125rem;
-  color: var(--color-ink-3);
+  color: var(--color-ink-2);
   list-style: none;
 }
 
@@ -1218,7 +1240,7 @@
 }
 
 .crumbs [aria-current="page"] {
-  color: var(--color-ink-2);
+  color: var(--color-ink);
 }
 
 .docs-page > h1 {
@@ -1265,7 +1287,7 @@
   padding: 0.3rem 0;
   font-size: 0.8125rem;
   line-height: 1.4;
-  color: var(--color-ink-3);
+  color: var(--color-ink-2);
   text-decoration: none;
   transition: color 0.15s;
 }
@@ -1280,7 +1302,8 @@
 }
 
 .docs-toc a[aria-current="true"] {
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--color-accent);
 }
 
 /* Narrow screens: "Menu" and "On this page" as drop-downs in a bar that
@@ -1294,9 +1317,11 @@
   gap: var(--space-2);
   margin: 0 0 var(--space-4);
   padding: var(--space-2) 0;
-  background: var(--frost);
-  backdrop-filter: blur(var(--blur)) saturate(130%);
+  /* Solid, not frosted: the backdrop's layering stops a blur from working
+     here, and text must never show through. */
+  background: var(--pane-solid);
   border-bottom: 1px solid var(--hair);
+  box-shadow: 0 12px 16px -16px var(--shadow);
 }
 
 .docs-drop {
@@ -1374,8 +1399,17 @@
 }
 
 @media (max-width: 30rem) {
-  .drop-current {
+  .docs-drop-toc > summary:has(.drop-current:not(:empty)) .drop-label {
     display: none;
+  }
+
+  .drop-current {
+    max-width: 11rem;
+    color: var(--color-ink);
+  }
+
+  .drop-current:not(:empty)::before {
+    content: none;
   }
 }
 
@@ -1416,7 +1450,7 @@
 .docs-pager span {
   font-size: 0.75rem;
   font-weight: 400;
-  color: var(--color-ink-3);
+  color: var(--color-ink-2);
 }
 
 .docs-next {
@@ -1462,9 +1496,18 @@
     display: flex;
   }
 
-  .prose :is(h2, h3, h4),
-  .prose tr[id] {
+  /* The bar runs to the screen's edges, so it reads as a bar, not a box. */
+  .docs-bar {
+    margin-inline: calc(-1 * clamp(1rem, 4vw, 2.5rem));
+    padding-inline: clamp(1rem, 4vw, 2.5rem);
+  }
+
+  .prose :is(h2, h3, h4) {
     scroll-margin-top: 4.5rem;
+  }
+
+  .prose tr[id] {
+    scroll-margin-top: 8rem;
   }
 }
 
@@ -1485,11 +1528,6 @@
 
   .docs-bar {
     display: flex;
-    margin-bottom: var(--space-4);
-    padding: var(--space-2) 0;
-    background: var(--frost);
-    backdrop-filter: blur(var(--blur)) saturate(130%);
-    border-bottom: 1px solid var(--hair);
   }
 
   .docs-drop-menu {
@@ -1565,6 +1603,7 @@
 .docs-door h2 {
   font-size: var(--step-1);
   font-weight: 600;
+  text-wrap: balance;
 }
 
 .docs-door p {
@@ -1619,6 +1658,19 @@
 .docs-index-grid > div {
   margin-bottom: var(--space-5);
   break-inside: avoid;
+}
+
+/* A section's groups follow it, each kept whole, so a long section can run
+   on into the next column. */
+.docs-index-section:has(+ .docs-index-group) {
+  margin-bottom: var(--space-3);
+}
+
+.docs-index-group h4 {
+  margin-bottom: var(--space-1);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-ink-2);
 }
 
 .docs-index h3 {

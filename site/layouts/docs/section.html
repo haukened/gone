@@ -46,14 +46,27 @@
 		<div class="docs-index-grid">
 			{{- range hugo.Data.docs.sections }}
 			{{- $section := .title }}
-			<div>
+			<div class="docs-index-section">
 				<h3>{{ $section }}</h3>
+				{{- with where (where $order "section" $section) "group" "" }}
 				<ul>
-					{{- range where $order "section" $section }}
+					{{- range . }}
+					<li><a href="{{ .page.RelPermalink }}">{{ .label }}</a></li>
+					{{- end }}
+				</ul>
+				{{- end }}
+			</div>
+			{{- range .groups }}
+			{{- $group := .title }}
+			<div class="docs-index-group">
+				<h4>{{ $section }} · {{ $group }}</h4>
+				<ul>
+					{{- range where (where $order "section" $section) "group" $group }}
 					<li><a href="{{ .page.RelPermalink }}">{{ .label }}</a></li>
 					{{- end }}
 				</ul>
 			</div>
+			{{- end }}
 			{{- end }}
 		</div>
 	</section>
