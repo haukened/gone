@@ -8,20 +8,22 @@ Every `gone` command and flag, how it chooses a server, its exit codes and its J
 
 Encrypts a message and/or files and uploads them.
 
-```text
+```usage
 gone send [flags]
-
-  -s, --server URL           server origin (default: $GONE_SERVER, config, https://gone.hauken.us)
-  -t, --ttl DURATION         lifetime, e.g. 30m or 24h (default 1h)
-  -f, --file PATH            attach a file; repeat for more (max 10)
-      --message-file PATH    read the message from PATH instead of standard input
-      --passphrase-prompt    protect with a passphrase typed at a prompt
-      --passphrase-file PATH protect with the passphrase in PATH
-      --passphrase-generate  protect with a generated passphrase (printed to stderr)
-      --json                 print the result as JSON
-      --insecure             allow an http:// server on localhost
-      --timeout DURATION     per-request timeout (default 1m)
 ```
+
+| Flag | What it does |
+| --- | --- |
+| `-s, --server URL` | Server origin (default: `$GONE_SERVER`, config, `https://gone.hauken.us`) |
+| `-t, --ttl DURATION` | Lifetime, e.g. 30m or 24h (default 1h) |
+| `-f, --file PATH` | Attach a file; repeat for more (max 10) |
+| `--message-file PATH` | Read the message from PATH instead of standard input |
+| `--passphrase-prompt` | Protect with a passphrase typed at a prompt |
+| `--passphrase-file PATH` | Protect with the passphrase in PATH |
+| `--passphrase-generate` | Protect with a generated passphrase (printed to stderr) |
+| `--json` | Print the result as JSON |
+| `--insecure` | Allow an `http://` server on localhost |
+| `--timeout DURATION` | Per-request timeout (default 1m) |
 
 - **The message is read from standard input.** Pipe it in, or type it and press Ctrl-D (Ctrl-Z then Enter on Windows). There is deliberately no flag for the message *text*, so it never lands in shell history or the process list.
 - `--message-file PATH` reads the message from a regular file instead, byte for byte (a trailing newline is kept), and standard input is not read at all. Pipes, FIFOs and devices are refused; pipe those into standard input instead.
@@ -41,19 +43,21 @@ gone send -f id_ed25519 -f id_ed25519.pub --passphrase-generate --ttl 2h </dev/n
 
 Downloads, decrypts and deletes a secret.
 
-```text
+```usage
 gone get <link|-> [flags]
-
-  -o, --out DIR              directory for attachments (default .)
-      --message-out PATH     write the message to the new file PATH instead of standard output
-      --passphrase-file PATH read the passphrase from PATH instead of prompting
-      --json                 print the result as JSON
-      --raw                  print the message without escaping control characters
-  -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://gone.hauken.us)
-      --allow-origin ORIGIN  also trust this server for this command; repeat or comma-separate
-      --insecure             allow an http:// link on localhost
-      --timeout DURATION     per-request timeout (default 1m)
 ```
+
+| Flag | What it does |
+| --- | --- |
+| `-o, --out DIR` | Directory for attachments (default .) |
+| `--message-out PATH` | Write the message to the new file PATH instead of standard output |
+| `--passphrase-file PATH` | Read the passphrase from PATH instead of prompting |
+| `--json` | Print the result as JSON |
+| `--raw` | Print the message without escaping control characters |
+| `-s, --server URL` | The server you trust (default: `$GONE_SERVER`, config, `https://gone.hauken.us`) |
+| `--allow-origin ORIGIN` | Also trust this server for this command; repeat or comma-separate |
+| `--insecure` | Allow an `http://` link on localhost |
+| `--timeout DURATION` | Per-request timeout (default 1m) |
 
 - The link must point at the server you use, or one you allow with `--allow-origin`; otherwise nothing is sent (see [Which servers a link may reach](#which-servers-a-link-may-reach)).
 - The message is written to standard output, attachments to `--out`. The secret is deleted from the server only after everything has been decrypted and written.
@@ -69,7 +73,7 @@ gone get <link|-> [flags]
 
 ### `gone status`
 
-```text
+```usage
 gone status <manage-link|-> [-s URL] [--allow-origin ORIGIN]... [--json] [--insecure] [--timeout DURATION]
 ```
 
@@ -77,7 +81,7 @@ Prints `State: pending`, with creation and expiry times, while the secret is sti
 
 ### `gone revoke`
 
-```text
+```usage
 gone revoke <manage-link|-> [-s URL] [--allow-origin ORIGIN]... [--json] [--insecure] [--timeout DURATION]
 ```
 
@@ -85,7 +89,7 @@ Deletes the secret. Revoking an already-gone secret exits 3. Revoke is reliable 
 
 ### `gone request`
 
-```text
+```usage
 gone request [-l TEXT] [-t DURATION] [-s URL] [--wait [-o DIR] [--message-out PATH] [--raw]] [--json]
 ```
 
@@ -99,7 +103,7 @@ Asks someone for a secret and prints a **request link** to send them, then exits
 
 ### `gone request list`
 
-```text
+```usage
 gone request list [--offline] [--json] [--insecure] [--timeout DURATION]
 ```
 
@@ -115,7 +119,7 @@ A request the server no longer has (expired, cancelled, or already opened) is sh
 
 ### `gone request open`
 
-```text
+```usage
 gone request open <id> [--wait] [-o DIR] [--message-out PATH] [--raw] [--json] [--insecure] [--timeout DURATION]
 ```
 
@@ -123,7 +127,7 @@ Downloads the reply, decrypts it with the saved key, and prints the message and 
 
 ### `gone request cancel`
 
-```text
+```usage
 gone request cancel <id> [--json] [--insecure] [--timeout DURATION]
 ```
 
@@ -131,7 +135,7 @@ Cancels the request, or deletes a reply before you open it, and forgets it here.
 
 ### `gone reply`
 
-```text
+```usage
 gone reply <request-link|-> [-f FILE]... [--message-file PATH] [-s URL] [--allow-origin ORIGIN]... [--json] [--insecure] [--timeout DURATION]
 ```
 
@@ -147,7 +151,7 @@ The file is internal to `gone`: it is a binary (Go gob) file, not meant to be op
 
 ### `gone set server`
 
-```text
+```usage
 gone set server <url> [--insecure]
 ```
 
