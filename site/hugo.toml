@@ -42,8 +42,28 @@ path = ".well-known"
 isPlainText = true
 notAlternative = true
 
+# For language models and agents (llmstxt.org): /llms.txt, a short index
+# with links to each doc as Markdown, and /llms-full.txt, every doc in one
+# file.
+[outputFormats.llms]
+mediaType = "text/plain"
+baseName = "llms"
+isPlainText = true
+notAlternative = true
+[outputFormats.llmsfull]
+mediaType = "text/plain"
+baseName = "llms-full"
+isPlainText = true
+notAlternative = true
+
+# Each docs page as plain Markdown (/docs/cli/index.md), for agents.
+[outputFormats.markdown]
+mediaType = "text/markdown"
+baseName = "index"
+isPlainText = true
+
 [outputs]
-home = ["html", "securitytxt"]
+home = ["html", "securitytxt", "llms", "llmsfull"]
 
 # The docs search index, built for the docs section only (see
 # content/docs/_index.md) and fetched by search.js when search first opens.
@@ -171,3 +191,10 @@ path = "/docs/deploy/reverse-proxy"
 url = "/docs/brand/"
 [cascade.target]
 path = "/docs/brand/readme"
+
+# Every docs page also as Markdown.
+[[cascade]]
+outputs = ["html", "markdown"]
+[cascade.target]
+path = "/docs/**"
+kind = "page"

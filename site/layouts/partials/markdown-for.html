@@ -1,0 +1,31 @@
+{{- /* A docs page's Markdown, as on GitHub but with its relative links made
+       absolute, so it reads correctly on its own (for agents and
+       llms-full.txt): a link to another doc goes to that doc's Markdown on
+       this site, an image under docs/ to its copy here, and any other
+       repository file to GitHub at the docs' ref. */ -}}
+{{- $p := . -}}
+{{- $md := $p.RawContent -}}
+{{- range findRESubmatch `\]\(([^)\s]+)\)` $md -}}
+  {{- $t := index . 1 -}}
+  {{- if or (hasPrefix $t "http") (hasPrefix $t "#") (hasPrefix $t "mailto:") (hasPrefix $t "/") }}{{ continue }}{{ end -}}
+  {{- $u := urls.Parse $t -}}
+  {{- $abs := "" -}}
+  {{- if strings.HasSuffix $u.Path ".md" -}}
+    {{- with partial "page-for.html" (dict "page" $p "rel" $u.Path) -}}
+      {{- $abs = cond (eq .Kind "page") (printf "%sindex.md" .Permalink) .Permalink -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if not $abs -}}
+    {{- $rp := strings.TrimSuffix "/" (partial "repo-path.html" (dict "page" $p "rel" $u.Path)) -}}
+    {{- if or (hasPrefix $rp "docs/img/") (hasPrefix $rp "docs/brand/") -}}
+      {{- $abs = absURL $rp -}}
+    {{- else -}}
+      {{- $abs = printf "%s/%s/%s/%s" site.Params.repo (cond (strings.HasSuffix $u.Path "/") "tree" "blob") site.Params.docsRef $rp -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with $u.Fragment }}{{ $abs = printf "%s#%s" $abs . }}{{ end -}}
+  {{- $md = replace $md (printf "](%s)" $t) (printf "](%s)" $abs) -}}
+{{- end -}}
+{{- /* Raw <img src="img/…"> in a doc points at its copy here too. */ -}}
+{{- $md = replaceRE `src="img/` (printf `src="%s` (absURL "docs/img/")) $md -}}
+{{- return $md -}}

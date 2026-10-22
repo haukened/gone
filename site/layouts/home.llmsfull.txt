@@ -1,0 +1,13 @@
+{{- /* llms-full.txt: every doc's Markdown in the docs' order, each headed by
+       where it lives. */ -}}
+# Gone documentation
+
+Gone shares a secret exactly once: encrypted in the sender's browser or the gone CLI, stored only as ciphertext, deleted after one read. Site: {{ site.BaseURL }} · Source: {{ site.Params.repo }}
+{{ range partialCached "docs-order.html" . "docs-order" }}
+
+---
+
+Source: {{ .page.Permalink }} ({{ .section }})
+
+{{ partial "markdown-for.html" .page }}
+{{- end }}

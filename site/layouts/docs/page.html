@@ -73,6 +73,9 @@
 			</nav>
 			<p class="docs-meta">
 				<a href="{{ site.Params.repo }}/blob/{{ site.Params.docsRef }}/{{ $source }}">Edit this page on GitHub</a>
+				{{- with .OutputFormats.Get "markdown" }}
+				<a href="{{ .RelPermalink }}" type="text/markdown">View as Markdown</a>
+				{{- end }}
 				<a href="{{ site.Params.repo }}/issues/new?title={{ printf "Docs: %s" $entry.label | urlquery }}&amp;body={{ printf "Page: %s\n\n" .Permalink | urlquery }}">Question or mistake? Open an issue</a>
 			</p>
 		</footer>

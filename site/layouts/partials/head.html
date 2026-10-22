@@ -24,6 +24,30 @@
 <meta property="og:image:height" content="640">
 <meta property="og:image:alt" content="Gone: share a secret exactly once">
 <meta name="twitter:card" content="summary_large_image">
+{{- /* A docs page's Markdown, for agents. */}}
+{{- with .OutputFormats.Get "markdown" }}
+<link rel="alternate" type="text/markdown" href="{{ .Permalink }}">
+{{- end }}
+{{- /* What Gone is, for search engines: a data block, not a script, so
+       the CSP doesn't apply to it. */}}
+{{- if .IsHome }}
+{{- $app := dict
+  "@context" "https://schema.org"
+  "@type" "SoftwareApplication"
+  "name" "Gone"
+  "description" "Share a secret exactly once. Encrypted in your browser or the gone CLI, stored only as ciphertext, deleted after one read. Open source and self-hosted."
+  "url" site.BaseURL
+  "applicationCategory" "SecurityApplication"
+  "operatingSystem" "Linux, macOS, Windows"
+  "softwareVersion" (strings.TrimPrefix "v" site.Params.release)
+  "license" "https://www.gnu.org/licenses/agpl-3.0.html"
+  "downloadUrl" (printf "%s/releases" site.Params.repo)
+  "installUrl" ("install.sh" | absURL)
+  "sameAs" (slice site.Params.repo)
+  "offers" (dict "@type" "Offer" "price" "0" "priceCurrency" "USD")
+}}
+<script type="application/ld+json">{{ $app | jsonify | safeJS }}</script>
+{{- end }}
 <link rel="icon" href="{{ "img/favicon.ico" | relURL }}" sizes="16x16 32x32">
 <link rel="icon" href="{{ "img/favicon.svg" | relURL }}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{{ "img/apple-touch-icon.png" | relURL }}">

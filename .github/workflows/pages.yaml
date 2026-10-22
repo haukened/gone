@@ -98,7 +98,7 @@ jobs:
         env:
           SITE: ${{ steps.deployment.outputs.page_url }}
         run: |
-          for path in "" docs/ install.sh .well-known/security.txt docs/index.json; do
+          for path in "" docs/ install.sh .well-known/security.txt docs/index.json llms.txt llms-full.txt docs/cli/index.md robots.txt; do
             code="$(curl -sS -o /dev/null -w '%{http_code}' --retry 5 --retry-all-errors "${SITE}${path}")"
             echo "${code} ${SITE}${path}"
             [ "$code" = 200 ] || exit 1

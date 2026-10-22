@@ -1,0 +1,25 @@
+{{- /* llms.txt (llmstxt.org): what Gone is, then each doc as Markdown,
+       in the docs' order. */ -}}
+{{- $order := partialCached "docs-order.html" . "docs-order" -}}
+# Gone
+
+> Gone shares a secret exactly once. It encrypts a password, token, key or file in the sender's browser (or the gone CLI), the server stores only ciphertext, the key travels in the link's #fragment, and the secret is deleted after one read. It is open source (AGPL-3.0), free, and self-hosted.
+
+- Public instance: {{ site.Params.app }} (anyone can use it; for anything important, run your own)
+- Install the CLI on Linux or macOS: `curl -fsSL {{ "install.sh" | absURL }} | sh`
+- Run your own: one static binary or container, SQLite storage, no external services, behind HTTPS ({{ (site.GetPage "/docs/deploy/readme").Permalink }})
+- Source: {{ site.Params.repo }}
+- Every doc in one file: {{ "llms-full.txt" | absURL }}
+{{ range hugo.Data.docs.sections }}
+{{- $section := .title }}
+## {{ $section }}
+{{ range where $order "section" $section }}
+{{- $md := .page.OutputFormats.Get "markdown" }}
+- [{{ .label }}]({{ with $md }}{{ .Permalink }}{{ else }}{{ .page.Permalink }}{{ end }}): {{ partial "description.html" .page }}
+{{- end }}
+{{ end }}
+## About the project
+
+- [Why Gone]({{ "why/" | absURL }}): what Gone promises, what it is, and why it was made
+- [Security and trust]({{ "trust/" | absURL }}): what Gone protects, what it can't, and how to check both
+- [Choosing a secret-sharing tool]({{ "choose/" | absURL }}): how to check any tool's encryption and upkeep

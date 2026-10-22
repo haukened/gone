@@ -124,3 +124,34 @@ test('security.txt and robots.txt are served', async ({ request }) => {
   const robots = await (await request.get('/robots.txt')).text();
   expect(robots).toContain('Sitemap: ');
 });
+
+test('llms.txt links every doc, and each link answers', async ({ request }) => {
+  const body = await (await request.get('/llms.txt')).text();
+  expect(body.startsWith('# Gone\n')).toBe(true);
+  // Links are absolute to the published site; check them here.
+  const links = [...body.matchAll(/\]\((https:\/\/getgone\.dev\/[^)]*)\)/g)].map((m) => m[1].replace('https://getgone.dev', ''));
+  expect(links.length).toBeGreaterThan(20);
+  for (const link of links) {
+    const res = await request.get(link);
+    expect(res.status(), link).toBe(200);
+  }
+  expect((await request.get('/llms-full.txt')).status()).toBe(200);
+});
+
+test('each docs page is also served as Markdown with absolute links', async ({ page, request }) => {
+  await page.goto('/docs/self-host/compose/');
+  const href = await page.locator('link[rel="alternate"][type="text/markdown"]').getAttribute('href');
+  const res = await request.get(new URL(href).pathname);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toContain('text/markdown');
+  const md = await res.text();
+  expect(md.startsWith('# Docker Compose with Caddy')).toBe(true);
+  expect(md).not.toMatch(/\]\((?!https?:|#|mailto:)/);
+});
+
+test('the home page describes Gone for search engines', async ({ page }) => {
+  await page.goto('/');
+  const data = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent());
+  expect(data['@type']).toBe('SoftwareApplication');
+  expect(data.name).toBe('Gone');
+});
