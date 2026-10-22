@@ -107,24 +107,32 @@
     return (from > 0 ? '… ' : '') + source.slice(from, at + SNIPPET) + ' …';
   }
 
-  function escapeRe(s) {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // nextMatch finds the earliest place at or after `from` where any term
+  // starts in the lower-cased text.
+  function nextMatch(low, terms, from) {
+    let at = -1;
+    let len = 0;
+    for (const t of terms) {
+      const i = low.indexOf(t, from);
+      if (i >= 0 && (at < 0 || i < at)) { at = i; len = t.length; }
+    }
+    return { at: at, len: len };
   }
 
   // marked builds text with each search term in a <mark>, from text nodes
   // only.
   function marked(text, terms) {
     const out = document.createDocumentFragment();
-    const re = new RegExp('(' + terms.map(escapeRe).join('|') + ')', 'gi');
-    text.split(re).forEach(function (part, i) {
-      if (i % 2) {
-        const m = document.createElement('mark');
-        m.textContent = part;
-        out.append(m);
-      } else if (part) {
-        out.append(document.createTextNode(part));
-      }
-    });
+    const low = text.toLowerCase();
+    let from = 0;
+    for (let m = nextMatch(low, terms, 0); m.at >= 0; m = nextMatch(low, terms, from)) {
+      if (m.at > from) out.append(document.createTextNode(text.slice(from, m.at)));
+      const mark = document.createElement('mark');
+      mark.textContent = text.slice(m.at, m.at + m.len);
+      out.append(mark);
+      from = m.at + m.len;
+    }
+    if (from < text.length) out.append(document.createTextNode(text.slice(from)));
     return out;
   }
 
