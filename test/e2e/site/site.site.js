@@ -19,6 +19,7 @@ const PAGES = [
   '/docs/configuration/',
   '/docs/cli-reference/',
   '/docs/security/',
+  '/docs/faq/',
 ];
 
 // watch collects console errors (CSP violations included), page errors and

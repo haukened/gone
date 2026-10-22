@@ -38,6 +38,9 @@ sections:
       - { page: configuration.md, label: Configuration }
       - { page: api.md, label: HTTP API }
       - { page: protocol.md, label: Protocol specification }
+  - title: FAQ
+    pages:
+      - { page: faq.md, label: Frequently asked questions }
   - title: The project
     pages:
       - { page: contributing.md, label: Contributing }
