@@ -542,16 +542,15 @@
   background: var(--color-accent-soft);
   border: 0;
   border-radius: 5px;
+  /* Code that wraps keeps its tint on both lines. */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .prose code.tok {
   white-space: nowrap;
 }
 
-.prose code {
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
 
 .prose a code {
   color: inherit;
