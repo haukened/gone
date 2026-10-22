@@ -20,7 +20,7 @@ Go + One = Gone — a tiny service for sharing a secret exactly once.
 
 Gone lets you paste a sensitive value (password, token, wifi key), generate a one‑time link, and send that link. The first person to open it sees the secret; after that it’s gone for good.
 
-**Try it:** [gone.hauken.us](https://gone.hauken.us), a public instance run by the maintainer. Secrets can be up to 10 MB and are deleted after a day if nobody opens them. No uptime guarantee; limits may change.
+**Try it:** [app.getgone.dev](https://app.getgone.dev), a public instance run by the maintainer. Secrets can be up to 10 MB and are deleted after a day if nobody opens them. No uptime guarantee; limits may change.
 
 <table>
 <tr>
@@ -102,20 +102,22 @@ The script checks the download against the release's checksums (and its signed p
 
 ```sh
 printf 'hunter2' | gone send --ttl 30m              # prints the link and your manage link
-gone get 'https://gone.hauken.us/secret/AbC#v1:…'  # quote links in single quotes
+gone get 'https://app.getgone.dev/secret/AbC#v1:…'  # quote links in single quotes
 gone request --label 'VPN key'                      # ask someone for a secret
 printf 'hunter2' | gone reply '<request-link>'      # answer someone's request
 ```
 
-`gone` opens only links from the server you use (`https://gone.hauken.us` until you run `gone set server`); a link for any other server is refused before anything is sent, unless you pass `--allow-origin` for that command. Messages come from standard input, never from arguments. Scripts and AI agents can handle secrets by reference, so the plaintext never appears in their output. The full guide is [docs/cli.md](docs/cli.md).
+`gone` opens only links from the server you use (`https://app.getgone.dev` until you run `gone set server`); a link for any other server is refused before anything is sent, unless you pass `--allow-origin` for that command. Messages come from standard input, never from arguments. Scripts and AI agents can handle secrets by reference, so the plaintext never appears in their output. The full guide is [docs/cli.md](docs/cli.md).
 
 ## Documentation
 
 | | |
 | --- | --- |
-| **Run it** | [Docker](docs/deploy/docker.md) · [Compose with Caddy](docs/deploy/compose.md) · [Reverse proxy](docs/deploy/reverse-proxy.md) · [Kubernetes](docs/deploy/kubernetes.md) · [Linux packages](docs/deploy/packages.md) · [Configuration](docs/configuration.md) · [Metrics](docs/metrics.md) |
-| **Use it** | [CLI](docs/cli.md) · [HTTP API](docs/api.md) ([OpenAPI](docs/openapi.yaml)) · [Protocol](docs/protocol.md) |
-| **Trust it** | [Security and architecture](docs/security.md) · [Reporting a vulnerability](SECURITY.md) |
+| **Questions** | [FAQ](docs/faq.md) |
+| **Use the CLI** | [Guide](docs/cli.md) · [Reference](docs/cli-reference.md) |
+| **Self-host** | [Overview](docs/deploy/README.md) · [Compose with Caddy](docs/deploy/compose.md) · [Docker](docs/deploy/docker.md) · [Kubernetes](docs/deploy/kubernetes.md) · [Linux packages](docs/deploy/packages.md) · [Reverse proxy](docs/deploy/reverse-proxy.md) · [Configuration](docs/configuration.md) · [Metrics](docs/metrics.md) · [Upgrade and maintain](docs/operating.md) |
+| **Trust it** | [Security model](docs/security.md) · [Verify a release](docs/verify.md) · [Reporting a vulnerability](SECURITY.md) |
+| **Write a client** | [HTTP API](docs/api.md) ([OpenAPI](docs/openapi.yaml)) · [Protocol](docs/protocol.md) |
 | **Build it** | [Contributing](CONTRIBUTING.md) · [Development](docs/development.md) · [Roadmap](docs/ROADMAP.md) · [Rejected features](docs/rejected.md) · [Technical decisions](docs/decisions.md) |
 
 The full index is [docs/README.md](docs/README.md).

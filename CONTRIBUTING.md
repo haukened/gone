@@ -64,8 +64,9 @@ Update the docs in the same PR when behavior changes:
 - [docs/configuration.md](docs/configuration.md) for settings, and [docs/metrics.md](docs/metrics.md) for metrics;
 - [docs/api.md](docs/api.md) and [docs/openapi.yaml](docs/openapi.yaml) for the HTTP API;
 - [docs/protocol.md](docs/protocol.md) for the wire format, and [docs/security.md](docs/security.md) when the security model or threat model changes;
-- [docs/cli.md](docs/cli.md) for the CLI;
-- [docs/deploy/](docs/deploy/) for deployment.
+- [docs/cli.md](docs/cli.md) and [docs/cli-reference.md](docs/cli-reference.md) for the CLI;
+- [docs/deploy/](docs/deploy/) for deployment, and [docs/operating.md](docs/operating.md) for upgrades and maintenance;
+- [docs/verify.md](docs/verify.md) when what a release publishes or signs changes.
 
 A feature we decide against goes in [docs/rejected.md](docs/rejected.md), and a technical alternative we turn down goes in [docs/decisions.md](docs/decisions.md), each with its reason and what would make us revisit it. [docs/README.md](docs/README.md) is the index of all of them.
 

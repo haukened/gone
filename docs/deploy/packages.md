@@ -41,7 +41,7 @@ After editing `/etc/default/gone`, run `sudo systemctl restart gone`. `GONE_DATA
 
 ## Data and backups
 
-Gone keeps its database and stored secrets in `/var/lib/gone`, which only the service (and root) can read. Everything in it is ciphertext. Back it up while Gone is stopped (`sudo systemctl stop gone`), or accept that a live copy may hold secrets that expire soon after.
+Gone keeps its database and stored secrets in `/var/lib/gone`, which only the service (and root) can read. Everything in it is ciphertext and expires on its own. Don't back it up: restoring a copy makes secrets opened since then openable again until they expire. Back up `/etc/default/gone` instead; see [Backups](../operating.md#backups).
 
 ## Upgrades and removal
 

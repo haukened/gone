@@ -32,6 +32,8 @@ Then visit `https://gone.example.com`. To avoid typing the domain each time, put
 Add variables under the `gone` service's `environment:`. For example, to shorten the longest expiry and allow smaller secrets:
 
 ```yaml
+services:
+  gone:
     environment:
       GONE_TRUSTED_PROXIES: 172.31.255.2/32
       GONE_TTL_OPTIONS: 5m,30m,1h,4h
@@ -46,4 +48,4 @@ Every variable is listed in [Configuration](../configuration.md). Apply changes 
 docker compose pull && docker compose up -d
 ```
 
-`compose.yaml` pins Caddy to a tag and digest (bump both together; Dependabot does this if you keep the file in a repository). It uses the `latest` tag for Gone. To control upgrades, pin a release instead, for example `ghcr.io/haukened/gone:v3.12.0`, and [verify it](docker.md#verifying-the-image) before you switch.
+`compose.yaml` pins Caddy to a tag and digest (bump both together; Dependabot does this if you keep the file in a repository). It uses the `latest` tag for Gone. To control upgrades, pin a release instead, for example `ghcr.io/haukened/gone:v3.12.0`, and [verify it](../verify.md#the-container-image) before you switch. For more on upgrades, see [Upgrade and maintain](../operating.md).

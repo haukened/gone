@@ -10,6 +10,8 @@ web (primary), plus the `gone` command-line client for terminals and scripts
 
 Primary: people who self-host Gone for a team and use it mid-task to hand a credential (password, API token, wifi key, recovery code, small file) to a colleague or customer — usually while on a call or in chat. Recipients are mixed: some technical, many not, often on a phone, opening a link from someone else's server for the first time.
 
+Documentation readers: the largest group is people using the `gone` CLI, so the docs landing leads with the CLI. Operators remain the primary users of the product itself.
+
 ## Product Purpose
 
 Share a secret exactly once. The sender's browser encrypts the message and attachments; the server stores only ciphertext; the key travels in the URL fragment and never reaches the server. The first recipient to open the link decrypts it locally, the server deletes it once the browser acknowledges receipt, and every later open finds nothing. Success: the secret arrives, is read once, and leaves no copy behind in chat logs, email, or tickets.

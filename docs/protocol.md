@@ -1,4 +1,6 @@
-# Gone Protocol Specification
+# Protocol specification
+
+How Gone encrypts a secret, encodes it into a link, and exchanges it with the server, byte by byte, so any client can interoperate with any other.
 
 Status: **normative** for protocol versions 1, 2 and 3 and plaintext envelope GONE2.
 Reference implementations: the browser client (`web/js/crypto*.js` for encryption and links, `envelope*.js` and `fileMeta.js` for GONE2, `consumeApi*.js` for the claim/acknowledge exchange, `request*.js` and `reply*.js` for secret requests) and the Go package `internal/envelope`, used by the `gone` CLI. Both are tested against the shared vectors in [`test/vectors/`](../test/vectors/).
