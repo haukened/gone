@@ -7,6 +7,7 @@ exclude_paths:
   - "test/e2e/**" # browser tests: Playwright fixtures and specs, checked by ESLint in CI
   - "test/interop/signin/authelia/**" # Authelia's config; Semgrep's duplicate-id rule is for Semgrep rule files
   - "charts/gone/templates/**" # Helm templates: not YAML until rendered; test/helm/lint.sh checks the rendered output
+  - "site/layouts/**/*.json" # Hugo templates that render JSON: not JSON until built; the site build checks them
   - "test/vectors/**" # protocol test vectors: fixed keys and ciphertexts by design
   - "tools/lint/**" # the ESLint and stylelint toolchain, never shipped
   - "**/package-lock.json" # generated lockfiles; OSV-Scanner checks their dependencies
