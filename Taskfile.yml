@@ -139,6 +139,14 @@ tasks:
     cmds:
       - go tool -modfile=tools/hugo/go.mod hugo --source site --minify --cleanDestinationDir
 
+  site-test:
+    desc: Browser tests for the website (test/e2e/site), against a fresh build of site/public
+    deps: [site]
+    dir: test/e2e
+    cmds:
+      - npm ci --no-audit --no-fund
+      - npx playwright test -c site.config.js
+
   site-serve:
     desc: Preview the website at http://127.0.0.1:8088, rebuilding on save (over SSH - ssh -L 8088:localhost:8088 <host>)
     env:

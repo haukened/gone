@@ -73,6 +73,7 @@ TODO.md
 /test/e2e/.data/
 /test/e2e/test-results/
 /test/e2e/playwright-report/
+/test/e2e/site-report/
 
 # Pinned lint tools (tools/lint, npm ci --prefix tools/lint)
 /tools/lint/node_modules/

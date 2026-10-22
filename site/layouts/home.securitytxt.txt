@@ -1,0 +1,8 @@
+{{- /* RFC 9116. Expires is set at each build, eleven months ahead (the RFC
+       asks for under a year); the Pages workflow rebuilds monthly, so it
+       never lapses while the site is maintained. */ -}}
+Contact: {{ site.Params.repo }}/security/advisories/new
+Expires: {{ (now.AddDate 0 11 0).UTC.Format "2006-01-02T15:04:05Z" }}
+Preferred-Languages: en
+Canonical: {{ "/.well-known/security.txt" | absURL }}
+Policy: {{ site.Params.repo }}/blob/main/SECURITY.md

@@ -11,6 +11,19 @@
 <meta name="description" content="{{ . }}">
 {{- end }}
 <link rel="canonical" href="{{ .Permalink }}">
+{{- /* Link previews in chat apps and social sites. */}}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gone">
+<meta property="og:title" content="{{ if .IsHome }}Gone · Share a secret exactly once{{ else }}{{ $title }}{{ end }}">
+{{- with partial "description.html" . }}
+<meta property="og:description" content="{{ . }}">
+{{- end }}
+<meta property="og:url" content="{{ .Permalink }}">
+<meta property="og:image" content="{{ "docs/brand/social-preview.png" | absURL }}">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Gone: share a secret exactly once">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="{{ "img/favicon.ico" | relURL }}" sizes="16x16 32x32">
 <link rel="icon" href="{{ "img/favicon.svg" | relURL }}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{{ "img/apple-touch-icon.png" | relURL }}">

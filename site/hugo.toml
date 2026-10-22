@@ -34,6 +34,17 @@ name = "Trust"
 url = "/trust/"
 weight = 4
 
+# security.txt (RFC 9116) at /.well-known/security.txt.
+[outputFormats.securitytxt]
+mediaType = "text/plain"
+baseName = "security"
+path = ".well-known"
+isPlainText = true
+notAlternative = true
+
+[outputs]
+home = ["html", "securitytxt"]
+
 # The docs search index, built for the docs section only (see
 # content/docs/_index.md) and fetched by search.js when search first opens.
 [outputFormats.searchindex]

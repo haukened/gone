@@ -1,7 +1,7 @@
 {{- $here := .RelPermalink -}}
 <header class="site">
 	<div class="wrap">
-		<a class="brand" href="{{ "/" | relURL }}" aria-label="Gone home"><span class="brand-g"></span>one</a>
+		<a class="brand" href="{{ "/" | relURL }}"><span class="brand-g" aria-hidden="true"></span><span class="sr-only">G</span>one</a>
 		<nav class="nav" aria-label="Site">
 			{{- range site.Menus.main }}
 			{{- /* Home is current only on the home page; a section link on any page under it. */}}

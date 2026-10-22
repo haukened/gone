@@ -1,0 +1,6 @@
+{{- /* Unlike a Gone instance, which asks not to be indexed, the project's
+       site wants to be found. */ -}}
+User-agent: *
+Allow: /
+
+Sitemap: {{ "sitemap.xml" | absURL }}
