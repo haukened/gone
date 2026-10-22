@@ -17,7 +17,7 @@
 		{{ partial "copy-well.html" (dict "id" (printf "cmd-%s-%d" $t.id $j) "command" (partial "fill.html" $c)) }}
 		{{- end }}
 		{{- with $t.download }}
-		<p><a class="btn btn-primary" href="{{ partial "url.html" .url }}">{{ partial "icon.html" "down" }}<span>{{ partial "fill.html" .text }}</span></a></p>
+		<p><a class="btn btn-secondary" href="{{ partial "url.html" .url }}">{{ partial "icon.html" "down" }}<span>{{ partial "fill.html" .text }}</span></a></p>
 		{{- end }}
 		<p class="hint">{{ $t.hint }}{{ with $t.link }} <a href="{{ partial "url.html" .url }}">{{ partial "fill.html" .text }}</a>{{ end }}</p>
 	</div>

@@ -155,3 +155,17 @@ test('the home page describes Gone for search engines', async ({ page }) => {
   expect(data['@type']).toBe('SoftwareApplication');
   expect(data.name).toBe('Gone');
 });
+
+test('the home page sends visitors to the app first, and every link on it answers', async ({ page, request }) => {
+  await page.goto('/');
+  const hero = page.locator('.hero');
+  await expect(hero.getByRole('link', { name: 'Send a secret' })).toHaveAttribute('href', 'https://app.getgone.dev');
+  await expect(hero.getByRole('link', { name: 'Ask someone for a secret' })).toHaveAttribute('href', 'https://app.getgone.dev/request');
+  // The first link in the page's main content is the app.
+  const firstMain = await page.locator('main a').first().getAttribute('href');
+  expect(firstMain).toBe('https://app.getgone.dev');
+  const paths = await page.locator('main a[href^="/"]').evaluateAll((links) => links.map((a) => a.getAttribute('href')));
+  for (const path of new Set(paths)) {
+    expect((await request.get(path)).status(), path).toBe(200);
+  }
+});
