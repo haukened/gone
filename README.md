@@ -100,7 +100,7 @@ The `gone` CLI does the same from a terminal and works with secrets sent from th
 curl -fsSL https://getgone.dev/install.sh | sh
 ```
 
-The script checks the download against the release's checksums (and its signed provenance, if the GitHub CLI is signed in) and installs into `~/.local/bin` without sudo. There are also `.deb` and `.rpm` packages and archives for Linux, macOS and Windows on the [releases page](https://github.com/haukened/gone/releases); see [installing the CLI](docs/cli.md#install).
+The script checks the download against the release's checksums (and its signed provenance, if the GitHub CLI is signed in) and installs into `~/.local/bin` without sudo. With Homebrew, it's `brew install haukened/gone/gone`. There are also `.deb` and `.rpm` packages and archives for Linux, macOS and Windows on the [releases page](https://github.com/haukened/gone/releases); see [installing the CLI](docs/cli.md#install).
 
 ```sh
 printf 'hunter2' | gone send --ttl 30m              # prints the link and your manage link

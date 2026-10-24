@@ -36,6 +36,14 @@ sh install.sh
 
 The script's work happens in a function called on its last line, so a download that's cut off partway runs nothing.
 
+### Homebrew (macOS and Linux)
+
+```sh
+brew install haukened/gone/gone
+```
+
+This installs the same release archive as the script, checked against the release's `SHA256SUMS`, from the [haukened/homebrew-gone](https://github.com/haukened/homebrew-gone) tap. Each stable release updates the tap, and `brew upgrade` picks it up.
+
 ### Packages (Debian, Ubuntu, Fedora, RHEL)
 
 Each release has `.deb` and `.rpm` packages for amd64 and arm64. Download one from the [release page](https://github.com/haukened/gone/releases), then:
