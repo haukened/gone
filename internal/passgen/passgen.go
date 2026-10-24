@@ -57,7 +57,8 @@ func parseList(b []byte) ([]string, error) {
 	}
 	out := make([]string, 0, listSize)
 	for _, ln := range lines {
-		_, w, ok := bytes.Cut(ln, []byte("\t"))
+		// A Windows checkout may turn the file's line endings into CRLF.
+		_, w, ok := bytes.Cut(bytes.TrimSuffix(ln, []byte("\r")), []byte("\t"))
 		if !ok || len(w) == 0 {
 			return nil, ErrWordlist
 		}

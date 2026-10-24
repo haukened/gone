@@ -101,34 +101,78 @@ func unescapePastedLink(s string) string {
 //
 // Returns a usage message.
 func diagnoseLink(s string, want linkKind, err error) string {
-	k := linkKinds[want]
-	lead := "not a valid " + k.noun + ": "
-	retry := " Copy it again, or pass - and paste it."
+	lead := "not a valid " + linkKinds[want].noun + ": "
+	if why := linkProblem(s, want, err); why != "" {
+		return lead + why
+	}
+	return lead + "it's incomplete or damaged." + retryLink
+}
+
+// retryLink ends a diagnosis whose fix is copying the link again.
+const retryLink = " Copy it again, or pass - and paste it."
+
+// linkProblem finds a specific reason a link is invalid.
+//
+// Parameters:
+//   - s: the normalized link.
+//   - want: the kind of link the command takes.
+//   - err: the parser's error.
+//
+// Returns the reason, or "" when none is known.
+func linkProblem(s string, want linkKind, err error) string {
 	u, perr := url.Parse(s)
 	if perr != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return lead + "it should start with https://." + retry
+		return "it should start with https://." + retryLink
 	}
 	if isLinkScanner(u.Hostname()) {
-		return lead + "your email rewrote it to go through a link scanner. Open it in a browser, or ask the sender to send the link another way."
+		return "your email rewrote it to go through a link scanner. Open it in a browser, or ask the sender to send the link another way."
 	}
 	path := u.EscapedPath()
 	if strings.Contains(strings.ToLower(path), "%23") {
-		return lead + "its # was changed to %23 on the way, so the key may have reached a server as part of the address. Ask the sender for a new link."
+		return "its # was changed to %23 on the way, so the key may have reached a server as part of the address. Ask the sender for a new link."
 	}
+	if why := wrongKind(path, want); why != "" {
+		return why
+	}
+	return contentProblem(s, path, want, err)
+}
+
+// wrongKind names the command for a link of another kind.
+//
+// Parameters:
+//   - path: the link's escaped path.
+//   - want: the kind of link the command takes.
+//
+// Returns the reason, or "" when the path isn't another kind's.
+func wrongKind(path string, want linkKind) string {
 	for kind, other := range linkKinds {
 		if kind != want && strings.HasPrefix(path, other.path) {
-			return lead + "that's a " + other.noun + "; use " + other.command + "."
+			return "that's a " + other.noun + "; use " + other.command + "."
 		}
 	}
+	return ""
+}
+
+// contentProblem explains a link of the right kind that still didn't
+// parse.
+//
+// Parameters:
+//   - s: the normalized link.
+//   - path: its escaped path.
+//   - want: the kind of link the command takes.
+//   - err: the parser's error.
+//
+// Returns the reason, or "" when none is known.
+func contentProblem(s, path string, want linkKind, err error) string {
 	switch {
-	case !strings.HasPrefix(path, k.path):
-		return lead + "it isn't a link to " + k.target + "." + retry
+	case !strings.HasPrefix(path, linkKinds[want].path):
+		return "it isn't a link to " + linkKinds[want].target + "." + retryLink
 	case errors.Is(err, domain.ErrInvalidVersion):
-		return lead + "it was made by a newer version of Gone. Upgrade gone (see \"gone version\"), or open it in a browser."
+		return "it was made by a newer version of Gone. Upgrade gone (see \"gone version\"), or open it in a browser."
 	case !strings.Contains(s, "#"):
-		return lead + "the key (the part after #) is missing." + retry
+		return "the key (the part after #) is missing." + retryLink
 	}
-	return lead + "it's incomplete or damaged." + retry
+	return ""
 }
 
 // isLinkScanner reports whether host belongs to an email link-scanning

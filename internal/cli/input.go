@@ -109,27 +109,9 @@ func (a *app) readPayload(in inputOpts) (envelope.Payload, error) {
 //
 // Returns the message or a usage/I/O error.
 func (a *app) readMessage(budget int64, in inputOpts) ([]byte, error) {
-	var msg []byte
-	if in.messageFile != "" {
-		b, err := readRegularFile(in.messageFile, budget, "message file")
-		if err != nil {
-			return nil, err
-		}
-		msg = b
-	} else {
-		if a.env.StdinTTY {
-			_, _ = io.WriteString(a.env.Stderr, messagePrompt)
-		}
-		b, err := io.ReadAll(io.LimitReader(a.env.Stdin, budget+1))
-		if err != nil {
-			clear(b)
-			return nil, ioErr("read message", err)
-		}
-		if int64(len(b)) > budget {
-			clear(b)
-			return nil, tooLargeInput()
-		}
-		msg = b
+	msg, err := a.readMessageBytes(budget, in.messageFile)
+	if err != nil {
+		return nil, err
 	}
 	msg, did, err := decodeText(msg)
 	if err != nil {
@@ -144,6 +126,34 @@ func (a *app) readMessage(budget int64, in inputOpts) ([]byte, error) {
 	}
 	if in.messageFile == "" && !in.keepNewline {
 		msg = trimNewline(msg)
+	}
+	return msg, nil
+}
+
+// readMessageBytes reads the raw message up to budget bytes: from
+// messageFile when it is set, without touching stdin, otherwise from stdin,
+// prompting on a terminal.
+//
+// Parameters:
+//   - budget: remaining input allowance.
+//   - messageFile: --message-file value, or "" to read stdin.
+//
+// Returns the bytes as read or a usage/I/O error.
+func (a *app) readMessageBytes(budget int64, messageFile string) ([]byte, error) {
+	if messageFile != "" {
+		return readRegularFile(messageFile, budget, "message file")
+	}
+	if a.env.StdinTTY {
+		_, _ = io.WriteString(a.env.Stderr, messagePrompt)
+	}
+	msg, err := io.ReadAll(io.LimitReader(a.env.Stdin, budget+1))
+	if err != nil {
+		clear(msg)
+		return nil, ioErr("read message", err)
+	}
+	if int64(len(msg)) > budget {
+		clear(msg)
+		return nil, tooLargeInput()
 	}
 	return msg, nil
 }

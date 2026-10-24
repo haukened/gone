@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -76,6 +77,9 @@ func TestOpenMessageOutRelative(t *testing.T) {
 // Parameters:
 //   - t: the test.
 func TestOpenMessageOutReadOnly(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a directory's mode doesn't make it read-only on Windows")
+	}
 	ro := t.TempDir()
 	if err := os.Chmod(ro, 0o500); err != nil { // #nosec G302 -- test fixture
 		t.Fatal(err)
