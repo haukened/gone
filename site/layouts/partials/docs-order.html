@@ -12,7 +12,7 @@
   {{- range $entries -}}
     {{- $p := site.GetPage (printf "/docs/%s" (strings.TrimSuffix ".md" .e.page)) -}}
     {{- if not $p -}}{{- errorf "data/docs.yaml lists %q, which isn't a docs page" .e.page -}}{{- end -}}
-    {{- $out = $out | append (dict "page" $p "path" .e.page "label" .e.label "section" $section "group" .group) -}}
+    {{- $out = $out | append (dict "page" $p "path" .e.page "label" .e.label "section" $section "group" .group "seoTitle" (.e.seoTitle | default "") "description" (.e.description | default "")) -}}
   {{- end -}}
 {{- end -}}
 {{- return $out -}}

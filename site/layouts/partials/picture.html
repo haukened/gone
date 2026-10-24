@@ -1,0 +1,36 @@
+{{- /* A screenshot from docs/img as a responsive <picture>: AVIF, then WebP,
+       then JPEG, each at several widths, with a dark-theme copy. Arguments:
+       light, dark (paths as docs/img/…), alt, sizes, and optionally crop
+       ("WxH" from the top, to keep only what the layout shows), widths,
+       class and priority (the page's main image: no lazy loading). */ -}}
+{{- $widths := .widths | default (slice 480 760 1140 1520) -}}
+{{- $sets := dict -}}
+{{- $first := "" -}}
+{{- range $theme := slice "light" "dark" -}}
+  {{- $src := index $ $theme -}}
+  {{- $img := resources.Get (replace $src "docs/img/" "docimg/") -}}
+  {{- if not $img }}{{ errorf "picture: no image %q" $src }}{{ end -}}
+  {{- with $.crop }}{{ $img = $img.Crop (printf "%s Top" .) }}{{ end -}}
+  {{- range $format := slice "avif" "webp" "jpg" -}}
+    {{- $list := slice -}}
+    {{- range $w := $widths -}}
+      {{- if le $w $img.Width -}}
+        {{- $r := $img.Resize (printf "%dx %s q%d" $w $format (cond (eq $format "avif") 60 78)) -}}
+        {{- $list = $list | append (printf "%s %dw" $r.RelPermalink $w) -}}
+        {{- if and (eq $theme "light") (eq $format "jpg") (not $first) }}{{ $first = $r }}{{ end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $sets = merge $sets (dict (printf "%s-%s" $theme $format) (delimit $list ", ")) -}}
+  {{- end -}}
+{{- end -}}
+{{- $full := (resources.Get (replace .light "docs/img/" "docimg/")) -}}
+{{- with .crop }}{{ $full = $full.Crop (printf "%s Top" .) }}{{ end -}}
+<picture{{ with .class }} class="{{ . }}"{{ end }}>
+	<source media="(prefers-color-scheme: dark)" type="image/avif" srcset="{{ index $sets "dark-avif" }}" sizes="{{ .sizes }}">
+	<source media="(prefers-color-scheme: dark)" type="image/webp" srcset="{{ index $sets "dark-webp" }}" sizes="{{ .sizes }}">
+	<source media="(prefers-color-scheme: dark)" srcset="{{ index $sets "dark-jpg" }}" sizes="{{ .sizes }}">
+	<source type="image/avif" srcset="{{ index $sets "light-avif" }}" sizes="{{ .sizes }}">
+	<source type="image/webp" srcset="{{ index $sets "light-webp" }}" sizes="{{ .sizes }}">
+	<img src="{{ $first.RelPermalink }}" srcset="{{ index $sets "light-jpg" }}" sizes="{{ .sizes }}" alt="{{ .alt }}" width="{{ $full.Width }}" height="{{ $full.Height }}"{{ if .priority }} fetchpriority="high"{{ else }} loading="lazy"{{ end }} decoding="async">
+</picture>
+{{- /* */ -}}

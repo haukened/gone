@@ -1,0 +1,64 @@
+{{- /* Structured data for search engines, as data blocks (never run, so the
+       CSP doesn't apply): what Gone is and the site's name on the home page;
+       breadcrumbs on docs pages and guides; the questions on the FAQ; and
+       each guide as an article. */ -}}
+{{- $blocks := slice -}}
+{{- if .IsHome -}}
+  {{- $blocks = $blocks | append (dict
+    "@context" "https://schema.org"
+    "@type" "WebSite"
+    "name" "Gone"
+    "alternateName" "getgone.dev"
+    "url" site.BaseURL) -}}
+  {{- $blocks = $blocks | append (dict
+    "@context" "https://schema.org"
+    "@type" "SoftwareApplication"
+    "name" "Gone"
+    "description" "Share a secret exactly once. Encrypted in your browser or the gone CLI, stored only as ciphertext, deleted after one read. Open source and self-hosted."
+    "url" site.BaseURL
+    "applicationCategory" "SecurityApplication"
+    "operatingSystem" "Linux, macOS, Windows"
+    "softwareVersion" (strings.TrimPrefix "v" site.Params.release)
+    "license" "https://www.gnu.org/licenses/agpl-3.0.html"
+    "downloadUrl" (printf "%s/releases" site.Params.repo)
+    "installUrl" ("install.sh" | absURL)
+    "sameAs" (slice site.Params.repo)
+    "offers" (dict "@type" "Offer" "price" "0" "priceCurrency" "USD")) -}}
+{{- end -}}
+{{- $section := "" }}{{ $sectionURL := "" -}}
+{{- if and (eq .Section "docs") .IsPage }}{{ $section = "Docs" }}{{ $sectionURL = (site.GetPage "/docs").Permalink }}{{ end -}}
+{{- if and (eq .Section "guides") .IsPage }}{{ $section = "Guides" }}{{ $sectionURL = (site.GetPage "/guides").Permalink }}{{ end -}}
+{{- if $section -}}
+  {{- $blocks = $blocks | append (dict
+    "@context" "https://schema.org"
+    "@type" "BreadcrumbList"
+    "itemListElement" (slice
+      (dict "@type" "ListItem" "position" 1 "name" "Gone" "item" site.BaseURL)
+      (dict "@type" "ListItem" "position" 2 "name" $section "item" $sectionURL)
+      (dict "@type" "ListItem" "position" 3 "name" (partial "title.html" .)))) -}}
+{{- end -}}
+{{- if eq .RelPermalink "/docs/faq/" -}}
+  {{- $qa := slice -}}
+  {{- range after 1 (split (replaceRE `(?s)<h2 id="[^"]+"[^>]*>` "\x1e" (string .Content)) "\x1e") -}}
+    {{- $parts := split . "</h2>" -}}
+    {{- $qa = $qa | append (dict
+      "@type" "Question"
+      "name" (index $parts 0 | plainify | htmlUnescape | strings.TrimSpace)
+      "acceptedAnswer" (dict "@type" "Answer" "text" (index $parts 1 | plainify | htmlUnescape | replaceRE `\s+` " " | strings.TrimSpace))) -}}
+  {{- end -}}
+  {{- $blocks = $blocks | append (dict "@context" "https://schema.org" "@type" "FAQPage" "mainEntity" $qa) -}}
+{{- end -}}
+{{- if and (eq .Section "guides") .IsPage -}}
+  {{- $blocks = $blocks | append (dict
+    "@context" "https://schema.org"
+    "@type" "Article"
+    "headline" (partial "title.html" .)
+    "description" (partial "description.html" .)
+    "url" .Permalink
+    "dateModified" (.Lastmod.Format "2006-01-02")
+    "author" (dict "@type" "Organization" "name" "The Gone project" "url" site.BaseURL)
+    "publisher" (dict "@type" "Organization" "name" "The Gone project" "url" site.BaseURL)) -}}
+{{- end -}}
+{{- range $blocks }}
+<script type="application/ld+json">{{ . | jsonify | safeJS }}</script>
+{{- end -}}

@@ -1,6 +1,6 @@
 ---
 title: Privacy
-description: This website collects nothing about you.
+description: "getgone.dev sets no cookies, runs no analytics and loads nothing from other sites. What this site and the public instance can and can't see about you."
 ---
 
 <!-- Draft for review. -->
