@@ -483,6 +483,56 @@
   margin-top: var(--space-2);
 }
 
+/* Guides: the list, and the button each guide ends with. */
+.guide-list {
+  display: grid;
+  gap: var(--space-4);
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-list li {
+  display: grid;
+  gap: var(--space-1);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--hair);
+}
+
+.guide-list a {
+  font-size: var(--step-1);
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.guide-list a:hover {
+  text-decoration: underline;
+}
+
+.guide-list span {
+  color: var(--color-ink-2);
+}
+
+.guide-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  margin: var(--space-5) 0;
+}
+
+.guide-cta span {
+  font-size: 0.875rem;
+  color: var(--color-ink-2);
+}
+
+.cli-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+}
+
 /* ---------------------------------------------------------------- Prose */
 
 /* The app's .prose covers headings, paragraphs, lists and inline code; the

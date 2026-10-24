@@ -20,6 +20,11 @@ const PAGES = [
   '/docs/cli-reference/',
   '/docs/security/',
   '/docs/faq/',
+  '/guides/',
+  '/guides/share-a-password/',
+  '/guides/send-an-api-key/',
+  '/guides/ask-for-a-password/',
+  '/guides/secrets-for-scripts-and-agents/',
 ];
 
 // watch collects console errors (CSP violations included), page errors and
@@ -166,6 +171,18 @@ test('structured data describes the site, the docs and the FAQ', async ({ page }
   const faq = JSON.parse((await page.locator('script[type="application/ld+json"]').allTextContents()).find((b) => b.includes('FAQPage')));
   expect(faq.mainEntity.length).toBeGreaterThanOrEqual(10);
   for (const q of faq.mainEntity) expect(q.acceptedAnswer.text.length).toBeGreaterThan(20);
+  await page.goto('/guides/share-a-password/');
+  expect(await jsonLD(page)).toEqual(expect.arrayContaining(['Article', 'BreadcrumbList']));
+});
+
+test('each guide ends in the app', async ({ page }) => {
+  await page.goto('/guides/');
+  const guides = await page.locator('.guide-list a').evaluateAll((links) => links.map((a) => a.getAttribute('href')));
+  expect(guides.length).toBe(4);
+  for (const guide of guides) {
+    await page.goto(guide);
+    await expect(page.locator('.guide-cta a').first()).toHaveAttribute('href', /^https:\/\/app\.getgone\.dev(\/request)?$/);
+  }
 });
 
 test('every page in the sitemap has a dated entry, a unique plain title and a fitting description', async ({ request }) => {

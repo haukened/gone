@@ -104,6 +104,9 @@ cli:
   link:
     text: The CLI guide
     url: /docs/cli/
+  guide:
+    text: Giving secrets to scripts and AI agents
+    url: /guides/secrets-for-scripts-and-agents/
 
 features:
   title: Small, with what you need

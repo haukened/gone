@@ -1,0 +1,17 @@
+{{ define "main" }}
+{{- $split := partial "split-title.html" . -}}
+<div class="wrap page-wrap">
+	<article class="pane page">
+		<h1>{{ $split.title }}</h1>
+		<div class="prose">{{ $split.body }}</div>
+		<ul class="guide-list">
+			{{- range .RegularPages.ByTitle }}
+			<li>
+				<a href="{{ .RelPermalink }}">{{ partial "title.html" . }}</a>
+				<span>{{ partial "description.html" . }}</span>
+			</li>
+			{{- end }}
+		</ul>
+	</article>
+</div>
+{{ end }}
