@@ -160,7 +160,7 @@ func TestWriteUniqueExhausted(t *testing.T) {
 //   - t: the test.
 func TestFinishWriteError(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("Windows opens a created file for writing, so this write doesn't fail")
+		t.Skip("on Windows, writing to this read-only handle succeeds, so the error path is not reached")
 	}
 	dir := t.TempDir()
 	root := openRoot(t, dir)
