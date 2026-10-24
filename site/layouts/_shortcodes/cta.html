@@ -1,0 +1,4 @@
+{{- /* The way out of a guide: send a secret on the public instance (or ask
+       for one, with request="true"). */ -}}
+{{- $request := eq (.Get "request") "true" -}}
+<p class="guide-cta"><a class="btn btn-primary" href="{{ site.Params.app }}{{ if $request }}/request{{ end }}">{{ if $request }}Ask for a secret{{ else }}Send a secret{{ end }}{{ partial "icon.html" "arrow" }}</a> <span>Free, no account, in your browser at {{ strings.TrimPrefix "https://" site.Params.app }}.</span></p>

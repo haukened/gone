@@ -38,7 +38,10 @@
 			{{- end }}
 		</ul>
 		<p class="status" role="status" data-copy-status></p>
-		{{- with .link }}<p><a href="{{ partial "url.html" .url }}">{{ .text }} {{ partial "icon.html" "arrow" }}</a></p>{{ end }}
+		<p class="cli-links">
+			{{- with .link }}<a href="{{ partial "url.html" .url }}">{{ .text }} {{ partial "icon.html" "arrow" }}</a>{{ end }}
+			{{- with .guide }}<a href="{{ partial "url.html" .url }}">{{ .text }} {{ partial "icon.html" "arrow" }}</a>{{ end }}
+		</p>
 	</section>
 	{{- end }}
 

@@ -28,13 +28,17 @@ name = "Docs"
 url = "/docs/"
 weight = 2
 [[menus.main]]
+name = "Guides"
+url = "/guides/"
+weight = 3
+[[menus.main]]
 name = "Why Gone"
 url = "/why/"
-weight = 3
+weight = 4
 [[menus.main]]
 name = "Trust"
 url = "/trust/"
-weight = 4
+weight = 5
 
 # security.txt (RFC 9116) at /.well-known/security.txt.
 [outputFormats.securitytxt]
