@@ -1,6 +1,7 @@
 ---
 title: Choosing a secret-sharing tool
-description: How to tell whether a secret-sharing tool really encrypts, and whether it's looked after.
+seoTitle: "How to choose a secure password-sharing tool"
+description: "A checklist for any secret-sharing tool: does it encrypt before upload, can the server or its operator read your secret, and is it still looked after?"
 ---
 
 <!-- Draft for review. -->

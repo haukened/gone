@@ -6,6 +6,8 @@ locale = "en"
 title = "Gone"
 disableKinds = ["taxonomy", "term", "rss"]
 enableRobotsTXT = true
+# Each page's last change comes from git, for the sitemap and structured data.
+enableGitInfo = true
 
 [params]
 repo = "https://github.com/haukened/gone"
@@ -133,6 +135,15 @@ target = "static/install.sh"
 [[module.mounts]]
 source = "../docs/img"
 target = "static/docs/img"
+# The same screenshots and brand art as assets too, so Hugo can make smaller
+# copies for small screens and link previews.
+[[module.mounts]]
+source = "../docs/img"
+target = "assets/docimg"
+[[module.mounts]]
+source = "../docs/brand"
+target = "assets/docbrand"
+files = ["**.png", "**.svg"]
 [[module.mounts]]
 source = "../docs/brand"
 target = "static/docs/brand"

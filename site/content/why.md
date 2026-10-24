@@ -1,11 +1,12 @@
 ---
 title: Why Gone
-description: What Gone promises, what it is, and why it was made.
+seoTitle: "Why Gone: one-time secret links you can check"
+description: "Chat and email keep a password long after it's used, and an encrypted database isn't enough. What Gone promises, why it exists, and what it will never do."
 ---
 
 <!-- Draft for review. -->
 
-# Share a secret exactly once.
+# Why we built Gone
 
 A password pasted into chat stays in chat. It sits in the history, the search index, the backups and every device that synced it, long after the person who needed it has used it. Gone gives that password a better route: a link that works once, to a secret only the recipient can read, which leaves nothing behind.
 

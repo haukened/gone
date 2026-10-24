@@ -1,0 +1,19 @@
+{{- /* The <title> and description search engines show for a page. A page
+       may set seoTitle and description in front matter; a doc may set them
+       in data/docs.yaml (its Markdown stays as it is for GitHub). Otherwise
+       the title is the page's own, with "· Gone" (or "· Gone docs") added
+       unless it already names Gone. */ -}}
+{{- $entry := dict -}}
+{{- if eq .Section "docs" -}}
+  {{- with where (partialCached "docs-order.html" . "docs-order") "page" . }}{{ $entry = index . 0 }}{{ end -}}
+{{- end -}}
+{{- $title := .Params.seoTitle | default $entry.seoTitle | default (partial "title.html" .) -}}
+{{- if not (or .Params.seoTitle $entry.seoTitle) -}}
+  {{- if and (eq .Section "docs") (not .IsSection) -}}
+    {{- $title = printf "%s · %s" $title (cond (strings.Contains $title "Gone") "docs" "Gone docs") -}}
+  {{- else if not (strings.Contains $title "Gone") -}}
+    {{- $title = printf "%s · Gone" $title -}}
+  {{- end -}}
+{{- end -}}
+{{- $desc := .Description | default $entry.description | default (partial "description.html" .) -}}
+{{- return dict "title" $title "description" $desc -}}
