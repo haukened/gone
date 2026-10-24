@@ -1,6 +1,7 @@
 ---
 title: Security and trust
-description: What Gone protects, what it can't, and how to check both yourself.
+seoTitle: "Is Gone secure? Security, threat model and trust"
+description: "What Gone protects and what it can't, how the browser encryption works, and how to check the code, the releases and the server for yourself."
 ---
 
 <!-- Draft for review. -->

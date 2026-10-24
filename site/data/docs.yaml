@@ -6,15 +6,15 @@
 sections:
   - title: Use the CLI
     pages:
-      - { page: cli.md, label: The gone CLI }
+      - { page: cli.md, label: The gone CLI, seoTitle: "The gone CLI: send and open one-time secrets from a terminal", description: "Install the gone CLI on Linux, macOS or Windows, send and open one-time secrets from a terminal, and let scripts and AI agents handle secrets safely." }
       - { page: cli-reference.md, label: CLI reference }
   - title: Self-host
     pages:
-      - { page: deploy/README.md, label: Overview }
+      - { page: deploy/README.md, label: Overview, seoTitle: "Self-host Gone: run your own one-time secret server", description: "Run your own Gone: one static binary or container, SQLite, no external services, behind HTTPS. Choose Docker Compose, Docker, Kubernetes or a package." }
     groups:
       - title: Install
         pages:
-          - { page: deploy/compose.md, label: Docker Compose with Caddy }
+          - { page: deploy/compose.md, label: Docker Compose with Caddy, seoTitle: "Self-host Gone with Docker Compose and Caddy", description: "Run Gone with automatic HTTPS from one Compose file: Caddy gets the certificate and Gone stays on a private network. Setup, settings and updates." }
           - { page: deploy/docker.md, label: Docker }
           - { page: deploy/kubernetes.md, label: Kubernetes }
           - { page: deploy/packages.md, label: Linux packages }
@@ -29,18 +29,18 @@ sections:
           - { page: operating.md, label: Upgrade and maintain }
   - title: Security
     pages:
-      - { page: security.md, label: Security model }
+      - { page: security.md, label: Security model, seoTitle: "Gone security model and threat model", description: "How Gone encrypts in the browser, why the server never sees keys or plaintext, how a link opens only once, and what Gone can't protect against." }
       - { page: verify.md, label: Verify a release }
       - { page: decisions.md, label: Technical decisions }
       - { page: security-policy.md, label: Security policy }
   - title: Reference
     pages:
-      - { page: configuration.md, label: Configuration }
+      - { page: configuration.md, label: Configuration, seoTitle: "Gone configuration: every environment variable", description: "Every GONE_* environment variable for the Gone server and CLI, with defaults and limits: storage, expiry, size, policies, branding and sign-in." }
       - { page: api.md, label: HTTP API }
       - { page: protocol.md, label: Protocol specification }
   - title: FAQ
     pages:
-      - { page: faq.md, label: Frequently asked questions }
+      - { page: faq.md, label: Frequently asked questions, seoTitle: "Gone FAQ: one-time secret links, answered", description: "Can the server read my secret? What if nobody opens it? Do I need an account? Short answers about Gone, each linked to the full explanation." }
   - title: The project
     pages:
       - { page: contributing.md, label: Contributing }

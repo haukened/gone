@@ -303,6 +303,10 @@
   color: var(--color-ink);
 }
 
+.how-more {
+  margin-top: var(--space-5);
+}
+
 .shot {
   padding: 0.6rem;
   margin: 0;

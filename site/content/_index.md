@@ -1,6 +1,7 @@
 ---
 title: Gone
-description: Share a secret exactly once. Encrypted in your browser, deleted after one read. Open source and self-hosted, with a CLI.
+seoTitle: "Gone: share passwords and secrets with one-time links"
+description: "Send a password, API key or file as a link that opens once. Encrypted in your browser, deleted after one read. Free, open source and self-hostable."
 
 hero:
   eyebrow: Open source · Self-hosted · Zero-knowledge
@@ -88,6 +89,9 @@ how:
       text: "The key is in the part after the #, which browsers never send to a server. The server only ever holds ciphertext."
     - title: They open it, once
       text: Their browser downloads the ciphertext, decrypts it, and confirms it arrived. Only then does the server delete it. Unopened secrets expire.
+  link:
+    text: The security model in detail
+    url: /docs/security/
   image:
     light: docs/img/open-light.jpg
     dark: docs/img/open-dark.jpg

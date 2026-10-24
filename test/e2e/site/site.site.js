@@ -149,11 +149,59 @@ test('each docs page is also served as Markdown with absolute links', async ({ p
   expect(md).not.toMatch(/\]\((?!https?:|#|mailto:)/);
 });
 
-test('the home page describes Gone for search engines', async ({ page }) => {
+// jsonLD returns the @type of every structured-data block on a page.
+async function jsonLD(page) {
+  const blocks = await page.locator('script[type="application/ld+json"]').allTextContents();
+  return blocks.map((b) => JSON.parse(b)['@type']);
+}
+
+test('structured data describes the site, the docs and the FAQ', async ({ page }) => {
   await page.goto('/');
-  const data = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent());
-  expect(data['@type']).toBe('SoftwareApplication');
-  expect(data.name).toBe('Gone');
+  expect(await jsonLD(page)).toEqual(expect.arrayContaining(['WebSite', 'SoftwareApplication']));
+  await page.goto('/docs/cli/');
+  expect(await jsonLD(page)).toContain('BreadcrumbList');
+  await page.goto('/docs/faq/');
+  const types = await jsonLD(page);
+  expect(types).toEqual(expect.arrayContaining(['FAQPage', 'BreadcrumbList']));
+  const faq = JSON.parse((await page.locator('script[type="application/ld+json"]').allTextContents()).find((b) => b.includes('FAQPage')));
+  expect(faq.mainEntity.length).toBeGreaterThanOrEqual(10);
+  for (const q of faq.mainEntity) expect(q.acceptedAnswer.text.length).toBeGreaterThan(20);
+});
+
+test('every page in the sitemap has a dated entry, a unique plain title and a fitting description', async ({ request }) => {
+  const sitemap = await (await request.get('/sitemap.xml')).text();
+  const urls = [...sitemap.matchAll(/<url>(.*?)<\/url>/gs)].map((m) => m[1]);
+  expect(urls.length).toBeGreaterThan(25);
+  const titles = new Set();
+  for (const entry of urls) {
+    expect(entry, entry).toContain('<lastmod>');
+    const path = entry.match(/<loc>https:\/\/getgone\.dev(\/[^<]*)<\/loc>/)[1];
+    const html = await (await request.get(path)).text();
+    const title = html.match(/<title>([^<]*)<\/title>/)[1];
+    const desc = (html.match(/<meta name="?description"? content="([^"]*)"/) || [])[1] || '';
+    expect(title, path).not.toMatch(/[`*_]/);
+    expect(title.length, `${path}: ${title}`).toBeLessThanOrEqual(65);
+    expect(titles.has(title), `${path}: duplicate title ${title}`).toBe(false);
+    titles.add(title);
+    expect(desc.length, `${path}: ${desc}`).toBeGreaterThanOrEqual(70);
+    expect(desc.length, `${path}: ${desc}`).toBeLessThanOrEqual(160);
+  }
+});
+
+test('images are sized for the screen: a light hero on phones, a small link preview', async ({ browser, baseURL, request }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, baseURL });
+  const page = await context.newPage();
+  const sizes = new Map();
+  page.on('response', async (r) => { if (r.request().resourceType() === 'image') sizes.set(r.url(), (await r.body()).length); });
+  await page.goto('/', { waitUntil: 'networkidle' });
+  const hero = page.locator('.hero-shot img');
+  await expect(hero).toHaveAttribute('srcset', /\d+w/);
+  const used = await hero.evaluate((img) => img.currentSrc);
+  expect(sizes.get(used), `hero image ${used}`).toBeLessThan(60 * 1024);
+  await context.close();
+  const og = await (await request.get('/')).text();
+  const ogURL = og.match(/property="?og:image"? content="?([^" >]+)/)[1].replace('https://getgone.dev', '');
+  expect((await (await request.get(ogURL)).body()).length).toBeLessThan(120 * 1024);
 });
 
 test('the home page sends visitors to the app first, and every link on it answers', async ({ page, request }) => {

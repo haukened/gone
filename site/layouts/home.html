@@ -17,10 +17,7 @@
 		{{- end }}
 		{{- with .image }}
 		<figure class="pane hero-shot">
-			<picture>
-				<source media="(prefers-color-scheme: dark)" srcset="{{ .dark | relURL }}">
-				<img src="{{ .light | relURL }}" alt="{{ .alt }}" width="1520" height="2492" fetchpriority="high">
-			</picture>
+			{{ partial "picture.html" (dict "light" .light "dark" .dark "alt" .alt "crop" "1520x968" "sizes" "(min-width: 46rem) 43rem, calc(100vw - 2rem)" "priority" true) }}
 		</figure>
 		{{- end }}
 	</section>
@@ -65,12 +62,12 @@
 				<li><strong>{{ .title }}.</strong> {{ .text }}</li>
 				{{- end }}
 			</ol>
+			{{- with .link }}
+			<p class="how-more"><a href="{{ partial "url.html" .url }}">{{ .text }} {{ partial "icon.html" "arrow" }}</a></p>
+			{{- end }}
 		</div>
 		<figure class="pane shot">
-			<picture>
-				<source media="(prefers-color-scheme: dark)" srcset="{{ .image.dark | relURL }}">
-				<img src="{{ .image.light | relURL }}" alt="{{ .image.alt }}" width="760" height="766" loading="lazy">
-			</picture>
+			{{ partial "picture.html" (dict "light" .image.light "dark" .image.dark "alt" .image.alt "widths" (slice 480 760 1140) "sizes" "(min-width: 48rem) 28rem, calc(100vw - 2rem)") }}
 		</figure>
 	</section>
 	{{- end }}

@@ -1,3 +1,8 @@
-{{- /* A page's title: its front matter title, else its first "# " heading
-       (the docs have no front matter). */ -}}
-{{- with .Title }}{{ . }}{{ else }}{{ with findRESubmatch `(?m)^# (.+)$` .RawContent 1 }}{{ index (index . 0) 1 | plainify }}{{ end }}{{ end -}}
+{{- /* A page's title: its front matter title, else its rendered h1 (the docs
+       have no front matter) as plain text, so code formatting in a heading
+       such as "The `gone` CLI" doesn't show. */ -}}
+{{- with .Title }}{{ return . }}{{ end -}}
+{{- with findRESubmatch `(?s)<h1[^>]*>(.*?)</h1>` .Content 1 -}}
+  {{- return (index (index . 0) 1 | plainify | htmlUnescape | strings.TrimSpace) -}}
+{{- end -}}
+{{- return "" -}}
