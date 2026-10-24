@@ -87,7 +87,7 @@ printf 'hunter2' | gone send --ttl 30m
 #   Manage link: https://app.getgone.dev/manage/AbC…#…
 #   Expires:     2026-08-10T18:30:00Z
 
-# Open it (quote the link: see "Quoting links").
+# Open it (quote the link: see "Passing links").
 gone get 'https://app.getgone.dev/secret/AbC…#v1:…'
 ```
 
@@ -130,7 +130,7 @@ The link is read from standard input, so it needs no quoting and stays out of `p
 Guidelines:
 
 - **Don't use `get --json` without `--message-out`.** Its `message` field is the plaintext.
-- **No prompts.** With `--message-file` (send) and `--passphrase-file` (get), `gone` never reads the terminal. Redirect standard input from `/dev/null` (or a link file) anyway, so nothing can block on a TTY.
+- **No prompts.** With `--message-file` (send) and `--passphrase-file` (get), `gone` never reads the terminal. Redirect standard input from `/dev/null` (or a link file) anyway, so nothing can block on a TTY. On Windows, use `<NUL` in cmd; PowerShell has no `<`, so pipe the link in with `Get-Content link.txt | gone get - …`.
 - **Check before the claim.** Everything `get` can verify locally (the link, the passphrase file, `--out` and `--message-out`) is checked before the link is opened. A local mistake exits with 2 or 8 and the link still works. A failure after the link was opened (a wrong passphrase in the file, an integrity error, or a failed write) loses the secret: ask the sender to send it again.
 - **Links from other servers.** A script that opens links from a server other than its default passes `--server URL` or `--allow-origin ORIGIN`, or sets `GONE_SERVER`; any other link exits 2 (`untrusted_origin`) without contacting anything.
 - **Exit codes** are listed in [Exit codes](cli-reference.md#exit-codes); with `--json`, errors are JSON on standard error.
@@ -153,22 +153,28 @@ The secret lands in a new `0600` file and never passes through output. If the wa
 gone reply - --message-file /root/.db-password --json < request-link.txt
 ```
 
-## Quoting links
+## Passing links
 
-Always put links in **single quotes**:
+The surest way, in any shell, is `-`: run `gone get -`, paste the link, then press Ctrl-D (Ctrl-Z then Enter on Windows). Nothing needs quoting, and the link stays out of shell history and the process list.
 
-```sh
-gone get 'https://app.getgone.dev/secret/AbC#v1:XyZ'
-```
+To give a link as an argument, quote it the way your shell expects:
 
-The key is after the `#`. Some shells treat `#` or other characters specially, and an unquoted link can be silently cut short. A damaged link is rejected before anything is fetched, so the secret is not burned, but quoting avoids the confusion. Passing the link on standard input with `-` avoids quoting altogether.
+| Shell | Write it as | Why |
+| --- | --- | --- |
+| bash, sh, fish | `gone get 'https://…#v1:…'` | Not strictly needed, since a `#` inside a word isn't a comment, but quoting is a safe habit. |
+| zsh | `gone get 'https://…#v1:…'` | With `extended_glob` on, an unquoted `#` is a pattern, and zsh stops with "no matches found" before `gone` runs. |
+| PowerShell | `gone get 'https://…#v1:…'` | Single quotes keep the text as it is. |
+| cmd | `gone get "https://…#v1:…"` | cmd has no single quotes; use double quotes or none. |
+| Git Bash | `gone get 'https://…#v1:…'` | For passphrase prompts, run `winpty gone …` or use Windows Terminal: Git Bash's terminal isn't a Windows console. |
+
+`gone` cleans up what copying and pasting add to a link: spaces and line breaks, quotes (including cmd's `'…'` and smart quotes), `<…>`, a full stop after it, and the `\` that zsh's paste handling puts before `#`. If a link still isn't valid, the error says why, without repeating the link, and nothing is sent, so the link still works.
 
 ---
 
 ## Security notes
 
 - **Shell history and the process list.** A link given as an argument can end up in shell history and is briefly visible to other local users in `ps`. Pass `-` instead and supply the link on standard input (`gone get - < link.txt`, `gone status - < manage.txt`). A share link is useless once opened, so open it promptly. A manage link stays valid until the secret is gone.
-- **Messages and passphrases never come from arguments.** Messages come from standard input. Passphrases come from a no-echo terminal prompt or a file. Prefer a file with mode `0600`, or a process substitution such as `--passphrase-file <(pass show gone)`.
+- **Messages and passphrases never come from arguments.** Messages come from standard input. Passphrases come from a no-echo terminal prompt or a file. Prefer a file with mode `0600`, or a process substitution such as `--passphrase-file <(pass show gone)` (in fish, `(pass show gone | psub)`).
 - **Share the passphrase separately.** A passphrase only helps if it travels on a different channel than the link. Someone who opens a leaked link burns the secret, and can then guess the passphrase offline; a generated passphrase makes that impractical.
 - **Untrusted content.** Messages and file names come from the sender. On a terminal, `gone` escapes control characters and bidirectional-override characters in messages and in the file names it prints, and attachments are never written outside `--out`. Review attachments before opening them.
 - **Memory.** Keys, passphrases and plaintext are wiped from memory after use where Go makes that possible. This is best effort: the Go runtime can copy data (for example when converting to strings), and the garbage collector does not zero freed memory.

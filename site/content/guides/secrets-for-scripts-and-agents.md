@@ -46,7 +46,7 @@ The secret lands in `./db.pw` and never passes through the output. If the wait i
 ## Guidelines
 
 - **Don't use `gone get --json` without `--message-out`.** Its `message` field is the plaintext.
-- **No prompts.** With `--message-file` and `--passphrase-file`, `gone` never reads the terminal. Redirect standard input from `/dev/null` anyway, so nothing can wait on a terminal.
+- **No prompts.** With `--message-file` and `--passphrase-file`, `gone` never reads the terminal. Redirect standard input from `/dev/null` anyway, so nothing can wait on a terminal. On Windows, use `<NUL` in cmd, and in PowerShell, which has no `<`, pipe the link in: `Get-Content link.txt | gone get - …`.
 - **Mistakes don't burn the secret.** Everything `gone get` can check locally (the link, the passphrase file and the output paths) is checked before the link is opened.
 - **Only your own server by default.** A link for another server is refused before anything is sent, unless you pass `--allow-origin`.
 - **Delete the file once it's been used.**

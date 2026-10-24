@@ -15,11 +15,10 @@ const defaultTTL = time.Hour
 // sendOpts holds the parsed "gone send" flags.
 type sendOpts struct {
 	common
-	server      string
-	ttl         time.Duration
-	files       stringList
-	messageFile string
-	pass        passOpts
+	server string
+	ttl    time.Duration
+	in     inputOpts
+	pass   passOpts
 }
 
 // parseSend parses "gone send" arguments.
@@ -34,7 +33,7 @@ func parseSend(args []string) (sendOpts, error) {
 	o.register(fs)
 	o.pass.register(fs, true)
 	registerServerTTL(fs, &o.server, &o.ttl, defaultTTL)
-	registerInputs(fs, &o.files, &o.messageFile)
+	o.in.register(fs)
 	pos, err := parseArgs(fs, args)
 	if err != nil {
 		return o, err
@@ -90,7 +89,7 @@ func (a *app) createSendSecret(ctx context.Context, cl *client.Client, o sendOpt
 	if err != nil {
 		return err
 	}
-	payload, err := a.readPayload(o.files, o.messageFile)
+	payload, err := a.readPayload(o.in)
 	defer clearPayload(payload)
 	if err != nil {
 		return err

@@ -1,10 +1,12 @@
 package cli
 
 import (
-	"github.com/haukened/gone/v3/internal/domain"
 	"io"
 	"os"
+	"runtime"
 	"unicode/utf8"
+
+	"github.com/haukened/gone/v3/internal/domain"
 )
 
 // promptPassword reads one passphrase from the terminal without echo.
@@ -34,7 +36,8 @@ func (a *app) promptPassword(label string) ([]byte, error) {
 // Returns the raw input or a usage/I/O error.
 func (a *app) readPassword(label string) ([]byte, error) {
 	if !a.env.StdinTTY {
-		return nil, usagef("a passphrase prompt needs an interactive terminal; use --passphrase-file")
+		return nil, usagef("a passphrase prompt needs an interactive terminal; use --passphrase-file%s",
+			gitBashHint(runtime.GOOS, a.env.Getenv("MSYSTEM")))
 	}
 	_, _ = io.WriteString(a.env.Stderr, label)
 	p, err := a.env.ReadPassword()
@@ -45,8 +48,9 @@ func (a *app) readPassword(label string) ([]byte, error) {
 	return p, nil
 }
 
-// readPassphraseFile reads a passphrase file, stripping exactly one
-// trailing "\n" or "\r\n".
+// readPassphraseFile reads a passphrase file as text (see decodeText, so a
+// file saved as UTF-16 or with a byte-order mark still works), stripping
+// exactly one trailing "\n" or "\r\n".
 //
 // Parameters:
 //   - path: file path.
@@ -58,10 +62,15 @@ func readPassphraseFile(path string) ([]byte, error) {
 		return nil, ioErr("read passphrase file", err)
 	}
 	defer func() { _ = f.Close() }()
-	p, err := io.ReadAll(io.LimitReader(f, domain.V2MaxPassphraseBytes+3))
+	// Room for the longest passphrase in UTF-16, a BOM and "\r\n".
+	p, err := io.ReadAll(io.LimitReader(f, 2*domain.V2MaxPassphraseBytes+8))
 	if err != nil {
 		clear(p)
 		return nil, ioErr("read passphrase file", err)
+	}
+	p, _, err = decodeText(p)
+	if err != nil {
+		return nil, err
 	}
 	trimmed := trimNewline(p)
 	if err := checkPassphrase(trimmed); err != nil {
@@ -112,4 +121,20 @@ func checkMinLength(p []byte) error {
 		return usagef("the passphrase must be at least %d characters", minPassphraseRunes)
 	}
 	return nil
+}
+
+// gitBashHint explains, in Git Bash and other MSYS terminals on Windows,
+// why gone sees no terminal: they connect programs through pipes, not a
+// Windows console.
+//
+// Parameters:
+//   - goos: the operating system, as in runtime.GOOS.
+//   - msystem: the MSYSTEM environment variable, which MSYS sets.
+//
+// Returns the hint, starting with a space, or "".
+func gitBashHint(goos, msystem string) string {
+	if goos != "windows" || msystem == "" {
+		return ""
+	}
+	return " (in Git Bash, run it as \"winpty gone ...\", or use Windows Terminal)"
 }

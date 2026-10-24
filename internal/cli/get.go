@@ -76,7 +76,7 @@ func (a *app) runGet(ctx context.Context, args []string) error {
 	}
 	link, cl, err := openLinkArg(a, o.linkOpts, raw, envelope.ParseLink,
 		func(l envelope.Link) string { return l.Origin },
-		"not a valid gone link (quote it in single quotes so the shell keeps the #fragment)")
+		secretLinkKind)
 	if err != nil {
 		return err
 	}

@@ -104,7 +104,7 @@ The script checks the download against the release's checksums (and its signed p
 
 ```sh
 printf 'hunter2' | gone send --ttl 30m              # prints the link and your manage link
-gone get 'https://app.getgone.dev/secret/AbC#v1:…'  # quote links in single quotes
+gone get 'https://app.getgone.dev/secret/AbC#v1:…'  # quote the link ("…" in cmd), or gone get - and paste it
 gone request --label 'VPN key'                      # ask someone for a secret
 printf 'hunter2' | gone reply '<request-link>'      # answer someone's request
 ```

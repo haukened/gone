@@ -62,19 +62,6 @@ func registerServerTTL(fs *flag.FlagSet, server *string, ttl *time.Duration, def
 	}
 }
 
-// registerInputs adds the -f/--file and --message-file flags.
-//
-// Parameters:
-//   - fs: flag set.
-//   - files: destination for the file paths.
-//   - messageFile: destination for the message file path.
-func registerInputs(fs *flag.FlagSet, files *stringList, messageFile *string) {
-	for _, name := range []string{"f", "file"} {
-		fs.Var(files, name, "")
-	}
-	fs.StringVar(messageFile, "message-file", "", "")
-}
-
 // newFlagSet returns a quiet flag set; usage text comes from usage.go.
 //
 // Parameters:

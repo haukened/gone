@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"flag"
 	"io"
 	"mime"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/haukened/gone/v3/internal/client"
@@ -14,31 +16,66 @@ import (
 // maxInputBytes caps the message plus attachments before encryption.
 const maxInputBytes = 64 << 20
 
+// eofKey is the key that ends typed input on this system's terminal.
+var eofKey = eofKeyFor(runtime.GOOS)
+
+// eofKeyFor names the key that ends typed input on a terminal.
+//
+// Parameters:
+//   - goos: the operating system, as in runtime.GOOS.
+//
+// Returns "Ctrl-Z then Enter" on Windows and "Ctrl-D" elsewhere.
+func eofKeyFor(goos string) string {
+	if goos == "windows" {
+		return "Ctrl-Z then Enter"
+	}
+	return "Ctrl-D"
+}
+
 // messagePrompt is shown on a terminal before reading the message.
-const messagePrompt = "Type the message, then press Ctrl-D on a new line (Ctrl-Z then Enter on Windows).\n"
+var messagePrompt = "Type the message, then press " + eofKey + " on a new line.\n"
 
 // maxLinkInput caps how much of stdin is read for a "-" link argument.
 const maxLinkInput = 4 << 10
 
 // linkPrompt is shown on a terminal before reading a "-" link argument.
-const linkPrompt = "Paste the link, then press Ctrl-D on a new line (Ctrl-Z then Enter on Windows).\n"
+var linkPrompt = "Paste the link, then press " + eofKey + " on a new line.\n"
 
-// readPayload reads the attachments and then the message, from messageFile
-// when it is set and from stdin otherwise. The caller must clear the
-// returned data.
+// inputOpts holds the flags that say where a message and its files come
+// from (send and reply).
+type inputOpts struct {
+	files       stringList
+	messageFile string
+	keepNewline bool
+}
+
+// register adds -f/--file, --message-file and --keep-newline to fs.
 //
 // Parameters:
-//   - paths: attachment paths.
-//   - messageFile: --message-file value, or "" to read stdin.
+//   - fs: the command's flag set.
+func (o *inputOpts) register(fs *flag.FlagSet) {
+	for _, name := range []string{"f", "file"} {
+		fs.Var(&o.files, name, "")
+	}
+	fs.StringVar(&o.messageFile, "message-file", "", "")
+	fs.BoolVar(&o.keepNewline, "keep-newline", false, "")
+}
+
+// readPayload reads the attachments and then the message, from
+// --message-file when it is set and from stdin otherwise. The caller must
+// clear the returned data.
+//
+// Parameters:
+//   - in: the input flags.
 //
 // Returns the payload or a usage/I/O error.
-func (a *app) readPayload(paths []string, messageFile string) (envelope.Payload, error) {
+func (a *app) readPayload(in inputOpts) (envelope.Payload, error) {
 	var p envelope.Payload
-	if len(paths) > envelope.MaxFiles {
+	if len(in.files) > envelope.MaxFiles {
 		return p, usagef("at most %d files can be attached", envelope.MaxFiles)
 	}
 	budget := int64(maxInputBytes)
-	for _, path := range paths {
+	for _, path := range in.files {
 		f, err := readAttachment(path, budget)
 		if err != nil {
 			clearPayload(p)
@@ -47,7 +84,7 @@ func (a *app) readPayload(paths []string, messageFile string) (envelope.Payload,
 		budget -= int64(len(f.Data))
 		p.Files = append(p.Files, f)
 	}
-	msg, err := a.readMessage(budget, messageFile)
+	msg, err := a.readMessage(budget, in)
 	if err != nil {
 		clearPayload(p)
 		return envelope.Payload{}, err
@@ -59,30 +96,54 @@ func (a *app) readPayload(paths []string, messageFile string) (envelope.Payload,
 	return p, nil
 }
 
-// readMessage reads the message up to budget bytes: from messageFile when
-// it is set, without touching stdin, otherwise from stdin, prompting on a
-// terminal.
+// readMessage reads the message up to budget bytes: from --message-file
+// when it is set, without touching stdin, otherwise from stdin, prompting
+// on a terminal. Text with a byte-order mark becomes plain UTF-8 either
+// way. From stdin, one trailing newline is removed unless --keep-newline is
+// set: echo, PowerShell pipes and the Enter before Ctrl-D all add one the
+// sender didn't mean.
 //
 // Parameters:
 //   - budget: remaining input allowance.
-//   - messageFile: --message-file value, or "" to read stdin.
+//   - in: the input flags.
 //
 // Returns the message or a usage/I/O error.
-func (a *app) readMessage(budget int64, messageFile string) ([]byte, error) {
-	if messageFile != "" {
-		return readRegularFile(messageFile, budget, "message file")
+func (a *app) readMessage(budget int64, in inputOpts) ([]byte, error) {
+	var msg []byte
+	if in.messageFile != "" {
+		b, err := readRegularFile(in.messageFile, budget, "message file")
+		if err != nil {
+			return nil, err
+		}
+		msg = b
+	} else {
+		if a.env.StdinTTY {
+			_, _ = io.WriteString(a.env.Stderr, messagePrompt)
+		}
+		b, err := io.ReadAll(io.LimitReader(a.env.Stdin, budget+1))
+		if err != nil {
+			clear(b)
+			return nil, ioErr("read message", err)
+		}
+		if int64(len(b)) > budget {
+			clear(b)
+			return nil, tooLargeInput()
+		}
+		msg = b
 	}
-	if a.env.StdinTTY {
-		_, _ = io.WriteString(a.env.Stderr, messagePrompt)
-	}
-	msg, err := io.ReadAll(io.LimitReader(a.env.Stdin, budget+1))
+	msg, did, err := decodeText(msg)
 	if err != nil {
-		clear(msg)
-		return nil, ioErr("read message", err)
+		return nil, err
+	}
+	if did != "" {
+		a.hint("The message %s.\n", did)
 	}
 	if int64(len(msg)) > budget {
 		clear(msg)
 		return nil, tooLargeInput()
+	}
+	if in.messageFile == "" && !in.keepNewline {
+		msg = trimNewline(msg)
 	}
 	return msg, nil
 }
@@ -153,19 +214,21 @@ func readRegularFile(path string, budget int64, what string) ([]byte, error) {
 //   - raw: positional link argument ("-" reads stdin).
 //   - parse: link parser for the expected kind of link.
 //   - origin: returns the server origin of a parsed link.
-//   - bad: usage message when parse fails; the input is never echoed.
+//   - kind: the kind of link expected, which names it in errors. The
+//     input is never echoed.
 //
 // Returns the parsed link and its client, or a usage/I/O/client error.
-func openLinkArg[L any](a *app, l linkOpts, raw string, parse func(string) (L, error), origin func(L) string, bad string) (L, *client.Client, error) {
+func openLinkArg[L any](a *app, l linkOpts, raw string, parse func(string) (L, error), origin func(L) string, kind linkKind) (L, *client.Client, error) {
 	var zero L
 	a.json = l.json
 	raw, err := a.readLinkArg(raw)
 	if err != nil {
 		return zero, nil, err
 	}
+	raw = normalizeLink(raw)
 	link, err := parse(raw)
 	if err != nil {
-		return zero, nil, usagef("%s", bad)
+		return zero, nil, usagef("%s", diagnoseLink(raw, kind, err))
 	}
 	cl, err := newClient(a.env, origin(link), "the link", l.common)
 	if err != nil {
@@ -185,8 +248,8 @@ func openLinkArg[L any](a *app, l linkOpts, raw string, parse func(string) (L, e
 // Parameters:
 //   - raw: positional link argument.
 //
-// Returns the link with surrounding whitespace removed, or a usage/I/O
-// error.
+// Returns the link as UTF-8 (see decodeText) with surrounding whitespace
+// removed, or a usage/I/O error.
 func (a *app) readLinkArg(raw string) (string, error) {
 	if raw != "-" {
 		return raw, nil
@@ -200,6 +263,10 @@ func (a *app) readLinkArg(raw string) (string, error) {
 	}
 	if len(b) > maxLinkInput {
 		return "", usagef("the link on standard input is too long")
+	}
+	b, _, err = decodeText(b)
+	if err != nil {
+		return "", err
 	}
 	return strings.TrimSpace(string(b)), nil
 }
