@@ -33,6 +33,14 @@ install:
       link:
         text: Read the script first
         url: https://github.com/haukened/gone/blob/main/install.sh
+    - id: homebrew
+      label: Homebrew
+      commands:
+        - brew install haukened/gone/gone
+      hint: For macOS and Linux. brew upgrade picks up each new release.
+      link:
+        text: The tap
+        url: https://github.com/haukened/homebrew-gone
     - id: packages
       label: Debian & Fedora
       since: v3.13.0
