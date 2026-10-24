@@ -159,6 +159,9 @@ func TestWriteUniqueExhausted(t *testing.T) {
 // Parameters:
 //   - t: the test.
 func TestFinishWriteError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows opens a created file for writing, so this write doesn't fail")
+	}
 	dir := t.TempDir()
 	root := openRoot(t, dir)
 	f, err := root.OpenFile("x", os.O_RDONLY|os.O_CREATE, 0o600)
@@ -203,6 +206,9 @@ func TestWriteNew(t *testing.T) {
 	}
 	if left, _ := filepath.Glob(filepath.Join(dir, ".gone-*")); len(left) != 0 {
 		t.Fatalf("temp files left: %v", left)
+	}
+	if runtime.GOOS == "windows" {
+		return // an open os.Root keeps Windows from removing its directory
 	}
 	gone := t.TempDir()
 	goneRoot := openRoot(t, gone)
