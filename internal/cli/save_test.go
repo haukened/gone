@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -59,6 +60,9 @@ func TestCollisionName(t *testing.T) {
 func TestOpenOutDirErrors(t *testing.T) {
 	if _, err := openOutDir(filepath.Join(t.TempDir(), "missing")); classify(err).code != exitIO {
 		t.Fatalf("missing dir: %v", err)
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("a directory's mode doesn't make it read-only on Windows")
 	}
 	ro := t.TempDir()
 	if err := os.Chmod(ro, 0o500); err != nil { // #nosec G302 -- test fixture
