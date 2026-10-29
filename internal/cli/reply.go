@@ -12,8 +12,7 @@ import (
 // replyOpts holds `gone reply` flags.
 type replyOpts struct {
 	linkOpts
-	files       stringList
-	messageFile string
+	in inputOpts
 }
 
 // parseReply parses `gone reply` flags.
@@ -26,7 +25,7 @@ func parseReply(args []string) (replyOpts, string, error) {
 	var o replyOpts
 	fs := newFlagSet("reply")
 	o.register(fs)
-	registerInputs(fs, &o.files, &o.messageFile)
+	o.in.register(fs)
 	raw, err := onePositional(fs, args, "request link")
 	if err != nil {
 		return o, "", err
@@ -50,7 +49,7 @@ func (a *app) runReply(ctx context.Context, args []string) error {
 	}
 	link, cl, err := openLinkArg(a, o.linkOpts, raw, envelope.ParseReplyLink,
 		func(l envelope.ReplyLink) string { return l.Origin },
-		"not a valid gone request link (quote it in single quotes so the shell keeps the #fragment)")
+		requestLinkKind)
 	if err != nil {
 		return err
 	}
@@ -75,10 +74,10 @@ func (a *app) sendReply(ctx context.Context, cl *client.Client, link envelope.Re
 	if err != nil {
 		return err
 	}
-	if err = checkFiles(len(o.files), pol); err != nil {
+	if err = checkFiles(len(o.in.files), pol); err != nil {
 		return err
 	}
-	payload, err := a.readPayload(o.files, o.messageFile)
+	payload, err := a.readPayload(o.in)
 	defer clearPayload(payload)
 	if err != nil {
 		return err

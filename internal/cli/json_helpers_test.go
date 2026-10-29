@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -81,6 +82,9 @@ func checkSavedFile(t *testing.T, path, want string) {
 	data, err := os.ReadFile(path) // #nosec G304 -- test temp dir
 	if err != nil || string(data) != want {
 		t.Fatalf("read %s: %q %v", path, data, err)
+	}
+	if runtime.GOOS == "windows" {
+		return // ACLs, not POSIX modes
 	}
 	info, err := os.Stat(path)
 	if err != nil || info.Mode().Perm() != 0o600 {

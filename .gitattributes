@@ -1,0 +1,3 @@
+# Check text out with LF everywhere, Windows included: test vectors,
+# the passphrase word list and scripts are compared or parsed byte for byte.
+* text=auto eol=lf

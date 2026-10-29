@@ -31,7 +31,7 @@ func (a *app) manageTarget(name string, args []string) (*client.Client, envelope
 	}
 	link, cl, err := openLinkArg(a, l, raw, envelope.ParseManageLink,
 		func(m envelope.ManageLink) string { return m.Origin },
-		name+": not a valid manage link")
+		manageLinkKind)
 	return cl, link, err
 }
 

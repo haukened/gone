@@ -23,17 +23,20 @@ Exit codes: 0 ok, 1 internal, 2 usage, 3 not found, 4 wrong passphrase,
 `
 
 // usageSend documents "gone send".
-const usageSend = `Usage: gone send [flags]
+var usageSend = `Usage: gone send [flags]
 
 Reads the message from standard input (pipe it, or type it and press
-Ctrl-D; Ctrl-Z then Enter on Windows), or from --message-file. The message
-is never taken from the command line, so it stays out of shell history.
+` + eofKey + `), or from --message-file. The message is never taken from
+the command line, so it stays out of shell history. One trailing newline
+is removed from standard input, since echo and the Enter before the
+end-of-input key add one; --keep-newline keeps it.
 
 Flags:
   -s, --server URL           server origin (default: $GONE_SERVER, config, https://app.getgone.dev)
   -t, --ttl DURATION         lifetime, e.g. 30m or 24h (default 1h)
   -f, --file PATH            attach a file; repeat for more (max 10, or the server's limit)
       --message-file PATH    read the message from PATH instead of standard input
+      --keep-newline         keep a trailing newline on standard input
       --passphrase-prompt    protect with a passphrase typed at a prompt
       --passphrase-file PATH protect with the passphrase in PATH
       --passphrase-generate  protect with a generated passphrase (printed to stderr)
@@ -155,12 +158,14 @@ const usageReply = `Usage: gone reply <request-link|-> [flags]
 Answers someone's request for a secret. The link is checked first, so
 nothing is read if the request is no longer open. The message comes from
 standard input or --message-file, and is encrypted to the requester's key:
-only the device that made the request can open it, once.
+only the device that made the request can open it, once. One trailing
+newline is removed from standard input unless --keep-newline is given.
 A link of "-" is read from standard input.
 
 Flags:
   -f, --file PATH            attach a file; repeat for more (max 10, or the server's limit)
       --message-file PATH    read the message from PATH instead of standard input
+      --keep-newline         keep a trailing newline on standard input
       --json                 print the result as JSON
   -s, --server URL           the server you trust (default: $GONE_SERVER, config, https://app.getgone.dev)
       --allow-origin ORIGIN  also trust this server for this command; repeat or comma-separate

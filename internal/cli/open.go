@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"io"
+	"runtime"
 
 	"github.com/haukened/gone/v3/internal/client"
 	"github.com/haukened/gone/v3/internal/domain"
@@ -110,7 +111,8 @@ func (a *app) recipientPassphrase(version uint8, file string) ([]byte, error) {
 	case file != "":
 		return readPassphraseFile(file)
 	case !a.env.StdinTTY:
-		return nil, usagef("this link needs a passphrase; use --passphrase-file or run in a terminal")
+		return nil, usagef("this link needs a passphrase; use --passphrase-file or run in a terminal%s",
+			gitBashHint(runtime.GOOS, a.env.Getenv("MSYSTEM")))
 	}
 	return nil, nil
 }

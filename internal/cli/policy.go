@@ -78,7 +78,7 @@ func checkSendPolicy(o sendOpts, p client.Policy) error {
 	if p.PassphraseRequired && !o.pass.set() {
 		return policyErrorf(msgPolicyNeedsPhrase)
 	}
-	return checkFiles(len(o.files), p)
+	return checkFiles(len(o.in.files), p)
 }
 
 // checkRequestPolicy refuses "gone request" on a server that requires

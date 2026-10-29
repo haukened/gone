@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -59,6 +60,9 @@ func TestCollisionName(t *testing.T) {
 func TestOpenOutDirErrors(t *testing.T) {
 	if _, err := openOutDir(filepath.Join(t.TempDir(), "missing")); classify(err).code != exitIO {
 		t.Fatalf("missing dir: %v", err)
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("a directory's mode doesn't make it read-only on Windows")
 	}
 	ro := t.TempDir()
 	if err := os.Chmod(ro, 0o500); err != nil { // #nosec G302 -- test fixture
@@ -155,6 +159,9 @@ func TestWriteUniqueExhausted(t *testing.T) {
 // Parameters:
 //   - t: the test.
 func TestFinishWriteError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("on Windows, writing to this read-only handle succeeds, so the error path is not reached")
+	}
 	dir := t.TempDir()
 	root := openRoot(t, dir)
 	f, err := root.OpenFile("x", os.O_RDONLY|os.O_CREATE, 0o600)
@@ -199,6 +206,9 @@ func TestWriteNew(t *testing.T) {
 	}
 	if left, _ := filepath.Glob(filepath.Join(dir, ".gone-*")); len(left) != 0 {
 		t.Fatalf("temp files left: %v", left)
+	}
+	if runtime.GOOS == "windows" {
+		return // an open os.Root keeps Windows from removing its directory
 	}
 	gone := t.TempDir()
 	goneRoot := openRoot(t, gone)

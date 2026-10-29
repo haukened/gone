@@ -108,3 +108,19 @@ func TestGenerateWordlistFailure(t *testing.T) {
 		t.Fatalf("Wordlist err = %v", err)
 	}
 }
+
+// TestParseListCRLF checks that a word list checked out with Windows line
+// endings gives the same words, with no "\r" left on them.
+//
+// Parameters:
+//   - t: the test handle.
+func TestParseListCRLF(t *testing.T) {
+	want, err := parseList(rawList)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := parseList(bytes.ReplaceAll(rawList, []byte("\n"), []byte("\r\n")))
+	if err != nil || strings.Join(got, " ") != strings.Join(want, " ") {
+		t.Fatalf("CRLF list differs: %v", err)
+	}
+}

@@ -63,7 +63,7 @@ func (d *DB) lock(ctx context.Context) (func(), error) {
 // Returns true if this call created it, false if it exists, or an I/O error.
 func createLock(path string) (bool, error) {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePerm) // #nosec G304 -- fixed lock name in the CLI's config directory // nosemgrep
-	if errors.Is(err, fs.ErrExist) {
+	if errors.Is(err, fs.ErrExist) || lockBeingRemoved(err) {
 		return false, nil
 	}
 	if err != nil {

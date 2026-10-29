@@ -76,7 +76,7 @@ func TestReadPassphraseFile(t *testing.T) {
 	if _, err := readPassphraseFile(big); classify(err).code != exitUsage {
 		t.Fatalf("big err = %v", err)
 	}
-	bad := writeTemp(t, "bad", "\xff\xfe")
+	bad := writeTemp(t, "bad", "\xff\xff")
 	if _, err := readPassphraseFile(bad); classify(err).code != exitUsage {
 		t.Fatalf("invalid err = %v", err)
 	}
@@ -87,6 +87,36 @@ func TestReadPassphraseFile(t *testing.T) {
 	if p, err := readPassphraseFile(maxPath); err != nil || len(p) != 1024 {
 		t.Fatalf("max = %d, %v", len(p), err)
 	}
+	// Windows PowerShell 5.1's "echo pass > file" writes UTF-16LE with a
+	// BOM and CRLF; older Notepad writes a UTF-8 BOM.
+	for name, body := range map[string]string{
+		"utf-8 bom":  "\xEF\xBB\xBFcorrect horse\r\n",
+		"utf-16le":   utf16LE("correct horse\r\n"),
+		"utf-16 max": utf16LE(strings.Repeat("a", 1022) + "é\r\n"),
+	} {
+		want := "correct horse"
+		if name == "utf-16 max" {
+			want = strings.Repeat("a", 1022) + "é"
+		}
+		if p, err := readPassphraseFile(writeTemp(t, "p", body)); err != nil || string(p) != want {
+			t.Errorf("%s: %q, %v", name, p, err)
+		}
+	}
+}
+
+// utf16LE encodes s as UTF-16LE with a byte-order mark, as Windows
+// PowerShell 5.1 writes files. s must be in the Basic Multilingual Plane.
+//
+// Parameters:
+//   - s: the text.
+//
+// Returns the encoded bytes as a string.
+func utf16LE(s string) string {
+	b := []byte{0xFF, 0xFE}
+	for _, r := range s {
+		b = append(b, byte(r), byte(r>>8))
+	}
+	return string(b)
 }
 
 // TestTrimNewline checks only one trailing line ending is removed.
