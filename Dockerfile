@@ -6,7 +6,7 @@
 
 # ----------- Builder Stage -----------
 # Build on the native platform and cross-compile; CGO is disabled so no target toolchain is needed.
-FROM --platform=$BUILDPLATFORM dhi.io/golang:1.27-debian13-dev@sha256:48f7331305a4384537d88e57dc2778deed79ceb1664c3dfda97fab46986ccc06 AS builder
+FROM --platform=$BUILDPLATFORM dhi.io/golang:1.27-debian13-dev@sha256:7f62233f80de83e6388c6b7686d51b1c8d8963b6d00d622aaadaf29ab817f7e7 AS builder
 
 ARG MINIFY_VERSION=v2.24.17
 
@@ -49,7 +49,7 @@ RUN mkdir -p /app/data
 
 # ----------- Final Stage -----------
 # Distroless static runtime: CA certs, tzdata and a nonroot (65532) user only. No shell or package manager.
-FROM dhi.io/static:20250419-debian13@sha256:66e3dac42874997512a34ac68b59fa424a261394618b6ba0642454522aef4565
+FROM dhi.io/static:20250419-debian13@sha256:4749130e822c145dbdf9ca11ec0cc2f694b5fe687fd74268a2b62160e6726f39
 
 COPY --from=builder --chown=65532:65532 /app/data /data
 COPY --from=builder --chown=0:0 --chmod=0555 /app/bin/goned /usr/local/bin/goned
