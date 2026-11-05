@@ -11,7 +11,7 @@ require (
 	github.com/knadh/koanf/v2 v2.4.1
 	golang.org/x/term v0.47.0
 	golang.org/x/text v0.43.0
-	modernc.org/sqlite v1.61.0
+	modernc.org/sqlite v1.61.1
 )
 
 require (
