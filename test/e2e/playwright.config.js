@@ -3,8 +3,11 @@
 // Browser end-to-end tests: the real goned binary (prod build, so the
 // minified, embedded assets that ship), the real templates and the real CSP,
 // served over HTTPS through a test TLS proxy with the rate limits on, in
-// Chromium, Firefox and WebKit. Run with `task e2e`, which builds
-// bin/goned first.
+// Chromium and Firefox. Run with `task e2e`, which builds bin/goned first.
+//
+// There is no WebKit project: CI runners have no GPU, and Linux WebKit's
+// software rendering made it about five times slower than the other two,
+// with tests timing out at random. It is also not the WebKit Safari ships.
 
 const path = require('node:path');
 const { defineConfig, devices } = require('@playwright/test');
@@ -75,7 +78,6 @@ module.exports = defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   // A fresh data directory each run for each server; see servers.js.
   webServer: (plain ? [] : [proxyServer()]).concat(Object.keys(servers).map(gonedServer)),

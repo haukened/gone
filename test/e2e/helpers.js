@@ -22,8 +22,9 @@ async function sendSecret(page, opts) {
     await page.locator('#pass-disclosure summary').click();
     await page.locator('#pass-generate').click();
     passphrase = await page.locator('#passphrase').inputValue();
-    // Five CamelCase words from the EFF short wordlist.
-    expect(passphrase).toMatch(/^([A-Z][a-z]+){5}$/);
+    // Five CamelCase words from the EFF short wordlist, which has one
+    // hyphenated word (yo-yo).
+    expect(passphrase).toMatch(/^([A-Z][a-z]+(-[a-z]+)?){5}$/);
   }
   await page.locator('#create-secret button[type=submit]').click();
   await expect(page.locator('#result')).toBeVisible();
