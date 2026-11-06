@@ -113,7 +113,7 @@ A full redesign that keeps today's constraints: vanilla JS, no `innerHTML`, stri
   * *Receive:* reveal, a slot for the passphrase prompt, and the error states (expired, already opened, wrong passphrase).
 * **Accessibility:** target WCAG 2.2 AA. That means full keyboard operation, visible focus, correct labels and live regions, `prefers-reduced-motion` support, and sufficient contrast in both themes.
 * **Responsive layout** that works from small phones to wide desktops.
-* **Browser smoke tests:** a Playwright check of the send→receive round trip in CI. *Done later* (#81): `test/e2e` runs every flow in Chromium, Firefox and WebKit against the production build and its real CSP (`task e2e`).
+* **Browser smoke tests:** a Playwright check of the send→receive round trip in CI. *Done later* (#81): `test/e2e` runs every flow in Chromium and Firefox against the production build and its real CSP (`task e2e`).
 
 **Done when**
 * Every existing flow works with the same or fewer steps.

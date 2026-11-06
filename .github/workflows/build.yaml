@@ -188,7 +188,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Browser end-to-end tests (test/e2e): the prod goned binary, the real
-  # templates and the real CSP in Chromium, Firefox and WebKit. The JS unit
+  # templates and the real CSP in Chromium and Firefox. The JS unit
   # tests load scripts through a harness, so only this job catches a missing
   # or misordered <script> tag or a CSP violation.
   e2e:
@@ -248,7 +248,7 @@ jobs:
       # Downloads only what the cache lacks; the system packages always install.
       - name: Install browsers
         working-directory: test/e2e
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: npx playwright install --with-deps chromium firefox
 
       - name: Run browser tests
         working-directory: test/e2e

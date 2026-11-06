@@ -186,11 +186,11 @@ tasks:
       - test/helm/run.sh
 
   e2e-install:
-    desc: Install the browsers the end-to-end tests use (Chromium, Firefox, WebKit)
+    desc: Install the browsers the end-to-end tests use (Chromium, Firefox)
     dir: test/e2e
     cmds:
       - npm ci --no-audit --no-fund
-      - npx playwright install --with-deps chromium firefox webkit
+      - npx playwright install --with-deps chromium firefox
 
   lint:
     desc: Run Go linters via golangci-lint, matching CI

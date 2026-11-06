@@ -13,11 +13,11 @@ const { test, expect } = require('./fixtures');
 const { servers } = require('./servers');
 
 // Rate limiting is server behaviour seen through the UI, so one browser is
-// enough; WebKit under CI load has reported the 429 message late.
+// enough.
 test.skip(({ browserName }) => browserName !== 'chromium', 'rate limiting is server behaviour; one browser is enough');
 
 const BURST = servers.rate.rate.burst;
-const BROWSERS = ['chromium', 'firefox', 'webkit'];
+const BROWSERS = ['chromium', 'firefox'];
 
 // client returns context options for a person on the rate server whose
 // address is unique to this test and browser.

@@ -53,7 +53,7 @@ The project follows a minimal Go layout to keep code organized and maintainable:
 - Use table-driven tests where appropriate.
 - Integration tests should be placed in the `test/` directory.
 - Run tests with `go test ./...` and ensure all tests pass before finalizing changes.
-- Changes to templates, `<script>` tags or page JS: also run `task e2e` (browser end-to-end tests in Chromium, Firefox and WebKit; `task e2e-install` once first).
+- Changes to templates, `<script>` tags or page JS: also run `task e2e` (browser end-to-end tests in Chromium and Firefox; `task e2e-install` once first).
 
 ## Coding Style
 - Write idiomatic Go code following standard Go conventions.
