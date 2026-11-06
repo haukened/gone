@@ -101,20 +101,6 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      # Reports only vulnerabilities in code the module actually calls.
-      - name: Check for known vulnerabilities
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@"$GOVULNCHECK_VERSION"
-          "$HOME/go/bin/govulncheck" ./...
-
-      # Every manifest in the repo, tools and test packages included, so a new
-      # vulnerable dependency, or a new ignore in an osv-scanner.toml, shows up
-      # in its pull request rather than in the weekly Security Scan.
-      - name: Check dependencies against OSV
-        run: |
-          go install github.com/google/osv-scanner/v2/cmd/osv-scanner@"$OSV_SCANNER_VERSION"
-          "$HOME/go/bin/osv-scanner" scan source --no-call-analysis=go -r .
-
       - name: Install minify
         run: go install github.com/tdewolff/minify/v2/cmd/minify@"$MINIFY_VERSION"
 
@@ -186,6 +172,25 @@ jobs:
           language: 'javascript'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # The vulnerability checks run last, after the coverage uploads. They depend
+      # on advisory databases, so they can start failing with no change here, and
+      # main must still upload its coverage then: Codacy's Coverage Variation
+      # check compares every PR against it and never reports without it.
+
+      # Reports only vulnerabilities in code the module actually calls.
+      - name: Check for known vulnerabilities
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@"$GOVULNCHECK_VERSION"
+          "$HOME/go/bin/govulncheck" ./...
+
+      # Every manifest in the repo, tools and test packages included, so a new
+      # vulnerable dependency, or a new ignore in an osv-scanner.toml, shows up
+      # in its pull request rather than in the weekly Security Scan.
+      - name: Check dependencies against OSV
+        run: |
+          go install github.com/google/osv-scanner/v2/cmd/osv-scanner@"$OSV_SCANNER_VERSION"
+          "$HOME/go/bin/osv-scanner" scan source --no-call-analysis=go -r .
 
   # Browser end-to-end tests (test/e2e): the prod goned binary, the real
   # templates and the real CSP in Chromium and Firefox. The JS unit
