@@ -5,3 +5,8 @@
 id = "GO-2026-5932"
 ignoreUntil = 2027-04-20
 reason = "golang.org/x/crypto/openpgp is deprecated with no fix in any version. nfpm builds no x/crypto/openpgp package (go list -deps): its OpenPGP code is ProtonMail/go-crypto, and it reaches x/crypto only for bcrypt through sprig. govulncheck -mode=binary on the built nfpm finds nothing called. It is a CI-only packaging tool, not shipped."
+
+[[IgnoredVulns]]
+id = "GO-2026-6905"
+ignoreUntil = 2027-05-06
+reason = "github.com/blakesmith/ar has no fix in any version. The panic is in Reader.Read on a malformed archive; nfpm only writes .deb files with ar.NewWriter (deb/deb.go) and never reads one, and govulncheck -mode=binary on the built nfpm finds nothing called. It is a CI-only packaging tool, not shipped."
