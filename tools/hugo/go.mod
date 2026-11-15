@@ -4,7 +4,7 @@
 // Sass or WebP support.
 module github.com/haukened/gone/v3/tools/hugo
 
-go 1.27.3
+go 1.27.4
 
 tool github.com/gohugoio/hugo
 
