@@ -3,7 +3,7 @@
 // the server's.
 module github.com/haukened/gone/v3/tools/nfpm
 
-go 1.27.3
+go 1.27.4
 
 tool github.com/goreleaser/nfpm/v2/cmd/nfpm
 

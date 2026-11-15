@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GO_VERSION: '1.27.3'
+  GO_VERSION: '1.27.4'
   # Where the docs come from: "main", or "release" for the newest stable
   # tag, so the site describes what people can install. main until a
   # release ships the reorganised docs (v3.13.0); then switch to release.
